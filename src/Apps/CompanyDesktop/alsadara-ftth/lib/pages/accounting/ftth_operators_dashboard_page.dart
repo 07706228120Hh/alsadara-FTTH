@@ -9453,8 +9453,15 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
   }
 
   void _openEditDialog(Map<String, dynamic> oursTx) {
-    final logId = (_readField(oursTx, 'id') ?? _readField(oursTx, 'Id'))?.toString();
-    if (logId == null || logId.isEmpty) return;
+    final logId = (oursTx['id'] ?? oursTx['Id'] ?? _readField(oursTx, 'id'))?.toString();
+    if (logId == null || logId.isEmpty || logId == '0') {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('لا يمكن التعديل — معرف السجل مفقود\nkeys: ${oursTx.keys.take(8).toList()}', style: GoogleFonts.cairo(fontSize: 11)),
+        backgroundColor: Colors.orange.shade800,
+        duration: const Duration(seconds: 5),
+      ));
+      return;
+    }
 
     // حفظ القيم الأصلية لمقارنتها عند الحفظ (لا نرسل إلا ما تغيّر فعلاً)
     final origPD = (_sn(_f(oursTx, 'pageDeduction'))).toDouble();
@@ -9477,6 +9484,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     if (![0, 1, 2, 3, 6, 12].contains(commitment)) commitment = 0;
     final fmt = NumberFormat('#,###', 'ar');
 
+    try {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -9686,6 +9694,13 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
         },
       ),
     );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('خطأ في فتح نافذة التعديل: $e', style: GoogleFonts.cairo(fontSize: 11)),
+        backgroundColor: Colors.red.shade900,
+        duration: const Duration(seconds: 8),
+      ));
+    }
   }
 
   Future<void> _fixBasePrices(_ComparisonRow row) async {

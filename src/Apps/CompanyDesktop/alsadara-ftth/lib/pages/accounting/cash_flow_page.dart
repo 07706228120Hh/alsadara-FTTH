@@ -6,7 +6,6 @@ import '../../services/accounting_export_service.dart';
 import '../../services/accounting_pdf_export_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
-import '../../utils/responsive_helper.dart';
 
 /// صفحة التدفقات النقدية - Cash Flow Statement
 class CashFlowPage extends StatefulWidget {
@@ -90,11 +89,11 @@ class _CashFlowPageState extends State<CashFlowPage> {
 
       // --- التحصيلات (تدفق داخل) ---
       if (collectionsResult['success'] == true) {
-        final collections =
-            (collectionsResult['data'] is List) ? collectionsResult['data'] : [];
+        final collections = (collectionsResult['data'] is List)
+            ? collectionsResult['data']
+            : [];
         for (final c in collections) {
-          final amount =
-              ((c['Amount'] ?? c['amount'] ?? 0) as num).toDouble();
+          final amount = ((c['Amount'] ?? c['amount'] ?? 0) as num).toDouble();
           final desc = c['Description'] ??
               c['description'] ??
               c['TechnicianName'] ??
@@ -115,8 +114,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
         final expenses =
             (expensesResult['data'] is List) ? expensesResult['data'] : [];
         for (final e in expenses) {
-          final amount =
-              ((e['Amount'] ?? e['amount'] ?? 0) as num).toDouble();
+          final amount = ((e['Amount'] ?? e['amount'] ?? 0) as num).toDouble();
           final desc =
               e['Description'] ?? e['description'] ?? e['Category'] ?? 'مصروف';
           final date = e['CreatedAt'] ?? e['createdAt'] ?? '';
@@ -137,8 +135,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
         for (final s in salaries) {
           final netSalary =
               ((s['NetSalary'] ?? s['netSalary'] ?? 0) as num).toDouble();
-          final empName =
-              s['EmployeeName'] ?? s['employeeName'] ?? 'موظف';
+          final empName = s['EmployeeName'] ?? s['employeeName'] ?? 'موظف';
           operating.add({
             'description': 'راتب - $empName',
             'amount': -netSalary,
@@ -150,8 +147,9 @@ class _CashFlowPageState extends State<CashFlowPage> {
       }
 
       // ترتيب حسب المبلغ (الأكبر أولاً)
-      operating.sort(
-          (a, b) => (b['amount'] as double).abs().compareTo((a['amount'] as double).abs()));
+      operating.sort((a, b) => (b['amount'] as double)
+          .abs()
+          .compareTo((a['amount'] as double).abs()));
 
       setState(() {
         _operatingItems = operating;
@@ -171,7 +169,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
     }
   }
 
-  double get _netCashFlow => _totalOperating + _totalInvesting + _totalFinancing;
+  double get _netCashFlow =>
+      _totalOperating + _totalInvesting + _totalFinancing;
 
   bool get _isPositive => _netCashFlow >= 0;
 
@@ -259,8 +258,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
                   onTap: () => _pickDateRange(context),
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: AccountingTheme.bgSecondary,
                       borderRadius: BorderRadius.circular(8),
@@ -270,8 +268,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.calendar_month,
-                            size: 16,
-                            color: AccountingTheme.neonBlue),
+                            size: 16, color: AccountingTheme.neonBlue),
                         const SizedBox(width: 4),
                         Text(
                           '${_dateFmt.format(_dateFrom)} - ${_dateFmt.format(_dateTo)}',
@@ -295,19 +292,22 @@ class _CashFlowPageState extends State<CashFlowPage> {
               ),
               if (!isMob)
                 IconButton(
-                  onPressed: _isLoading ? null : () async {
-                    await AccountingPdfExportService.exportCashFlow(
-                      operating: _operatingItems,
-                      investing: _investingItems,
-                      financing: _financingItems,
-                      totalOperating: _totalOperating,
-                      totalInvesting: _totalInvesting,
-                      totalFinancing: _totalFinancing,
-                    );
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          await AccountingPdfExportService.exportCashFlow(
+                            operating: _operatingItems,
+                            investing: _investingItems,
+                            financing: _financingItems,
+                            totalOperating: _totalOperating,
+                            totalInvesting: _totalInvesting,
+                            totalFinancing: _totalFinancing,
+                          );
+                        },
                   icon: const Icon(Icons.picture_as_pdf),
                   tooltip: 'تصدير PDF',
-                  style: IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
+                  style: IconButton.styleFrom(
+                      foregroundColor: AccountingTheme.textSecondary),
                 ),
               // تحديث
               IconButton(
@@ -338,8 +338,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.calendar_month,
-                              size: 12,
-                              color: AccountingTheme.neonBlue),
+                              size: 12, color: AccountingTheme.neonBlue),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
@@ -357,21 +356,25 @@ class _CashFlowPageState extends State<CashFlowPage> {
                 ),
                 const SizedBox(width: 4),
                 IconButton(
-                  onPressed: _isLoading ? null : () async {
-                    await AccountingPdfExportService.exportCashFlow(
-                      operating: _operatingItems,
-                      investing: _investingItems,
-                      financing: _financingItems,
-                      totalOperating: _totalOperating,
-                      totalInvesting: _totalInvesting,
-                      totalFinancing: _totalFinancing,
-                    );
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          await AccountingPdfExportService.exportCashFlow(
+                            operating: _operatingItems,
+                            investing: _investingItems,
+                            financing: _financingItems,
+                            totalOperating: _totalOperating,
+                            totalInvesting: _totalInvesting,
+                            totalFinancing: _totalFinancing,
+                          );
+                        },
                   icon: const Icon(Icons.picture_as_pdf, size: 18),
                   tooltip: 'تصدير PDF',
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
                   padding: EdgeInsets.zero,
-                  style: IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
+                  style: IconButton.styleFrom(
+                      foregroundColor: AccountingTheme.textSecondary),
                 ),
               ],
             ),
@@ -422,8 +425,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم التصدير: $path',
-              style: GoogleFonts.cairo(fontSize: 12)),
+          content:
+              Text('تم التصدير: $path', style: GoogleFonts.cairo(fontSize: 12)),
           backgroundColor: AccountingTheme.success,
           duration: const Duration(seconds: 4),
         ),
@@ -432,8 +435,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في التصدير',
-              style: GoogleFonts.cairo(fontSize: 12)),
+          content:
+              Text('خطأ في التصدير', style: GoogleFonts.cairo(fontSize: 12)),
           backgroundColor: AccountingTheme.danger,
         ),
       );
@@ -528,7 +531,9 @@ class _CashFlowPageState extends State<CashFlowPage> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              _isPositive ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+              _isPositive
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
               color: Colors.white,
               size: isMob ? 24 : 36,
             ),
@@ -626,8 +631,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
                     gradient: gradient,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child:
-                      Icon(icon, color: Colors.white, size: isMob ? 14 : 18),
+                  child: Icon(icon, color: Colors.white, size: isMob ? 14 : 18),
                 ),
                 SizedBox(width: isMob ? 6 : 10),
                 Text(title,
@@ -665,9 +669,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
               final refType = item['referenceType']?.toString() ?? '';
 
               return Container(
-                color: i.isEven
-                    ? Colors.transparent
-                    : AccountingTheme.tableRowAlt,
+                color:
+                    i.isEven ? Colors.transparent : AccountingTheme.tableRowAlt,
                 padding: EdgeInsets.symmetric(
                     horizontal: isMob ? 10 : ar.spaceL,
                     vertical: isMob ? 6 : ar.spaceS),

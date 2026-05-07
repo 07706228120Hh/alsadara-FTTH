@@ -168,10 +168,10 @@ class SubscriptionInfo {
           ? null
           : stringOf(json['startedAt']),
       expiresAt: (stringOf(json['endDate']).isNotEmpty
-              ? stringOf(json['endDate'])
-              : stringOf(json['expires']).isNotEmpty
-                  ? stringOf(json['expires'])
-                  : null),
+          ? stringOf(json['endDate'])
+          : stringOf(json['expires']).isNotEmpty
+              ? stringOf(json['expires'])
+              : null),
       salesType: salesType.isEmpty ? null : salesType,
     );
   }
@@ -381,7 +381,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   String? customerAddress; // عنوان المشترك (إن وُجد)
   double manualDiscount = 0.0; // خصم يدوي اختياري يطبّق على الإجمالي
   double maintenanceFee = 0.0; // أجور صيانة الزون (تُضاف تلقائياً)
-  final TextEditingController _manualDiscountController = TextEditingController();
+  final TextEditingController _manualDiscountController =
+      TextEditingController();
   String subscriptionNotes = ''; // ملاحظات الاشتراك
   bool isNotesEnabled = true; // حالة زر تشغيل/إيقاف الملاحظات (افتراضي: مفعل)
   bool isDataSavedToServer =
@@ -526,7 +527,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     if (perms.isEmpty) {
       // fallback: إذا لم تُمرر الصلاحيات، تحقق من PermissionManager مباشرة
       return PermissionManager.instance.canView('subscriptions') ||
-             PermissionManager.instance.canAdd('subscriptions');
+          PermissionManager.instance.canAdd('subscriptions');
     }
     return perms.map((p) => p.toLowerCase()).any((p) =>
         // الإنجليزية الأصلية
@@ -542,15 +543,16 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   // التحقق من صلاحية التفعيل العادي (يدوي)
   bool get _canManualActivate {
     // أولاً: تحقق من صلاحية subscriptions.activate الصريحة
-    if (PermissionManager.instance.hasExplicit('subscriptions.activate', 'add')) {
+    if (PermissionManager.instance
+        .hasExplicit('subscriptions.activate', 'add')) {
       return true;
     }
 
     // ثانياً: تحقق من صلاحيات FTTH API
     final perms = widget.importantFtthApiPermissions ?? const [];
     if (perms.isNotEmpty) {
-      return perms.map((p) => p.toLowerCase()).any((p) =>
-          p.contains('manual activate') || p.contains('تفعيل عادي'));
+      return perms.map((p) => p.toLowerCase()).any(
+          (p) => p.contains('manual activate') || p.contains('تفعيل عادي'));
     }
 
     return false;
@@ -642,7 +644,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     debugPrint('🚀 تهيئة صفحة تفاصيل الاشتراك');
     debugPrint('👤 User ID: ${widget.userId}');
     debugPrint('🆔 Subscription ID: ${widget.subscriptionId}');
-    debugPrint('🔑 Auth Token: ${widget.authToken.length > 20 ? widget.authToken.substring(0, 20) : widget.authToken}...');
+    debugPrint(
+        '🔑 Auth Token: ${widget.authToken.length > 20 ? widget.authToken.substring(0, 20) : widget.authToken}...');
     debugPrint('👨‍💼 Activated By: ${widget.activatedBy}');
     debugPrint('🆕 Is New Subscription: $isNewSubscription');
     if (widget.importantFtthApiPermissions != null) {
@@ -1106,9 +1109,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                       foregroundColor: Colors.green.shade700,
                       side: BorderSide(color: Colors.green.shade400),
                     ),
-                    onPressed: _isSendingWhatsApp
-                        ? null
-                        : () => sendWhatsAppMessage(),
+                    onPressed:
+                        _isSendingWhatsApp ? null : () => sendWhatsAppMessage(),
                     icon: _isSendingWhatsApp
                         ? const SizedBox(
                             width: 18,
@@ -1231,10 +1233,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   Future<int?> _fetchFirstAvailablePeriodForSelectedPlan() async {
     try {
       if (selectedPlan == null) return null;
-      final resp = await AuthService.instance.authenticatedRequest(
-        'GET',
-        'https://admin.ftth.iq/api/plans/bundles?includePrices=true&subscriptionId=${widget.subscriptionId}',
-      ).timeout(const Duration(seconds: 12));
+      final resp = await AuthService.instance
+          .authenticatedRequest(
+            'GET',
+            'https://admin.ftth.iq/api/plans/bundles?includePrices=true&subscriptionId=${widget.subscriptionId}',
+          )
+          .timeout(const Duration(seconds: 12));
       if (resp.statusCode != 200) return null;
       final data = jsonDecode(resp.body);
       final items = data['items'] as List?;
@@ -1353,10 +1357,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       debugPrint(
           '🔗 URL: https://admin.ftth.iq/api/customers/${widget.userId}');
 
-      final response = await AuthService.instance.authenticatedRequest(
-        'GET',
-        'https://admin.ftth.iq/api/customers/${widget.userId}',
-      ).timeout(const Duration(seconds: 10));
+      final response = await AuthService.instance
+          .authenticatedRequest(
+            'GET',
+            'https://admin.ftth.iq/api/customers/${widget.userId}',
+          )
+          .timeout(const Duration(seconds: 10));
 
       debugPrint('📡 Response Status Code: ${response.statusCode}');
 
@@ -1429,10 +1435,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         await _fetchTrialSubscriptionDetails();
       } else {
         // للاشتراكات العادية، نستخدم customerId
-        final response = await AuthService.instance.authenticatedRequest(
-          'GET',
-          'https://api.ftth.iq/api/customers/subscriptions?customerId=${widget.userId}',
-        ).timeout(const Duration(seconds: 15));
+        final response = await AuthService.instance
+            .authenticatedRequest(
+              'GET',
+              'https://api.ftth.iq/api/customers/subscriptions?customerId=${widget.userId}',
+            )
+            .timeout(const Duration(seconds: 15));
 
         if (response.statusCode == 401) {
           if (mounted) AuthErrorHandler.handle401Error(context);
@@ -1487,10 +1495,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           '🔗 URL: https://admin.ftth.iq/api/subscriptions/trial/${widget.subscriptionId}');
 
       // جلب بيانات الاشتراك التجريبي من API الخاص
-      final response = await AuthService.instance.authenticatedRequest(
-        'GET',
-        'https://admin.ftth.iq/api/subscriptions/trial/${widget.subscriptionId}',
-      ).timeout(const Duration(seconds: 15));
+      final response = await AuthService.instance
+          .authenticatedRequest(
+            'GET',
+            'https://admin.ftth.iq/api/subscriptions/trial/${widget.subscriptionId}',
+          )
+          .timeout(const Duration(seconds: 15));
 
       debugPrint('📥 Response Status: ${response.statusCode}');
       debugPrint('📥 Response Body: ${response.body}');
@@ -1566,10 +1576,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
   /// طريقة بديلة لجلب بيانات الاشتراك باستخدام customerId
   Future<void> _fetchSubscriptionByCustomerId() async {
-    final response = await AuthService.instance.authenticatedRequest(
-      'GET',
-      'https://api.ftth.iq/api/customers/subscriptions?customerId=${widget.userId}',
-    ).timeout(const Duration(seconds: 15));
+    final response = await AuthService.instance
+        .authenticatedRequest(
+          'GET',
+          'https://api.ftth.iq/api/customers/subscriptions?customerId=${widget.userId}',
+        )
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -1609,10 +1621,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     while (attempt < maxAttempts) {
       attempt++;
       try {
-        final response = await AuthService.instance.authenticatedRequest(
-          'GET',
-          'https://api.ftth.iq/api/partners/${subscriptionInfo!.partnerId}/wallets/balance',
-        ).timeout(const Duration(seconds: 8));
+        final response = await AuthService.instance
+            .authenticatedRequest(
+              'GET',
+              'https://api.ftth.iq/api/partners/${subscriptionInfo!.partnerId}/wallets/balance',
+            )
+            .timeout(const Duration(seconds: 8));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -1678,10 +1692,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   Future<void> fetchCustomerWalletBalance() async {
     if (!mounted) return;
     try {
-      final response = await AuthService.instance.authenticatedRequest(
-        'GET',
-        'https://admin.ftth.iq/api/customers/${widget.userId}/wallets/balance',
-      ).timeout(const Duration(seconds: 10));
+      final response = await AuthService.instance
+          .authenticatedRequest(
+            'GET',
+            'https://admin.ftth.iq/api/customers/${widget.userId}/wallets/balance',
+          )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         double bal = 0.0;
@@ -1789,9 +1805,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       final url =
           'https://admin.ftth.iq/api/subscriptions/calculate-price?bundleId=${subscriptionInfo!.bundleId}&commitmentPeriodValue=$selectedCommitmentPeriod&planOperationType=Extend&subscriptionId=${widget.subscriptionId}&$servicesParams&salesType=${_getSalesTypeValue()}&changeType=1';
       debugPrint('🔗 (AUTO) Extend calculate-price URL => $url');
-      final r = await AuthService.instance.authenticatedRequest(
-        'GET', url,
-      ).timeout(const Duration(seconds: 15));
+      final r = await AuthService.instance
+          .authenticatedRequest(
+            'GET',
+            url,
+          )
+          .timeout(const Duration(seconds: 15));
       debugPrint('📥 (AUTO) ImmediateExtend price status ${r.statusCode}');
       if (r.statusCode != 200) throw Exception('HTTP ${r.statusCode}');
       final data = jsonDecode(r.body);
@@ -1837,10 +1856,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       if (isNewSubscription) {
         // محاولة bundles أولاً
         try {
-          final bundlesResp = await AuthService.instance.authenticatedRequest(
-            'GET',
-            'https://admin.ftth.iq/api/plans/bundles?includePrices=true&subscriptionId=${widget.subscriptionId}',
-          ).timeout(const Duration(seconds: 15));
+          final bundlesResp = await AuthService.instance
+              .authenticatedRequest(
+                'GET',
+                'https://admin.ftth.iq/api/plans/bundles?includePrices=true&subscriptionId=${widget.subscriptionId}',
+              )
+              .timeout(const Duration(seconds: 15));
           if (bundlesResp.statusCode == 200) {
             final data = jsonDecode(bundlesResp.body);
             final items = data['items'] as List?;
@@ -1909,9 +1930,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             '&subscriptionId=${widget.subscriptionId}'
             '&$servicesParams'
             '&salesType=${_getSalesTypeValue()}';
-        final resp = await AuthService.instance.authenticatedRequest(
-          'GET', url,
-        ).timeout(const Duration(seconds: 15));
+        final resp = await AuthService.instance
+            .authenticatedRequest(
+              'GET',
+              url,
+            )
+            .timeout(const Duration(seconds: 15));
         if (resp.statusCode == 200) {
           final data = jsonDecode(resp.body);
           final model = (data['model'] as Map<String, dynamic>?);
@@ -1939,9 +1963,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         if (opType == 'Extend') {
           url += '&changeType=1';
         }
-        final resp = await AuthService.instance.authenticatedRequest(
-          'GET', url,
-        ).timeout(const Duration(seconds: 15));
+        final resp = await AuthService.instance
+            .authenticatedRequest(
+              'GET',
+              url,
+            )
+            .timeout(const Duration(seconds: 15));
         if (resp.statusCode == 200) {
           final data = jsonDecode(resp.body);
           final model = (data['model'] as Map<String, dynamic>?);
@@ -2175,10 +2202,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     debugPrint(
         '🔗 URL: https://admin.ftth.iq/api/plans/bundles?includePrices=true&subscriptionId=${widget.subscriptionId}');
 
-    final response = await AuthService.instance.authenticatedRequest(
-      'GET',
-      'https://admin.ftth.iq/api/plans/bundles?includePrices=true&subscriptionId=${widget.subscriptionId}',
-    ).timeout(const Duration(seconds: 15));
+    final response = await AuthService.instance
+        .authenticatedRequest(
+          'GET',
+          'https://admin.ftth.iq/api/plans/bundles?includePrices=true&subscriptionId=${widget.subscriptionId}',
+        )
+        .timeout(const Duration(seconds: 15));
 
     debugPrint('📥 Bundles Response Status: ${response.statusCode}');
     debugPrint('📥 Bundles Response Body: ${response.body}');
@@ -2306,9 +2335,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     debugPrint('🛠️ selectedPlan: $selectedPlan');
     debugPrint('🛒 salesType: ${_getSalesTypeValue()}');
 
-    final response = await AuthService.instance.authenticatedRequest(
-      'GET', url,
-    ).timeout(const Duration(seconds: 15));
+    final response = await AuthService.instance
+        .authenticatedRequest(
+          'GET',
+          url,
+        )
+        .timeout(const Duration(seconds: 15));
 
     debugPrint('📥 Calculate Price Response Status: ${response.statusCode}');
     debugPrint('📥 Calculate Price Response Body: ${response.body}');
@@ -2377,9 +2409,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     debugPrint('🆔 subscriptionId: ${widget.subscriptionId}');
     debugPrint('🛠️ selectedPlan: $selectedPlan');
 
-    final response = await AuthService.instance.authenticatedRequest(
-      'GET', url,
-    ).timeout(const Duration(seconds: 15));
+    final response = await AuthService.instance
+        .authenticatedRequest(
+          'GET',
+          url,
+        )
+        .timeout(const Duration(seconds: 15));
 
     debugPrint('📥 Calculate Price Response Status: ${response.statusCode}');
     debugPrint('📥 Calculate Price Response Body: ${response.body}');
@@ -2508,7 +2543,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         WhatsAppOperationType.renewal,
       );
 
-      debugPrint('📡 نظام الإرسال المختار: ${WhatsAppSystemSettingsService.systemNames[system]}');
+      debugPrint(
+          '📡 نظام الإرسال المختار: ${WhatsAppSystemSettingsService.systemNames[system]}');
 
       if (system == WhatsAppSystem.server) {
         // ===== إرسال عبر السيرفر =====
@@ -2521,9 +2557,11 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         sent = success;
         if (mounted) {
           if (success) {
-            ftthShowSuccessNotification(context, '✅ تم إرسال رسالة واتساب عبر السيرفر!');
+            ftthShowSuccessNotification(
+                context, '✅ تم إرسال رسالة واتساب عبر السيرفر!');
           } else {
-            ftthShowErrorNotification(context, '❌ فشل إرسال الرسالة عبر السيرفر');
+            ftthShowErrorNotification(
+                context, '❌ فشل إرسال الرسالة عبر السيرفر');
           }
         }
       } else if (system == WhatsAppSystem.api) {
@@ -2531,40 +2569,50 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         debugPrint('☁️ إرسال قالب sadara_renewed عبر n8n webhook...');
 
         final customerName = subscriptionInfo?.customerName ?? 'عزيزي المشترك';
-        final planName = selectedPlan ?? subscriptionInfo?.currentPlan ?? 'غير محدد';
+        final planName =
+            selectedPlan ?? subscriptionInfo?.currentPlan ?? 'غير محدد';
         // حساب السعر الإجمالي الفعلي (نفس المنطق المعروض في الواجهة)
         String price = '0';
         if (priceDetails != null) {
           final totalVal = _asDouble(priceDetails!['totalPrice']);
           final discountVal = _asDouble(priceDetails!['discount'] ?? 0);
-          final effectiveTotal = systemDiscountEnabled ? totalVal : (totalVal + discountVal);
-          final finalTotal = (effectiveTotal - manualDiscount + maintenanceFee).clamp(0, double.infinity);
+          final effectiveTotal =
+              systemDiscountEnabled ? totalVal : (totalVal + discountVal);
+          final finalTotal = (effectiveTotal - manualDiscount + maintenanceFee)
+              .clamp(0, double.infinity);
           price = finalTotal.round().toString();
         }
         // تاريخ الانتهاء الحقيقي من API بعد التفعيل
         // subscriptionInfo.expiresAt يحتوي التاريخ المحدث من السيرفر بعد fetchSubscriptionDetails
         String expiryDate;
         try {
-          final apiExpiry = DateTime.tryParse(subscriptionInfo?.expiresAt ?? '');
+          final apiExpiry =
+              DateTime.tryParse(subscriptionInfo?.expiresAt ?? '');
           if (apiExpiry != null) {
             // التاريخ الحقيقي من السيرفر — لا نضيف الفترة لأنه محدّث بالفعل
-            expiryDate = '${apiExpiry.year}-${apiExpiry.month.toString().padLeft(2, '0')}-${apiExpiry.day.toString().padLeft(2, '0')}';
+            expiryDate =
+                '${apiExpiry.year}-${apiExpiry.month.toString().padLeft(2, '0')}-${apiExpiry.day.toString().padLeft(2, '0')}';
           } else {
             // fallback: حساب تقريبي
             final period = selectedCommitmentPeriod ?? 1;
             final newExpiry = DateTime.now().add(Duration(days: 30 * period));
-            expiryDate = '${newExpiry.year}-${newExpiry.month.toString().padLeft(2, '0')}-${newExpiry.day.toString().padLeft(2, '0')}';
+            expiryDate =
+                '${newExpiry.year}-${newExpiry.month.toString().padLeft(2, '0')}-${newExpiry.day.toString().padLeft(2, '0')}';
           }
         } catch (_) {
           expiryDate = DateTime.now().toIso8601String().split('T').first;
         }
         const contactNumbers = '07705210210';
 
-        final phoneNumberId = await WhatsAppBusinessService.getPhoneNumberId() ?? '';
+        final phoneNumberId =
+            await WhatsAppBusinessService.getPhoneNumberId() ?? '';
         final accessToken = await WhatsAppBusinessService.getUserToken() ?? '';
-        final webhookUrl = await WhatsAppBulkSenderService.getWebhookUrl() ?? '';
+        final webhookUrl =
+            await WhatsAppBulkSenderService.getWebhookUrl() ?? '';
 
-        if (phoneNumberId.isEmpty || accessToken.isEmpty || webhookUrl.isEmpty) {
+        if (phoneNumberId.isEmpty ||
+            accessToken.isEmpty ||
+            webhookUrl.isEmpty) {
           if (mounted) {
             ftthShowErrorNotification(
               context,
@@ -2594,12 +2642,14 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         if (result['success'] == true) {
           sent = true;
           if (mounted) {
-            ftthShowSuccessNotification(context, '✅ تم إرسال رسالة واتساب عبر API بنجاح!');
+            ftthShowSuccessNotification(
+                context, '✅ تم إرسال رسالة واتساب عبر API بنجاح!');
           }
         } else {
           sent = false;
           if (mounted) {
-            ftthShowErrorNotification(context, '❌ فشل API: ${result['message'] ?? 'خطأ غير معروف'}');
+            ftthShowErrorNotification(
+                context, '❌ فشل API: ${result['message'] ?? 'خطأ غير معروف'}');
           }
         }
       } else {
@@ -2614,15 +2664,20 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
           try {
             final uri = Uri.parse(whatsappUrl);
-            launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+            launched =
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
           } catch (e) {
             try {
-              final fallbackUrl = 'https://web.whatsapp.com/send?phone=$cleanPhone';
-              launched = await launchUrl(Uri.parse(fallbackUrl), mode: LaunchMode.externalApplication);
+              final fallbackUrl =
+                  'https://web.whatsapp.com/send?phone=$cleanPhone';
+              launched = await launchUrl(Uri.parse(fallbackUrl),
+                  mode: LaunchMode.externalApplication);
             } catch (e2) {
               try {
-                final legacyUrl = 'whatsapp://send?phone=$cleanPhone&text=${Uri.encodeComponent(message)}';
-                launched = await launchUrl(Uri.parse(legacyUrl), mode: LaunchMode.externalApplication);
+                final legacyUrl =
+                    'whatsapp://send?phone=$cleanPhone&text=${Uri.encodeComponent(message)}';
+                launched = await launchUrl(Uri.parse(legacyUrl),
+                    mode: LaunchMode.externalApplication);
               } catch (e3) {
                 launched = false;
               }
@@ -2634,17 +2689,22 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             await Future.delayed(Duration(milliseconds: 600));
             await Clipboard.setData(ClipboardData(text: message));
 
-            final autoSendSuccess = await WindowsAutomationService.performSmartAutoSend(delayMs: 30);
+            final autoSendSuccess =
+                await WindowsAutomationService.performSmartAutoSend(
+                    delayMs: 30);
 
             if (autoSendSuccess) {
               if (mounted) {
-                ftthShowSuccessNotification(context, '⚡ تم إرسال رسالة واتساب فورياً!');
-                ftthShowInfoNotification(context, '🔄 محاولة إعادة المؤشر لمربع النص...');
+                ftthShowSuccessNotification(
+                    context, '⚡ تم إرسال رسالة واتساب فورياً!');
+                ftthShowInfoNotification(
+                    context, '🔄 محاولة إعادة المؤشر لمربع النص...');
               }
               _shiftTabBackOnce();
             } else {
               if (mounted) {
-                ftthShowSuccessNotification(context, '⚠️ تم فتح واتساب - يرجى لصق الرسالة (Ctrl+V) وإرسالها');
+                ftthShowSuccessNotification(context,
+                    '⚠️ تم فتح واتساب - يرجى لصق الرسالة (Ctrl+V) وإرسالها');
               }
             }
           } else {
@@ -2672,7 +2732,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       }
 
       // تسجيل الرسالة في السجل المحلي
-      final systemName = WhatsAppSystemSettingsService.systemNames[system] ?? system.name;
+      final systemName =
+          WhatsAppSystemSettingsService.systemNames[system] ?? system.name;
       unawaited(WhatsAppMessageLogService.log(
         phone: cleanPhone,
         customerName: subscriptionInfo?.customerName ?? '',
@@ -2937,8 +2998,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       final vars = _buildReceiptVariableValues(copyNumber: currentCopy);
       final conds = _buildReceiptConditions();
 
-      final bool success =
-          await ThermalPrinterService.printFromReceiptTemplate(
+      final bool success = await ThermalPrinterService.printFromReceiptTemplate(
         variableValues: vars,
         conditions: conds,
       );
@@ -2953,7 +3013,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             isPrinted = true;
           });
 
-          debugPrint('🖨️ Print: تم تحديث الحالة إلى true (عدد الطباعات: $_printCount)');
+          debugPrint(
+              '🖨️ Print: تم تحديث الحالة إلى true (عدد الطباعات: $_printCount)');
           debugPrint(
               '🖨️ Current state - isPrinted: $isPrinted, isWhatsAppSent: $isWhatsAppSent');
 
@@ -3739,7 +3800,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                   Navigator.push(
                     context,
                     PageRouteBuilder(
-                      pageBuilder: (ctx, a, sa) => const ReceiptTemplateEditorPage(),
+                      pageBuilder: (ctx, a, sa) =>
+                          const ReceiptTemplateEditorPage(),
                       transitionDuration: Duration.zero,
                       reverseTransitionDuration: Duration.zero,
                       transitionsBuilder: (ctx, a, sa, child) => child,
@@ -4165,9 +4227,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       final url = 'https://admin.ftth.iq/api/customers/'
           '$customerId/subscriptions/scheduled-changes';
       debugPrint('🔗 URL: $url');
-      final response = await AuthService.instance.authenticatedRequest(
-        'GET', url,
-      ).timeout(const Duration(seconds: 15));
+      final response = await AuthService.instance
+          .authenticatedRequest(
+            'GET',
+            url,
+          )
+          .timeout(const Duration(seconds: 15));
       debugPrint('📥 Scheduled Changes Status: ${response.statusCode}');
       if (response.statusCode == 200) {
         debugPrint('📥 Scheduled Changes Body: ${response.body}');
@@ -4284,9 +4349,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         final allowedUrl = Uri.parse(
             'https://admin.ftth.iq/api/subscriptions/allowed-actions?subscriptionIds=${widget.subscriptionId}&customerId=${widget.userId}');
         debugPrint('🔍 Fetch allowed-actions: $allowedUrl');
-        final allowedResp = await AuthService.instance.authenticatedRequest(
-          'GET', allowedUrl.toString(),
-        ).timeout(const Duration(seconds: 15));
+        final allowedResp = await AuthService.instance
+            .authenticatedRequest(
+              'GET',
+              allowedUrl.toString(),
+            )
+            .timeout(const Duration(seconds: 15));
         debugPrint('📥 allowed-actions Status: ${allowedResp.statusCode}');
         if (allowedResp.statusCode == 200) {
           data = jsonDecode(allowedResp.body);
@@ -4699,10 +4767,13 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         final url = attempt['useExtendEndpoint'] == true
             ? 'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/extend'
             : 'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/change';
-        final resp = await AuthService.instance.authenticatedRequest(
-              'POST', url,
+        final resp = await AuthService.instance
+            .authenticatedRequest(
+              'POST',
+              url,
               body: jsonEncode(body),
-            ).timeout(const Duration(seconds: 25));
+            )
+            .timeout(const Duration(seconds: 25));
         lastResponse = resp;
         lastRequestId = resp.headers['x-request-id'] ??
             resp.headers['request-id'] ??
@@ -4907,16 +4978,18 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     debugPrint('📤 Body: ${jsonEncode(body)}');
 
     try {
-      final resp = await AuthService.instance.authenticatedRequest(
-          'POST',
-          'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/change',
-          headers: {
-            'Accept': 'application/json, text/plain, */*',
-            'x-client-app': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
-            'x-user-role': '0',
-          },
-          body: jsonEncode(body),
-        ).timeout(const Duration(seconds: 45));
+      final resp = await AuthService.instance
+          .authenticatedRequest(
+            'POST',
+            'https://admin.ftth.iq/api/subscriptions/${widget.subscriptionId}/change',
+            headers: {
+              'Accept': 'application/json, text/plain, */*',
+              'x-client-app': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
+              'x-user-role': '0',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 45));
       lastResponse = resp;
       debugPrint('📥 Status: ${resp.statusCode}');
 
@@ -4954,7 +5027,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             content: Row(children: [
               const Icon(Icons.check_circle, color: Colors.white),
               const SizedBox(width: 8),
-              Expanded(child: Text('تم $opText بنجاح ✅', style: const TextStyle(fontSize: 13))),
+              Expanded(
+                  child: Text('تم $opText بنجاح ✅',
+                      style: const TextStyle(fontSize: 13))),
             ]),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 4),
@@ -4964,11 +5039,15 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(children: [
               Icon(Icons.info_outline, color: Colors.orange.shade700, size: 28),
               const SizedBox(width: 10),
-              const Expanded(child: Text('تنبيه', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+              const Expanded(
+                  child: Text('تنبيه',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 18))),
             ]),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -4985,10 +5064,13 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                     border: Border.all(color: Colors.green.shade200),
                   ),
                   child: Row(children: [
-                    Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+                    Icon(Icons.check_circle,
+                        color: Colors.green.shade700, size: 20),
                     const SizedBox(width: 8),
-                    const Expanded(child: Text('تم حفظ البيانات في النظام بنجاح',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                    const Expanded(
+                        child: Text('تم حفظ البيانات في النظام بنجاح',
+                            style: TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600))),
                   ]),
                 ),
                 const SizedBox(height: 12),
@@ -5002,21 +5084,29 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('السبب:', style: TextStyle(fontSize: 12, color: Colors.orange.shade800, fontWeight: FontWeight.bold)),
+                      Text('السبب:',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange.shade800,
+                              fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text(ftthStatusNote, style: const TextStyle(fontSize: 12)),
+                      Text(ftthStatusNote,
+                          style: const TextStyle(fontSize: 12)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text('العملية مميزة بـ "بحاجة للتحقق" ويمكنك مراجعتها لاحقاً.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                    style:
+                        TextStyle(fontSize: 12, color: Colors.grey.shade600)),
               ],
             ),
             actions: [
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade700,
+                    foregroundColor: Colors.white),
                 child: const Text('فهمت'),
               ),
             ],
@@ -5028,7 +5118,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     // حفظ في سيرفرنا (دائماً)
     // عند فشل/timeout: نضيف علامة "بحاجة للتحقق" + ملاحظة
     if (!ftthSuccess && ftthStatusNote.isNotEmpty) {
-      subscriptionNotes = '⚠️ بحاجة للتحقق: $ftthStatusNote${subscriptionNotes != null && subscriptionNotes!.isNotEmpty ? '\n$subscriptionNotes' : ''}';
+      subscriptionNotes =
+          '⚠️ بحاجة للتحقق: $ftthStatusNote${subscriptionNotes.isNotEmpty ? '\n$subscriptionNotes' : ''}';
     }
 
     if (widget.hasServerSavePermission) {
@@ -5061,7 +5152,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       }
     }
 
-    try { await fetchSubscriptionDetails(); } catch (_) {}
+    try {
+      await fetchSubscriptionDetails();
+    } catch (_) {}
   }
 
   /// حفظ البيانات في VPS (الحفظ الأساسي والوحيد)
@@ -5184,8 +5277,11 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         // الوكيل: Name هو الحقل الصحيح
         technicianName: _selectedLinkedTechnician != null
             ? (() {
-                final fn = _selectedLinkedTechnician!['FullName']?.toString().trim() ?? '';
-                final n  = _selectedLinkedTechnician!['Name']?.toString().trim() ?? '';
+                final fn =
+                    _selectedLinkedTechnician!['FullName']?.toString().trim() ??
+                        '';
+                final n =
+                    _selectedLinkedTechnician!['Name']?.toString().trim() ?? '';
                 return fn.isNotEmpty ? fn : (n.isNotEmpty ? n : null);
               })()
             : _selectedLinkedAgent?['Name']?.toString().trim(),
@@ -5198,7 +5294,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         basePrice: priceDetails!['basePrice'] != null
             ? _asDouble(priceDetails!['basePrice'])
             : (_asDouble(priceDetails!['totalPrice']) +
-               _asDouble(priceDetails!['discount'] ?? 0)),
+                _asDouble(priceDetails!['discount'] ?? 0)),
         // أجور الصيانة
         maintenanceFee: maintenanceFee > 0 ? maintenanceFee : null,
       );
@@ -5239,7 +5335,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       isPrinted: true,
       printCount: _printCount,
     );
-    debugPrint('✅ تم تحديث حالة الطباعة في VPS (logId: $logId, printCount: $_printCount)');
+    debugPrint(
+        '✅ تم تحديث حالة الطباعة في VPS (logId: $logId, printCount: $_printCount)');
   }
 
   /// تحديث حالة الواتساب في VPS
@@ -5846,8 +5943,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     } catch (e) {
       debugPrint('❌ خطأ في إرسال رسالة للفني');
       if (mounted) {
-        ftthShowErrorNotification(
-            context, 'خطأ في إرسال الرسالة للفني');
+        ftthShowErrorNotification(context, 'خطأ في إرسال الرسالة للفني');
       }
     } finally {
       if (mounted) {
@@ -7465,7 +7561,9 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
 
   /// بناء أزرار الإجراءات
   Widget _buildActionButtons() {
-    final bool isMobile = Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600;
+    final bool isMobile = Platform.isAndroid ||
+        Platform.isIOS ||
+        MediaQuery.of(context).size.width < 600;
     return Container(
       margin: EdgeInsets.symmetric(vertical: isMobile ? 4 : 8, horizontal: 2),
       child: Column(
@@ -7505,8 +7603,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       final buttons = <Widget>[];
 
                       // التحقق من اختيار فني/وكيل عند الحاجة
-                      final needsTechnician = selectedPaymentMethod == 'فني' && _selectedLinkedTechnician == null;
-                      final needsAgent = selectedPaymentMethod == 'وكيل' && _selectedLinkedAgent == null;
+                      final needsTechnician = selectedPaymentMethod == 'فني' &&
+                          _selectedLinkedTechnician == null;
+                      final needsAgent = selectedPaymentMethod == 'وكيل' &&
+                          _selectedLinkedAgent == null;
                       final missingSelection = needsTechnician || needsAgent;
 
                       // عرض الأزرار فقط إذا كان لديه صلاحية إنشاء اشتراكات
@@ -7514,9 +7614,15 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         // زر التفعيل التلقائي (تجديد/تغيير/شراء الاشتراك)
                         buttons.add(
                           ElevatedButton.icon(
-                            onPressed: _isActivating || missingSelection ? null : executeRenewalOrPurchase,
+                            onPressed: _isActivating || missingSelection
+                                ? null
+                                : executeRenewalOrPurchase,
                             icon: _isActivating
-                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white))
                                 : Icon(
                                     isNewSubscription
                                         ? Icons.shopping_cart
@@ -7527,12 +7633,15 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                               _isActivating
                                   ? "جاري التفعيل..."
                                   : missingSelection
-                                      ? (needsTechnician ? "اختر الفني أولاً" : "اختر الوكيل أولاً")
+                                      ? (needsTechnician
+                                          ? "اختر الفني أولاً"
+                                          : "اختر الوكيل أولاً")
                                       : (isNewSubscription
                                           ? "شراء الاشتراك"
                                           : "تفعيل"),
                               style: TextStyle(
-                                  fontSize: isMobile ? 13 : 15, fontWeight: FontWeight.w700),
+                                  fontSize: isMobile ? 13 : 15,
+                                  fontWeight: FontWeight.w700),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _isActivating || missingSelection
@@ -7541,7 +7650,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                       ? Colors.green.shade600
                                       : Colors.blueAccent.shade700),
                               foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: isMobile ? 10 : 14),
+                              padding: EdgeInsets.symmetric(
+                                  vertical: isMobile ? 10 : 14),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                   side: const BorderSide(
@@ -7552,27 +7662,34 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         );
 
                         // زر التفعيل العادي - يظهر فقط لمن لديه صلاحية Can Manual Activate
-                        if (_canManualActivate) buttons.add(
-                          ElevatedButton.icon(
-                            onPressed: _isActivating || missingSelection ? null : () => _showManualActivationDialog(),
-                            icon: const Icon(Icons.touch_app, size: 20),
-                            label: Text(
-                              "تفعيل عادي",
-                              style: TextStyle(
-                                  fontSize: isMobile ? 13 : 15, fontWeight: FontWeight.w700),
+                        if (_canManualActivate)
+                          buttons.add(
+                            ElevatedButton.icon(
+                              onPressed: _isActivating || missingSelection
+                                  ? null
+                                  : () => _showManualActivationDialog(),
+                              icon: const Icon(Icons.touch_app, size: 20),
+                              label: Text(
+                                "تفعيل عادي",
+                                style: TextStyle(
+                                    fontSize: isMobile ? 13 : 15,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _isActivating
+                                    ? Colors.grey.shade400
+                                    : Colors.orange.shade600,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                    vertical: isMobile ? 10 : 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    side: const BorderSide(
+                                        color: Colors.black, width: 1)),
+                                elevation: 2,
+                              ),
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _isActivating ? Colors.grey.shade400 : Colors.orange.shade600,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: isMobile ? 10 : 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  side: const BorderSide(
-                                      color: Colors.black, width: 1)),
-                              elevation: 2,
-                            ),
-                          ),
-                        );
+                          );
                       }
 
                       return _buildTwoPerRowButtons(buttons);
@@ -7867,14 +7984,15 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     final double effectiveTotal = systemDiscountEnabled
         ? originalTotal
         : (originalTotal + discountVal); // استرجاع الخصم عند الإيقاف
-    final double finalTotal =
-        (effectiveTotal - manualDiscount + maintenanceFee).clamp(0, double.infinity);
+    final double finalTotal = (effectiveTotal - manualDiscount + maintenanceFee)
+        .clamp(0, double.infinity);
 
     // على الشاشات الضيقة (موبايل): تخطيط عمودي مبسط ونظيف
     if (MediaQuery.of(context).size.width < 600) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-        child: _buildMobilePriceDetails(finalTotal: finalTotal, currency: currency, discount: discount),
+        child: _buildMobilePriceDetails(
+            finalTotal: finalTotal, currency: currency, discount: discount),
       );
     }
 
@@ -7915,20 +8033,28 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   Expanded(
                     child: Container(
                       margin: const EdgeInsets.only(right: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.purple.shade50,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(12)),
                         border: Border.all(color: Colors.black54, width: 1.2),
                       ),
                       child: Row(children: [
                         Container(
                           padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(color: Colors.purple.shade100, borderRadius: BorderRadius.circular(8)),
-                          child: Icon(Icons.payment, color: Colors.purple.shade700, size: 18),
+                          decoration: BoxDecoration(
+                              color: Colors.purple.shade100,
+                              borderRadius: BorderRadius.circular(8)),
+                          child: Icon(Icons.payment,
+                              color: Colors.purple.shade700, size: 18),
                         ),
                         const SizedBox(width: 8),
-                        Text("طريقة الدفع", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple.shade700)),
+                        Text("طريقة الدفع",
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.purple.shade700)),
                       ]),
                     ),
                   ),
@@ -7937,20 +8063,28 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   Expanded(
                     child: Container(
                       margin: const EdgeInsets.only(left: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.teal.shade50,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(12)),
                         border: Border.all(color: Colors.black54, width: 1.2),
                       ),
                       child: Row(children: [
                         Container(
                           padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(color: Colors.teal.shade100, borderRadius: BorderRadius.circular(8)),
-                          child: Icon(Icons.account_balance_wallet, size: 18, color: Colors.teal.shade700),
+                          decoration: BoxDecoration(
+                              color: Colors.teal.shade100,
+                              borderRadius: BorderRadius.circular(8)),
+                          child: Icon(Icons.account_balance_wallet,
+                              size: 18, color: Colors.teal.shade700),
                         ),
                         const SizedBox(width: 8),
-                        Text('مصدر الدفع', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal.shade800)),
+                        Text('مصدر الدفع',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.teal.shade800)),
                       ]),
                     ),
                   ),
@@ -7966,55 +8100,156 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.9),
-                    border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                    border: Border.symmetric(
+                        vertical:
+                            BorderSide(color: Colors.black54, width: 1.2)),
                   ),
                   child: isMobileLayout
-                    ? Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: [
-                          _buildPaymentOptionButton(title: 'نقد', icon: Icons.attach_money, baseColor: Colors.green.shade600, selected: selectedPaymentMethod == 'نقد', onTap: () => setState(() { selectedPaymentMethod = 'نقد'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; })),
-                          _buildPaymentOptionButton(title: 'أجل', icon: Icons.schedule, baseColor: Colors.orange.shade600, selected: selectedPaymentMethod == 'أجل', onTap: () => setState(() { selectedPaymentMethod = 'أجل'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; })),
-                          _buildPaymentOptionButton(title: 'ماستر', icon: Icons.credit_card, baseColor: Colors.purple.shade600, selected: selectedPaymentMethod == 'ماستر', onTap: () => setState(() { selectedPaymentMethod = 'ماستر'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; })),
-                          _buildPaymentOptionButton(title: 'وكيل', icon: Icons.store, baseColor: Colors.blue.shade600, selected: selectedPaymentMethod == 'وكيل', onTap: () => setState(() { selectedPaymentMethod = 'وكيل'; _selectedLinkedTechnician = null; })),
-                          _buildPaymentOptionButton(title: 'فني', icon: Icons.engineering, baseColor: Colors.teal.shade600, selected: selectedPaymentMethod == 'فني', onTap: () => setState(() { selectedPaymentMethod = 'فني'; _selectedLinkedAgent = null; })),
-                        ],
-                      )
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(child: _buildPaymentOptionButton(title: 'نقد', icon: Icons.attach_money, baseColor: Colors.green.shade600, selected: selectedPaymentMethod == 'نقد', onTap: () => setState(() { selectedPaymentMethod = 'نقد'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; }))),
-                          const SizedBox(width: 5),
-                          Expanded(child: _buildPaymentOptionButton(title: 'أجل', icon: Icons.schedule, baseColor: Colors.orange.shade600, selected: selectedPaymentMethod == 'أجل', onTap: () => setState(() { selectedPaymentMethod = 'أجل'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; }))),
-                          const SizedBox(width: 5),
-                          Expanded(child: _buildPaymentOptionButton(title: 'ماستر', icon: Icons.credit_card, baseColor: Colors.purple.shade600, selected: selectedPaymentMethod == 'ماستر', onTap: () => setState(() { selectedPaymentMethod = 'ماستر'; _selectedLinkedAgent = null; _selectedLinkedTechnician = null; }))),
-                          const SizedBox(width: 5),
-                          Expanded(child: _buildPaymentOptionButton(title: 'وكيل', icon: Icons.store, baseColor: Colors.blue.shade600, selected: selectedPaymentMethod == 'وكيل', onTap: () => setState(() { selectedPaymentMethod = 'وكيل'; _selectedLinkedTechnician = null; }))),
-                          const SizedBox(width: 5),
-                          Expanded(child: _buildPaymentOptionButton(title: 'فني', icon: Icons.engineering, baseColor: Colors.teal.shade600, selected: selectedPaymentMethod == 'فني', onTap: () => setState(() { selectedPaymentMethod = 'فني'; _selectedLinkedAgent = null; }))),
-                        ],
-                      ),
+                      ? Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            _buildPaymentOptionButton(
+                                title: 'نقد',
+                                icon: Icons.attach_money,
+                                baseColor: Colors.green.shade600,
+                                selected: selectedPaymentMethod == 'نقد',
+                                onTap: () => setState(() {
+                                      selectedPaymentMethod = 'نقد';
+                                      _selectedLinkedAgent = null;
+                                      _selectedLinkedTechnician = null;
+                                    })),
+                            _buildPaymentOptionButton(
+                                title: 'أجل',
+                                icon: Icons.schedule,
+                                baseColor: Colors.orange.shade600,
+                                selected: selectedPaymentMethod == 'أجل',
+                                onTap: () => setState(() {
+                                      selectedPaymentMethod = 'أجل';
+                                      _selectedLinkedAgent = null;
+                                      _selectedLinkedTechnician = null;
+                                    })),
+                            _buildPaymentOptionButton(
+                                title: 'ماستر',
+                                icon: Icons.credit_card,
+                                baseColor: Colors.purple.shade600,
+                                selected: selectedPaymentMethod == 'ماستر',
+                                onTap: () => setState(() {
+                                      selectedPaymentMethod = 'ماستر';
+                                      _selectedLinkedAgent = null;
+                                      _selectedLinkedTechnician = null;
+                                    })),
+                            _buildPaymentOptionButton(
+                                title: 'وكيل',
+                                icon: Icons.store,
+                                baseColor: Colors.blue.shade600,
+                                selected: selectedPaymentMethod == 'وكيل',
+                                onTap: () => setState(() {
+                                      selectedPaymentMethod = 'وكيل';
+                                      _selectedLinkedTechnician = null;
+                                    })),
+                            _buildPaymentOptionButton(
+                                title: 'فني',
+                                icon: Icons.engineering,
+                                baseColor: Colors.teal.shade600,
+                                selected: selectedPaymentMethod == 'فني',
+                                onTap: () => setState(() {
+                                      selectedPaymentMethod = 'فني';
+                                      _selectedLinkedAgent = null;
+                                    })),
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                                child: _buildPaymentOptionButton(
+                                    title: 'نقد',
+                                    icon: Icons.attach_money,
+                                    baseColor: Colors.green.shade600,
+                                    selected: selectedPaymentMethod == 'نقد',
+                                    onTap: () => setState(() {
+                                          selectedPaymentMethod = 'نقد';
+                                          _selectedLinkedAgent = null;
+                                          _selectedLinkedTechnician = null;
+                                        }))),
+                            const SizedBox(width: 5),
+                            Expanded(
+                                child: _buildPaymentOptionButton(
+                                    title: 'أجل',
+                                    icon: Icons.schedule,
+                                    baseColor: Colors.orange.shade600,
+                                    selected: selectedPaymentMethod == 'أجل',
+                                    onTap: () => setState(() {
+                                          selectedPaymentMethod = 'أجل';
+                                          _selectedLinkedAgent = null;
+                                          _selectedLinkedTechnician = null;
+                                        }))),
+                            const SizedBox(width: 5),
+                            Expanded(
+                                child: _buildPaymentOptionButton(
+                                    title: 'ماستر',
+                                    icon: Icons.credit_card,
+                                    baseColor: Colors.purple.shade600,
+                                    selected: selectedPaymentMethod == 'ماستر',
+                                    onTap: () => setState(() {
+                                          selectedPaymentMethod = 'ماستر';
+                                          _selectedLinkedAgent = null;
+                                          _selectedLinkedTechnician = null;
+                                        }))),
+                            const SizedBox(width: 5),
+                            Expanded(
+                                child: _buildPaymentOptionButton(
+                                    title: 'وكيل',
+                                    icon: Icons.store,
+                                    baseColor: Colors.blue.shade600,
+                                    selected: selectedPaymentMethod == 'وكيل',
+                                    onTap: () => setState(() {
+                                          selectedPaymentMethod = 'وكيل';
+                                          _selectedLinkedTechnician = null;
+                                        }))),
+                            const SizedBox(width: 5),
+                            Expanded(
+                                child: _buildPaymentOptionButton(
+                                    title: 'فني',
+                                    icon: Icons.engineering,
+                                    baseColor: Colors.teal.shade600,
+                                    selected: selectedPaymentMethod == 'فني',
+                                    onTap: () => setState(() {
+                                          selectedPaymentMethod = 'فني';
+                                          _selectedLinkedAgent = null;
+                                        }))),
+                          ],
+                        ),
                 );
                 final walletBox = Container(
                   margin: EdgeInsets.only(left: isMobileLayout ? 0 : 4),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.9),
-                    border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                    border: Border.symmetric(
+                        vertical:
+                            BorderSide(color: Colors.black54, width: 1.2)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
                         child: _buildWalletSourceSelectBox(
-                          title: _effectiveMainWalletTitle, balance: _effectiveMainBalance, value: 'main', color: Colors.teal,
+                          title: _effectiveMainWalletTitle,
+                          balance: _effectiveMainBalance,
+                          value: 'main',
+                          color: Colors.teal,
                         ),
                       ),
                       const SizedBox(width: 10),
                       if (hasCustomerWallet)
                         Expanded(
                           child: _buildWalletSourceSelectBox(
-                            title: 'محفظة المشترك', balance: customerWalletBalance, value: 'customer', color: Colors.deepPurple,
+                            title: 'محفظة المشترك',
+                            balance: customerWalletBalance,
+                            value: 'customer',
+                            color: Colors.deepPurple,
                           ),
                         ),
                     ],
@@ -8040,23 +8275,30 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               }),
               const SizedBox(height: 6),
 
-              if (selectedPaymentMethod == 'وكيل' || selectedPaymentMethod == 'فني') ...[
+              if (selectedPaymentMethod == 'وكيل' ||
+                  selectedPaymentMethod == 'فني') ...[
                 // صف 2: وكيل/فني | الخصم
                 Builder(builder: (ctx) {
-                  final bool isMobileLayout = MediaQuery.of(ctx).size.width < 600;
+                  final bool isMobileLayout =
+                      MediaQuery.of(ctx).size.width < 600;
                   final agentBox = Container(
                     margin: EdgeInsets.only(right: isMobileLayout ? 0 : 4),
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.9),
-                      border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                      border: Border.symmetric(
+                          vertical:
+                              BorderSide(color: Colors.black54, width: 1.2)),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (selectedPaymentMethod == 'وكيل') SizedBox(height: 48, child: _buildAgentDropdown()),
-                        if (selectedPaymentMethod == 'فني') SizedBox(height: 48, child: _buildTechnicianDropdown()),
+                        if (selectedPaymentMethod == 'وكيل')
+                          SizedBox(height: 48, child: _buildAgentDropdown()),
+                        if (selectedPaymentMethod == 'فني')
+                          SizedBox(
+                              height: 48, child: _buildTechnicianDropdown()),
                       ],
                     ),
                   );
@@ -8065,27 +8307,51 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.9),
-                      border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                      border: Border.symmetric(
+                          vertical:
+                              BorderSide(color: Colors.black54, width: 1.2)),
                     ),
                     child: Row(
                       children: [
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.orange.shade50,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.orange.shade400, width: 1.2),
+                              border: Border.all(
+                                  color: Colors.orange.shade400, width: 1.2),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('الخصم (من النظام)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange.shade800)),
+                                Text('الخصم (من النظام)',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.orange.shade800)),
                                 const SizedBox(height: 3),
-                                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                  Flexible(child: Text('${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.orange.shade900), overflow: TextOverflow.ellipsis)),
-                                  Transform.scale(scale: 0.7, child: Switch(value: systemDiscountEnabled, activeColor: Colors.green, onChanged: (v) => setState(() => systemDiscountEnabled = v))),
-                                ]),
+                                Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Flexible(
+                                          child: Text(
+                                              '${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency',
+                                              style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                  color:
+                                                      Colors.orange.shade900),
+                                              overflow: TextOverflow.ellipsis)),
+                                      Transform.scale(
+                                          scale: 0.7,
+                                          child: Switch(
+                                              value: systemDiscountEnabled,
+                                              activeColor: Colors.green,
+                                              onChanged: (v) => setState(() =>
+                                                  systemDiscountEnabled = v))),
+                                    ]),
                               ],
                             ),
                           ),
@@ -8094,46 +8360,84 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         Expanded(
                           child: TextField(
                             controller: _manualDiscountController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9\.]'))],
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w800),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9\.]'))
+                            ],
                             decoration: InputDecoration(
-                              isDense: true, labelText: 'الخصم (اختياري)',
-                              floatingLabelAlignment: FloatingLabelAlignment.center,
-                              labelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade700),
-                              hintText: '0', suffixText: currency,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black54, width: 1.2)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black54, width: 1.2)),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black87, width: 2)),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                              isDense: true,
+                              labelText: 'الخصم (اختياري)',
+                              floatingLabelAlignment:
+                                  FloatingLabelAlignment.center,
+                              labelStyle: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.blueGrey.shade700),
+                              hintText: '0',
+                              suffixText: currency,
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(
+                                      color: Colors.black54, width: 1.2)),
+                              enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(
+                                      color: Colors.black54, width: 1.2)),
+                              focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(
+                                      color: Colors.black87, width: 2)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 14, horizontal: 10),
                             ),
-                            onChanged: (v) { setState(() { manualDiscount = double.tryParse(v.trim().isEmpty ? '0' : v) ?? 0.0; if (manualDiscount < 0) manualDiscount = 0.0; }); },
+                            onChanged: (v) {
+                              setState(() {
+                                manualDiscount = double.tryParse(
+                                        v.trim().isEmpty ? '0' : v) ??
+                                    0.0;
+                                if (manualDiscount < 0) manualDiscount = 0.0;
+                              });
+                            },
                           ),
                         ),
                       ],
                     ),
                   );
                   if (isMobileLayout) {
-                    return Column(children: [agentBox, const SizedBox(height: 6), discountBox]);
+                    return Column(children: [
+                      agentBox,
+                      const SizedBox(height: 6),
+                      discountBox
+                    ]);
                   }
                   return IntrinsicHeight(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [Expanded(child: agentBox), const SizedBox(width: 6), Expanded(child: discountBox)],
+                      children: [
+                        Expanded(child: agentBox),
+                        const SizedBox(width: 6),
+                        Expanded(child: discountBox)
+                      ],
                     ),
                   );
                 }),
                 const SizedBox(height: 6),
                 // صف 3: ملاحظات | السعر الإجمالي
                 Builder(builder: (ctx) {
-                  final bool isMobileLayout = MediaQuery.of(ctx).size.width < 600;
+                  final bool isMobileLayout =
+                      MediaQuery.of(ctx).size.width < 600;
                   final notesBox = Container(
                     margin: EdgeInsets.only(right: isMobileLayout ? 0 : 4),
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                      borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(12)),
                       border: Border.all(color: Colors.black54, width: 1.2),
                     ),
                     child: TextField(
@@ -8143,34 +8447,70 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       expands: !isMobileLayout,
                       textAlignVertical: TextAlignVertical.center,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         isDense: true,
                         hintText: 'ملاحظات حول الاشتراك (اختياري)',
-                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.purple.shade300, width: 1.2)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.purple.shade300, width: 1.2)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.purple.shade500, width: 2)),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                        filled: true, fillColor: Colors.white,
+                        hintStyle: TextStyle(
+                            fontSize: 13, color: Colors.grey.shade500),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                                color: Colors.purple.shade300, width: 1.2)),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                                color: Colors.purple.shade300, width: 1.2)),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                                color: Colors.purple.shade500, width: 2)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 10),
+                        filled: true,
+                        fillColor: Colors.white,
                         prefixIcon: isDataSavedToServer
                             ? IconButton(
                                 onPressed: () => _updateNotesOnServer(),
                                 icon: const Icon(Icons.edit_note, size: 18),
                                 tooltip: 'تحديث الملاحظات',
-                                style: IconButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), padding: const EdgeInsets.all(4), minimumSize: const Size(28, 28)),
+                                style: IconButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(6)),
+                                    padding: const EdgeInsets.all(4),
+                                    minimumSize: const Size(28, 28)),
                               )
                             : null,
                         suffixIcon: GestureDetector(
-                          onTap: () => setState(() => isNotesEnabled = !isNotesEnabled),
+                          onTap: () =>
+                              setState(() => isNotesEnabled = !isNotesEnabled),
                           child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                            decoration: BoxDecoration(color: isNotesEnabled ? Colors.green : Colors.grey.shade400, borderRadius: BorderRadius.circular(10)),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(isNotesEnabled ? Icons.toggle_on : Icons.toggle_off, color: Colors.white, size: 14),
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                                color: isNotesEnabled
+                                    ? Colors.green
+                                    : Colors.grey.shade400,
+                                borderRadius: BorderRadius.circular(10)),
+                            child:
+                                Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(
+                                  isNotesEnabled
+                                      ? Icons.toggle_on
+                                      : Icons.toggle_off,
+                                  color: Colors.white,
+                                  size: 14),
                               const SizedBox(width: 2),
-                              Text(isNotesEnabled ? 'مفعل' : 'معطل', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                              Text(isNotesEnabled ? 'مفعل' : 'معطل',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold)),
                             ]),
                           ),
                         ),
@@ -8180,30 +8520,58 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   );
                   final totalBox = Container(
                     margin: EdgeInsets.only(left: isMobileLayout ? 0 : 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                      borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(12)),
                       border: Border.all(color: Colors.black54, width: 1.5),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text("السعر الإجمالي", style: TextStyle(fontSize: 13, color: Colors.green.shade700, fontWeight: FontWeight.w700)),
+                        Text("السعر الإجمالي",
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.w700)),
                         const SizedBox(height: 4),
-                        FittedBox(fit: BoxFit.scaleDown, child: Text("${_formatNumber(finalTotal.round())} $currency", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.green.shade800), textAlign: TextAlign.center)),
+                        FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                                "${_formatNumber(finalTotal.round())} $currency",
+                                style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.green.shade800),
+                                textAlign: TextAlign.center)),
                         if (manualDiscount > 0)
-                          Text("خصم: -${_formatNumber(manualDiscount.round())} $currency", style: TextStyle(fontSize: 11, color: Colors.green.shade600, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                          Text(
+                              "خصم: -${_formatNumber(manualDiscount.round())} $currency",
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.green.shade600,
+                                  fontWeight: FontWeight.w600),
+                              textAlign: TextAlign.center),
                       ],
                     ),
                   );
                   if (isMobileLayout) {
-                    return Column(children: [notesBox, const SizedBox(height: 6), totalBox]);
+                    return Column(children: [
+                      notesBox,
+                      const SizedBox(height: 6),
+                      totalBox
+                    ]);
                   }
                   return IntrinsicHeight(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [Expanded(child: notesBox), const SizedBox(width: 6), Expanded(child: totalBox)],
+                      children: [
+                        Expanded(child: notesBox),
+                        const SizedBox(width: 6),
+                        Expanded(child: totalBox)
+                      ],
                     ),
                   );
                 }),
@@ -8211,7 +8579,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                 // صف 2+3 مدمج: ملاحظات (يسار) | الخصم + السعر (يمين)
                 Builder(
                   builder: (ctx) {
-                    final bool isMobileLayout = MediaQuery.of(ctx).size.width < 600;
+                    final bool isMobileLayout =
+                        MediaQuery.of(ctx).size.width < 600;
                     final rightColumn = Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -8220,27 +8589,58 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.9),
-                            border: Border.symmetric(vertical: BorderSide(color: Colors.black54, width: 1.2)),
+                            border: Border.symmetric(
+                                vertical: BorderSide(
+                                    color: Colors.black54, width: 1.2)),
                           ),
                           child: Row(
                             children: [
                               Expanded(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: Colors.orange.shade50,
                                     borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.orange.shade400, width: 1.2),
+                                    border: Border.all(
+                                        color: Colors.orange.shade400,
+                                        width: 1.2),
                                   ),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text('الخصم (من النظام)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange.shade800)),
+                                      Text('الخصم (من النظام)',
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.orange.shade800)),
                                       const SizedBox(height: 3),
-                                      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                        Flexible(child: Text('${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.orange.shade900), overflow: TextOverflow.ellipsis)),
-                                        Transform.scale(scale: 0.7, child: Switch(value: systemDiscountEnabled, activeColor: Colors.green, onChanged: (v) => setState(() => systemDiscountEnabled = v))),
-                                      ]),
+                                      Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Flexible(
+                                                child: Text(
+                                                    '${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency',
+                                                    style: TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: Colors
+                                                            .orange.shade900),
+                                                    overflow:
+                                                        TextOverflow.ellipsis)),
+                                            Transform.scale(
+                                                scale: 0.7,
+                                                child: Switch(
+                                                    value:
+                                                        systemDiscountEnabled,
+                                                    activeColor: Colors.green,
+                                                    onChanged: (v) => setState(
+                                                        () =>
+                                                            systemDiscountEnabled =
+                                                                v))),
+                                          ]),
                                     ],
                                   ),
                                 ),
@@ -8249,21 +8649,52 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                               Expanded(
                                 child: TextField(
                                   controller: _manualDiscountController,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                          decimal: true),
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9\.]'))],
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                        RegExp(r'[0-9\.]'))
+                                  ],
                                   decoration: InputDecoration(
-                                    isDense: true, labelText: 'الخصم (اختياري)',
-                                    floatingLabelAlignment: FloatingLabelAlignment.center,
-                                    labelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.blueGrey.shade700),
-                                    hintText: '0', suffixText: currency,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black54, width: 1.2)),
-                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black54, width: 1.2)),
-                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black87, width: 2)),
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                                    isDense: true,
+                                    labelText: 'الخصم (اختياري)',
+                                    floatingLabelAlignment:
+                                        FloatingLabelAlignment.center,
+                                    labelStyle: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.blueGrey.shade700),
+                                    hintText: '0',
+                                    suffixText: currency,
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: const BorderSide(
+                                            color: Colors.black54, width: 1.2)),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: const BorderSide(
+                                            color: Colors.black54, width: 1.2)),
+                                    focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: const BorderSide(
+                                            color: Colors.black87, width: 2)),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 14, horizontal: 10),
                                   ),
-                                  onChanged: (v) { setState(() { manualDiscount = double.tryParse(v.trim().isEmpty ? '0' : v) ?? 0.0; if (manualDiscount < 0) manualDiscount = 0.0; }); },
+                                  onChanged: (v) {
+                                    setState(() {
+                                      manualDiscount = double.tryParse(
+                                              v.trim().isEmpty ? '0' : v) ??
+                                          0.0;
+                                      if (manualDiscount < 0)
+                                        manualDiscount = 0.0;
+                                    });
+                                  },
                                 ),
                               ),
                             ],
@@ -8273,22 +8704,49 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         Container(
                           width: double.infinity,
                           margin: EdgeInsets.only(left: isMobileLayout ? 0 : 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                           decoration: BoxDecoration(
                             color: Colors.green.shade50,
-                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                            border: Border.all(color: Colors.black54, width: 1.5),
+                            borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(12)),
+                            border:
+                                Border.all(color: Colors.black54, width: 1.5),
                           ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text("السعر الإجمالي", style: TextStyle(fontSize: 13, color: Colors.green.shade700, fontWeight: FontWeight.w700)),
+                              Text("السعر الإجمالي",
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.green.shade700,
+                                      fontWeight: FontWeight.w700)),
                               const SizedBox(height: 4),
-                              FittedBox(fit: BoxFit.scaleDown, child: Text("${_formatNumber(finalTotal.round())} $currency", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.green.shade800), textAlign: TextAlign.center)),
+                              FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                      "${_formatNumber(finalTotal.round())} $currency",
+                                      style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.green.shade800),
+                                      textAlign: TextAlign.center)),
                               if (manualDiscount > 0)
-                                Text("خصم: -${_formatNumber(manualDiscount.round())} $currency", style: TextStyle(fontSize: 11, color: Colors.green.shade600, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                                Text(
+                                    "خصم: -${_formatNumber(manualDiscount.round())} $currency",
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.green.shade600,
+                                        fontWeight: FontWeight.w600),
+                                    textAlign: TextAlign.center),
                               if (maintenanceFee > 0)
-                                Text("صيانة: +${_formatNumber(maintenanceFee.round())} $currency", style: TextStyle(fontSize: 11, color: Colors.orange.shade700, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                                Text(
+                                    "صيانة: +${_formatNumber(maintenanceFee.round())} $currency",
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.orange.shade700,
+                                        fontWeight: FontWeight.w600),
+                                    textAlign: TextAlign.center),
                             ],
                           ),
                         ),
@@ -8300,7 +8758,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                        borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(12)),
                         border: Border.all(color: Colors.black54, width: 1.2),
                       ),
                       child: TextField(
@@ -8309,34 +8768,68 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         minLines: isMobileLayout ? 2 : 5,
                         textAlignVertical: TextAlignVertical.top,
                         textAlign: TextAlign.right,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600),
                         decoration: InputDecoration(
                           isDense: true,
                           hintText: 'ملاحظات حول الاشتراك (اختياري)',
-                          hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                          hintStyle: TextStyle(
+                              fontSize: 13, color: Colors.grey.shade500),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 10),
                           prefixIcon: isDataSavedToServer
                               ? IconButton(
                                   onPressed: () => _updateNotesOnServer(),
                                   icon: const Icon(Icons.edit_note, size: 18),
                                   tooltip: 'تحديث الملاحظات',
-                                  style: IconButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), padding: const EdgeInsets.all(4), minimumSize: const Size(28, 28)),
+                                  style: IconButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(6)),
+                                      padding: const EdgeInsets.all(4),
+                                      minimumSize: const Size(28, 28)),
                                 )
                               : null,
                           suffixIcon: GestureDetector(
-                            onTap: () => setState(() => isNotesEnabled = !isNotesEnabled),
+                            onTap: () => setState(
+                                () => isNotesEnabled = !isNotesEnabled),
                             child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                              decoration: BoxDecoration(color: isNotesEnabled ? Colors.green : Colors.grey.shade400, borderRadius: BorderRadius.circular(10)),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                Icon(isNotesEnabled ? Icons.toggle_on : Icons.toggle_off, color: Colors.white, size: 14),
-                                const SizedBox(width: 2),
-                                Text(isNotesEnabled ? 'مفعل' : 'معطل', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                              ]),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                  color: isNotesEnabled
+                                      ? Colors.green
+                                      : Colors.grey.shade400,
+                                  borderRadius: BorderRadius.circular(10)),
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                        isNotesEnabled
+                                            ? Icons.toggle_on
+                                            : Icons.toggle_off,
+                                        color: Colors.white,
+                                        size: 14),
+                                    const SizedBox(width: 2),
+                                    Text(isNotesEnabled ? 'مفعل' : 'معطل',
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold)),
+                                  ]),
                             ),
                           ),
                         ),
@@ -8345,7 +8838,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     );
 
                     if (isMobileLayout) {
-                      return Column(children: [notesBox, const SizedBox(height: 6), rightColumn]);
+                      return Column(children: [
+                        notesBox,
+                        const SizedBox(height: 6),
+                        rightColumn
+                      ]);
                     }
                     return IntrinsicHeight(
                       child: Row(
@@ -8418,7 +8915,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
   // تم دمج بطاقة الخصم داخل بطاقة مصدر الدفع
 
   /// تخطيط بيانات الأسعار للموبايل — تصميم نظيف ومبسط
-  Widget _buildMobilePriceDetails({required double finalTotal, required String currency, required String discount}) {
+  Widget _buildMobilePriceDetails(
+      {required double finalTotal,
+      required String currency,
+      required String discount}) {
     IconData payIcon(String m) {
       if (m == 'نقد') return Icons.attach_money;
       if (m == 'أجل') return Icons.schedule;
@@ -8430,7 +8930,6 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-
         // ── 1. طريقة الدفع — chips أفقية ──
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -8445,7 +8944,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               Row(children: [
                 Icon(Icons.payment, size: 13, color: Colors.grey.shade500),
                 const SizedBox(width: 4),
-                Text('طريقة الدفع', style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                Text('طريقة الدفع',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w600)),
               ]),
               const SizedBox(height: 8),
               SingleChildScrollView(
@@ -8461,16 +8964,28 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       }),
                       child: Container(
                         margin: const EdgeInsets.only(left: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: sel ? Colors.purple.shade600 : Colors.grey.shade100,
+                          color: sel
+                              ? Colors.purple.shade600
+                              : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: sel ? Colors.purple.shade700 : Colors.grey.shade300),
+                          border: Border.all(
+                              color: sel
+                                  ? Colors.purple.shade700
+                                  : Colors.grey.shade300),
                         ),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(payIcon(m), size: 12, color: sel ? Colors.white : Colors.grey.shade600),
+                          Icon(payIcon(m),
+                              size: 12,
+                              color: sel ? Colors.white : Colors.grey.shade600),
                           const SizedBox(width: 4),
-                          Text(m, style: TextStyle(fontSize: 12, color: sel ? Colors.white : Colors.black87, fontWeight: FontWeight.w700)),
+                          Text(m,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: sel ? Colors.white : Colors.black87,
+                                  fontWeight: FontWeight.w700)),
                         ]),
                       ),
                     );
@@ -8487,10 +9002,20 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _buildWalletSourceSelectBox(title: _effectiveMainWalletTitle, balance: _effectiveMainBalance, value: 'main', color: Colors.teal)),
+              Expanded(
+                  child: _buildWalletSourceSelectBox(
+                      title: _effectiveMainWalletTitle,
+                      balance: _effectiveMainBalance,
+                      value: 'main',
+                      color: Colors.teal)),
               if (hasCustomerWallet) ...[
                 const SizedBox(width: 6),
-                Expanded(child: _buildWalletSourceSelectBox(title: 'محفظة المشترك', balance: customerWalletBalance, value: 'customer', color: Colors.deepPurple)),
+                Expanded(
+                    child: _buildWalletSourceSelectBox(
+                        title: 'محفظة المشترك',
+                        balance: customerWalletBalance,
+                        value: 'customer',
+                        color: Colors.deepPurple)),
               ],
             ],
           ),
@@ -8498,8 +9023,14 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         const SizedBox(height: 6),
 
         // ── 3. وكيل / فني ──
-        if (selectedPaymentMethod == 'وكيل') ...[_buildAgentDropdown(), const SizedBox(height: 6)],
-        if (selectedPaymentMethod == 'فني') ...[_buildTechnicianDropdown(), const SizedBox(height: 6)],
+        if (selectedPaymentMethod == 'وكيل') ...[
+          _buildAgentDropdown(),
+          const SizedBox(height: 6)
+        ],
+        if (selectedPaymentMethod == 'فني') ...[
+          _buildTechnicianDropdown(),
+          const SizedBox(height: 6)
+        ],
 
         // ── 4. الخصم — صف واحد مدمج ──
         Container(
@@ -8511,32 +9042,62 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           ),
           child: Row(
             children: [
-              Icon(Icons.discount_outlined, size: 13, color: Colors.orange.shade700),
+              Icon(Icons.discount_outlined,
+                  size: 13, color: Colors.orange.shade700),
               const SizedBox(width: 4),
-              Text('خصم النظام', style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.w600)),
+              Text('خصم النظام',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange.shade800,
+                      fontWeight: FontWeight.w600)),
               Transform.scale(
                 scale: 0.7,
-                child: Switch(value: systemDiscountEnabled, activeColor: Colors.green, onChanged: (v) => setState(() => systemDiscountEnabled = v)),
+                child: Switch(
+                    value: systemDiscountEnabled,
+                    activeColor: Colors.green,
+                    onChanged: (v) =>
+                        setState(() => systemDiscountEnabled = v)),
               ),
-              Flexible(child: Text('${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.orange.shade900), overflow: TextOverflow.ellipsis)),
-              Container(width: 1, height: 24, color: Colors.orange.shade300, margin: const EdgeInsets.symmetric(horizontal: 8)),
+              Flexible(
+                  child: Text(
+                      '${systemDiscountEnabled ? _formatNumber(int.tryParse(discount) ?? 0) : '0'} $currency',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.orange.shade900),
+                      overflow: TextOverflow.ellipsis)),
+              Container(
+                  width: 1,
+                  height: 24,
+                  color: Colors.orange.shade300,
+                  margin: const EdgeInsets.symmetric(horizontal: 8)),
               Expanded(
                 child: TextField(
                   controller: _manualDiscountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9\.]'))],
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9\.]'))
+                  ],
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: 'خصم إضافي',
-                    hintStyle: TextStyle(fontSize: 10, color: Colors.grey.shade400),
+                    hintStyle:
+                        TextStyle(fontSize: 10, color: Colors.grey.shade400),
                     suffixText: currency,
                     suffixStyle: const TextStyle(fontSize: 10),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
                   ),
-                  onChanged: (v) => setState(() { manualDiscount = double.tryParse(v.trim().isEmpty ? '0' : v) ?? 0.0; if (manualDiscount < 0) manualDiscount = 0.0; }),
+                  onChanged: (v) => setState(() {
+                    manualDiscount =
+                        double.tryParse(v.trim().isEmpty ? '0' : v) ?? 0.0;
+                    if (manualDiscount < 0) manualDiscount = 0.0;
+                  }),
                 ),
               ),
             ],
@@ -8554,13 +9115,21 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             isDense: true,
             hintText: 'ملاحظات (اختياري)',
             hintStyle: TextStyle(fontSize: 11, color: Colors.grey.shade400),
-            prefixIcon: Icon(Icons.edit_note, size: 16, color: Colors.grey.shade400),
+            prefixIcon:
+                Icon(Icons.edit_note, size: 16, color: Colors.grey.shade400),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-            contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-            filled: true, fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300)),
+            contentPadding:
+                const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+            filled: true,
+            fillColor: Colors.white,
           ),
-          onChanged: (v) { subscriptionNotes = v; setState(() => isNotesEnabled = v.isNotEmpty); },
+          onChanged: (v) {
+            subscriptionNotes = v;
+            setState(() => isNotesEnabled = v.isNotEmpty);
+          },
         ),
         const SizedBox(height: 6),
 
@@ -8568,7 +9137,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [Colors.green.shade600, Colors.teal.shade600], begin: Alignment.centerRight, end: Alignment.centerLeft),
+            gradient: LinearGradient(
+                colors: [Colors.green.shade600, Colors.teal.shade600],
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -8577,12 +9149,25 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('المجموع', style: const TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600)),
+                  Text('المجموع',
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w600)),
                   if (manualDiscount > 0)
-                    Text('خصم: -${_formatNumber(manualDiscount.round())} $currency', style: const TextStyle(fontSize: 10, color: Colors.white60)),
+                    Text(
+                        'خصم: -${_formatNumber(manualDiscount.round())} $currency',
+                        style: const TextStyle(
+                            fontSize: 10, color: Colors.white60)),
                 ],
               ),
-              Flexible(child: Text('${_formatNumber(finalTotal.round())} $currency', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white), overflow: TextOverflow.ellipsis)),
+              Flexible(
+                  child: Text('${_formatNumber(finalTotal.round())} $currency',
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white),
+                      overflow: TextOverflow.ellipsis)),
             ],
           ),
         ),
@@ -8794,7 +9379,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   children: [
                     if (isWalletLoading) ...[
                       SizedBox(
-                        width: 14, height: 14,
+                        width: 14,
+                        height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: balance > 100000
@@ -8804,7 +9390,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       ),
                       const SizedBox(width: 6),
                       Text('جاري التحديث...',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade700)),
                     ] else
                       Flexible(
                         child: Text(
@@ -8829,12 +9416,13 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         child: AnimatedRotation(
                           turns: isWalletLoading ? 1 : 0,
                           duration: const Duration(seconds: 1),
-                          child: Icon(Icons.refresh, size: 18,
-                            color: isWalletLoading
-                                ? Colors.grey.shade400
-                                : (balance > 100000
-                                    ? Colors.green.shade700
-                                    : Colors.red.shade700)),
+                          child: Icon(Icons.refresh,
+                              size: 18,
+                              color: isWalletLoading
+                                  ? Colors.grey.shade400
+                                  : (balance > 100000
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700)),
                         ),
                       ),
                     ),
@@ -8876,7 +9464,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     final double totalVal = _asDouble(total);
     final double discVal = _asDouble(discount ?? 0);
     // السعر الأساسي = totalPrice + discount (إذا لم يكن basePrice متاحاً في الـ API)
-    final double baseVal = _asDouble(base) > 0 ? _asDouble(base) : (totalVal + discVal);
+    final double baseVal =
+        _asDouble(base) > 0 ? _asDouble(base) : (totalVal + discVal);
 
     return {
       'totalPrice': {'value': totalVal, 'currency': currency},
@@ -9577,21 +10166,26 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           actionsIconTheme: const IconThemeData(color: Colors.white),
           actions: [
             // زر الطباعة اليدوية (يحتاج صلاحية subscriptions.print_receipt)
-            if (PermissionManager.instance.hasExplicit('subscriptions.print_receipt', 'print') ||
+            if (PermissionManager.instance
+                    .hasExplicit('subscriptions.print_receipt', 'print') ||
                 PermissionManager.instance.canPrint('subscriptions'))
               IconButton(
                 tooltip: _isPrinting
                     ? 'جاري الطباعة...'
-                    : (isPrinted ? 'طباعة وصل (تم الطباعة $_printCount مرة)' : 'طباعة وصل'),
+                    : (isPrinted
+                        ? 'طباعة وصل (تم الطباعة $_printCount مرة)'
+                        : 'طباعة وصل'),
                 icon: _isPrinting
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : Badge(
                         isLabelVisible: _printCount > 0,
-                        label: Text('$_printCount', style: const TextStyle(fontSize: 10)),
+                        label: Text('$_printCount',
+                            style: const TextStyle(fontSize: 10)),
                         child: Icon(
                           isPrinted ? Icons.print : Icons.print_outlined,
                           color: isPrinted ? Colors.greenAccent : Colors.white,
@@ -9975,10 +10569,12 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
                   title: const Text('حفظ كـ PDF'),
                   subtitle: const Text('حفظ الوصل كملف PDF'),
-                  onTap: _isPrinting ? null : () {
-                    Navigator.of(context).pop();
-                    _saveReceiptAsPdf();
-                  },
+                  onTap: _isPrinting
+                      ? null
+                      : () {
+                          Navigator.of(context).pop();
+                          _saveReceiptAsPdf();
+                        },
                 ),
                 const Divider(),
                 // تم نقل زر إعادة حساب السعر إلى بجوار بطاقة فترة الالتزام في المحتوى الرئيسي
@@ -10268,8 +10864,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (selectedPaymentMethod == 'وكيل')
-                    _buildAgentDropdown(),
+                  if (selectedPaymentMethod == 'وكيل') _buildAgentDropdown(),
                   if (selectedPaymentMethod == 'فني')
                     _buildTechnicianDropdown(),
                 ],
@@ -10279,73 +10874,88 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             const SizedBox(height: 8),
             Expanded(
               child: TextField(
-              controller: _notesController,
-              maxLines: 2,
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: 'ملاحظات حول الاشتراك (اختياري)',
-                hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.purple.shade300, width: 1.2),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.purple.shade300, width: 1.2),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.purple.shade500, width: 2),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                filled: true,
-                fillColor: Colors.white,
-                prefixIcon: isDataSavedToServer
-                    ? IconButton(
-                        onPressed: () => _updateNotesOnServer(),
-                        icon: const Icon(Icons.edit_note, size: 18),
-                        tooltip: 'تحديث الملاحظات',
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                controller: _notesController,
+                maxLines: 2,
+                textAlign: TextAlign.right,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'ملاحظات حول الاشتراك (اختياري)',
+                  hintStyle:
+                      TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        BorderSide(color: Colors.purple.shade300, width: 1.2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        BorderSide(color: Colors.purple.shade300, width: 1.2),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        BorderSide(color: Colors.purple.shade500, width: 2),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                  filled: true,
+                  fillColor: Colors.white,
+                  prefixIcon: isDataSavedToServer
+                      ? IconButton(
+                          onPressed: () => _updateNotesOnServer(),
+                          icon: const Icon(Icons.edit_note, size: 18),
+                          tooltip: 'تحديث الملاحظات',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            minimumSize: const Size(28, 28),
                           ),
-                          padding: const EdgeInsets.all(4),
-                          minimumSize: const Size(28, 28),
-                        ),
-                      )
-                    : null,
-                suffixIcon: GestureDetector(
-                  onTap: () => setState(() => isNotesEnabled = !isNotesEnabled),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isNotesEnabled ? Colors.green : Colors.grey.shade400,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isNotesEnabled ? Icons.toggle_on : Icons.toggle_off,
-                          color: Colors.white, size: 14,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          isNotesEnabled ? 'مفعل' : 'معطل',
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                        )
+                      : null,
+                  suffixIcon: GestureDetector(
+                    onTap: () =>
+                        setState(() => isNotesEnabled = !isNotesEnabled),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isNotesEnabled
+                            ? Colors.green
+                            : Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isNotesEnabled ? Icons.toggle_on : Icons.toggle_off,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            isNotesEnabled ? 'مفعل' : 'معطل',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+                onChanged: (value) => subscriptionNotes = value,
               ),
-              onChanged: (value) => subscriptionNotes = value,
-            ),
             ),
           ],
         ),
@@ -10373,7 +10983,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                 return;
               }
               if (!widget.hasWhatsAppPermission) {
-                ftthShowErrorNotification(context, 'لا تملك صلاحية إرسال WhatsApp');
+                ftthShowErrorNotification(
+                    context, 'لا تملك صلاحية إرسال WhatsApp');
                 return;
               }
               await _sendTechnicianMessage(phone, name);
@@ -10382,9 +10993,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         padding: const EdgeInsets.all(4),
         child: _isSendingToTechnician
             ? SizedBox(
-                width: 20, height: 20,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2, color: color.shade600,
+                  strokeWidth: 2,
+                  color: color.shade600,
                 ),
               )
             : Icon(Icons.send, size: 20, color: Colors.green.shade700),
@@ -10478,7 +11091,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       if (!mounted) return;
 
       debugPrint('🟦🟦🟦 [AGENTS] URL: $url → Status: ${response.statusCode}');
-      debugPrint('🟦🟦🟦 [AGENTS] Response Body (أول 300): ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
+      debugPrint(
+          '🟦🟦🟦 [AGENTS] Response Body (أول 300): ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -10533,7 +11147,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         return;
       }
     }
-    debugPrint('🟦 [AUTO-AGENT] لم يُعثر على وكيل مطابق: ${widget.taskAgentCode ?? widget.taskAgentName}');
+    debugPrint(
+        '🟦 [AUTO-AGENT] لم يُعثر على وكيل مطابق: ${widget.taskAgentCode ?? widget.taskAgentName}');
   }
 
   /// جلب قائمة الفنيين من السيرفر (يُستدعى في initState فقط — لا يُستدعى عند الضغط)
@@ -10569,8 +11184,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
 
       if (!mounted) return;
 
-      debugPrint('🟩🟩🟩 [TECHNICIANS] URL: $url → Status: ${response.statusCode}');
-      debugPrint('🟩🟩🟩 [TECHNICIANS] Response Body (أول 300): ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
+      debugPrint(
+          '🟩🟩🟩 [TECHNICIANS] URL: $url → Status: ${response.statusCode}');
+      debugPrint(
+          '🟩🟩🟩 [TECHNICIANS] Response Body (أول 300): ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -10639,7 +11256,9 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              hasError ? 'فشل تحميل الوكلاء — $_agentsLoadError' : 'لا يوجد وكلاء متاحين',
+              hasError
+                  ? 'فشل تحميل الوكلاء — $_agentsLoadError'
+                  : 'لا يوجد وكلاء متاحين',
               style: TextStyle(
                 fontSize: 12,
                 color: hasError ? Colors.red.shade700 : Colors.orange.shade700,
@@ -10697,7 +11316,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             ),
             // زر إرسال واتساب
             if (phone.isNotEmpty)
-              _buildInlineWhatsAppIcon(name: name, phone: phone, color: Colors.blue),
+              _buildInlineWhatsAppIcon(
+                  name: name, phone: phone, color: Colors.blue),
             const SizedBox(width: 4),
             Icon(Icons.check_circle, color: Colors.blue.shade600, size: 20),
             const SizedBox(width: 4),
@@ -10860,7 +11480,9 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              hasError ? 'فشل تحميل الفنيين — $_techniciansLoadError' : 'لا يوجد فنيين متاحين',
+              hasError
+                  ? 'فشل تحميل الفنيين — $_techniciansLoadError'
+                  : 'لا يوجد فنيين متاحين',
               style: TextStyle(
                 fontSize: 12,
                 color: hasError ? Colors.red.shade700 : Colors.orange.shade700,
@@ -10919,7 +11541,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             ),
             // زر إرسال واتساب
             if (phone.isNotEmpty)
-              _buildInlineWhatsAppIcon(name: name, phone: phone, color: Colors.teal),
+              _buildInlineWhatsAppIcon(
+                  name: name, phone: phone, color: Colors.teal),
             const SizedBox(width: 4),
             Icon(Icons.check_circle, color: Colors.teal.shade600, size: 20),
             const SizedBox(width: 4),
@@ -11179,7 +11802,9 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
   /// معلومات المشترك - مُحسّنة ومتجاوبة مع حجم الشاشة
   Widget _buildCustomerInfo() {
     final screenH = MediaQuery.of(context).size.height;
-    final bool isMobile = Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600;
+    final bool isMobile = Platform.isAndroid ||
+        Platform.isIOS ||
+        MediaQuery.of(context).size.width < 600;
     final double sc = isMobile ? 0.72 : (screenH / 900).clamp(0.85, 1.3);
     return Card(
       elevation: 2,
@@ -11198,7 +11823,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             if (isNewSubscription)
               Container(
                 width: double.infinity,
-                padding: EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 6 * sc),
+                padding:
+                    EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 6 * sc),
                 margin: EdgeInsets.only(bottom: 8 * sc),
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
@@ -11207,7 +11833,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20 * sc),
+                    Icon(Icons.info_outline,
+                        color: Colors.blue.shade700, size: 20 * sc),
                     SizedBox(width: 8 * sc),
                     Expanded(
                       child: Text(
@@ -11242,9 +11869,12 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             LayoutBuilder(
               builder: (ctx, constraints) {
                 final bool narrow = constraints.maxWidth < 520;
-                final statusColor = (subscriptionInfo?.status != null && subscriptionInfo!.status.trim().isNotEmpty)
-                    ? _statusChipColor(subscriptionInfo!.status) : Colors.grey;
-                final isActive = subscriptionInfo?.status != null && _isActiveStatus(subscriptionInfo!.status);
+                final statusColor = (subscriptionInfo?.status != null &&
+                        subscriptionInfo!.status.trim().isNotEmpty)
+                    ? _statusChipColor(subscriptionInfo!.status)
+                    : Colors.grey;
+                final isActive = subscriptionInfo?.status != null &&
+                    _isActiveStatus(subscriptionInfo!.status);
                 final children = <Widget>[
                   // حقل الاسم
                   Expanded(
@@ -11252,16 +11882,29 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       decoration: InputDecoration(
                         labelText: 'الاسم',
                         floatingLabelAlignment: FloatingLabelAlignment.center,
-                        labelStyle: TextStyle(fontSize: 15 * sc, fontWeight: FontWeight.w700, color: Colors.indigo.shade400),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.indigo.shade300, width: 1.2)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.indigo.shade300, width: 1.2)),
-                        contentPadding: EdgeInsets.symmetric(vertical: 12 * sc, horizontal: 12 * sc),
+                        labelStyle: TextStyle(
+                            fontSize: 15 * sc,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.indigo.shade400),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                                color: Colors.indigo.shade300, width: 1.2)),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                                color: Colors.indigo.shade300, width: 1.2)),
+                        contentPadding: EdgeInsets.symmetric(
+                            vertical: 12 * sc, horizontal: 12 * sc),
                         filled: true,
                         fillColor: Colors.white,
                       ),
                       child: Text(
                         subscriptionInfo!.customerName,
-                        style: TextStyle(fontSize: 16 * sc, fontWeight: FontWeight.w800, color: Colors.indigo.shade900),
+                        style: TextStyle(
+                            fontSize: 16 * sc,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.indigo.shade900),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
@@ -11277,7 +11920,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         if (phone != null) {
                           await Clipboard.setData(ClipboardData(text: phone));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('تم نسخ رقم الهاتف'), backgroundColor: Colors.green, duration: Duration(seconds: 2)),
+                            const SnackBar(
+                                content: Text('تم نسخ رقم الهاتف'),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 2)),
                           );
                         }
                       },
@@ -11285,16 +11931,29 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         decoration: InputDecoration(
                           labelText: 'رقم الهاتف',
                           floatingLabelAlignment: FloatingLabelAlignment.center,
-                          labelStyle: TextStyle(fontSize: 15 * sc, fontWeight: FontWeight.w700, color: Colors.teal.shade400),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.teal.shade300, width: 1.2)),
-                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.teal.shade300, width: 1.2)),
-                          contentPadding: EdgeInsets.symmetric(vertical: 12 * sc, horizontal: 12 * sc),
+                          labelStyle: TextStyle(
+                              fontSize: 15 * sc,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.teal.shade400),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                  color: Colors.teal.shade300, width: 1.2)),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                  color: Colors.teal.shade300, width: 1.2)),
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 12 * sc, horizontal: 12 * sc),
                           filled: true,
                           fillColor: Colors.white,
                         ),
                         child: Text(
                           _getCustomerPhoneNumber() ?? 'غير متوفر',
-                          style: TextStyle(fontSize: 16 * sc, fontWeight: FontWeight.w800, color: Colors.teal.shade900),
+                          style: TextStyle(
+                              fontSize: 16 * sc,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.teal.shade900),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
@@ -11309,10 +11968,20 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       decoration: InputDecoration(
                         labelText: 'حالة الاشتراك',
                         floatingLabelAlignment: FloatingLabelAlignment.center,
-                        labelStyle: TextStyle(fontSize: 15 * sc, fontWeight: FontWeight.w700, color: statusColor),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: statusColor, width: 1.2)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: statusColor, width: 1.2)),
-                        contentPadding: EdgeInsets.symmetric(vertical: 12 * sc, horizontal: 12 * sc),
+                        labelStyle: TextStyle(
+                            fontSize: 15 * sc,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                BorderSide(color: statusColor, width: 1.2)),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide:
+                                BorderSide(color: statusColor, width: 1.2)),
+                        contentPadding: EdgeInsets.symmetric(
+                            vertical: 12 * sc, horizontal: 12 * sc),
                         filled: true,
                         fillColor: statusColor.withValues(alpha: 0.06),
                       ),
@@ -11322,13 +11991,19 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         children: [
                           Icon(
                             isActive ? Icons.check_circle : Icons.cancel,
-                            color: statusColor, size: 18 * sc,
+                            color: statusColor,
+                            size: 18 * sc,
                           ),
                           SizedBox(width: 4 * sc),
                           Text(
-                            (subscriptionInfo?.status != null && subscriptionInfo!.status.trim().isNotEmpty)
-                                ? _statusTextAr(subscriptionInfo!.status) : 'غير معروف',
-                            style: TextStyle(fontSize: 16 * sc, fontWeight: FontWeight.w800, color: statusColor),
+                            (subscriptionInfo?.status != null &&
+                                    subscriptionInfo!.status.trim().isNotEmpty)
+                                ? _statusTextAr(subscriptionInfo!.status)
+                                : 'غير معروف',
+                            style: TextStyle(
+                                fontSize: 16 * sc,
+                                fontWeight: FontWeight.w800,
+                                color: statusColor),
                           ),
                         ],
                       ),
@@ -11339,7 +12014,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   // على الموبايل: حقلين في كل صف
                   return Column(
                     children: [
-                      Row(children: [children[0], SizedBox(width: 6 * sc), children[2]]),
+                      Row(children: [
+                        children[0],
+                        SizedBox(width: 6 * sc),
+                        children[2]
+                      ]),
                       SizedBox(height: 6 * sc),
                       Row(children: [children[4]]),
                     ],
@@ -11391,7 +12070,9 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
   /// اختيار الخطة - محسّن للشاشات الصغيرة
   Widget _buildPlanSelection() {
     final screenH = MediaQuery.of(context).size.height;
-    final bool isMobile = Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600;
+    final bool isMobile = Platform.isAndroid ||
+        Platform.isIOS ||
+        MediaQuery.of(context).size.width < 600;
     final double sc = isMobile ? 0.72 : (screenH / 900).clamp(0.85, 1.3);
     return Card(
       elevation: 2,
@@ -11416,28 +12097,43 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     decoration: InputDecoration(
                       labelText: narrow ? "الخدمة" : "نوع الخدمة الجديدة",
                       floatingLabelAlignment: FloatingLabelAlignment.center,
-                      prefixIcon: narrow ? null : Icon(Icons.router, color: Colors.indigo, size: 20 * sc),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      prefixIcon: narrow
+                          ? null
+                          : Icon(Icons.router,
+                              color: Colors.indigo, size: 20 * sc),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: selectedPlan == null ? Colors.red : Colors.indigo.shade200,
+                          color: selectedPlan == null
+                              ? Colors.red
+                              : Colors.indigo.shade200,
                           width: 1,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: selectedPlan == null ? Colors.red : Colors.indigo,
+                          color:
+                              selectedPlan == null ? Colors.red : Colors.indigo,
                           width: 2,
                         ),
                       ),
                       errorText: selectedPlan == null ? 'اختر' : null,
-                      contentPadding: EdgeInsets.symmetric(vertical: 14 * sc, horizontal: narrow ? 6 * sc : 12 * sc),
-                      labelStyle: TextStyle(fontSize: (narrow ? 14 : 18) * sc, fontWeight: FontWeight.w700, color: Colors.indigo.shade700),
+                      contentPadding: EdgeInsets.symmetric(
+                          vertical: 14 * sc,
+                          horizontal: narrow ? 6 * sc : 12 * sc),
+                      labelStyle: TextStyle(
+                          fontSize: (narrow ? 14 : 18) * sc,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.indigo.shade700),
                       isDense: narrow,
                     ),
-                    style: TextStyle(fontSize: 16 * sc, color: Colors.black87, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                        fontSize: 16 * sc,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w700),
                     initialValue: selectedPlan,
                     onChanged: (value) {
                       setState(() {
@@ -11446,14 +12142,22 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       });
                       _scheduleAutoPriceFetch();
                     },
-                    selectedItemBuilder: (context) => availablePlans.map((plan) {
-                      return Center(child: Text(plan, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16 * sc)));
+                    selectedItemBuilder: (context) =>
+                        availablePlans.map((plan) {
+                      return Center(
+                          child: Text(plan,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16 * sc)));
                     }).toList(),
                     items: availablePlans.map((plan) {
                       return DropdownMenuItem(
                         alignment: AlignmentDirectional.center,
                         value: plan,
-                        child: Text(plan, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16 * sc)),
+                        child: Text(plan,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16 * sc)),
                       );
                     }).toList(),
                   ),
@@ -11465,29 +12169,46 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     decoration: InputDecoration(
                       labelText: "المدة",
                       floatingLabelAlignment: FloatingLabelAlignment.center,
-                      prefixIcon: narrow ? null : Icon(Icons.schedule, color: Colors.indigo, size: 20 * sc),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      prefixIcon: narrow
+                          ? null
+                          : Icon(Icons.schedule,
+                              color: Colors.indigo, size: 20 * sc),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: selectedCommitmentPeriod == null ? Colors.red : Colors.indigo.shade200,
+                          color: selectedCommitmentPeriod == null
+                              ? Colors.red
+                              : Colors.indigo.shade200,
                           width: 1,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: selectedCommitmentPeriod == null ? Colors.red : Colors.indigo,
+                          color: selectedCommitmentPeriod == null
+                              ? Colors.red
+                              : Colors.indigo,
                           width: 2,
                         ),
                       ),
-                      errorText: selectedCommitmentPeriod == null ? 'اختر' : null,
-                      contentPadding: EdgeInsets.symmetric(vertical: 14 * sc, horizontal: narrow ? 6 * sc : 12 * sc),
-                      labelStyle: TextStyle(fontSize: (narrow ? 14 : 18) * sc, fontWeight: FontWeight.w700, color: Colors.indigo.shade700),
+                      errorText:
+                          selectedCommitmentPeriod == null ? 'اختر' : null,
+                      contentPadding: EdgeInsets.symmetric(
+                          vertical: 14 * sc,
+                          horizontal: narrow ? 6 * sc : 12 * sc),
+                      labelStyle: TextStyle(
+                          fontSize: (narrow ? 14 : 18) * sc,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.indigo.shade700),
                       helperText: null,
                       isDense: narrow,
                     ),
-                    style: TextStyle(fontSize: 16 * sc, color: Colors.black87, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                        fontSize: 16 * sc,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w700),
                     initialValue: selectedCommitmentPeriod,
                     onChanged: (value) {
                       setState(() {
@@ -11497,14 +12218,22 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       _scheduleAutoPriceFetch();
                       _autoFetchExtendPriceIfNeeded();
                     },
-                    selectedItemBuilder: (context) => commitmentPeriods.map((period) {
-                      return Center(child: Text("$period شهر", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16 * sc)));
+                    selectedItemBuilder: (context) =>
+                        commitmentPeriods.map((period) {
+                      return Center(
+                          child: Text("$period شهر",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16 * sc)));
                     }).toList(),
                     items: commitmentPeriods.map((period) {
                       return DropdownMenuItem(
                         alignment: AlignmentDirectional.center,
                         value: period,
-                        child: Text("$period شهر", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16 * sc)),
+                        child: Text("$period شهر",
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16 * sc)),
                       );
                     }).toList(),
                   ),
@@ -11512,42 +12241,62 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                 // زر إعادة حساب السعر كحقل ثالث
                 final calcButton = Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: (selectedPlan != null && selectedCommitmentPeriod != null)
-                        ? () async { await _handleCalculatePricePressed(); }
+                    onPressed: (selectedPlan != null &&
+                            selectedCommitmentPeriod != null)
+                        ? () async {
+                            await _handleCalculatePricePressed();
+                          }
                         : null,
                     icon: Icon(Icons.calculate, size: 20 * sc),
                     label: Text(
                       'حساب السعر',
-                      style: TextStyle(fontSize: 14 * sc, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                          fontSize: 14 * sc, fontWeight: FontWeight.w700),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: (selectedPlan != null && selectedCommitmentPeriod != null)
+                      backgroundColor: (selectedPlan != null &&
+                              selectedCommitmentPeriod != null)
                           ? Colors.purple.shade600
                           : Colors.grey.shade400,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 14 * sc, horizontal: 10 * sc),
+                      padding: EdgeInsets.symmetric(
+                          vertical: 14 * sc, horizontal: 10 * sc),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                         side: BorderSide(
-                          color: (selectedPlan != null && selectedCommitmentPeriod != null)
+                          color: (selectedPlan != null &&
+                                  selectedCommitmentPeriod != null)
                               ? Colors.purple.shade800
                               : Colors.grey.shade600,
                           width: 1,
                         ),
                       ),
-                      elevation: (selectedPlan != null && selectedCommitmentPeriod != null) ? 2 : 0,
+                      elevation: (selectedPlan != null &&
+                              selectedCommitmentPeriod != null)
+                          ? 2
+                          : 0,
                     ),
                   ),
                 );
                 if (narrow) {
                   // على الموبايل: حقلين في الصف الأول، زر حساب السعر بالعرض الكامل
                   return Column(children: [
-                    Row(children: [planField, SizedBox(width: 6 * sc), periodField]),
+                    Row(children: [
+                      planField,
+                      SizedBox(width: 6 * sc),
+                      periodField
+                    ]),
                     SizedBox(height: 6 * sc),
                     Row(children: [calcButton]),
                   ]);
                 }
-                return Row(children: [planField, SizedBox(width: 10 * sc), periodField, SizedBox(width: 10 * sc), calcButton]);
+                return Row(children: [
+                  planField,
+                  SizedBox(width: 10 * sc),
+                  periodField,
+                  SizedBox(width: 10 * sc),
+                  calcButton
+                ]);
               },
             ),
           ],
