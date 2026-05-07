@@ -41,21 +41,25 @@ public class InventoryController : ControllerBase
         var year = DateTime.UtcNow.Year;
         var pattern = $"{prefix}-{year}-";
 
+        // IgnoreQueryFilters لتجنب تكرار الرقم عند وجود سجلات محذوفة (soft-delete)
         int count = 0;
         if (prefix == "PO")
         {
-            count = await _unitOfWork.PurchaseOrders.CountAsync(
-                po => po.CompanyId == companyId && po.OrderNumber.StartsWith(pattern));
+            count = await _unitOfWork.PurchaseOrders.AsQueryable()
+                .IgnoreQueryFilters()
+                .CountAsync(po => po.CompanyId == companyId && po.OrderNumber.StartsWith(pattern));
         }
         else if (prefix == "SO")
         {
-            count = await _unitOfWork.SalesOrders.CountAsync(
-                so => so.CompanyId == companyId && so.OrderNumber.StartsWith(pattern));
+            count = await _unitOfWork.SalesOrders.AsQueryable()
+                .IgnoreQueryFilters()
+                .CountAsync(so => so.CompanyId == companyId && so.OrderNumber.StartsWith(pattern));
         }
         else if (prefix == "TD")
         {
-            count = await _unitOfWork.TechnicianDispensings.CountAsync(
-                td => td.CompanyId == companyId && td.VoucherNumber.StartsWith(pattern));
+            count = await _unitOfWork.TechnicianDispensings.AsQueryable()
+                .IgnoreQueryFilters()
+                .CountAsync(td => td.CompanyId == companyId && td.VoucherNumber.StartsWith(pattern));
         }
 
         return $"{pattern}{(count + 1).ToString("D4")}";
@@ -1736,9 +1740,9 @@ public class InventoryController : ControllerBase
                     td.Id,
                     td.VoucherNumber,
                     td.TechnicianId,
-                    TechnicianName = td.Technician != null ? td.Technician.FullName : null,
+                    TechnicianName = td.Technician!.FullName,
                     td.WarehouseId,
-                    WarehouseName = td.Warehouse != null ? td.Warehouse.Name : null,
+                    WarehouseName = td.Warehouse!.Name,
                     td.ServiceRequestId,
                     td.DispensingDate,
                     Status = td.Status.ToString(),
@@ -1891,7 +1895,7 @@ public class InventoryController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في إنشاء عملية صرف");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+            return StatusCode(500, new { success = false, message = $"خطأ في إنشاء عملية الصرف: {ex.Message}" });
         }
     }
 
@@ -2758,6 +2762,8 @@ public class InventoryController : ControllerBase
         try
         {
             var holdings = await _unitOfWork.TechnicianDispensingItems.AsQueryable()
+                .Include(tdi => tdi.TechnicianDispensing!).ThenInclude(td => td.Technician)
+                .Include(tdi => tdi.InventoryItem)
                 .Where(tdi => tdi.TechnicianDispensing != null
                     && tdi.TechnicianDispensing.CompanyId == companyId
                     && tdi.TechnicianDispensing.Status == DispensingStatus.Approved
@@ -2767,10 +2773,10 @@ public class InventoryController : ControllerBase
                 .Select(tdi => new
                 {
                     TechnicianId = tdi.TechnicianDispensing!.TechnicianId,
-                    TechnicianName = tdi.TechnicianDispensing.Technician != null ? tdi.TechnicianDispensing.Technician.FullName : null,
+                    TechnicianName = tdi.TechnicianDispensing.Technician!.FullName,
                     tdi.InventoryItemId,
-                    ItemName = tdi.InventoryItem != null ? tdi.InventoryItem.Name : null,
-                    ItemSKU = tdi.InventoryItem != null ? tdi.InventoryItem.SKU : null,
+                    ItemName = tdi.InventoryItem!.Name,
+                    ItemSKU = tdi.InventoryItem.SKU,
                     tdi.Quantity,
                     tdi.ReturnedQuantity,
                     RemainingQuantity = tdi.Quantity - tdi.ReturnedQuantity,

@@ -1886,6 +1886,16 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     bool accountsLoaded = false;
     bool isSaving = false;
 
+    void disposeDialogControllers() {
+      descCtrl.dispose();
+      notesCtrl.dispose();
+      for (final l in lines) {
+        (l['debitCtrl'] as TextEditingController).dispose();
+        (l['creditCtrl'] as TextEditingController).dispose();
+        (l['descCtrl'] as TextEditingController).dispose();
+      }
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1991,7 +2001,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                           ),
                           const SizedBox(width: 8),
                           IconButton(
-                            onPressed: () => Navigator.pop(ctx),
+                            onPressed: () { Navigator.pop(ctx); disposeDialogControllers(); },
                             icon: const Icon(Icons.close, size: 20),
                             style: IconButton.styleFrom(foregroundColor: AccountingTheme.textMuted),
                           ),
@@ -2322,7 +2332,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
-                            onPressed: () => Navigator.pop(ctx),
+                            onPressed: () { Navigator.pop(ctx); disposeDialogControllers(); },
                             child: Text(effectiveReadOnly ? 'إغلاق' : 'إلغاء',
                                 style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
                           ),
@@ -2351,28 +2361,38 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                       }
 
                                       // تجهيز البيانات
-                                      final linesDtos = lines.map((l) => {
-                                        'AccountId': l['accountId'],
-                                        'DebitAmount': double.tryParse(l['debitCtrl'].text) ?? 0,
-                                        'CreditAmount': double.tryParse(l['creditCtrl'].text) ?? 0,
-                                        'Description': l['descCtrl'].text,
-                                      }).toList();
+                                      final linesDtos = <Map<String, dynamic>>[];
+                                      for (final l in lines) {
+                                        linesDtos.add({
+                                          'AccountId': l['accountId'],
+                                          'DebitAmount': double.tryParse((l['debitCtrl'] as TextEditingController).text) ?? 0.0,
+                                          'CreditAmount': double.tryParse((l['creditCtrl'] as TextEditingController).text) ?? 0.0,
+                                          'Description': (l['descCtrl'] as TextEditingController).text,
+                                        });
+                                      }
 
+                                      final body = {
+                                        'Description': descCtrl.text,
+                                        'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
+                                        'EntryDate': entryDate.toIso8601String(),
+                                        'Lines': linesDtos,
+                                      };
+                                      debugPrint('📝 [JE-UPDATE] id=${entry['Id']}, lines=${linesDtos.length}');
+                                      for (int i = 0; i < linesDtos.length; i++) {
+                                        debugPrint('   line[$i]: acc=${linesDtos[i]['AccountId']}, D=${linesDtos[i]['DebitAmount']}, C=${linesDtos[i]['CreditAmount']}');
+                                      }
                                       final result = await AccountingService.instance.updateJournalEntry(
                                         entry['Id'].toString(),
-                                        {
-                                          'Description': descCtrl.text,
-                                          'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
-                                          'EntryDate': entryDate.toIso8601String(),
-                                          'Lines': linesDtos,
-                                        },
+                                        body,
                                       );
+                                      debugPrint('📝 [JE-UPDATE] result: success=${result['success']}, msg=${result['message']}, code=${result['statusCode']}');
 
                                       if (!ctx.mounted) return;
                                       setDState(() => isSaving = false);
 
                                       if (result['success'] == true) {
                                         Navigator.pop(ctx);
+                                        disposeDialogControllers();
                                         _snack('تم تحديث القيد بنجاح', AccountingTheme.success);
                                         AuditTrailService.instance.log(
                                           action: AuditAction.edit,

@@ -4424,6 +4424,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   void _openOperatorAccount(Map<String, dynamic> op, {String? collectionType, String? operationType}) {
     final ftthUser = (op['ftthUsername'] ?? '').toString();
     final operatorName = op['operatorName']?.toString() ?? 'مشغل';
+    final isTech = op['isTechnician'] == true;
 
     Navigator.push(
       context,
@@ -4437,6 +4438,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           filterOperatorFtthUsername: ftthUser,
           filterCollectionType: collectionType,
           filterOperationType: operationType,
+          filterIsTechnician: isTech,
         ),
       ),
     );
@@ -9459,6 +9461,13 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     if (![0, 1, 2, 3, 6, 12].contains(commitment)) commitment = 0;
     final fmt = NumberFormat('#,###', 'ar');
 
+    void disposeDialogControllers() {
+      pdCtrl.dispose();
+      revCtrl.dispose();
+      expCtrl.dispose();
+      phoneCtrl.dispose();
+    }
+
     try {
     showDialog(
       context: context,
@@ -9594,18 +9603,21 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
               actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(ctx),
+                  onPressed: () { Navigator.pop(ctx); disposeDialogControllers(); },
                   child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade600)),
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2C3E50), foregroundColor: Colors.white),
                   icon: const Icon(Icons.save, size: 16),
                   onPressed: () async {
+                    // قراءة القيم قبل إغلاق الحوار وحذف المتحكمات
+                    final newPD = double.tryParse(pdCtrl.text.trim()) ?? 0;
+                    final newRev = double.tryParse(revCtrl.text.trim()) ?? 0;
+                    final newExp = double.tryParse(expCtrl.text.trim()) ?? 0;
+                    final newPhone = phoneCtrl.text.trim();
                     Navigator.pop(ctx);
+                    disposeDialogControllers();
                     try {
-                      final newPD = double.tryParse(pdCtrl.text.trim()) ?? 0;
-                      final newRev = double.tryParse(revCtrl.text.trim()) ?? 0;
-                      final newExp = double.tryParse(expCtrl.text.trim()) ?? 0;
                       // حساب MaintenanceFee من Revenue
                       final compDiscount = (_sn(_f(oursTx, 'companyDiscount'))).toDouble();
                       final sysEnabled = _f(oursTx, 'systemDiscountEnabled') == true;
@@ -9620,7 +9632,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                       }
                       if (newExp != origExp) bodyMap['ManualDiscount'] = newExp;
                       if (newRev != origRev) bodyMap['MaintenanceFee'] = maintenanceFee > 0 ? maintenanceFee : 0;
-                      if (phoneCtrl.text.trim() != origPhone) bodyMap['PhoneNumber'] = phoneCtrl.text.trim();
+                      if (newPhone != origPhone) bodyMap['PhoneNumber'] = newPhone;
                       if (commitment != origCommitment) bodyMap['CommitmentPeriod'] = commitment;
 
                       if (bodyMap.isEmpty) {
@@ -11290,6 +11302,8 @@ class _AllOperationsPage extends StatefulWidget {
   final String? filterCollectionType;
   /// فلتر نوع العملية (purchase/renewal/change)
   final String? filterOperationType;
+  /// هل الفلتر على فني (يبحث في عمود الفني بدل المُفعِّل)
+  final bool filterIsTechnician;
 
   const _AllOperationsPage({
     required this.companyId,
@@ -11300,6 +11314,7 @@ class _AllOperationsPage extends StatefulWidget {
     this.filterOperatorFtthUsername,
     this.filterCollectionType,
     this.filterOperationType,
+    this.filterIsTechnician = false,
   });
 
   @override
@@ -11330,6 +11345,15 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   // القيم الخام للسجل أثناء التعديل (لحساب MaintenanceFee)
   double _editCompanyDiscount = 0;
   bool _editSysDiscountEnabled = false;
+  // القيم الأصلية عند بدء التعديل — لمنع إرسال حقول لم تتغير
+  String _origOperator = '';
+  double _origPD = 0;
+  double _origRevenue = 0;
+  double _origExpense = 0;
+  String _origTechnician = '';
+  String _origAgent = '';
+  String _origCollType = 'cash';
+  String _origPaymentMethod = '';
 
   // ── Linking ──
   Map<String, String> _linkingMap = {};
@@ -11797,35 +11821,37 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   /// تطبيق الفلاتر التلقائية (مشغل / تحصيل / نوع عملية)
   void _applyAutoFilters() {
     bool changed = false;
-    // فلتر المشغل — مطابقة بالاسم الإنجليزي (ftthUsername) + الاسم العربي (operatorName)
-    // يبحث في عمود "المُفعِّل" + عمود "الفني" لتغطية كل الحالات
-    if (widget.filterOperatorFtthUsername != null && widget.filterOperatorFtthUsername!.isNotEmpty) {
-      final ftthUser = widget.filterOperatorFtthUsername!.toLowerCase();
-      final arName = (widget.filterOperatorName ?? '').toLowerCase();
+    // فلتر المشغل/الفني
+    if (widget.filterOperatorName != null && widget.filterOperatorName!.isNotEmpty) {
+      final ftthUser = (widget.filterOperatorFtthUsername ?? '').toLowerCase();
+      final arName = widget.filterOperatorName!.toLowerCase();
 
       bool nameMatches(String v) {
         final vLow = v.toLowerCase();
-        return vLow == ftthUser || (arName.isNotEmpty && (vLow == arName || vLow.contains(arName) || arName.contains(vLow)));
+        return (ftthUser.isNotEmpty && vLow == ftthUser) ||
+            vLow == arName || vLow.contains(arName) || arName.contains(vLow);
       }
 
-      // فلتر المُفعِّل
-      final matchOperator = _records
-          .map((r) => r['المُفعِّل']?.toString() ?? '')
-          .where((v) => v.isNotEmpty && nameMatches(v))
-          .toSet();
-      // فلتر الفني
-      final matchTech = _records
-          .map((r) => r['الفني']?.toString() ?? '')
-          .where((v) => v.isNotEmpty && nameMatches(v))
-          .toSet();
-
-      if (matchOperator.isNotEmpty) {
-        _colFilters['المُفعِّل'] = matchOperator;
-        changed = true;
-      } else if (matchTech.isNotEmpty) {
-        // إذا لم يُوجد كمُفعِّل، فلتر كفني
-        _colFilters['الفني'] = matchTech;
-        changed = true;
+      if (widget.filterIsTechnician && widget.filterCollectionType == 'technician') {
+        // فلتر عمود "الفني" فقط عند الضغط على خلية الفني (collectionType=technician)
+        final matchTech = _records
+            .map((r) => r['الفني']?.toString() ?? '')
+            .where((v) => v.isNotEmpty && nameMatches(v))
+            .toSet();
+        if (matchTech.isNotEmpty) {
+          _colFilters['الفني'] = matchTech;
+          changed = true;
+        }
+      } else {
+        // مشغل → فلتر عمود "المُفعِّل"
+        final matchOperator = _records
+            .map((r) => r['المُفعِّل']?.toString() ?? '')
+            .where((v) => v.isNotEmpty && nameMatches(v))
+            .toSet();
+        if (matchOperator.isNotEmpty) {
+          _colFilters['المُفعِّل'] = matchOperator;
+          changed = true;
+        }
       }
     }
     // فلتر التحصيل
@@ -12147,18 +12173,28 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     final pd = (r['المستقطع'] as num?)?.toDouble() ?? 0;
     final rev = (r['الإيرادات'] as num?)?.toDouble() ?? 0;
     final exp = (r['المصاريف'] as num?)?.toDouble() ?? 0;
+    final safeCollType = ['cash', 'credit', 'agent', 'master', 'technician']
+            .contains(collTypeRaw)
+        ? collTypeRaw
+        : 'cash';
+    // حفظ القيم الأصلية لمقارنتها عند الحفظ
+    _origOperator = r['المُفعِّل']?.toString() ?? '';
+    _origPD = pd;
+    _origRevenue = rev;
+    _origExpense = exp;
+    _origTechnician = r['الفني']?.toString() ?? '';
+    _origAgent = r['الوكيل']?.toString() ?? '';
+    _origCollType = safeCollType;
+    _origPaymentMethod = payMethod;
     setState(() {
       _editingId = r['id']?.toString();
-      _editOperatorCtrl.text = r['المُفعِّل']?.toString() ?? '';
+      _editOperatorCtrl.text = _origOperator;
       _editPriceCtrl.text = pd > 0 ? pd.toStringAsFixed(0) : '';
       _editRevenueCtrl.text = rev > 0 ? rev.toStringAsFixed(0) : '0';
       _editExpenseCtrl.text = exp > 0 ? exp.toStringAsFixed(0) : '0';
-      _editTechnicianCtrl.text = r['الفني']?.toString() ?? '';
-      _editAgentCtrl.text = r['الوكيل']?.toString() ?? '';
-      _editCollType = ['cash', 'credit', 'agent', 'master', 'technician']
-              .contains(collTypeRaw)
-          ? collTypeRaw
-          : 'cash';
+      _editTechnicianCtrl.text = _origTechnician;
+      _editAgentCtrl.text = _origAgent;
+      _editCollType = safeCollType;
       _editPaymentMethod = payMethod;
       _editCompanyDiscount = (r['_companyDiscount'] as num?)?.toDouble() ?? 0;
       _editSysDiscountEnabled = r['_sysDiscountEnabled'] == true;
@@ -12179,22 +12215,38 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       final newExpense = double.tryParse(_editExpenseCtrl.text.trim()) ?? 0;
       // حساب MaintenanceFee من Revenue
       final maintenanceFee = newRevenue - (_editSysDiscountEnabled ? 0 : _editCompanyDiscount);
-      final bodyMap = <String, dynamic>{
-        'ActivatedBy': _editOperatorCtrl.text.trim(),
-        'PlanPrice': newPD,
-        'CollectionType': _editCollType,
-        'TechnicianName': techName,
-        'AgentName': agentName,
-        'PaymentMethod': _editPaymentMethod,
-        'ManualDiscount': newExpense,
-        'MaintenanceFee': maintenanceFee > 0 ? maintenanceFee : 0,
-      };
+
+      // إرسال الحقول المتغيّرة فقط — لمنع تصفير BasePrice/CompanyDiscount في Backend
+      final bodyMap = <String, dynamic>{};
+      if (_editOperatorCtrl.text.trim() != _origOperator) bodyMap['ActivatedBy'] = _editOperatorCtrl.text.trim();
+      if (newPD != _origPD) bodyMap['PlanPrice'] = newPD;
+      if (_editCollType != _origCollType) {
+        bodyMap['CollectionType'] = _editCollType;
+        bodyMap['PaymentMethod'] = _editPaymentMethod;
+      }
+      if (techName != _origTechnician) bodyMap['TechnicianName'] = techName;
+      if (agentName != _origAgent) bodyMap['AgentName'] = agentName;
+      if (newExpense != _origExpense) bodyMap['ManualDiscount'] = newExpense;
+      if (newRevenue != _origRevenue) bodyMap['MaintenanceFee'] = maintenanceFee > 0 ? maintenanceFee : 0;
+
+      if (bodyMap.isEmpty) {
+        setState(() { _isSaving = false; _editingId = null; });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('لا توجد تغييرات', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.orange.shade700,
+            duration: const Duration(seconds: 2),
+          ));
+        }
+        return;
+      }
+
       // إرسال LinkedTechnicianId إذا تغيّر الفني
-      if (techName.isNotEmpty && _staffTechIdMap.containsKey(techName)) {
+      if (techName != _origTechnician && techName.isNotEmpty && _staffTechIdMap.containsKey(techName)) {
         bodyMap['LinkedTechnicianId'] = _staffTechIdMap[techName];
       }
       // إرسال LinkedAgentId إذا تغيّر الوكيل
-      if (agentName.isNotEmpty && _staffAgentIdMap.containsKey(agentName)) {
+      if (agentName != _origAgent && agentName.isNotEmpty && _staffAgentIdMap.containsKey(agentName)) {
         bodyMap['LinkedAgentId'] = _staffAgentIdMap[agentName];
       }
       final body = jsonEncode(bodyMap);

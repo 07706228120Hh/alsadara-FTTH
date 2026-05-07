@@ -2455,6 +2455,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     bool accountsLoaded = false;
     bool isSaving = false;
 
+    void disposeDialogControllers() {
+      descCtrl.dispose();
+      notesCtrl.dispose();
+      for (final l in lines) {
+        (l['debitCtrl'] as TextEditingController).dispose();
+        (l['creditCtrl'] as TextEditingController).dispose();
+        (l['descCtrl'] as TextEditingController).dispose();
+      }
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2526,7 +2536,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 style: GoogleFonts.cairo(color: status == 'Posted' ? AccountingTheme.success : AccountingTheme.warning, fontSize: 12, fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(width: 8),
-                          IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, size: 20)),
+                          IconButton(onPressed: () { Navigator.pop(ctx); disposeDialogControllers(); }, icon: const Icon(Icons.close, size: 20)),
                         ],
                       ),
                     ),
@@ -2672,28 +2682,38 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                       padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
                       decoration: const BoxDecoration(border: Border(top: BorderSide(color: AccountingTheme.borderColor))),
                       child: Row(children: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted))),
+                        TextButton(onPressed: () { Navigator.pop(ctx); disposeDialogControllers(); }, child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted))),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: isSaving || !isBalanced ? null : () async {
                             for (final l in lines) { if ((l['accountId'] as String).isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يجب اختيار حساب لكل سطر'), backgroundColor: AccountingTheme.warning)); return; } }
                             setDState(() => isSaving = true);
-                            final linesDtos = lines.map((l) => {
-                              'AccountId': l['accountId'],
-                              'DebitAmount': double.tryParse(l['debitCtrl'].text) ?? 0,
-                              'CreditAmount': double.tryParse(l['creditCtrl'].text) ?? 0,
-                              'Description': l['descCtrl'].text,
-                            }).toList();
-                            final result = await AccountingService.instance.updateJournalEntry(entry['Id'].toString(), {
+                            final linesDtos = <Map<String, dynamic>>[];
+                            for (final l in lines) {
+                              linesDtos.add({
+                                'AccountId': l['accountId'],
+                                'DebitAmount': double.tryParse((l['debitCtrl'] as TextEditingController).text) ?? 0.0,
+                                'CreditAmount': double.tryParse((l['creditCtrl'] as TextEditingController).text) ?? 0.0,
+                                'Description': (l['descCtrl'] as TextEditingController).text,
+                              });
+                            }
+                            final body = {
                               'Description': descCtrl.text,
                               'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
                               'EntryDate': entryDate.toIso8601String(),
                               'Lines': linesDtos,
-                            });
+                            };
+                            debugPrint('📝 [JE-UPDATE] id=${entry['Id']}, lines=${linesDtos.length}');
+                            for (int i = 0; i < linesDtos.length; i++) {
+                              debugPrint('   line[$i]: acc=${linesDtos[i]['AccountId']}, D=${linesDtos[i]['DebitAmount']}, C=${linesDtos[i]['CreditAmount']}');
+                            }
+                            final result = await AccountingService.instance.updateJournalEntry(entry['Id'].toString(), body);
+                            debugPrint('📝 [JE-UPDATE] result: success=${result['success']}, msg=${result['message']}, code=${result['statusCode']}');
                             if (!ctx.mounted) return;
                             setDState(() => isSaving = false);
                             if (result['success'] == true) {
                               Navigator.pop(ctx);
+                              disposeDialogControllers();
                               if (_selectedAccount != null) _loadStatement(_selectedAccount!, resetDates: false);
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث القيد بنجاح'), backgroundColor: AccountingTheme.success));
                             } else {

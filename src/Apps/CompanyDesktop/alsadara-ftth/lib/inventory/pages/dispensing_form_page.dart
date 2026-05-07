@@ -145,6 +145,12 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أضف مادة واحدة على الأقل'), backgroundColor: Colors.orange));
       return;
     }
+    // التحقق من أن كل مادة لديها كمية > 0
+    final zeroQtyItems = validItems.where((e) => (int.tryParse(e.qtyController.text) ?? 0) <= 0).toList();
+    if (zeroQtyItems.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل كمية صحيحة لكل مادة'), backgroundColor: Colors.orange));
+      return;
+    }
     setState(() => _saving = true);
 
     final data = {
