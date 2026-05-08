@@ -3221,6 +3221,14 @@ public class AccountingController : ControllerBase
                             }
                         }
 
+                        // BasePrice في SubscriptionLog = رصيد الصفحة + خصم الشركة
+                        // لأن: رصيد الصفحة (11102) = BasePrice - CompanyDiscount
+                        // والـ Dashboard يحسب: المستقطع = BasePrice - CompanyDiscount
+                        log.BasePrice = log.BasePrice + log.CompanyDiscount;
+                        // PlanPrice = BasePrice إذا لم يكن أكبر
+                        if (log.PlanPrice == null || log.PlanPrice < log.BasePrice)
+                            log.PlanPrice = log.BasePrice;
+
                         log.UpdatedAt = DateTime.UtcNow;
                         _unitOfWork.SubscriptionLogs.Update(log);
                         syncMessage = "تم مزامنة العملية المرتبطة";
