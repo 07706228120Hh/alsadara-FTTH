@@ -21,7 +21,7 @@ class JournalEntriesPage extends StatefulWidget {
 }
 
 class _JournalEntriesPageState extends State<JournalEntriesPage> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   String? _errorMessage;
   List<dynamic> _entries = [];
   String _statusFilter = 'all'; // all, Draft, Posted, Voided
@@ -29,6 +29,9 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
   int _totalPages = 1;
   int _total = 0;
   static const int _pageSize = 50;
+
+  // ── هل تم البحث/التحميل ──
+  bool _hasSearched = false;
 
   // ── تحديد متعدد ──
   final Set<String> _selectedIds = {};
@@ -55,14 +58,23 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
   List<dynamic> get _filteredEntries {
     var list = List<dynamic>.from(_entries);
 
-    // بحث نصي (محلي — السيرفر لا يدعم بحث نصي)
+    // بحث نصي شامل (محلي — السيرفر لا يدعم بحث نصي)
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       list = list.where((e) {
         final desc = (e['Description'] ?? '').toString().toLowerCase();
-        final num = (e['EntryNumber'] ?? '').toString().toLowerCase();
+        final entryNum = (e['EntryNumber'] ?? '').toString().toLowerCase();
         final notes = (e['Notes'] ?? '').toString().toLowerCase();
-        return desc.contains(q) || num.contains(q) || notes.contains(q);
+        final refType = _refTypeLabel(e['ReferenceType']).toLowerCase();
+        // بحث في أسماء الحسابات والمبالغ
+        final lines = (e['Lines'] as List?) ?? [];
+        final accountNames = lines.map((l) =>
+            (l['AccountName'] ?? l['Account']?['Name'] ?? '').toString().toLowerCase()).join(' ');
+        final totalDebit = lines.fold<double>(0, (s, l) => s + ((l['DebitAmount'] ?? 0) as num).toDouble());
+        final totalStr = _fmt(totalDebit).toLowerCase();
+        return desc.contains(q) || entryNum.contains(q) || notes.contains(q) ||
+            refType.contains(q) || accountNames.contains(q) ||
+            totalStr.contains(q);
       }).toList();
     }
 
@@ -119,10 +131,15 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialEntryId != null) {
+      _hasSearched = true;
+    }
+    // تحميل قيود اليوم بشكل صامت (بدون عرض حتى يبحث المستخدم)
     _loadData();
   }
 
-  Future<void> _loadData({int page = 1}) async {
+  Future<void> _loadData({int page = 1, bool showResults = false}) async {
+    if (showResults) _hasSearched = true;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -212,35 +229,396 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
           child: Column(
             children: [
               _buildToolbar(),
-              _buildFilterBar(),
+              _buildSearchHeader(),
               Expanded(
-                child: _isLoading
-                    ? const AccountingSkeleton(rows: 8, columns: 4)
-                    : _errorMessage != null
-                        ? Center(
-                            child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.error_outline,
-                                  color: AccountingTheme.textMuted
-                                      .withOpacity(0.3),
-                                  size: context.accR.iconXL),
-                              SizedBox(height: context.accR.spaceM),
-                              Text(_errorMessage!,
-                                  style: GoogleFonts.cairo(
-                                      color: AccountingTheme.textSecondary,
-                                      fontSize: context.accR.body)),
-                            ],
-                          ))
-                        : _buildList(),
+                child: !_hasSearched
+                    ? _buildEmptyHint()
+                    : _isLoading
+                        ? const AccountingSkeleton(rows: 8, columns: 4)
+                        : _errorMessage != null
+                            ? Center(
+                                child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.error_outline,
+                                      color: AccountingTheme.textMuted
+                                          .withOpacity(0.3),
+                                      size: context.accR.iconXL),
+                                  SizedBox(height: context.accR.spaceM),
+                                  Text(_errorMessage!,
+                                      style: GoogleFonts.cairo(
+                                          color: AccountingTheme.textSecondary,
+                                          fontSize: context.accR.body)),
+                                ],
+                              ))
+                            : _buildList(),
               ),
-              _buildPaginationBar(),
+              if (_hasSearched) _buildPaginationBar(),
             ],
           ),
         ),
       ),
     );
   }
+
+  /// رسالة عندما لم يبحث المستخدم بعد
+  Widget _buildEmptyHint() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.search_rounded,
+              color: AccountingTheme.textMuted.withOpacity(0.15), size: 56),
+          const SizedBox(height: 12),
+          Text('ابدأ بالكتابة في حقل البحث أو اختر فترة زمنية',
+              style: GoogleFonts.cairo(
+                  fontSize: 14, color: AccountingTheme.textMuted)),
+        ],
+      ),
+    );
+  }
+
+  /// شريط البحث والأزرار السريعة (دائماً في الأعلى)
+  Widget _buildSearchHeader() {
+    final isMobile = context.accR.isMobile;
+    final filtered = _hasSearched ? _filteredEntries : <dynamic>[];
+    final hasActiveFilter = _refTypeFilter != 'all' || _dateFrom != null ||
+        _dateTo != null || _searchQuery.isNotEmpty;
+
+    // حساب المجموع
+    double totalDebit = 0;
+    for (final e in filtered) {
+      final lines = (e['Lines'] as List?) ?? [];
+      for (final l in lines) {
+        totalDebit += ((l['DebitAmount'] ?? 0) as num).toDouble();
+      }
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 10 : context.accR.spaceXL, vertical: 8),
+      decoration: BoxDecoration(
+        color: AccountingTheme.bgCard,
+        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // السطر الأول: بحث + تحديد
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 38,
+                  child: TextField(
+                    controller: _searchCtrl,
+                    autofocus: true,
+                    style: GoogleFonts.cairo(
+                        color: AccountingTheme.textPrimary, fontSize: 14),
+                    onChanged: (v) {
+                      setState(() {
+                        _searchQuery = v;
+                        if (v.isNotEmpty) _hasSearched = true;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'بحث برقم القيد، الوصف، اسم الحساب، المبلغ...',
+                      hintStyle: TextStyle(
+                          color: AccountingTheme.textMuted, fontSize: 13),
+                      prefixIcon: Icon(Icons.search,
+                          size: 20, color: AccountingTheme.neonBlue),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear,
+                                  size: 16, color: AccountingTheme.textMuted),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: AccountingTheme.bgCardHover,
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none),
+                      focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AccountingTheme.neonBlue.withOpacity(0.5))),
+                    ),
+                  ),
+                ),
+              ),
+              if (_hasSearched) ...[
+                const SizedBox(width: 8),
+                // زر تحديد
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isSelectionMode = !_isSelectionMode;
+                      if (!_isSelectionMode) _selectedIds.clear();
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    height: 38,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: _isSelectionMode
+                          ? AccountingTheme.neonPink.withOpacity(0.15)
+                          : AccountingTheme.bgCardHover,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: _isSelectionMode
+                              ? AccountingTheme.neonPink.withOpacity(0.5)
+                              : AccountingTheme.borderColor),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                            _isSelectionMode
+                                ? Icons.check_box
+                                : Icons.check_box_outline_blank,
+                            size: 16,
+                            color: _isSelectionMode
+                                ? AccountingTheme.neonPink
+                                : AccountingTheme.textMuted),
+                        if (!isMobile) ...[
+                          const SizedBox(width: 4),
+                          Text('تحديد',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 12,
+                                  color: _isSelectionMode
+                                      ? AccountingTheme.neonPink
+                                      : AccountingTheme.textSecondary)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          // السطر الثاني: أزرار الفترات + أنواع العمليات + الكل + إلغاء
+          Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _quickPeriodBtn(
+                        label: 'الكل',
+                        icon: Icons.select_all,
+                        color: AccountingTheme.neonBlue,
+                        isActive: _refTypeFilter == 'all' && _dateFrom != null &&
+                            _dateFrom!.year == 2020,
+                        onTap: () {
+                          _refTypeFilter = 'all';
+                          _dateFrom = DateTime(2020);
+                          _dateTo = DateTime.now().add(const Duration(days: 1));
+                          _loadData(showResults: true);
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      _quickPeriodBtn(
+                        label: 'اليوم',
+                        icon: Icons.today,
+                        color: AccountingTheme.neonBlue,
+                        isActive: _hasSearched && _dateFrom == null && _dateTo == null,
+                        onTap: () {
+                          _refTypeFilter = 'all';
+                          _dateFrom = null;
+                          _dateTo = null;
+                          _loadData(showResults: true);
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      _quickPeriodBtn(
+                        label: 'أمس',
+                        icon: Icons.history,
+                        color: const Color(0xFF607D8B),
+                        onTap: () {
+                          _refTypeFilter = 'all';
+                          final yesterday = DateTime.now().subtract(const Duration(days: 1));
+                          _dateFrom = DateTime(yesterday.year, yesterday.month, yesterday.day);
+                          _dateTo = DateTime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59);
+                          _loadData(showResults: true);
+                        },
+                      ),
+                      const SizedBox(width: 6),
+                      _quickPeriodBtn(
+                        label: 'هذا الشهر',
+                        icon: Icons.calendar_month,
+                        color: const Color(0xFF4CAF50),
+                        onTap: () {
+                          _refTypeFilter = 'all';
+                          final now = DateTime.now();
+                          _dateFrom = DateTime(now.year, now.month, 1);
+                          _dateTo = now;
+                          _loadData(showResults: true);
+                        },
+                      ),
+                      const SizedBox(width: 10),
+                      Container(width: 1, height: 20, color: AccountingTheme.borderColor),
+                      const SizedBox(width: 10),
+                      _quickRefBtn('FtthSubscription', 'تجديدات', Icons.wifi, const Color(0xFF2196F3)),
+                      const SizedBox(width: 6),
+                      _quickRefBtn('TechnicianCollection', 'قبض', Icons.arrow_downward, AccountingTheme.success),
+                      const SizedBox(width: 6),
+                      _quickRefBtn('Expense', 'صرف', Icons.arrow_upward, AccountingTheme.danger),
+                      const SizedBox(width: 6),
+                      _quickRefBtn('OperatorCashDelivery', 'تسليم كاش', Icons.local_shipping, const Color(0xFF009688)),
+                      const SizedBox(width: 6),
+                      _quickRefBtn('OperatorCreditCollection', 'تحصيل ذمم', Icons.receipt_long, const Color(0xFF673AB7)),
+                      const SizedBox(width: 6),
+                      _quickRefBtn('Manual', 'يدوي', Icons.edit_note, AccountingTheme.textMuted),
+                    ],
+                  ),
+                ),
+              ),
+              // بطاقة المجموع (مربع مدمج في الشريط)
+              if (_hasSearched && filtered.isNotEmpty && !_isLoading) ...[
+                const SizedBox(width: 8),
+                Container(
+                  height: 30,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: AccountingTheme.neonBlue.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AccountingTheme.neonBlue.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${filtered.length}',
+                          style: GoogleFonts.cairo(
+                              fontSize: 11, fontWeight: FontWeight.bold,
+                              color: AccountingTheme.neonBlue)),
+                      const SizedBox(width: 4),
+                      Text('${_fmt(totalDebit)} د.ع',
+                          style: GoogleFonts.cairo(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AccountingTheme.neonBlue)),
+                    ],
+                  ),
+                ),
+              ],
+              // إلغاء التصفية
+              if (hasActiveFilter && _hasSearched) ...[
+                const SizedBox(width: 6),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _searchQuery = '';
+                      _searchCtrl.clear();
+                      _refTypeFilter = 'all';
+                      _hasSearched = false;
+                    });
+                    _dateFrom = null;
+                    _dateTo = null;
+                    _loadData();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: AccountingTheme.danger.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AccountingTheme.danger.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.clear_all, size: 14, color: AccountingTheme.danger),
+                        const SizedBox(width: 4),
+                        Text('مسح',
+                            style: GoogleFonts.cairo(
+                                fontSize: 11, color: AccountingTheme.danger)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _quickPeriodBtn({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    bool isActive = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? color.withOpacity(0.2) : color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isActive ? color : color.withOpacity(0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 5),
+            Text(label,
+                style: GoogleFonts.cairo(
+                    fontSize: 11,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                    color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _quickRefBtn(String refType, String label, IconData icon, Color color) {
+    final isActive = _refTypeFilter == refType && _hasSearched;
+    return InkWell(
+      onTap: () {
+        _refTypeFilter = refType;
+        _dateFrom = DateTime(2020);
+        _dateTo = DateTime.now().add(const Duration(days: 1));
+        _loadData(showResults: true);
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? color.withOpacity(0.15) : AccountingTheme.bgCardHover,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isActive ? color.withOpacity(0.5) : AccountingTheme.borderColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: isActive ? color : color.withOpacity(0.7)),
+            const SizedBox(width: 4),
+            Text(label,
+                style: GoogleFonts.cairo(
+                    fontSize: 11,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    color: isActive ? color : AccountingTheme.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildToolbar() {
     final isMobile = context.accR.isMobile;
@@ -282,21 +660,6 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                   color: AccountingTheme.textPrimary,
                 )),
           ),
-          Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 6 : 8, vertical: isMobile ? 1 : 2),
-            decoration: BoxDecoration(
-              color: AccountingTheme.neonPink.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(context.accR.cardRadius),
-            ),
-            child: Text('$_total',
-                style: GoogleFonts.cairo(
-                  fontSize: isMobile ? 10 : context.accR.small,
-                  fontWeight: FontWeight.bold,
-                  color: AccountingTheme.neonPink,
-                )),
-          ),
-          SizedBox(width: isMobile ? 4 : 0),
           if (!isMobile) const Spacer(),
           // ── أزرار العمليات الجماعية ──
           if (_isSelectionMode && _selectedIds.isNotEmpty) ...[
@@ -350,8 +713,31 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
               ),
             const SizedBox(width: 4),
           ],
+          if (_hasSearched)
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _hasSearched = false;
+                  _searchQuery = '';
+                  _searchCtrl.clear();
+                  _refTypeFilter = 'all';
+                  _dateFrom = null;
+                  _dateTo = null;
+                  _amountMin = null;
+                  _amountMax = null;
+                  _selectedIds.clear();
+                  _isSelectionMode = false;
+                });
+                // إعادة تحميل قيود اليوم بشكل صامت
+                _loadData();
+              },
+              icon: Icon(Icons.home_rounded, size: isMobile ? 18 : context.accR.iconM),
+              tooltip: 'الشاشة الرئيسية',
+              style: IconButton.styleFrom(
+                  foregroundColor: AccountingTheme.neonBlue),
+            ),
           IconButton(
-            onPressed: _loadData,
+            onPressed: () => _loadData(showResults: _hasSearched),
             icon: Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
             tooltip: 'تحديث',
             style: IconButton.styleFrom(
@@ -396,254 +782,6 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
     );
   }
 
-  Widget _buildFilterBar() {
-    final isMobile = context.accR.isMobile;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : context.accR.spaceXL, vertical: context.accR.spaceS),
-      decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Column(
-        children: [
-          // السطر الأول: فلاتر نوع العملية + عداد
-          Row(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _refChip('all', 'الكل', Icons.select_all, AccountingTheme.neonBlue),
-                      _refChip('FtthSubscription', 'تجديدات', Icons.wifi, const Color(0xFF2196F3)),
-                      _refChip('TechnicianCollection', 'قبض', Icons.arrow_downward, AccountingTheme.success),
-                      _refChip('Expense', 'صرف', Icons.arrow_upward, AccountingTheme.danger),
-                      _refChip('Salary', 'رواتب', Icons.payments, const Color(0xFFE91E63)),
-                      _refChip('CashDeposit', 'إيداع', Icons.add_circle_outline, const Color(0xFF4CAF50)),
-                      _refChip('CashWithdrawal', 'سحب', Icons.remove_circle_outline, const Color(0xFFFF9800)),
-                      _refChip('OperatorCashDelivery', 'تسليم كاش', Icons.local_shipping, const Color(0xFF009688)),
-                      _refChip('OperatorCreditCollection', 'تحصيل ذمم', Icons.receipt_long, const Color(0xFF673AB7)),
-                      _refChip('Manual', 'يدوي', Icons.edit_note, AccountingTheme.textMuted),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text('${_filteredEntries.length} من $_total',
-                  style: GoogleFonts.cairo(
-                      color: AccountingTheme.textMuted,
-                      fontSize: context.accR.small)),
-              if (_dateFrom == null && _dateTo == null) ...[
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: AccountingTheme.info.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text('اليوم',
-                      style: GoogleFonts.cairo(
-                          color: AccountingTheme.info,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600)),
-                ),
-              ],
-            ],
-          ),
-          SizedBox(height: context.accR.spaceS),
-          // مجموع المبالغ
-          Builder(builder: (_) {
-            final entries = _filteredEntries;
-            double totalDebit = 0;
-            for (final e in entries) {
-              final lines = (e['Lines'] as List?) ?? [];
-              for (final l in lines) {
-                totalDebit += ((l['DebitAmount'] ?? 0) as num).toDouble();
-              }
-            }
-            if (entries.isEmpty) return const SizedBox.shrink();
-            final fmt = totalDebit.round().toString().replaceAllMapped(
-                RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AccountingTheme.neonBlue.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AccountingTheme.neonBlue.withOpacity(0.2)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.summarize, size: 16, color: AccountingTheme.neonBlue),
-                  const SizedBox(width: 6),
-                  Text('مجموع ${entries.length} قيد:',
-                      style: GoogleFonts.cairo(
-                          fontSize: 12, color: AccountingTheme.textSecondary)),
-                  const SizedBox(width: 8),
-                  Text('$fmt د.ع',
-                      style: GoogleFonts.cairo(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AccountingTheme.neonBlue)),
-                ],
-              ),
-            );
-          }),
-          SizedBox(height: context.accR.spaceS),
-          // السطر الثالث: بحث + تصفية متقدمة + تحديد
-          Row(
-            children: [
-              // حقل البحث
-              Expanded(
-                child: SizedBox(
-                  height: 36,
-                  child: TextField(
-                    controller: _searchCtrl,
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.textPrimary, fontSize: 13),
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    decoration: InputDecoration(
-                      hintText: 'بحث بالوصف أو رقم القيد...',
-                      hintStyle: TextStyle(
-                          color: AccountingTheme.textMuted, fontSize: 12),
-                      prefixIcon: Icon(Icons.search,
-                          size: 18, color: AccountingTheme.textMuted),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(Icons.clear,
-                                  size: 16, color: AccountingTheme.textMuted),
-                              onPressed: () {
-                                _searchCtrl.clear();
-                                setState(() => _searchQuery = '');
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: AccountingTheme.bgCardHover,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 12),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: context.accR.spaceS),
-              // زر التصفية المتقدمة
-              Stack(
-                children: [
-                  InkWell(
-                    onTap: _showAdvancedFilterDialog,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      height: 36,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: _activeFilterCount > 0
-                            ? AccountingTheme.neonBlue.withOpacity(0.15)
-                            : AccountingTheme.bgCardHover,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: _activeFilterCount > 0
-                                ? AccountingTheme.neonBlue.withOpacity(0.5)
-                                : AccountingTheme.borderColor),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.tune,
-                              size: 16,
-                              color: _activeFilterCount > 0
-                                  ? AccountingTheme.neonBlue
-                                  : AccountingTheme.textMuted),
-                          if (!isMobile) ...[
-                            const SizedBox(width: 4),
-                            Text('تصفية',
-                                style: GoogleFonts.cairo(
-                                    fontSize: 12,
-                                    color: _activeFilterCount > 0
-                                        ? AccountingTheme.neonBlue
-                                        : AccountingTheme.textSecondary)),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (_activeFilterCount > 0)
-                    Positioned(
-                      top: -2,
-                      left: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AccountingTheme.neonPink,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text('$_activeFilterCount',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                ],
-              ),
-              SizedBox(width: context.accR.spaceS),
-              // زر وضع التحديد
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    _isSelectionMode = !_isSelectionMode;
-                    if (!_isSelectionMode) _selectedIds.clear();
-                  });
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  height: 36,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: _isSelectionMode
-                        ? AccountingTheme.neonPink.withOpacity(0.15)
-                        : AccountingTheme.bgCardHover,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: _isSelectionMode
-                            ? AccountingTheme.neonPink.withOpacity(0.5)
-                            : AccountingTheme.borderColor),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                          _isSelectionMode
-                              ? Icons.check_box
-                              : Icons.check_box_outline_blank,
-                          size: 16,
-                          color: _isSelectionMode
-                              ? AccountingTheme.neonPink
-                              : AccountingTheme.textMuted),
-                      if (!isMobile) ...[
-                        const SizedBox(width: 4),
-                        Text('تحديد',
-                            style: GoogleFonts.cairo(
-                                fontSize: 12,
-                                color: _isSelectionMode
-                                    ? AccountingTheme.neonPink
-                                    : AccountingTheme.textSecondary)),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildList() {
     final filtered = _filteredEntries;
@@ -665,283 +803,228 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
       );
     }
 
-    return ListView.builder(
-      padding: EdgeInsets.all(context.accR.spaceXL),
-      itemCount: filtered.length,
-      itemBuilder: (_, i) {
-        final entry = filtered[i];
-        final status = entry['Status']?.toString() ?? 'Draft';
-        final statusInfo = _statusInfo(status);
-        final lines = (entry['Lines'] as List?) ?? [];
-        final totalDebit = lines.isNotEmpty
-            ? lines.fold<double>(0, (s, l) => s + ((l['DebitAmount'] ?? 0) as num).toDouble())
-            : ((entry['TotalDebit'] ?? 0) as num).toDouble();
-
-        return Container(
-          margin: EdgeInsets.only(bottom: context.accR.spaceS),
+    return Column(
+      children: [
+        // ── رأس الجدول ──
+        Container(
+          height: 36,
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
-            borderRadius: BorderRadius.circular(context.accR.cardRadius),
-            border: Border.all(color: AccountingTheme.borderColor),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1)),
-            ],
+            color: AccountingTheme.bgCardHover,
+            border: Border.all(color: AccountingTheme.borderColor, width: 0.5),
           ),
-          child: ExpansionTile(
-            tilePadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-            iconColor: AccountingTheme.textMuted,
-            collapsedIconColor: AccountingTheme.textMuted,
-            title: Row(
-              children: [
-                if (_isSelectionMode) ...[
-                  SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: Checkbox(
-                      value: _selectedIds.contains(entry['Id']?.toString()),
-                      activeColor: AccountingTheme.neonPink,
-                      side: BorderSide(color: AccountingTheme.textMuted),
-                      onChanged: (v) {
-                        setState(() {
-                          final id = entry['Id']?.toString() ?? '';
-                          if (v == true) {
-                            _selectedIds.add(id);
-                          } else {
-                            _selectedIds.remove(id);
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color:
-                        (statusInfo['color'] as Color).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                        color: (statusInfo['color'] as Color)
-                            .withValues(alpha: 0.5)),
-                  ),
-                  child: Text(
-                    statusInfo['label'] as String,
-                    style: GoogleFonts.cairo(
-                        color: statusInfo['color'] as Color,
-                        fontSize: context.accR.small,
-                        fontWeight: FontWeight.w600),
-                  ),
-                ),
-                SizedBox(width: context.accR.spaceM),
-                Expanded(
-                  child: Text(
-                    entry['Description'] ??
-                        'قيد #${entry['EntryNumber'] ?? i + 1}',
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.textPrimary,
-                        fontSize: context.accR.body),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Text(
-                  '${_fmt(totalDebit)} د.ع',
-                  style: GoogleFonts.cairo(
-                      color: AccountingTheme.neonGreen,
-                      fontSize: context.accR.financialSmall,
-                      fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            subtitle: Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Row(
-                children: [
-                  if (entry['EntryNumber'] != null)
-                    Text('#${entry['EntryNumber']}  ',
-                        style: GoogleFonts.cairo(
-                            color: AccountingTheme.neonBlue,
-                            fontSize: context.accR.small)),
-                  Text(_formatDate(entry['EntryDate'] ?? entry['CreatedAt']),
-                      style: GoogleFonts.cairo(
-                          color: AccountingTheme.textMuted,
-                          fontSize: context.accR.small)),
-                  if (entry['ReferenceType'] != null) ...[
-                    Text('  |  ',
-                        style: TextStyle(color: AccountingTheme.textMuted)),
-                    Text(_refTypeLabel(entry['ReferenceType']),
-                        style: GoogleFonts.cairo(
-                            color: AccountingTheme.textSecondary,
-                            fontSize: context.accR.small)),
-                  ],
-                ],
-              ),
-            ),
+          child: Row(
             children: [
-              // خطوط القيد
-              if (lines.isNotEmpty) ...[
-                Container(
-                  decoration: BoxDecoration(
-                    color: AccountingTheme.bgCardHover,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Column(
-                    children: [
-                      // Header
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        child: Row(
-                          children: [
-                            Expanded(
-                                flex: 3,
-                                child: Text('الحساب',
-                                    style: TextStyle(
-                                        color: AccountingTheme.textMuted,
-                                        fontSize: context.accR.small))),
-                            SizedBox(
-                                width: 80,
-                                child: Text('مدين',
-                                    style: TextStyle(
-                                        color: AccountingTheme.neonGreen,
-                                        fontSize: context.accR.small),
-                                    textAlign: TextAlign.center)),
-                            SizedBox(
-                                width: 80,
-                                child: Text('دائن',
-                                    style: TextStyle(
-                                        color: AccountingTheme.danger,
-                                        fontSize: context.accR.small),
-                                    textAlign: TextAlign.center)),
-                          ],
-                        ),
-                      ),
-                      const Divider(
-                          color: AccountingTheme.borderColor, height: 1),
-                      ...lines.map<Widget>((line) {
-                        final debit =
-                            ((line['DebitAmount'] ?? 0) as num).toDouble();
-                        final credit =
-                            ((line['CreditAmount'] ?? 0) as num).toDouble();
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  line['AccountName'] ??
-                                      'حساب #${line['AccountId']}',
-                                  style: TextStyle(
-                                      color: AccountingTheme.textSecondary,
-                                      fontSize: context.accR.financialSmall),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 80,
-                                child: Text(
-                                  debit > 0 ? _fmt(debit) : '-',
-                                  style: TextStyle(
-                                      color: debit > 0
-                                          ? AccountingTheme.neonGreen
-                                          : AccountingTheme.textMuted,
-                                      fontSize: context.accR.financialSmall),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              SizedBox(
-                                width: 80,
-                                child: Text(
-                                  credit > 0 ? _fmt(credit) : '-',
-                                  style: TextStyle(
-                                      color: credit > 0
-                                          ? AccountingTheme.danger
-                                          : AccountingTheme.textMuted,
-                                      fontSize: context.accR.financialSmall),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-              ],
-              SizedBox(height: context.accR.spaceS),
-              // الأزرار
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // زر عرض/تعديل التفاصيل — متاح للمسودة والمرحّل
-                  if (status != 'Voided' && PermissionManager.instance.canEdit('accounting.journals'))
-                    TextButton.icon(
-                      onPressed: () => _showFullEditDialog(entry),
-                      icon: Icon(Icons.edit_note, size: context.accR.iconXS),
-                      label: Text('تفاصيل وتعديل',
-                          style: TextStyle(fontSize: context.accR.small)),
-                      style: TextButton.styleFrom(
-                          foregroundColor: AccountingTheme.info),
-                    ),
-                  if (status == 'Voided')
-                    TextButton.icon(
-                      onPressed: () => _showFullEditDialog(entry, readOnly: true),
-                      icon: Icon(Icons.visibility, size: context.accR.iconXS),
-                      label: Text('عرض التفاصيل',
-                          style: TextStyle(fontSize: context.accR.small)),
-                      style: TextButton.styleFrom(
-                          foregroundColor: AccountingTheme.textMuted),
-                    ),
-                  if (status == 'Draft') ...[
-                    SizedBox(width: context.accR.spaceS),
-                    if (PermissionManager.instance.canEdit('accounting.journals'))
-                      TextButton.icon(
-                        onPressed: () => _postEntry(entry),
-                        icon: Icon(Icons.check_circle, size: context.accR.iconXS),
-                        label: Text('ترحيل',
-                            style: TextStyle(fontSize: context.accR.small)),
-                        style: TextButton.styleFrom(
-                            foregroundColor: AccountingTheme.success),
-                      ),
-                    SizedBox(width: context.accR.spaceS),
-                  ],
-                  if (status == 'Posted')
-                    if (PermissionManager.instance.canEdit('accounting.journals'))
-                      TextButton.icon(
-                        onPressed: () => _voidEntry(entry),
-                        icon: Icon(Icons.cancel, size: context.accR.iconXS),
-                        label: Text('إلغاء',
-                            style: TextStyle(fontSize: context.accR.small)),
-                        style: TextButton.styleFrom(
-                            foregroundColor: AccountingTheme.danger),
-                      ),
-                  if (VpsAuthService.instance.currentUser?.isAdmin == true) ...[
-                    SizedBox(width: context.accR.spaceS),
-                    TextButton.icon(
-                      onPressed: () => _confirmDeleteEntry(entry),
-                      icon:
-                          Icon(Icons.delete_outline, size: context.accR.iconXS),
-                      label: Text('حذف',
-                          style: TextStyle(fontSize: context.accR.small)),
-                      style: TextButton.styleFrom(
-                          foregroundColor: AccountingTheme.danger),
-                    ),
-                  ],
-                ],
-              ),
+              if (_isSelectionMode) _headerCell('', width: 36),
+              _headerCell('الحالة', width: 60),
+              _headerCell('رقم القيد', width: 120),
+              _headerCellExpanded('الوصف'),
+              _headerCell('النوع', width: 70),
+              _headerCell('التاريخ', width: 95),
+              _headerCell('المبلغ', width: 110),
+              _headerCell('', width: 40),
             ],
           ),
-        );
-      },
+        ),
+        // ── صفوف الجدول ──
+        Expanded(
+          child: ListView.builder(
+            itemCount: filtered.length,
+            itemBuilder: (_, i) {
+              final entry = filtered[i];
+              final status = entry['Status']?.toString() ?? 'Draft';
+              final statusInfo = _statusInfo(status);
+              final lines = (entry['Lines'] as List?) ?? [];
+              final totalDebit = lines.isNotEmpty
+                  ? lines.fold<double>(0, (s, l) => s + ((l['DebitAmount'] ?? 0) as num).toDouble())
+                  : ((entry['TotalDebit'] ?? 0) as num).toDouble();
+
+              return InkWell(
+                onTap: () {
+                  if (_isSelectionMode) {
+                    setState(() {
+                      final id = entry['Id']?.toString() ?? '';
+                      if (_selectedIds.contains(id)) _selectedIds.remove(id);
+                      else _selectedIds.add(id);
+                    });
+                  } else {
+                    _showFullEditDialog(entry, readOnly: status == 'Voided');
+                  }
+                },
+                hoverColor: AccountingTheme.neonBlue.withOpacity(0.05),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: i % 2 == 0 ? AccountingTheme.bgCard : AccountingTheme.bgCardHover.withOpacity(0.5),
+                    border: Border(
+                      bottom: BorderSide(color: AccountingTheme.borderColor, width: 0.5),
+                      right: BorderSide(color: AccountingTheme.borderColor, width: 0.5),
+                      left: BorderSide(color: AccountingTheme.borderColor, width: 0.5),
+                    ),
+                  ),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_isSelectionMode)
+                          _rowCell(width: 36, child: Checkbox(
+                            value: _selectedIds.contains(entry['Id']?.toString()),
+                            activeColor: AccountingTheme.neonPink,
+                            side: BorderSide(color: AccountingTheme.textMuted),
+                            visualDensity: VisualDensity.compact,
+                            onChanged: (v) {
+                              setState(() {
+                                final id = entry['Id']?.toString() ?? '';
+                                if (v == true) _selectedIds.add(id);
+                                else _selectedIds.remove(id);
+                              });
+                            },
+                          )),
+                        // الحالة
+                        _rowCell(width: 60, child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (statusInfo['color'] as Color).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(statusInfo['label'] as String,
+                              style: GoogleFonts.cairo(
+                                  color: statusInfo['color'] as Color,
+                                  fontSize: 10, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center),
+                        )),
+                        // رقم القيد
+                        _rowCell(width: 120, child: Text(
+                          entry['EntryNumber'] ?? '',
+                          style: GoogleFonts.cairo(
+                              color: AccountingTheme.neonBlue,
+                              fontSize: 11, fontWeight: FontWeight.w600),
+                        )),
+                        // الوصف
+                        _rowCellExpanded(child: Text(
+                          entry['Description'] ?? '',
+                          style: GoogleFonts.cairo(
+                              color: AccountingTheme.textPrimary,
+                              fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        )),
+                        // النوع
+                        _rowCell(width: 70, child: Text(
+                          _refTypeLabel(entry['ReferenceType']),
+                          style: GoogleFonts.cairo(
+                              color: AccountingTheme.textSecondary,
+                              fontSize: 10),
+                          textAlign: TextAlign.center,
+                        )),
+                        // التاريخ
+                        _rowCell(width: 95, child: Text(
+                          _formatDate(entry['EntryDate'] ?? entry['CreatedAt']),
+                          style: GoogleFonts.cairo(
+                              color: AccountingTheme.textMuted,
+                              fontSize: 10),
+                          textAlign: TextAlign.center,
+                        )),
+                        // المبلغ
+                        _rowCell(width: 110, child: Text(
+                          '${_fmt(totalDebit)} د.ع',
+                          style: GoogleFonts.cairo(
+                              color: AccountingTheme.neonGreen,
+                              fontSize: 12, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        )),
+                        // القائمة
+                        _rowCell(width: 40, child: PopupMenuButton<String>(
+                          padding: EdgeInsets.zero,
+                          iconSize: 18,
+                          icon: Icon(Icons.more_vert, color: AccountingTheme.textMuted, size: 16),
+                          color: AccountingTheme.bgCard,
+                          onSelected: (a) {
+                            switch (a) {
+                              case 'edit': _showFullEditDialog(entry); break;
+                              case 'view': _showFullEditDialog(entry, readOnly: true); break;
+                              case 'post': _postEntry(entry); break;
+                              case 'void': _voidEntry(entry); break;
+                              case 'delete': _confirmDeleteEntry(entry); break;
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            if (status != 'Voided' && PermissionManager.instance.canEdit('accounting.journals'))
+                              _menuItem('edit', Icons.edit_note, 'تعديل', AccountingTheme.info),
+                            if (status == 'Voided')
+                              _menuItem('view', Icons.visibility, 'عرض', AccountingTheme.textMuted),
+                            if (status == 'Draft' && PermissionManager.instance.canEdit('accounting.journals'))
+                              _menuItem('post', Icons.check_circle, 'ترحيل', AccountingTheme.success),
+                            if (status == 'Posted' && PermissionManager.instance.canEdit('accounting.journals'))
+                              _menuItem('void', Icons.cancel, 'إلغاء', AccountingTheme.danger),
+                            if (VpsAuthService.instance.currentUser?.isAdmin == true)
+                              _menuItem('delete', Icons.delete_outline, 'حذف', AccountingTheme.danger),
+                          ],
+                        )),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
+  }
+
+  // ── مساعدات الجدول ──
+
+  Widget _headerCell(String text, {required double width}) {
+    return Container(
+      width: width,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: AccountingTheme.borderColor, width: 0.5)),
+      ),
+      child: Text(text, style: GoogleFonts.cairo(
+          color: AccountingTheme.textMuted, fontSize: 11, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _headerCellExpanded(String text) {
+    return Expanded(child: Container(
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: AccountingTheme.borderColor, width: 0.5)),
+      ),
+      child: Text(text, style: GoogleFonts.cairo(
+          color: AccountingTheme.textMuted, fontSize: 11, fontWeight: FontWeight.bold)),
+    ));
+  }
+
+  Widget _rowCell({required double width, required Widget child}) {
+    return Container(
+      width: width,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: AccountingTheme.borderColor, width: 0.5)),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _rowCellExpanded({required Widget child}) {
+    return Expanded(child: Container(
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: const BoxDecoration(
+        border: Border(left: BorderSide(color: AccountingTheme.borderColor, width: 0.5)),
+      ),
+      child: child,
+    ));
+  }
+
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label, Color color) {
+    return PopupMenuItem(value: value, child: Row(children: [
+      Icon(icon, size: 16, color: color), const SizedBox(width: 8),
+      Text(label, style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.textPrimary)),
+    ]));
   }
 
   Widget _buildPaginationBar() {
@@ -990,361 +1073,6 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  void _showAdvancedFilterDialog() {
-    // نسخ مؤقتة من القيم الحالية
-    var tmpRefType = _refTypeFilter;
-    var tmpDateFrom = _dateFrom;
-    var tmpDateTo = _dateTo;
-    var tmpAmountMin = _amountMin;
-    var tmpAmountMax = _amountMax;
-    var tmpSortBy = _sortBy;
-    final amtMinCtrl = TextEditingController(
-        text: _amountMin != null ? _amountMin!.toStringAsFixed(0) : '');
-    final amtMaxCtrl = TextEditingController(
-        text: _amountMax != null ? _amountMax!.toStringAsFixed(0) : '');
-
-    final refTypes = [
-      {'value': 'all', 'label': 'الكل'},
-      {'value': 'Manual', 'label': 'يدوي'},
-      {'value': 'CashTransaction', 'label': 'حركة صندوق'},
-      {'value': 'Salary', 'label': 'رواتب'},
-      {'value': 'TechnicianCollection', 'label': 'تحصيل'},
-      {'value': 'Expense', 'label': 'مصروف'},
-    ];
-
-    final sortOptions = [
-      {'value': 'date_desc', 'label': 'الأحدث أولاً'},
-      {'value': 'date_asc', 'label': 'الأقدم أولاً'},
-      {'value': 'amount_desc', 'label': 'الأعلى مبلغاً'},
-      {'value': 'amount_asc', 'label': 'الأقل مبلغاً'},
-    ];
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, ss) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
-            title: Row(
-              children: [
-                Icon(Icons.tune, color: AccountingTheme.neonBlue, size: 22),
-                const SizedBox(width: 8),
-                Text('تصفية متقدمة',
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.textPrimary,
-                        fontWeight: FontWeight.bold)),
-              ],
-            ),
-            content: SizedBox(
-              width: context.accR.isMobile ? double.maxFinite : 420,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── نوع المرجع ──
-                    Text('نوع المرجع',
-                        style: GoogleFonts.cairo(
-                            color: AccountingTheme.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: refTypes.map((r) {
-                        final sel = tmpRefType == r['value'];
-                        return ChoiceChip(
-                          label: Text(r['label']!,
-                              style: GoogleFonts.cairo(
-                                  fontSize: 12,
-                                  color: sel
-                                      ? Colors.white
-                                      : AccountingTheme.textSecondary)),
-                          selected: sel,
-                          selectedColor: AccountingTheme.neonBlue,
-                          backgroundColor: AccountingTheme.bgCardHover,
-                          side: BorderSide(
-                              color: sel
-                                  ? AccountingTheme.neonBlue
-                                  : AccountingTheme.borderColor),
-                          onSelected: (_) =>
-                              ss(() => tmpRefType = r['value']!),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    // ── نطاق التاريخ ──
-                    Row(
-                      children: [
-                        Text('نطاق التاريخ',
-                            style: GoogleFonts.cairo(
-                                color: AccountingTheme.textSecondary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600)),
-                        const Spacer(),
-                        if (tmpDateFrom == null && tmpDateTo == null)
-                          Text('افتراضي: اليوم + أمس',
-                              style: GoogleFonts.cairo(
-                                  color: AccountingTheme.info,
-                                  fontSize: 10)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // أزرار سريعة للتاريخ
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        _dateQuickChip('اليوم + أمس', null, null, tmpDateFrom, tmpDateTo, (from, to) {
-                          ss(() { tmpDateFrom = from; tmpDateTo = to; });
-                        }),
-                        _dateQuickChip('آخر 7 أيام',
-                          DateTime.now().subtract(const Duration(days: 7)),
-                          DateTime.now(), tmpDateFrom, tmpDateTo, (from, to) {
-                          ss(() { tmpDateFrom = from; tmpDateTo = to; });
-                        }),
-                        _dateQuickChip('هذا الشهر',
-                          DateTime(DateTime.now().year, DateTime.now().month, 1),
-                          DateTime.now(), tmpDateFrom, tmpDateTo, (from, to) {
-                          ss(() { tmpDateFrom = from; tmpDateTo = to; });
-                        }),
-                        _dateQuickChip('الكل (بدون فلتر تاريخ)',
-                          DateTime(2020), DateTime.now().add(const Duration(days: 1)),
-                          tmpDateFrom, tmpDateTo, (from, to) {
-                          ss(() { tmpDateFrom = from; tmpDateTo = to; });
-                        }),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () async {
-                              final picked = await showDateRangePicker(
-                                context: ctx,
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime.now().add(const Duration(days: 365)),
-                                initialDateRange: (tmpDateFrom != null && tmpDateTo != null)
-                                    ? DateTimeRange(start: tmpDateFrom!, end: tmpDateTo!)
-                                    : null,
-                                builder: (c, child) => Theme(
-                                  data: ThemeData.dark().copyWith(
-                                    colorScheme: ColorScheme.dark(
-                                        primary: AccountingTheme.neonBlue)),
-                                  child: child!,
-                                ),
-                              );
-                              if (picked != null) {
-                                ss(() {
-                                  tmpDateFrom = picked.start;
-                                  tmpDateTo = picked.end;
-                                });
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: AccountingTheme.bgCardHover,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                    color: (tmpDateFrom != null)
-                                        ? AccountingTheme.neonBlue.withOpacity(0.5)
-                                        : AccountingTheme.borderColor),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.date_range,
-                                      size: 16,
-                                      color: tmpDateFrom != null
-                                          ? AccountingTheme.neonBlue
-                                          : AccountingTheme.textMuted),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      tmpDateFrom != null && tmpDateTo != null
-                                          ? '${tmpDateFrom!.day}/${tmpDateFrom!.month}/${tmpDateFrom!.year} — ${tmpDateTo!.day}/${tmpDateTo!.month}/${tmpDateTo!.year}'
-                                          : 'اختر نطاق التاريخ',
-                                      style: GoogleFonts.cairo(
-                                          fontSize: 12,
-                                          color: tmpDateFrom != null
-                                              ? AccountingTheme.textPrimary
-                                              : AccountingTheme.textMuted),
-                                    ),
-                                  ),
-                                  if (tmpDateFrom != null)
-                                    InkWell(
-                                      onTap: () => ss(() {
-                                        tmpDateFrom = null;
-                                        tmpDateTo = null;
-                                      }),
-                                      child: Icon(Icons.clear,
-                                          size: 16,
-                                          color: AccountingTheme.textMuted),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // ── نطاق المبلغ ──
-                    Text('نطاق المبلغ',
-                        style: GoogleFonts.cairo(
-                            color: AccountingTheme.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: amtMinCtrl,
-                            keyboardType: TextInputType.number,
-                            style: GoogleFonts.cairo(
-                                color: AccountingTheme.textPrimary,
-                                fontSize: 13),
-                            onChanged: (v) =>
-                                tmpAmountMin = double.tryParse(v),
-                            decoration: InputDecoration(
-                              hintText: 'من',
-                              hintStyle: TextStyle(
-                                  color: AccountingTheme.textMuted,
-                                  fontSize: 12),
-                              filled: true,
-                              fillColor: AccountingTheme.bgCardHover,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8),
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide.none),
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('—',
-                              style: TextStyle(
-                                  color: AccountingTheme.textMuted)),
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: amtMaxCtrl,
-                            keyboardType: TextInputType.number,
-                            style: GoogleFonts.cairo(
-                                color: AccountingTheme.textPrimary,
-                                fontSize: 13),
-                            onChanged: (v) =>
-                                tmpAmountMax = double.tryParse(v),
-                            decoration: InputDecoration(
-                              hintText: 'إلى',
-                              hintStyle: TextStyle(
-                                  color: AccountingTheme.textMuted,
-                                  fontSize: 12),
-                              filled: true,
-                              fillColor: AccountingTheme.bgCardHover,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8),
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide.none),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // ── الترتيب ──
-                    Text('الترتيب',
-                        style: GoogleFonts.cairo(
-                            color: AccountingTheme.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: sortOptions.map((s) {
-                        final sel = tmpSortBy == s['value'];
-                        return ChoiceChip(
-                          label: Text(s['label']!,
-                              style: GoogleFonts.cairo(
-                                  fontSize: 12,
-                                  color: sel
-                                      ? Colors.white
-                                      : AccountingTheme.textSecondary)),
-                          selected: sel,
-                          selectedColor: AccountingTheme.accent,
-                          backgroundColor: AccountingTheme.bgCardHover,
-                          side: BorderSide(
-                              color: sel
-                                  ? AccountingTheme.accent
-                                  : AccountingTheme.borderColor),
-                          onSelected: (_) =>
-                              ss(() => tmpSortBy = s['value']!),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  // مسح جميع الفلاتر
-                  ss(() {
-                    tmpRefType = 'all';
-                    tmpDateFrom = null;
-                    tmpDateTo = null;
-                    tmpAmountMin = null;
-                    tmpAmountMax = null;
-                    tmpSortBy = 'date_desc';
-                    amtMinCtrl.clear();
-                    amtMaxCtrl.clear();
-                  });
-                },
-                child: Text('مسح الكل',
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.textMuted, fontSize: 13)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonBlue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  final dateChanged = tmpDateFrom != _dateFrom || tmpDateTo != _dateTo;
-                  setState(() {
-                    _refTypeFilter = tmpRefType;
-                    _dateFrom = tmpDateFrom;
-                    _dateTo = tmpDateTo;
-                    _amountMin = tmpAmountMin;
-                    _amountMax = tmpAmountMax;
-                    _sortBy = tmpSortBy;
-                  });
-                  // إذا تغير التاريخ → يجب إعادة جلب من السيرفر
-                  if (dateChanged) _loadData();
-                },
-                child: Text('تطبيق',
-                    style: GoogleFonts.cairo(fontSize: 13)),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
