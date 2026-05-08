@@ -43,12 +43,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
   // ─── فلتر وترتيب كشف الحساب ───
   String _stmtTypeFilter = 'all'; // all, receipt, payment (قبض/صرف)
+  String _stmtSearchQuery = ''; // بحث في القيود
   String? _stmtSortColumn; // 'date', 'type'
   bool _stmtSortAsc = true;
 
   final _dateFmt = DateFormat('yyyy-MM-dd');
   final _displayDateFmt = DateFormat('HH:mm yyyy/MM/dd');
   final _searchController = TextEditingController();
+  final _stmtSearchController = TextEditingController();
   final _parentSearchController = TextEditingController();
   final _parentFocusNode = FocusNode();
   final _parentLayerLink = LayerLink();
@@ -58,6 +60,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _stmtSearchController.dispose();
     _removeParentOverlay();
     _parentSearchController.dispose();
     _parentFocusNode.dispose();
@@ -187,8 +190,10 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       _statementSummary = {};
       _statementAccount = {};
       if (resetDates && !keepDates) {
-        _fromDate = null;
-        _toDate = null;
+        // الافتراضي: من أول الشهر الحالي إلى اليوم
+        final now = DateTime.now();
+        _fromDate = DateTime(now.year, now.month, 1);
+        _toDate = DateTime(now.year, now.month, now.day);
       }
     });
     try {
@@ -227,6 +232,43 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         if (_stmtTypeFilter == 'receipt') return label == 'قبض';
         if (_stmtTypeFilter == 'payment') return label == 'صرف';
         return true;
+      }).toList();
+    }
+
+    // بحث نصي في كل حقول القيد
+    if (_stmtSearchQuery.isNotEmpty) {
+      final q = _stmtSearchQuery.toLowerCase();
+      lines = lines.where((line) {
+        final desc = (line['Description']?.toString() ?? '').toLowerCase();
+        final entryDesc = (line['EntryDescription']?.toString() ?? '').toLowerCase();
+        final entryNum = (line['EntryNumber']?.toString() ?? '').toLowerCase();
+        final entryId = (line['JournalEntryId']?.toString() ?? '').toLowerCase();
+        final dateStr = line['EntryDate']?.toString() ?? '';
+        final debit = ((line['DebitAmount'] ?? 0) as num).toDouble();
+        final credit = ((line['CreditAmount'] ?? 0) as num).toDouble();
+        final debitStr = _fmt(debit);
+        final creditStr = _fmt(credit);
+        final origIdx = _statementLines.indexOf(line);
+        final running = origIdx >= 0 ? _calcRunning(origIdx) : 0.0;
+        final runningStr = _fmt(running.abs());
+        final typeLabel = _txLabel(debit, credit);
+
+        String formattedDate = '';
+        try {
+          final dt = DateTime.parse(dateStr).toLocal();
+          formattedDate = _displayDateFmt.format(dt);
+        } catch (_) {}
+
+        return desc.contains(q) ||
+            entryDesc.contains(q) ||
+            entryNum.contains(q) ||
+            entryId.contains(q) ||
+            dateStr.contains(q) ||
+            formattedDate.contains(q) ||
+            debitStr.contains(q) ||
+            creditStr.contains(q) ||
+            runningStr.contains(q) ||
+            typeLabel.contains(q);
       }).toList();
     }
 
@@ -290,79 +332,51 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: const Color(0xFFF0F2F8),
         body: SafeArea(
           child: Container(
-            margin: isMob ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
+            margin: isMob ? const EdgeInsets.all(6) : const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AccountingTheme.bgPrimary,
-              borderRadius: BorderRadius.circular(isMob ? 10 : 14),
-              border: Border.all(color: Colors.black87, width: 2),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(isMob ? 16 : 20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withAlpha(25),
-                  blurRadius: 8,
+                  color: const Color(0xFF3498DB).withAlpha(12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.black.withAlpha(8),
+                  blurRadius: 12,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(isMob ? 8 : 12),
-              child: Stack(
+              borderRadius: BorderRadius.circular(isMob ? 16 : 20),
+              child: Column(
                 children: [
-                  // ─── زخرفة الزوايا ───
-                  ...[
-                    Positioned(top: 0, right: 0, child: _cornerOrnament()),
-                    Positioned(
-                        top: 0, left: 0, child: _cornerOrnament(flipH: true)),
-                    Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: _cornerOrnament(flipV: true)),
-                    Positioned(
-                        bottom: 0,
-                        left: 0,
-                        child: _cornerOrnament(flipH: true, flipV: true)),
-                  ],
-                  // ─── المحتوى ───
-                  Column(
-                    children: [
-                      _buildToolbar(),
-                      _buildSearchBar(),
-                      if (_selectedAccount != null) ...[
-                        _buildDateFilter(),
-                        _buildStatementSummaryBar(),
-                        Expanded(child: _buildStatementTable()),
-                      ] else ...[
-                        if (_showFilters) _buildAdvancedFilters(),
-                        if (_hasActiveFilter) ...[
-                          _buildFilterSummary(),
-                          Expanded(child: _buildAccountList()),
-                        ] else ...[
-                          Expanded(child: _buildSearchPrompt()),
-                        ],
-                      ],
+                  _buildToolbar(),
+                  _buildSearchBar(),
+                  if (_selectedAccount == null)
+                    _buildQuickFilters(),
+                  if (_selectedAccount != null) ...[
+                    _buildDateFilter(),
+                    _buildStatementSummaryBar(),
+                    Expanded(child: _buildStatementTable()),
+                  ] else ...[
+                    if (_hasActiveFilter) ...[
+                      _buildFilterSummary(),
+                      Expanded(child: _buildAccountList()),
+                    ] else ...[
+                      Expanded(child: _buildSearchPrompt()),
                     ],
-                  ),
+                  ],
                 ],
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  /// زخرفة زاوية
-  Widget _cornerOrnament({bool flipH = false, bool flipV = false}) {
-    return Transform(
-      alignment: Alignment.center,
-      transform: Matrix4.identity()
-        ..scale(flipH ? -1.0 : 1.0, flipV ? -1.0 : 1.0),
-      child: SizedBox(
-        width: 32,
-        height: 32,
-        child: CustomPaint(painter: _CornerPainter()),
       ),
     );
   }
@@ -378,91 +392,105 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       final code = _selectedAccount?['Code']?.toString() ?? '';
       final type = _statementAccount['AccountType'] ?? '';
       return Container(
-        margin: EdgeInsets.fromLTRB(hPad, 8, hPad, 4),
+        margin: EdgeInsets.fromLTRB(hPad, 12, hPad, 8),
         padding: EdgeInsets.symmetric(
-            horizontal: isMob ? 10 : 14, vertical: isMob ? 8 : 10),
+            horizontal: isMob ? 12 : 18, vertical: isMob ? 10 : 14),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AccountingTheme.neonBlue.withAlpha(20),
-              AccountingTheme.neonPurple.withAlpha(12),
+              const Color(0xFF3498DB).withAlpha(8),
+              const Color(0xFF8E44AD).withAlpha(5),
+              Colors.white,
             ],
+            begin: Alignment.centerRight,
+            end: Alignment.centerLeft,
           ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AccountingTheme.neonBlue.withAlpha(50)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF3498DB).withAlpha(30)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF3498DB).withAlpha(8),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(isMob ? 6 : 8),
+              padding: EdgeInsets.all(isMob ? 8 : 10),
               decoration: BoxDecoration(
-                color: AccountingTheme.neonBlue.withAlpha(30),
-                borderRadius: BorderRadius.circular(8),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF3498DB), Color(0xFF2980B9)],
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF3498DB).withAlpha(40),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Icon(Icons.receipt_long_rounded,
-                  size: isMob ? 16 : ar.iconM, color: AccountingTheme.neonBlue),
+                  size: isMob ? 16 : 20, color: Colors.white),
             ),
-            SizedBox(width: isMob ? 8 : 12),
+            SizedBox(width: isMob ? 10 : 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(name,
                       style: GoogleFonts.cairo(
-                          fontSize: isMob ? 13 : ar.headingSmall,
+                          fontSize: isMob ? 14 : 17,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.textPrimary),
+                          color: const Color(0xFF1A1A2E)),
                       overflow: TextOverflow.ellipsis),
+                  SizedBox(height: 2),
                   Row(
                     children: [
-                      Flexible(
-                        child: Text(
-                            'كشف حساب  •  كود: $code  •  ${_translateType(type)}',
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3498DB).withAlpha(15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text('كود: $code',
                             style: GoogleFonts.cairo(
-                                fontSize: isMob ? 10 : ar.small,
-                                color: AccountingTheme.textMuted),
-                            overflow: TextOverflow.ellipsis),
+                                fontSize: isMob ? 10 : 11,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF3498DB))),
                       ),
-                      SizedBox(width: 8),
+                      SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _typeColor(type).withAlpha(15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(_translateType(type),
+                            style: GoogleFonts.cairo(
+                                fontSize: isMob ? 10 : 11,
+                                fontWeight: FontWeight.w600,
+                                color: _typeColor(type))),
+                      ),
+                      SizedBox(width: 6),
                       Container(
                         padding: EdgeInsets.symmetric(
-                            horizontal: isMob ? 5 : 8, vertical: 1),
+                            horizontal: isMob ? 6 : 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AccountingTheme.neonGreen.withAlpha(20),
+                          color: const Color(0xFF2ECC71).withAlpha(15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text('${_statementLines.length} حركة',
                             style: GoogleFonts.cairo(
-                                fontSize: isMob ? 9 : ar.small,
+                                fontSize: isMob ? 10 : 11,
                                 fontWeight: FontWeight.bold,
-                                color: AccountingTheme.neonGreen)),
+                                color: const Color(0xFF2ECC71))),
                       ),
                     ],
                   ),
                 ],
-              ),
-            ),
-            SizedBox(width: 8),
-            InkWell(
-              onTap: () {
-                setState(() {
-                  _selectedAccount = null;
-                  _searchQuery = '';
-                  _searchController.clear();
-                  _statementLines = [];
-                  _statementSummary = {};
-                  _statementAccount = {};
-                });
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: EdgeInsets.all(isMob ? 6 : 8),
-                decoration: BoxDecoration(
-                  color: AccountingTheme.danger.withAlpha(20),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.close,
-                    size: isMob ? 16 : ar.iconM, color: AccountingTheme.danger),
               ),
             ),
           ],
@@ -472,44 +500,76 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
     // وضع البحث
     return Padding(
-      padding: EdgeInsets.fromLTRB(hPad, 8, hPad, 4),
-      child: TextField(
-        controller: _searchController,
-        style: GoogleFonts.cairo(
-            fontSize: isMob ? 13 : ar.financialSmall,
-            color: AccountingTheme.textPrimary),
-        onChanged: (v) => setState(() => _searchQuery = v),
-        decoration: InputDecoration(
-          hintText: 'ابحث عن حساب بالاسم أو الكود...',
-          hintStyle: GoogleFonts.cairo(
-              fontSize: isMob ? 12 : ar.small,
-              color: AccountingTheme.textMuted),
-          prefixIcon: Icon(Icons.search,
-              size: isMob ? 20 : ar.iconM, color: AccountingTheme.textMuted),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? GestureDetector(
-                  onTap: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                  child: Icon(Icons.clear,
-                      size: isMob ? 18 : ar.iconM,
-                      color: AccountingTheme.textMuted),
-                )
-              : null,
-          filled: true,
-          fillColor: AccountingTheme.bgCard,
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black87, width: 1.5)),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black87, width: 1.5)),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.black, width: 2)),
-          contentPadding: EdgeInsets.symmetric(
-              horizontal: isMob ? 12 : ar.spaceXL, vertical: 10),
+      padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F7FA),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE0E6ED), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF3498DB).withAlpha(8),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          style: GoogleFonts.cairo(
+              fontSize: isMob ? 14 : 15,
+              color: AccountingTheme.textPrimary),
+          onChanged: (v) => setState(() => _searchQuery = v),
+          decoration: InputDecoration(
+            hintText: 'ابحث عن حساب بالاسم أو الكود...',
+            hintStyle: GoogleFonts.cairo(
+                fontSize: isMob ? 13 : 14,
+                color: const Color(0xFFADB5BD)),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(right: 12, left: 8),
+              child: Icon(Icons.search_rounded,
+                  size: isMob ? 22 : 24, color: const Color(0xFF3498DB)),
+            ),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? GestureDetector(
+                    onTap: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE74C3C).withAlpha(15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.close_rounded,
+                          size: isMob ? 18 : 20,
+                          color: const Color(0xFFE74C3C)),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.only(left: 12, right: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE0E6ED),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('Ctrl+F',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 10,
+                                  color: const Color(0xFF8896A6))),
+                        ),
+                      ],
+                    ),
+                  ),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(
+                horizontal: isMob ? 12 : 20, vertical: isMob ? 12 : 14),
+          ),
         ),
       ),
     );
@@ -521,15 +581,15 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   Widget _buildAdvancedFilters() {
     final ar = context.accR;
     final isMob = ar.isMobile;
-    final hPad = isMob ? 10.0 : ar.spaceXL;
+    final hPad = isMob ? 10.0 : 24.0;
 
     return Container(
-      margin: EdgeInsets.fromLTRB(hPad, 4, hPad, 4),
-      padding: EdgeInsets.all(isMob ? 10 : 14),
+      margin: EdgeInsets.fromLTRB(hPad, 0, hPad, 8),
+      padding: EdgeInsets.all(isMob ? 12 : 16),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black87, width: 1.5),
+        color: const Color(0xFFF8FAFE),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE0E6ED)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -537,10 +597,17 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           // ─── صف 1: نوع الحساب ───
           Row(
             children: [
-              Icon(Icons.category_rounded, size: isMob ? 14 : 16, color: AccountingTheme.textSecondary),
-              SizedBox(width: isMob ? 4 : 6),
-              Text('التصنيف:', style: GoogleFonts.cairo(fontSize: isMob ? 11 : ar.small, fontWeight: FontWeight.w600, color: AccountingTheme.textSecondary)),
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3498DB).withAlpha(12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(Icons.category_rounded, size: isMob ? 14 : 16, color: const Color(0xFF3498DB)),
+              ),
               SizedBox(width: isMob ? 6 : 10),
+              Text('التصنيف:', style: GoogleFonts.cairo(fontSize: isMob ? 11 : 12, fontWeight: FontWeight.bold, color: const Color(0xFF2C3E50))),
+              SizedBox(width: isMob ? 8 : 12),
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -548,65 +615,61 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     children: [
                       _filterChip('الكل', _selectedAccountType == null && _balanceFilter == 'all', () => setState(() { _selectedAccountType = null; _balanceFilter = 'all'; })),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('مدين', _balanceFilter == 'debit', () => setState(() => _balanceFilter = _balanceFilter == 'debit' ? 'all' : 'debit'), color: AccountingTheme.danger),
+                      _filterChip('مدين', _balanceFilter == 'debit', () => setState(() => _balanceFilter = _balanceFilter == 'debit' ? 'all' : 'debit'), color: const Color(0xFFE74C3C)),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('دائن', _balanceFilter == 'credit', () => setState(() => _balanceFilter = _balanceFilter == 'credit' ? 'all' : 'credit'), color: AccountingTheme.success),
+                      _filterChip('دائن', _balanceFilter == 'credit', () => setState(() => _balanceFilter = _balanceFilter == 'credit' ? 'all' : 'credit'), color: const Color(0xFF2ECC71)),
+                      SizedBox(width: isMob ? 6 : 10),
+                      Container(width: 1.5, height: 22, decoration: BoxDecoration(color: const Color(0xFFE0E6ED), borderRadius: BorderRadius.circular(1))),
+                      SizedBox(width: isMob ? 6 : 10),
+                      _filterChip('أصول', _selectedAccountType == 'Assets', () => setState(() => _selectedAccountType = _selectedAccountType == 'Assets' ? null : 'Assets'), color: Colors.blue, icon: Icons.business_center_outlined),
                       SizedBox(width: isMob ? 4 : 6),
-                      Container(width: 1, height: 20, color: AccountingTheme.borderColor),
+                      _filterChip('التزامات', _selectedAccountType == 'Liabilities', () => setState(() => _selectedAccountType = _selectedAccountType == 'Liabilities' ? null : 'Liabilities'), color: Colors.orange, icon: Icons.account_balance_outlined),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('أصول', _selectedAccountType == 'Assets', () => setState(() => _selectedAccountType = _selectedAccountType == 'Assets' ? null : 'Assets'), color: Colors.blue),
+                      _filterChip('حقوق ملكية', _selectedAccountType == 'Equity', () => setState(() => _selectedAccountType = _selectedAccountType == 'Equity' ? null : 'Equity'), color: Colors.purple, icon: Icons.shield_outlined),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('التزامات', _selectedAccountType == 'Liabilities', () => setState(() => _selectedAccountType = _selectedAccountType == 'Liabilities' ? null : 'Liabilities'), color: Colors.orange),
+                      _filterChip('إيرادات', _selectedAccountType == 'Revenue', () => setState(() => _selectedAccountType = _selectedAccountType == 'Revenue' ? null : 'Revenue'), color: Colors.green, icon: Icons.trending_up_rounded),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('حقوق ملكية', _selectedAccountType == 'Equity', () => setState(() => _selectedAccountType = _selectedAccountType == 'Equity' ? null : 'Equity'), color: Colors.purple),
-                      SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('إيرادات', _selectedAccountType == 'Revenue', () => setState(() => _selectedAccountType = _selectedAccountType == 'Revenue' ? null : 'Revenue'), color: Colors.green),
-                      SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('مصروفات', _selectedAccountType == 'Expenses', () => setState(() => _selectedAccountType = _selectedAccountType == 'Expenses' ? null : 'Expenses'), color: Colors.red),
+                      _filterChip('مصروفات', _selectedAccountType == 'Expenses', () => setState(() => _selectedAccountType = _selectedAccountType == 'Expenses' ? null : 'Expenses'), color: Colors.red, icon: Icons.trending_down_rounded),
                     ],
                   ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: isMob ? 8 : 10),
+          SizedBox(height: isMob ? 10 : 12),
           // ─── صف 2: المجموعة الأب + فلتر الرصيد ───
           Wrap(
             spacing: isMob ? 8 : 12,
             runSpacing: isMob ? 8 : 10,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              // المجموعة الأب
               _buildParentGroupDropdown(isMob),
-              // فلتر الفترة الزمنية
               _buildDateRangeFilter(isMob),
-              // زر مسح الكل
               if (_hasActiveFilter)
-                InkWell(
-                  onTap: () => setState(() {
-                    _selectedAccountType = null;
-                    _selectedParentId = null;
-                    _balanceFilter = 'all';
-                    _fromDate = null;
-                    _toDate = null;
-                    _searchQuery = '';
-                    _searchController.clear();
-                  }),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10, vertical: isMob ? 6 : 7),
-                    decoration: BoxDecoration(
-                      color: AccountingTheme.danger.withAlpha(15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.black87, width: 1.2),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.clear_all_rounded, size: isMob ? 14 : 16, color: AccountingTheme.danger),
-                        SizedBox(width: 4),
-                        Text('مسح الكل', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: FontWeight.w600, color: AccountingTheme.danger)),
-                      ],
+                Material(
+                  color: const Color(0xFFE74C3C).withAlpha(10),
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    onTap: () => setState(() {
+                      _selectedAccountType = null;
+                      _selectedParentId = null;
+                      _balanceFilter = 'all';
+                      _fromDate = null;
+                      _toDate = null;
+                      _searchQuery = '';
+                      _searchController.clear();
+                    }),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: isMob ? 10 : 12, vertical: isMob ? 6 : 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.clear_all_rounded, size: isMob ? 14 : 16, color: const Color(0xFFE74C3C)),
+                          SizedBox(width: 4),
+                          Text('مسح الكل', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: FontWeight.w600, color: const Color(0xFFE74C3C))),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -618,27 +681,39 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   }
 
   /// chip فلتر
-  Widget _filterChip(String label, bool selected, VoidCallback onTap, {Color? color}) {
+  Widget _filterChip(String label, bool selected, VoidCallback onTap, {Color? color, IconData? icon}) {
     final isMob = context.accR.isMobile;
-    final chipColor = color ?? AccountingTheme.neonBlue;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10, vertical: isMob ? 4 : 5),
-        decoration: BoxDecoration(
-          color: selected ? chipColor.withAlpha(30) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected ? chipColor : Colors.black54,
-            width: selected ? 1.5 : 1.0,
+    final chipColor = color ?? const Color(0xFF3498DB);
+    return Material(
+      color: selected ? chipColor.withAlpha(18) : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: isMob ? 10 : 12, vertical: isMob ? 5 : 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? chipColor.withAlpha(100) : const Color(0xFFDDE2E8),
+              width: selected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: isMob ? 12 : 14, color: selected ? chipColor : const Color(0xFF95A5A6)),
+                SizedBox(width: 4),
+              ],
+              Text(label, style: GoogleFonts.cairo(
+                fontSize: isMob ? 10 : 11,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                color: selected ? chipColor : const Color(0xFF5D6D7E),
+              )),
+            ],
           ),
         ),
-        child: Text(label, style: GoogleFonts.cairo(
-          fontSize: isMob ? 10 : 11,
-          fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-          color: selected ? chipColor : AccountingTheme.textSecondary,
-        )),
       ),
     );
   }
@@ -649,15 +724,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       link: _parentLayerLink,
       child: Container(
         constraints: BoxConstraints(maxWidth: isMob ? 200 : 250),
-        height: isMob ? 32 : 34,
+        height: isMob ? 34 : 36,
         decoration: BoxDecoration(
-          color: AccountingTheme.bgPrimary,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.black87, width: 1.2),
+          border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
         ),
         child: Row(
           children: [
-            // حقل الكتابة
             Expanded(
               child: TextField(
                 controller: _parentSearchController,
@@ -668,7 +742,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 decoration: InputDecoration(
                   hintText: 'المجموعة...',
                   hintStyle: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textMuted),
-                  prefixIcon: Icon(Icons.folder_outlined, size: isMob ? 14 : 16, color: AccountingTheme.textMuted),
+                  prefixIcon: Icon(Icons.folder_outlined, size: isMob ? 14 : 16, color: const Color(0xFF2C3E50)),
                   prefixIconConstraints: BoxConstraints(minWidth: isMob ? 28 : 32),
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: isMob ? 6 : 7),
@@ -676,7 +750,6 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 ),
               ),
             ),
-            // زر مسح
             if (_selectedParentId != null)
               GestureDetector(
                 onTap: () {
@@ -745,12 +818,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   width: fieldWidth,
                   constraints: BoxConstraints(maxHeight: 250),
                   decoration: BoxDecoration(
-                    color: AccountingTheme.bgCard,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.black87, width: 1.2),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE0E6ED)),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                     child: ListView(
                       padding: EdgeInsets.zero,
                       shrinkWrap: true,
@@ -871,69 +944,86 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     );
   }
 
-  /// فلتر الفترة الزمنية (من - إلى) في لوحة البحث
+  /// فلتر الفترة الزمنية — حقلين منفصلين (من) و (إلى)
   Widget _buildDateRangeFilter(bool isMob) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: isMob ? 6 : 8, vertical: isMob ? 4 : 5),
-      decoration: BoxDecoration(
-        color: AccountingTheme.bgPrimary,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black87, width: 1.2),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.date_range_rounded, size: isMob ? 14 : 16, color: AccountingTheme.textSecondary),
-          SizedBox(width: 4),
-          InkWell(
-            onTap: () => _pickFilterDate(true),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: isMob ? 6 : 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: _fromDate != null ? AccountingTheme.neonBlue.withAlpha(15) : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                _fromDate != null ? _displayDateFmt.format(_fromDate!) : 'من',
-                style: GoogleFonts.cairo(
-                  fontSize: isMob ? 10 : 11,
-                  color: _fromDate != null ? AccountingTheme.neonBlue : AccountingTheme.textMuted,
-                  fontWeight: _fromDate != null ? FontWeight.w600 : FontWeight.normal,
+    final dateFmtShort = DateFormat('yyyy/MM/dd');
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ─── حقل "من" ───
+        InkWell(
+          onTap: () => _pickFilterDate(true),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            height: isMob ? 34 : 36,
+            padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 14, color: const Color(0xFF2C3E50)),
+                SizedBox(width: 6),
+                Text(
+                  _fromDate != null ? dateFmtShort.format(_fromDate!) : 'من',
+                  style: GoogleFonts.cairo(
+                    fontSize: isMob ? 10 : 11,
+                    color: _fromDate != null ? const Color(0xFF2C3E50) : AccountingTheme.textMuted,
+                    fontWeight: _fromDate != null ? FontWeight.w600 : FontWeight.normal,
+                  ),
                 ),
-              ),
+                if (_fromDate != null) ...[
+                  SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => setState(() { _fromDate = null; }),
+                    child: Icon(Icons.close, size: 13, color: AccountingTheme.danger),
+                  ),
+                ],
+              ],
             ),
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 2),
-            child: Text('←', style: GoogleFonts.cairo(fontSize: 10, color: AccountingTheme.textMuted)),
-          ),
-          InkWell(
-            onTap: () => _pickFilterDate(false),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: isMob ? 6 : 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: _toDate != null ? AccountingTheme.neonBlue.withAlpha(15) : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                _toDate != null ? _displayDateFmt.format(_toDate!) : 'إلى',
-                style: GoogleFonts.cairo(
-                  fontSize: isMob ? 10 : 11,
-                  color: _toDate != null ? AccountingTheme.neonBlue : AccountingTheme.textMuted,
-                  fontWeight: _toDate != null ? FontWeight.w600 : FontWeight.normal,
+        ),
+        SizedBox(width: 6),
+        // ─── حقل "إلى" ───
+        InkWell(
+          onTap: () => _pickFilterDate(false),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            height: isMob ? 34 : 36,
+            padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 14, color: const Color(0xFF2C3E50)),
+                SizedBox(width: 6),
+                Text(
+                  _toDate != null ? dateFmtShort.format(_toDate!) : 'إلى',
+                  style: GoogleFonts.cairo(
+                    fontSize: isMob ? 10 : 11,
+                    color: _toDate != null ? const Color(0xFF2C3E50) : AccountingTheme.textMuted,
+                    fontWeight: _toDate != null ? FontWeight.w600 : FontWeight.normal,
+                  ),
                 ),
-              ),
+                if (_toDate != null) ...[
+                  SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => setState(() { _toDate = null; }),
+                    child: Icon(Icons.close, size: 13, color: AccountingTheme.danger),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (_fromDate != null || _toDate != null) ...[
-            SizedBox(width: 2),
-            InkWell(
-              onTap: () => setState(() { _fromDate = null; _toDate = null; }),
-              child: Icon(Icons.close, size: isMob ? 12 : 14, color: AccountingTheme.danger),
-            ),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -972,16 +1062,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   Widget _buildFilterSummary() {
     final ar = context.accR;
     final isMob = ar.isMobile;
-    final hPad = isMob ? 10.0 : ar.spaceXL;
+    final hPad = isMob ? 10.0 : 24.0;
     final count = _filteredAccounts.length;
 
     return Container(
-      margin: EdgeInsets.fromLTRB(hPad, 2, hPad, 2),
-      padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 12, vertical: isMob ? 4 : 6),
+      margin: EdgeInsets.fromLTRB(hPad, 2, hPad, 6),
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 10 : 14, vertical: isMob ? 6 : 8),
       decoration: BoxDecoration(
-        color: AccountingTheme.neonBlue.withAlpha(10),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black54, width: 1.0),
+        color: const Color(0xFF3498DB).withAlpha(8),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF3498DB).withAlpha(30)),
       ),
       child: Row(
         children: [
@@ -1023,6 +1113,68 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     ];
   }
 
+  /// أزرار فلترة سريعة — تظهر فوق الحالة الفارغة
+  Widget _buildQuickFilters() {
+    final isMob = context.accR.isMobile;
+    final hPad = isMob ? 10.0 : 24.0;
+    final noFilter = _selectedAccountType == null && _balanceFilter == 'all';
+    return Padding(
+      padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 8),
+      child: Row(
+        children: [
+          // ─── الأزرار السريعة (قابلة للتمرير) ───
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _quickFilterButton('الكل', Icons.apps_rounded, const Color(0xFF3498DB), () {
+                    setState(() { _selectedAccountType = null; _balanceFilter = 'all'; _selectedParentId = null; _fromDate = null; _toDate = null; _parentSearchController.clear(); });
+                  }, selected: noFilter),
+                  SizedBox(width: 6),
+                  _quickFilterButton('مدين', Icons.arrow_upward_rounded, const Color(0xFFE74C3C), () {
+                    setState(() { _balanceFilter = _balanceFilter == 'debit' ? 'all' : 'debit'; });
+                  }, selected: _balanceFilter == 'debit'),
+                  SizedBox(width: 6),
+                  _quickFilterButton('دائن', Icons.arrow_downward_rounded, const Color(0xFF2ECC71), () {
+                    setState(() { _balanceFilter = _balanceFilter == 'credit' ? 'all' : 'credit'; });
+                  }, selected: _balanceFilter == 'credit'),
+                  SizedBox(width: 10),
+                  Container(width: 1.5, height: 28, decoration: BoxDecoration(color: const Color(0xFFE0E6ED), borderRadius: BorderRadius.circular(1))),
+                  SizedBox(width: 10),
+                  _quickFilterButton('أصول', Icons.business_center_outlined, Colors.blue, () {
+                    setState(() { _selectedAccountType = _selectedAccountType == 'Assets' ? null : 'Assets'; });
+                  }, selected: _selectedAccountType == 'Assets'),
+                  SizedBox(width: 6),
+                  _quickFilterButton('إيرادات', Icons.trending_up_rounded, Colors.green, () {
+                    setState(() { _selectedAccountType = _selectedAccountType == 'Revenue' ? null : 'Revenue'; });
+                  }, selected: _selectedAccountType == 'Revenue'),
+                  SizedBox(width: 6),
+                  _quickFilterButton('مصروفات', Icons.trending_down_rounded, Colors.red, () {
+                    setState(() { _selectedAccountType = _selectedAccountType == 'Expenses' ? null : 'Expenses'; });
+                  }, selected: _selectedAccountType == 'Expenses'),
+                  SizedBox(width: 6),
+                  _quickFilterButton('التزامات', Icons.account_balance_outlined, Colors.orange, () {
+                    setState(() { _selectedAccountType = _selectedAccountType == 'Liabilities' ? null : 'Liabilities'; });
+                  }, selected: _selectedAccountType == 'Liabilities'),
+                  SizedBox(width: 6),
+                  _quickFilterButton('حقوق ملكية', Icons.shield_outlined, Colors.purple, () {
+                    setState(() { _selectedAccountType = _selectedAccountType == 'Equity' ? null : 'Equity'; });
+                  }, selected: _selectedAccountType == 'Equity'),
+                ],
+              ),
+            ),
+          ),
+          // ─── فلتر التاريخ + المجموعة ───
+          SizedBox(width: 10),
+          _buildDateRangeFilter(isMob),
+          SizedBox(width: 8),
+          _buildParentGroupDropdown(isMob),
+        ],
+      ),
+    );
+  }
+
   /// حالة فارغة - ينتظر المستخدم البحث
   Widget _buildSearchPrompt() {
     final ar = context.accR;
@@ -1033,21 +1185,80 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_rounded,
-                size: isMob ? 48 : ar.iconEmpty,
-                color: AccountingTheme.textMuted.withAlpha(60)),
-            SizedBox(height: isMob ? 12 : ar.spaceXL),
+            Container(
+              padding: EdgeInsets.all(isMob ? 20 : 28),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF3498DB).withAlpha(12),
+                    const Color(0xFF8E44AD).withAlpha(8),
+                  ],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Container(
+                padding: EdgeInsets.all(isMob ? 16 : 22),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF3498DB).withAlpha(20),
+                      const Color(0xFF2980B9).withAlpha(15),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.account_balance_wallet_outlined,
+                    size: isMob ? 36 : 48,
+                    color: const Color(0xFF3498DB).withAlpha(120)),
+              ),
+            ),
+            SizedBox(height: isMob ? 20 : 28),
             Text('ابحث عن حساب',
                 style: GoogleFonts.cairo(
-                    fontSize: isMob ? 14 : ar.headingSmall,
+                    fontSize: isMob ? 18 : 22,
                     fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textMuted)),
-            SizedBox(height: isMob ? 4 : ar.spaceS),
+                    color: const Color(0xFF2C3E50))),
+            SizedBox(height: isMob ? 6 : 10),
             Text('اكتب اسم أو كود الحساب، أو استخدم الفلاتر أعلاه',
                 style: GoogleFonts.cairo(
-                    fontSize: isMob ? 11 : ar.body,
-                    color: AccountingTheme.textMuted.withAlpha(120))),
+                    fontSize: isMob ? 12 : 14,
+                    color: const Color(0xFF95A5A6))),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _quickFilterButton(String label, IconData icon, Color color, VoidCallback onTap, {bool selected = false}) {
+    final isMob = context.accR.isMobile;
+    return Material(
+      color: selected ? color.withAlpha(25) : color.withAlpha(8),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: isMob ? 10 : 14, vertical: isMob ? 8 : 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected ? color : const Color(0xFF2C3E50),
+              width: selected ? 1.5 : 1.2,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: isMob ? 14 : 16, color: selected ? color : color.withAlpha(160)),
+              SizedBox(width: 6),
+              Text(label, style: GoogleFonts.cairo(
+                  fontSize: isMob ? 11 : 12,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.w600,
+                  color: selected ? color : color.withAlpha(160))),
+            ],
+          ),
         ),
       ),
     );
@@ -1061,87 +1272,118 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     final isMob = ar.isMobile;
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
+          horizontal: isMob ? 12 : 24, vertical: isMob ? 10 : 16),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2C3E50), Color(0xFF34495E)],
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+        ),
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_forward_rounded, size: isMob ? 20 : 24),
-            tooltip: 'رجوع',
-            padding: isMob ? EdgeInsets.all(4) : null,
-            constraints: isMob
-                ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                : null,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
+          Material(
+            color: Colors.white.withAlpha(20),
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              onTap: () {
+                if (_selectedAccount != null) {
+                  setState(() {
+                    _selectedAccount = null;
+                    _searchQuery = '';
+                    _searchController.clear();
+                    _stmtSearchQuery = '';
+                    _stmtSearchController.clear();
+                    _stmtTypeFilter = 'all';
+                    _statementLines = [];
+                    _statementSummary = {};
+                    _statementAccount = {};
+                  });
+                } else {
+                  Navigator.of(context).pop();
+                }
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: EdgeInsets.all(isMob ? 6 : 8),
+                child: Icon(Icons.arrow_back_rounded,
+                    size: isMob ? 18 : 22, color: Colors.white),
+              ),
+            ),
           ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
+          SizedBox(width: isMob ? 10 : 16),
           Container(
-            padding: EdgeInsets.all(isMob ? 5 : ar.spaceS),
+            padding: EdgeInsets.all(isMob ? 8 : 10),
             decoration: BoxDecoration(
-              gradient: AccountingTheme.neonBlueGradient,
-              borderRadius: BorderRadius.circular(isMob ? 6 : 8),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF3498DB), Color(0xFF2980B9)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF3498DB).withAlpha(60),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Icon(Icons.account_balance_wallet_rounded,
-                color: Colors.white, size: isMob ? 16 : ar.iconM),
+                color: Colors.white, size: isMob ? 18 : 22),
           ),
-          SizedBox(width: isMob ? 6 : ar.spaceM),
-          Text('كشف الحسابات',
-              style: GoogleFonts.cairo(
-                fontSize: isMob ? 14 : ar.headingMedium,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              )),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          Container(
-            padding:
-                EdgeInsets.symmetric(horizontal: isMob ? 6 : 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: AccountingTheme.neonBlue.withAlpha(40),
-              borderRadius: BorderRadius.circular(ar.cardRadius),
-            ),
-            child: Text('${_allAccounts.length} حساب',
-                style: GoogleFonts.cairo(
-                  fontSize: isMob ? 10 : ar.small,
-                  fontWeight: FontWeight.bold,
-                  color: AccountingTheme.neonBlue,
-                )),
+          SizedBox(width: isMob ? 10 : 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('كشف الحسابات',
+                  style: GoogleFonts.cairo(
+                    fontSize: isMob ? 16 : 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  )),
+              Text('${_allAccounts.length} حساب فرعي',
+                  style: GoogleFonts.cairo(
+                    fontSize: isMob ? 10 : 12,
+                    color: Colors.white.withAlpha(180),
+                  )),
+            ],
           ),
-          Spacer(),
-          if (_selectedAccount == null)
-            IconButton(
-              onPressed: () => setState(() => _showFilters = !_showFilters),
-              icon: Icon(
-                _showFilters ? Icons.filter_list_off : Icons.filter_list,
-                size: isMob ? 18 : ar.iconM,
-              ),
-              tooltip: _showFilters ? 'إخفاء الفلاتر' : 'إظهار الفلاتر',
-              padding: isMob ? EdgeInsets.all(4) : null,
-              constraints: isMob
-                  ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                  : null,
-              style: IconButton.styleFrom(
-                  foregroundColor: _hasActiveFilter ? AccountingTheme.neonBlue : AccountingTheme.textSecondary),
-            ),
-          IconButton(
-            onPressed: () {
+          const Spacer(),
+          _toolbarButton(
+            icon: Icons.refresh_rounded,
+            tooltip: 'تحديث',
+            onTap: () {
               _loadAccounts();
               if (_selectedAccount != null) _reloadStatement();
             },
-            icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
-            tooltip: 'تحديث',
-            padding: isMob ? EdgeInsets.all(4) : null,
-            constraints: isMob
-                ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                : null,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
+            isMob: isMob,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _toolbarButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    required bool isMob,
+    bool isActive = false,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: isActive ? Colors.white.withAlpha(30) : Colors.white.withAlpha(15),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: EdgeInsets.all(isMob ? 6 : 8),
+            child: Icon(icon,
+                size: isMob ? 18 : 20,
+                color: isActive ? const Color(0xFF3498DB) : Colors.white.withAlpha(200)),
+          ),
+        ),
       ),
     );
   }
@@ -1192,15 +1434,22 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
     // ─── ديسكتوب: جدول احترافي ───
     return Padding(
-      padding: EdgeInsets.fromLTRB(hPad, 4, hPad, 8),
+      padding: EdgeInsets.fromLTRB(hPad, 4, hPad, 12),
       child: Container(
         decoration: BoxDecoration(
-          color: AccountingTheme.bgCard,
-          borderRadius: BorderRadius.circular(ar.cardRadius),
-          border: Border.all(color: Colors.black87, width: 1.5),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE0E6ED)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(6),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(ar.cardRadius),
+          borderRadius: BorderRadius.circular(14),
           child: Column(
             children: [
               // رأس الجدول
@@ -1228,10 +1477,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   Widget _buildAccountTableHeader() {
     final ar = context.accR;
     final s = GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: Colors.white);
-    final div = Container(width: 1, height: 28, color: Colors.white.withAlpha(80));
+    final div = Container(width: 1, height: 28, color: Colors.white.withAlpha(40));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-      decoration: BoxDecoration(color: AccountingTheme.bgSidebar),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF2C3E50), Color(0xFF34495E)],
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+        ),
+      ),
       child: IntrinsicHeight(
         child: Row(
           children: [
@@ -1266,18 +1521,18 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     final debitTotal = ((a['TotalDebit'] ?? (balance > 0 ? balance : 0)) as num).toDouble();
     final creditTotal = ((a['TotalCredit'] ?? (balance < 0 ? balance.abs() : 0)) as num).toDouble();
     final isActive = a['IsActive'] ?? true;
-    final bgColor = index.isEven ? Colors.white : const Color(0xFFF5F5F5);
-    const divColor = Color(0xFFAAAAAA);
+    final bgColor = index.isEven ? Colors.white : const Color(0xFFF8FAFE);
+    const divColor = Color(0xFFE8ECF0);
 
     return Material(
       color: bgColor,
       child: InkWell(
         onTap: () => _loadStatement(a),
-        hoverColor: const Color(0xFFD6EAFF),
-        splashColor: AccountingTheme.neonBlue.withAlpha(40),
+        hoverColor: const Color(0xFFEBF5FF),
+        splashColor: const Color(0xFF3498DB).withAlpha(20),
         child: Container(
           decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFAAAAAA))),
+            border: Border(bottom: BorderSide(color: Color(0xFFEEF0F4))),
           ),
           child: IntrinsicHeight(
             child: Row(
@@ -1381,14 +1636,21 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
     return InkWell(
       onTap: () => _loadStatement(a),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.all(10),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AccountingTheme.bgCard,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black87, width: 1.2),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E6ED)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(5),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1427,8 +1689,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                     decoration: BoxDecoration(
                       color: (balance == 0 ? AccountingTheme.textMuted : (balance > 0 ? AccountingTheme.danger : AccountingTheme.success)).withAlpha(12),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.black87, width: 1.0),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE0E6ED)),
                     ),
                     child: Column(
                       children: [
@@ -1456,9 +1718,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
-        color: value > 0 ? color.withAlpha(10) : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.black87, width: 1.0),
+        color: value > 0 ? color.withAlpha(10) : const Color(0xFFF8FAFE),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE0E6ED)),
       ),
       child: Column(
         children: [
@@ -1645,17 +1907,20 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   }
 
   Widget _quickDateChip(String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: AccountingTheme.neonBlue.withAlpha(15),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AccountingTheme.neonBlue.withAlpha(60)),
+    return Material(
+      color: const Color(0xFF3498DB).withAlpha(10),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+          ),
+          child: Text(label, style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFF3498DB), fontWeight: FontWeight.w600)),
         ),
-        child: Text(label, style: GoogleFonts.cairo(fontSize: 10, color: AccountingTheme.neonBlue, fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -1673,12 +1938,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         decoration: BoxDecoration(
           color: hasValue
               ? AccountingTheme.neonBlue.withAlpha(15)
-              : AccountingTheme.bgCard,
+              : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-              color: hasValue
-                  ? AccountingTheme.neonBlue.withAlpha(80)
-                  : AccountingTheme.borderColor),
+              color: const Color(0xFF2C3E50),
+              width: 1.2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1714,12 +1978,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceS),
+          horizontal: isMob ? 10 : 24, vertical: isMob ? 8 : 12),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: const Color(0xFFF8FAFE),
         border: Border(
-          bottom: BorderSide(color: AccountingTheme.borderColor),
-          top: BorderSide(color: AccountingTheme.borderColor),
+          bottom: BorderSide(color: const Color(0xFFE0E6ED)),
         ),
       ),
       child: isMob
@@ -1781,11 +2044,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   Widget _mobileSummaryChip(String label, double value, Color color,
       {String? suffix}) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withAlpha(15),
+        color: color.withAlpha(10),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black, width: 1.2),
+        border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1807,11 +2070,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   Widget _summaryChip(String label, double value, Color color,
       {String? suffix}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withAlpha(15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black, width: 1.2),
+        color: color.withAlpha(10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1903,12 +2166,19 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: AccountingTheme.bgCard,
-                    borderRadius: BorderRadius.circular(ar.cardRadius),
-                    border: Border.all(color: Colors.black87, width: 1.5),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE0E6ED)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(6),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(ar.cardRadius),
+                    borderRadius: BorderRadius.circular(14),
                     child: Column(
                       children: [
                         _buildStmtTableHeader(),
@@ -1934,7 +2204,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                         final line = lines[i];
                                         final origIdx = _statementLines.indexOf(line);
                                         final running = origIdx >= 0 ? _calcRunning(origIdx) : 0.0;
-                                        return _buildStmtTableRow(i, line, running);
+                                        final prevLine = i > 0 ? lines[i - 1] : null;
+                                        return _buildStmtTableRow(i, line, running, prevLine: prevLine);
                                       },
                                     ),
                                   ),
@@ -1978,16 +2249,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       message: tooltip,
       child: Material(
         color: Colors.white,
-        elevation: 4,
-        shadowColor: Colors.black26,
-        shape: const CircleBorder(side: BorderSide(color: Color(0xFFAAAAAA))),
+        elevation: 3,
+        shadowColor: Colors.black.withAlpha(20),
+        shape: CircleBorder(side: BorderSide(color: const Color(0xFFE0E6ED))),
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
-          hoverColor: const Color(0xFFD6EAFF),
+          hoverColor: const Color(0xFFEBF5FF),
           child: Padding(
             padding: const EdgeInsets.all(8),
-            child: Icon(icon, size: 18, color: AccountingTheme.textSecondary),
+            child: Icon(icon, size: 18, color: const Color(0xFF5D6D7E)),
           ),
         ),
       ),
@@ -1997,8 +2268,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   /// شريط فلتر القبض/الصرف
   Widget _buildStmtFilterBar(bool isMob) {
     final hPad = isMob ? 8.0 : context.accR.spaceXL;
+    final hasFilter = _stmtTypeFilter != 'all' || _stmtSearchQuery.isNotEmpty;
     return Container(
-      padding: EdgeInsets.fromLTRB(hPad, 4, hPad, 4),
+      padding: EdgeInsets.fromLTRB(hPad, 6, hPad, 6),
       child: Row(
         children: [
           Icon(Icons.filter_alt_outlined, size: isMob ? 14 : 16, color: AccountingTheme.textSecondary),
@@ -2008,8 +2280,45 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           _stmtFilterChip('قبض', _stmtTypeFilter == 'receipt', () => setState(() => _stmtTypeFilter = _stmtTypeFilter == 'receipt' ? 'all' : 'receipt'), color: AccountingTheme.success),
           SizedBox(width: isMob ? 4 : 6),
           _stmtFilterChip('صرف', _stmtTypeFilter == 'payment', () => setState(() => _stmtTypeFilter = _stmtTypeFilter == 'payment' ? 'all' : 'payment'), color: AccountingTheme.danger),
+          SizedBox(width: isMob ? 8 : 14),
+          // ─── مربع بحث القيود ───
+          Container(
+            width: isMob ? 160 : 250,
+            height: isMob ? 30 : 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F7FA),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+            ),
+            child: TextField(
+              controller: _stmtSearchController,
+              style: GoogleFonts.cairo(fontSize: isMob ? 11 : 12, color: AccountingTheme.textPrimary),
+              onChanged: (v) => setState(() => _stmtSearchQuery = v),
+              decoration: InputDecoration(
+                hintText: 'ابحث في القيود...',
+                hintStyle: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: const Color(0xFFADB5BD)),
+                prefixIcon: Icon(Icons.search_rounded, size: isMob ? 16 : 18, color: const Color(0xFF3498DB)),
+                prefixIconConstraints: BoxConstraints(minWidth: isMob ? 30 : 36),
+                suffixIcon: _stmtSearchQuery.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () {
+                          _stmtSearchController.clear();
+                          setState(() => _stmtSearchQuery = '');
+                        },
+                        child: Icon(Icons.close_rounded, size: isMob ? 14 : 16, color: AccountingTheme.danger),
+                      )
+                    : null,
+                suffixIconConstraints: BoxConstraints(minWidth: isMob ? 28 : 32),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: isMob ? 6 : 8),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
+            ),
+          ),
           Spacer(),
-          if (_stmtTypeFilter != 'all')
+          if (hasFilter)
             Text('${_processedStatementLines.length} من ${_statementLines.length}',
                 style: GoogleFonts.cairo(fontSize: isMob ? 9 : 10, color: AccountingTheme.textMuted)),
         ],
@@ -2022,13 +2331,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     final c = color ?? AccountingTheme.neonBlue;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10, vertical: isMob ? 3 : 4),
         decoration: BoxDecoration(
           color: selected ? c.withAlpha(25) : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: selected ? c : Colors.black54, width: selected ? 1.5 : 1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? c : const Color(0xFF2C3E50),
+            width: selected ? 1.5 : 1.2,
+          ),
         ),
         child: Text(label, style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: selected ? FontWeight.bold : FontWeight.w500, color: selected ? c : AccountingTheme.textSecondary)),
       ),
@@ -2076,11 +2388,19 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     }
 
     return Container(
-      decoration: BoxDecoration(color: AccountingTheme.bgSidebar),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF2C3E50), Color(0xFF34495E)],
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+        ),
+      ),
       child: IntrinsicHeight(
         child: Row(
           children: [
             SizedBox(width: 42, child: Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('#', style: s, textAlign: TextAlign.center))),
+            Container(width: 1, color: divColor),
+            SizedBox(width: 120, child: Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('رقم القيد', style: s, textAlign: TextAlign.center))),
             Container(width: 1, color: divColor),
             sortableHeader('النوع', 'type', 75),
             Container(width: 1, color: divColor),
@@ -2099,8 +2419,41 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     );
   }
 
+  /// ألوان الأيام — كل يوم يأخذ لون مختلف
+  static const _dayColors = [
+    Color(0xFF3498DB), // أزرق
+    Color(0xFF2ECC71), // أخضر
+    Color(0xFF9B59B6), // بنفسجي
+    Color(0xFFE67E22), // برتقالي
+    Color(0xFF1ABC9C), // فيروزي
+    Color(0xFFE91E63), // وردي
+    Color(0xFF795548), // بني
+    Color(0xFF607D8B), // رمادي أزرق
+    Color(0xFFFF5722), // أحمر برتقالي
+    Color(0xFF00BCD4), // سماوي
+  ];
+
+  Color _dayColor(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      final dayKey = dt.year * 10000 + dt.month * 100 + dt.day;
+      return _dayColors[dayKey % _dayColors.length];
+    } catch (_) {
+      return _dayColors[0];
+    }
+  }
+
   /// صف حركة بـ hover + خطوط فاصلة
-  Widget _buildStmtTableRow(int index, dynamic line, double running) {
+  String _dateOnly(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      return '${dt.year}-${dt.month}-${dt.day}';
+    } catch (_) {
+      return dateStr.length >= 10 ? dateStr.substring(0, 10) : dateStr;
+    }
+  }
+
+  Widget _buildStmtTableRow(int index, dynamic line, double running, {dynamic prevLine}) {
     final ar = context.accR;
     final dateStr = line['EntryDate']?.toString() ?? '';
     final desc = (line['Description']?.toString().isNotEmpty == true ? line['Description'] : line['EntryDescription'])?.toString() ?? '';
@@ -2115,24 +2468,37 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       formattedDate = dateStr.length > 10 ? dateStr.substring(0, 10) : dateStr;
     }
 
-    final bgColor = index.isEven ? Colors.white : const Color(0xFFF5F5F5);
-    const divColor = Color(0xFFAAAAAA);
+    final bgColor = index.isEven ? Colors.white : const Color(0xFFF8FAFE);
+    const divColor = Color(0xFFE8ECF0);
+
+    // خط أسود فاصل بين الأيام المختلفة
+    final isDayChange = prevLine != null &&
+        _dateOnly(dateStr) != _dateOnly(prevLine['EntryDate']?.toString() ?? '');
 
     return Material(
       color: bgColor,
       child: InkWell(
         onTap: () => _showTransactionDetail(line, index),
-        hoverColor: const Color(0xFFD6EAFF),
-        splashColor: AccountingTheme.neonBlue.withAlpha(40),
+        hoverColor: const Color(0xFFEBF5FF),
+        splashColor: const Color(0xFF3498DB).withAlpha(20),
         child: Container(
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFAAAAAA))),
+          decoration: BoxDecoration(
+            border: Border(
+              top: isDayChange ? const BorderSide(color: Color(0xFF2C3E50), width: 2) : BorderSide.none,
+              bottom: const BorderSide(color: Color(0xFFEEF0F4)),
+            ),
           ),
           child: IntrinsicHeight(
             child: Row(
               children: [
                 // #
                 SizedBox(width: 42, child: Center(child: Text('${index + 1}', style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textMuted)))),
+                _vDivider(height: double.infinity, color: divColor),
+                // رقم القيد
+                SizedBox(width: 120, child: Center(child: Text(
+                  line['EntryNumber']?.toString() ?? '-',
+                  style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.w600, color: const Color(0xFF3498DB)),
+                ))),
                 _vDivider(height: double.infinity, color: divColor),
                 // النوع
                 SizedBox(
@@ -2151,8 +2517,17 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   ),
                 ),
                 _vDivider(height: double.infinity, color: divColor),
-                // التاريخ
-                SizedBox(width: 110, child: Center(child: Text(formattedDate, style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textPrimary)))),
+                // التاريخ — مظلل حسب اليوم
+                Container(
+                  width: 110,
+                  color: _dayColor(dateStr).withAlpha(18),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(formattedDate, style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.w600, color: _dayColor(dateStr).withAlpha(220))),
+                    ),
+                  ),
+                ),
                 _vDivider(height: double.infinity, color: divColor),
                 // البيان
                 Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Text(desc, style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textPrimary), overflow: TextOverflow.ellipsis))),
@@ -2210,19 +2585,19 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
     return InkWell(
       onTap: () => _showTransactionDetail(line, index),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: EdgeInsets.only(bottom: 6),
-        padding: EdgeInsets.all(10),
+        margin: EdgeInsets.only(bottom: 8),
+        padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AccountingTheme.bgCard,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black, width: 1.2),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E6ED)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withAlpha(10),
-                blurRadius: 4,
-                offset: Offset(0, 1)),
+                color: Colors.black.withAlpha(5),
+                blurRadius: 6,
+                offset: Offset(0, 2)),
           ],
         ),
         child: Column(
@@ -2293,10 +2668,10 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
                       color: debit > 0
-                          ? AccountingTheme.danger.withAlpha(15)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.black, width: 1.0),
+                          ? AccountingTheme.danger.withAlpha(10)
+                          : const Color(0xFFF8FAFE),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE0E6ED)),
                     ),
                     child: Column(
                       children: [
@@ -2322,10 +2697,10 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
                       color: credit > 0
-                          ? AccountingTheme.success.withAlpha(15)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.black, width: 1.0),
+                          ? AccountingTheme.success.withAlpha(10)
+                          : const Color(0xFFF8FAFE),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE0E6ED)),
                     ),
                     child: Column(
                       children: [
@@ -2355,9 +2730,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                               : (running > 0
                                   ? AccountingTheme.danger
                                   : AccountingTheme.success))
-                          .withAlpha(15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.black, width: 1.0),
+                          .withAlpha(10),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE0E6ED)),
                     ),
                     child: Column(
                       children: [
@@ -2431,6 +2806,50 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     }
   }
 
+  /// حذف القيد من داخل الـ dialog
+  void _confirmDeleteEntryFromDialog(BuildContext dialogCtx, Map<String, dynamic> entry) {
+    showDialog(
+      context: dialogCtx,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AccountingTheme.bgCard,
+          title: Text('تأكيد الحذف', style: GoogleFonts.cairo(color: AccountingTheme.danger, fontWeight: FontWeight.bold)),
+          content: Text(
+            'هل تريد حذف القيد "${entry['Description'] ?? 'قيد #${entry['EntryNumber']}'}"؟\nسيتم عكس أرصدة الحسابات المتأثرة.',
+            style: GoogleFonts.cairo(color: AccountingTheme.textPrimary, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AccountingTheme.danger, foregroundColor: Colors.white),
+              onPressed: () async {
+                Navigator.pop(ctx); // إغلاق التأكيد
+                final result = await AccountingService.instance.deleteJournalEntry(entry['Id'].toString());
+                if (!mounted) return;
+                if (result['success'] == true) {
+                  Navigator.pop(dialogCtx); // إغلاق dialog التعديل
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تم حذف القيد بنجاح'), backgroundColor: AccountingTheme.success),
+                  );
+                  if (_selectedAccount != null) _loadStatement(_selectedAccount!, resetDates: false);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(result['message'] ?? 'خطأ في الحذف'), backgroundColor: AccountingTheme.danger),
+                  );
+                }
+              },
+              child: Text('حذف', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showFullEntryDialog(Map<String, dynamic> entry) {
     final status = entry['Status']?.toString() ?? 'Draft';
     final isVoided = status == 'Voided';
@@ -2446,8 +2865,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       lines.add({
         'accountId': l['AccountId']?.toString() ?? '',
         'accountName': l['AccountName']?.toString() ?? l['Account']?['Name']?.toString() ?? '',
-        'debitCtrl': TextEditingController(text: ((l['DebitAmount'] ?? 0) as num).toDouble() > 0 ? ((l['DebitAmount'] ?? 0) as num).toStringAsFixed(0) : ''),
-        'creditCtrl': TextEditingController(text: ((l['CreditAmount'] ?? 0) as num).toDouble() > 0 ? ((l['CreditAmount'] ?? 0) as num).toStringAsFixed(0) : ''),
+        'debitCtrl': TextEditingController(text: ((l['DebitAmount'] ?? 0) as num).toDouble() > 0 ? _fmt(((l['DebitAmount'] ?? 0) as num).toDouble()) : ''),
+        'creditCtrl': TextEditingController(text: ((l['CreditAmount'] ?? 0) as num).toDouble() > 0 ? _fmt(((l['CreditAmount'] ?? 0) as num).toDouble()) : ''),
         'descCtrl': TextEditingController(text: l['Description']?.toString() ?? ''),
       });
     }
@@ -2472,7 +2891,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   if (a['IsLeaf'] == true || a['isLeaf'] == true) {
                     leafAccounts.add({
                       'id': (a['Id'] ?? a['id'])?.toString() ?? '',
-                      'name': '${a['Code'] ?? a['code'] ?? ''} - ${a['Name'] ?? a['name'] ?? ''}',
+                      'name': (a['Name'] ?? a['name'] ?? '').toString(),
                       'code': (a['Code'] ?? a['code'])?.toString() ?? '',
                     });
                   }
@@ -2485,8 +2904,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
           double totalDebit = 0, totalCredit = 0;
           for (final l in lines) {
-            totalDebit += double.tryParse(l['debitCtrl'].text) ?? 0;
-            totalCredit += double.tryParse(l['creditCtrl'].text) ?? 0;
+            totalDebit += double.tryParse((l['debitCtrl'] as TextEditingController).text.replaceAll(',', '')) ?? 0;
+            totalCredit += double.tryParse((l['creditCtrl'] as TextEditingController).text.replaceAll(',', '')) ?? 0;
           }
           final isBalanced = (totalDebit - totalCredit).abs() < 0.01;
 
@@ -2527,6 +2946,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 style: GoogleFonts.cairo(color: status == 'Posted' ? AccountingTheme.success : AccountingTheme.warning, fontSize: 12, fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(width: 8),
+                          // زر حذف القيد
+                          if (!effectiveReadOnly)
+                            IconButton(
+                              onPressed: () => _confirmDeleteEntryFromDialog(ctx, entry),
+                              icon: const Icon(Icons.delete_outline, size: 20),
+                              tooltip: 'حذف القيد',
+                              style: IconButton.styleFrom(foregroundColor: AccountingTheme.danger),
+                            ),
                           IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, size: 20)),
                         ],
                       ),
@@ -2559,7 +2986,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                               ),
                             )),
                             const SizedBox(width: 8),
-                            SizedBox(width: 90, child: InkWell(
+                            SizedBox(width: 110, child: InkWell(
                               onTap: effectiveReadOnly ? null : () async {
                                 final picked = await showTimePicker(context: ctx, initialTime: entryTime);
                                 if (picked != null) setDState(() {
@@ -2572,7 +2999,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                     suffixIcon: const Icon(Icons.access_time, size: 16),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
                                 child: Text('${entryTime.hour.toString().padLeft(2, '0')}:${entryTime.minute.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(fontSize: 13)),
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                               ),
                             )),
                           ]),
@@ -2615,6 +3042,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                               SizedBox(width: 100, child: Center(child: Text('مدين', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.success)))),
                               SizedBox(width: 100, child: Center(child: Text('دائن', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.danger)))),
                               Expanded(flex: 2, child: Text('البيان', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold))),
+                              if (!effectiveReadOnly) const SizedBox(width: 32),
                             ]),
                           ),
                           const SizedBox(height: 4),
@@ -2634,14 +3062,80 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 SizedBox(width: 30, child: Text('${i + 1}', style: GoogleFonts.cairo(fontSize: 11, color: AccountingTheme.neonBlue, fontWeight: FontWeight.bold))),
                                 Expanded(flex: 3, child: effectiveReadOnly
                                     ? Text(accName, style: GoogleFonts.cairo(fontSize: 12))
-                                    : DropdownButtonFormField<String>(
-                                        value: accId.isNotEmpty && accounts.any((a) => a['id'] == accId) ? accId : null,
-                                        isExpanded: true,
-                                        decoration: InputDecoration(hintText: 'اختر حساب', isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AccountingTheme.borderColor))),
-                                        style: GoogleFonts.cairo(fontSize: 11, color: Colors.black),
-                                        items: accounts.map((a) => DropdownMenuItem(value: a['id'] as String, child: Text(a['name'] as String, style: GoogleFonts.cairo(fontSize: 11), overflow: TextOverflow.ellipsis))).toList(),
-                                        onChanged: (v) => setDState(() { l['accountId'] = v ?? ''; l['accountName'] = accounts.where((a) => a['id'] == v).firstOrNull?['name'] ?? ''; }),
+                                    : Autocomplete<Map<String, dynamic>>(
+                                        initialValue: TextEditingValue(text: accName),
+                                        optionsBuilder: (textEditingValue) {
+                                          if (accounts.isEmpty) return const Iterable.empty();
+                                          final q = textEditingValue.text.toLowerCase();
+                                          if (q.isEmpty) return accounts.take(20);
+                                          return accounts.where((a) =>
+                                            (a['name'] as String).toLowerCase().contains(q) ||
+                                            (a['code'] as String).toLowerCase().contains(q));
+                                        },
+                                        displayStringForOption: (a) => a['name'] as String,
+                                        onSelected: (a) => setDState(() {
+                                          l['accountId'] = a['id'] as String;
+                                          l['accountName'] = a['name'] as String;
+                                        }),
+                                        optionsViewBuilder: (ctx2, onSelected, options) {
+                                          return Align(
+                                            alignment: Alignment.topRight,
+                                            child: Material(
+                                              elevation: 8,
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Container(
+                                                constraints: const BoxConstraints(maxHeight: 200, maxWidth: 350),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: const Color(0xFF2C3E50)),
+                                                ),
+                                                child: ListView.builder(
+                                                  padding: EdgeInsets.zero,
+                                                  shrinkWrap: true,
+                                                  itemCount: options.length,
+                                                  itemBuilder: (_, idx) {
+                                                    final opt = options.elementAt(idx);
+                                                    return InkWell(
+                                                      onTap: () => onSelected(opt),
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                                        decoration: BoxDecoration(
+                                                          border: Border(bottom: BorderSide(color: AccountingTheme.borderColor.withAlpha(60))),
+                                                        ),
+                                                        child: Row(children: [
+                                                          Container(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                                            decoration: BoxDecoration(color: const Color(0xFF3498DB).withAlpha(15), borderRadius: BorderRadius.circular(4)),
+                                                            child: Text(opt['code'] as String, style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF3498DB))),
+                                                          ),
+                                                          const SizedBox(width: 8),
+                                                          Expanded(child: Text(opt['name'] as String, style: GoogleFonts.cairo(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                                                        ]),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        fieldViewBuilder: (ctx2, textCtrl, focusNode, onFieldSubmitted) {
+                                          return TextField(
+                                            controller: textCtrl,
+                                            focusNode: focusNode,
+                                            style: GoogleFonts.cairo(fontSize: 11, color: Colors.black),
+                                            decoration: InputDecoration(
+                                              hintText: 'اكتب للبحث...',
+                                              hintStyle: GoogleFonts.cairo(fontSize: 10, color: AccountingTheme.textMuted),
+                                              isDense: true,
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AccountingTheme.borderColor)),
+                                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AccountingTheme.borderColor)),
+                                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF3498DB), width: 1.5)),
+                                            ),
+                                          );
+                                        },
                                       )),
                                 const SizedBox(width: 4),
                                 SizedBox(width: 100, child: TextField(
@@ -2650,7 +3144,17 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                     style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AccountingTheme.success),
                                     decoration: InputDecoration(isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6), filled: true, fillColor: AccountingTheme.success.withOpacity(0.05),
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none)),
-                                    onChanged: (_) => setDState(() {}))),
+                                    onChanged: (v) {
+                                      final raw = v.replaceAll(',', '');
+                                      final num = double.tryParse(raw);
+                                      if (num != null && num > 0) {
+                                        final formatted = _fmt(num);
+                                        if (formatted != v) {
+                                          (l['debitCtrl'] as TextEditingController).value = TextEditingValue(text: formatted, selection: TextSelection.collapsed(offset: formatted.length));
+                                        }
+                                      }
+                                      setDState(() {});
+                                    })),
                                 const SizedBox(width: 4),
                                 SizedBox(width: 100, child: TextField(
                                     controller: l['creditCtrl'], readOnly: effectiveReadOnly,
@@ -2658,13 +3162,33 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                     style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AccountingTheme.danger),
                                     decoration: InputDecoration(isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6), filled: true, fillColor: AccountingTheme.danger.withOpacity(0.05),
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none)),
-                                    onChanged: (_) => setDState(() {}))),
+                                    onChanged: (v) {
+                                      final raw = v.replaceAll(',', '');
+                                      final num = double.tryParse(raw);
+                                      if (num != null && num > 0) {
+                                        final formatted = _fmt(num);
+                                        if (formatted != v) {
+                                          (l['creditCtrl'] as TextEditingController).value = TextEditingValue(text: formatted, selection: TextSelection.collapsed(offset: formatted.length));
+                                        }
+                                      }
+                                      setDState(() {});
+                                    })),
                                 const SizedBox(width: 4),
                                 Expanded(flex: 2, child: TextField(
                                     controller: l['descCtrl'], readOnly: effectiveReadOnly,
                                     style: GoogleFonts.cairo(fontSize: 11),
                                     decoration: InputDecoration(hintText: 'بيان السطر', isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AccountingTheme.borderColor))))),
+                                if (!effectiveReadOnly)
+                                  InkWell(
+                                    onTap: lines.length > 1 ? () => setDState(() => lines.removeAt(i)) : null,
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Icon(Icons.close_rounded, size: 16,
+                                          color: lines.length > 1 ? AccountingTheme.danger : AccountingTheme.textMuted.withAlpha(80)),
+                                    ),
+                                  ),
                               ]),
                             );
                           }),
@@ -2700,8 +3224,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                             for (final l in lines) {
                               linesDtos.add({
                                 'AccountId': l['accountId'],
-                                'DebitAmount': double.tryParse((l['debitCtrl'] as TextEditingController).text) ?? 0.0,
-                                'CreditAmount': double.tryParse((l['creditCtrl'] as TextEditingController).text) ?? 0.0,
+                                'DebitAmount': double.tryParse((l['debitCtrl'] as TextEditingController).text.replaceAll(',', '')) ?? 0.0,
+                                'CreditAmount': double.tryParse((l['creditCtrl'] as TextEditingController).text.replaceAll(',', '')) ?? 0.0,
                                 'Description': (l['descCtrl'] as TextEditingController).text,
                               });
                             }
@@ -2937,31 +3461,4 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           (m) => '${m[1]},',
         );
   }
-}
-
-/// رسام زخرفة الزوايا
-class _CornerPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black87
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..moveTo(0, size.height * 0.5)
-      ..lineTo(0, 0)
-      ..lineTo(size.width * 0.5, 0);
-    canvas.drawPath(path, paint);
-
-    // نقطة زخرفية
-    final dotPaint = Paint()
-      ..color = Colors.black87
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(
-        Offset(size.width * 0.15, size.height * 0.15), 2, dotPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
