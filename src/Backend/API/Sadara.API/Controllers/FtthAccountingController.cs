@@ -1445,20 +1445,24 @@ public class FtthAccountingController : ControllerBase
                         var companyDiscount = log.CompanyDiscount ?? 0;
                         var manualDiscount = log.ManualDiscount ?? 0;
                         var maintenanceFee = log.MaintenanceFee ?? 0;
-                        var collectedAmount = log.PlanPrice ?? 0;
+                        var planPrice = log.PlanPrice ?? 0;
                         var systemDiscountEnabled = log.SystemDiscountEnabled;
 
-                        // صافي الشركة = المستقطع من رصيد الصفحة
+                        // صافي الشركة = المستقطع من رصيد الصفحة (نفس منطق CreateAccountingEntry)
                         decimal netFromCompany;
                         if (basePrice > 0)
                             netFromCompany = basePrice - companyDiscount;
                         else if (systemDiscountEnabled)
-                            netFromCompany = collectedAmount;
+                            netFromCompany = planPrice;
                         else
-                            netFromCompany = collectedAmount - companyDiscount;
-                        if (netFromCompany <= 0) netFromCompany = collectedAmount;
+                            netFromCompany = planPrice - companyDiscount;
+                        if (netFromCompany <= 0) netFromCompany = planPrice;
 
                         var companyDiscountProfit = systemDiscountEnabled ? 0 : companyDiscount;
+                        var revenue = maintenanceFee + companyDiscountProfit;
+                        // الإجمالي = المستقطع + الإيرادات - المصاريف (نفس منطق CreateAccountingEntry)
+                        var collectedAmount = netFromCompany + revenue - manualDiscount;
+                        if (collectedAmount < 0) collectedAmount = 0;
 
                         // ── 1. عكس أرصدة الأسطر القديمة ──
                         foreach (var oldLine in entry.Lines.Where(l => !l.IsDeleted))
