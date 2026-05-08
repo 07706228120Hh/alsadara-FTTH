@@ -28,6 +28,31 @@ public class FtthAccountingController : ControllerBase
         _logger = logger;
     }
 
+    /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم الكامل — للعمليات الفردية
+    private async Task<string> _resolveFullName(string? activatedBy)
+    {
+        if (string.IsNullOrEmpty(activatedBy)) return activatedBy ?? "";
+        var key = activatedBy.Trim().ToLower();
+        var user = await _unitOfWork.Users.AsQueryable()
+            .FirstOrDefaultAsync(u => !u.IsDeleted &&
+                ((u.FtthUsername != null && u.FtthUsername.ToLower() == key) ||
+                 (u.Username != null && u.Username.ToLower() == key)));
+        return user?.FullName ?? activatedBy;
+    }
+
+    /// تحويل اسم المستخدم إلى الاسم الكامل — نسخة batch باستخدام خريطة محمّلة مسبقاً
+    private static string _resolveFullNameFromMap(string? activatedBy, Dictionary<string, dynamic> ftthToUser)
+    {
+        if (string.IsNullOrEmpty(activatedBy)) return activatedBy ?? "";
+        var key = activatedBy.Trim().ToLower();
+        if (ftthToUser.TryGetValue(key, out var user))
+        {
+            string? fullName = user.FullName;
+            if (!string.IsNullOrEmpty(fullName)) return fullName;
+        }
+        return activatedBy;
+    }
+
     // ==================== 1. حفظ عملية مع قيد محاسبي ====================
 
     /// <summary>
@@ -86,6 +111,7 @@ public class FtthAccountingController : ControllerBase
                 LinkedAgentId = dto.LinkedAgentId,
                 IsReconciled = false
             };
+            log.ActivatedBy = await _resolveFullName(log.ActivatedBy);
 
             await _unitOfWork.SubscriptionLogs.AddAsync(log);
             await _unitOfWork.SaveChangesAsync();
@@ -1352,7 +1378,7 @@ public class FtthAccountingController : ControllerBase
             if (request.PlanPrice.HasValue) log.PlanPrice = request.PlanPrice.Value;
             if (request.CommitmentPeriod != null) log.CommitmentPeriod = request.CommitmentPeriod;
             if (request.OperationType != null) log.OperationType = request.OperationType;
-            if (request.ActivatedBy != null) log.ActivatedBy = request.ActivatedBy;
+            if (request.ActivatedBy != null) log.ActivatedBy = await _resolveFullName(request.ActivatedBy);
             if (request.ActivationDate.HasValue)
                 log.ActivationDate = DateTime.SpecifyKind(request.ActivationDate.Value.Date.AddHours(12 - 3), DateTimeKind.Utc);
             if (request.ZoneId != null) log.ZoneId = request.ZoneId;
@@ -2073,7 +2099,7 @@ public class FtthAccountingController : ControllerBase
                             }
                             if (string.IsNullOrEmpty(existing.ActivatedBy) && !string.IsNullOrEmpty(tx.CreatedBy))
                             {
-                                existing.ActivatedBy = tx.CreatedBy;
+                                existing.ActivatedBy = _resolveFullNameFromMap(tx.CreatedBy, ftthToUser);
                                 // ربط بالمشغل: أولاً operatorUserId، ثانياً بحث بالاسم
                                 if (!string.IsNullOrEmpty(tx.OperatorUserId) && Guid.TryParse(tx.OperatorUserId, out var directId))
                                 {
@@ -2196,6 +2222,9 @@ public class FtthAccountingController : ControllerBase
                         if (matchedUser != null && !string.IsNullOrEmpty(matchedUser.FullName))
                             activatedByValue = matchedUser.FullName;
                     }
+                    // fallback: إذا لم يُعثر على FullName من userId، حاول من خريطة المستخدمين
+                    if (activatedByValue == tx.CreatedBy)
+                        activatedByValue = _resolveFullNameFromMap(tx.CreatedBy, ftthToUser);
 
                     // تحويل التاريخ لـ UTC بشكل صحيح (FTTH يرسل توقيت بغداد UTC+3)
                     DateTime? activationDateUtc = null;
@@ -3316,7 +3345,7 @@ public class FtthAccountingController : ControllerBase
             // جلب جميع المستخدمين مع FtthUsername لمطابقة ActivatedBy
             var allUsers = await _unitOfWork.Users.AsQueryable()
                 .Where(u => u.FtthUsername != null && u.FtthUsername != "")
-                .Select(u => new { u.Id, u.FtthUsername, u.CompanyId })
+                .Select(u => new { u.Id, u.FtthUsername, u.FullName, u.CompanyId })
                 .ToListAsync();
 
             var ftthUsernameMap = allUsers
@@ -3337,7 +3366,8 @@ public class FtthAccountingController : ControllerBase
                     if (ftthUsernameMap.TryGetValue(key, out var matchedUser))
                     {
                         log.UserId = matchedUser.Id;
-                        // إسناد CompanyId أيضاً إذا كان فارغاً
+                        if (!string.IsNullOrEmpty(matchedUser.FullName))
+                            log.ActivatedBy = matchedUser.FullName;
                         if (!log.CompanyId.HasValue && matchedUser.CompanyId.HasValue)
                             log.CompanyId = matchedUser.CompanyId;
                         updatedUserId++;
@@ -3402,7 +3432,7 @@ public class FtthAccountingController : ControllerBase
             foreach (var log in logs)
             {
                 log.UserId = targetUserId;
-                log.ActivatedBy = user.FtthUsername ?? user.Username ?? log.ActivatedBy;
+                log.ActivatedBy = !string.IsNullOrEmpty(user.FullName) ? user.FullName : log.ActivatedBy;
                 if (!log.CompanyId.HasValue && user.CompanyId.HasValue)
                     log.CompanyId = user.CompanyId;
                 _unitOfWork.SubscriptionLogs.Update(log);
@@ -3554,6 +3584,74 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تصحيح السجلات اليتيمة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+        }
+    }
+
+    // ==================== تصحيح أسماء المشغلين ====================
+
+    /// <summary>
+    /// تصحيح ActivatedBy: تحويل أسماء المستخدمين (FTTH username) إلى الاسم العربي الكامل
+    /// </summary>
+    [HttpPost("fix-activated-by-names")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> FixActivatedByNames([FromQuery] Guid? companyId = null)
+    {
+        try
+        {
+            var allUsers = await _unitOfWork.Users.AsQueryable()
+                .Where(u => !u.IsDeleted && u.FullName != null && u.FullName != "")
+                .Select(u => new { u.FtthUsername, u.Username, u.FullName })
+                .ToListAsync();
+
+            var usernameToFullName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var u in allUsers)
+            {
+                if (!string.IsNullOrWhiteSpace(u.FtthUsername))
+                    usernameToFullName.TryAdd(u.FtthUsername.Trim(), u.FullName);
+                if (!string.IsNullOrWhiteSpace(u.Username))
+                    usernameToFullName.TryAdd(u.Username.Trim(), u.FullName);
+            }
+
+            var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => !l.IsDeleted && l.ActivatedBy != null && l.ActivatedBy != "");
+            if (companyId.HasValue)
+                query = query.Where(l => l.CompanyId == companyId);
+
+            var allLogs = await query.Select(l => new { l.Id, l.ActivatedBy }).ToListAsync();
+
+            var logsToFix = allLogs
+                .Where(l => usernameToFullName.ContainsKey(l.ActivatedBy!.Trim())
+                         && usernameToFullName[l.ActivatedBy!.Trim()] != l.ActivatedBy!.Trim())
+                .ToList();
+
+            if (!logsToFix.Any())
+                return Ok(new { success = true, message = "لا توجد سجلات تحتاج تصحيح", updated = 0, total_checked = allLogs.Count });
+
+            int updatedCount = 0;
+            foreach (var batch in logsToFix.Chunk(100))
+            {
+                var ids = batch.Select(l => l.Id).ToList();
+                var logs = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                    .Where(l => ids.Contains(l.Id)).ToListAsync();
+
+                foreach (var log in logs)
+                {
+                    if (log.ActivatedBy != null && usernameToFullName.TryGetValue(log.ActivatedBy.Trim(), out var fullName))
+                    {
+                        log.ActivatedBy = fullName;
+                        _unitOfWork.SubscriptionLogs.Update(log);
+                        updatedCount++;
+                    }
+                }
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            return Ok(new { success = true, message = $"تم تصحيح {updatedCount} سجل", updated = updatedCount, total_checked = allLogs.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تصحيح أسماء المشغلين");
             return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
         }
     }
