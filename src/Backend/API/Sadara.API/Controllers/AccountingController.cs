@@ -3159,7 +3159,8 @@ public class AccountingController : ControllerBase
 
             // ═══ مزامنة عكسية: تحديث SubscriptionLog المرتبط عند تعديل قيد FTTH ═══
             string? syncMessage = null;
-            if (entry.ReferenceType == JournalReferenceType.FtthSubscription && entry.ReferenceId != null)
+            if (entry.ReferenceType == JournalReferenceType.FtthSubscription && entry.ReferenceId != null
+                && dto.Lines != null && dto.Lines.Any())
             {
                 try
                 {
@@ -3167,55 +3168,48 @@ public class AccountingController : ControllerBase
                     var log = logId > 0 ? await _unitOfWork.SubscriptionLogs.GetByIdAsync(logId) : null;
                     if (log != null)
                     {
-                        // استخراج المبالغ من أسطر القيد الجديدة (غير المحذوفة)
-                        var currentLines = await _unitOfWork.JournalEntryLines.AsQueryable()
-                            .Where(l => l.JournalEntryId == entry.Id && !l.IsDeleted)
-                            .ToListAsync();
-
-                        foreach (var line in currentLines)
+                        // استخراج المبالغ من أسطر القيد التي أرسلها المستخدم
+                        foreach (var lineDto in dto.Lines)
                         {
-                            var acct = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                            var acct = await _unitOfWork.Accounts.GetByIdAsync(lineDto.AccountId);
                             if (acct == null) continue;
                             var code = acct.Code ?? "";
+                            var debit = lineDto.DebitAmount;
+                            var credit = lineDto.CreditAmount;
 
-                            if (code == AccountCodes.PageBalance && line.CreditAmount > 0)
+                            if (code == AccountCodes.PageBalance && credit > 0)
                             {
-                                // رصيد الصفحة (دائن) = BasePrice
-                                log.BasePrice = line.CreditAmount;
+                                log.BasePrice = credit;
                             }
                             else if (code == AccountCodes.PromotionExpense)
                             {
-                                // مصاريف عروض (مدين) = ManualDiscount
-                                log.ManualDiscount = line.DebitAmount;
+                                log.ManualDiscount = debit;
                             }
                             else if (code == AccountCodes.MaintenanceRevenue)
                             {
-                                // إيراد صيانة (دائن) = MaintenanceFee
-                                log.MaintenanceFee = line.CreditAmount;
+                                log.MaintenanceFee = credit;
                             }
                             else if (code == AccountCodes.CompanyDiscountRevenue)
                             {
-                                // إيراد خصم الشركة (دائن) = CompanyDiscount
-                                log.CompanyDiscount = line.CreditAmount;
+                                log.CompanyDiscount = credit;
                             }
-                            else if (code.StartsWith(AccountCodes.Cash) && code != AccountCodes.PageBalance && line.DebitAmount > 0)
+                            else if (code.StartsWith(AccountCodes.Cash) && code != AccountCodes.PageBalance && debit > 0)
                             {
-                                // صندوق مشغل (1110xx) — تحديد CollectionType = cash
                                 log.CollectionType = "cash";
                             }
-                            else if (code.StartsWith(AccountCodes.TechnicianReceivables) && line.DebitAmount > 0)
+                            else if (code.StartsWith(AccountCodes.TechnicianReceivables) && debit > 0)
                             {
                                 log.CollectionType = "technician";
                             }
-                            else if (code.StartsWith(AccountCodes.AgentReceivables) && line.DebitAmount > 0)
+                            else if (code.StartsWith(AccountCodes.AgentReceivables) && debit > 0)
                             {
                                 log.CollectionType = "agent";
                             }
-                            else if (code.StartsWith(AccountCodes.OperatorReceivables) && line.DebitAmount > 0)
+                            else if (code.StartsWith(AccountCodes.OperatorReceivables) && debit > 0)
                             {
                                 log.CollectionType = "credit";
                             }
-                            else if (code == AccountCodes.ElectronicPayment && line.DebitAmount > 0)
+                            else if (code == AccountCodes.ElectronicPayment && debit > 0)
                             {
                                 log.CollectionType = "master";
                             }
