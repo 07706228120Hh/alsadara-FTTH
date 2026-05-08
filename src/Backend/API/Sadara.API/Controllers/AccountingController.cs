@@ -3168,6 +3168,12 @@ public class AccountingController : ControllerBase
                     var log = logId > 0 ? await _unitOfWork.SubscriptionLogs.GetByIdAsync(logId) : null;
                     if (log != null)
                     {
+                        // تصفير الحقول المحاسبية أولاً — ثم ملئها من أسطر القيد
+                        log.BasePrice = 0;
+                        log.ManualDiscount = 0;
+                        log.MaintenanceFee = 0;
+                        log.CompanyDiscount = 0;
+
                         // استخراج المبالغ من أسطر القيد التي أرسلها المستخدم
                         foreach (var lineDto in dto.Lines)
                         {
