@@ -3074,7 +3074,7 @@ public class AccountingController : ControllerBase
             // إذا كان مرحّلاً، نعكس أرصدة الحسابات القديمة أولاً
             if (wasPosted)
             {
-                foreach (var line in entry.Lines)
+                foreach (var line in entry.Lines.Where(l => !l.IsDeleted))
                 {
                     var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
                     if (account == null) continue;
