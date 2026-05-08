@@ -1165,7 +1165,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
       ),
       _SummaryItem(
         title: 'رصيد الصفحة',
-        value: _formatCurrency(accountBalances['PageBalance'], abs: true),
+        value: _formatCurrency(accountBalances['PageBalance']),
         icon: Icons.account_balance_wallet,
         color: const Color(0xFF3498DB),
       ),

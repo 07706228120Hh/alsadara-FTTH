@@ -3603,7 +3603,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   }
 
   double _calcRunning(int upToIndex) {
-    double r = 0;
+    // البدء من الرصيد الافتتاحي (ما قبل الفترة المفلترة)
+    // الاتجاه الموحد: مدين - دائن (موجب = مدين، سالب = دائن)
+    final openingBalance =
+        ((_statementSummary['OpeningBalance'] ?? 0) as num).toDouble();
+
+    double r = openingBalance;
     for (int j = 0; j <= upToIndex; j++) {
       final line = _statementLines[j];
       final debit = ((line['DebitAmount'] ?? 0) as num).toDouble();

@@ -93,43 +93,28 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 foreach (var j in jes) jeDict[j.Id] = j.EntryNumber;
             }
 
-            // حساب الإجماليات من SubscriptionLogs (المصدر الموثوق — نفس بقية النظام)
-            var slQuery = _unitOfWork.SubscriptionLogs.AsQueryable()
-                .Where(l => l.LinkedTechnicianId == userId && l.CollectionType == "technician"
-                    && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+            // حساب الإجماليات من TechnicianTransactions (مصدر موحد مع لوحة المحاسبة)
+            var allTechTxQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
+                .Where(t => t.TechnicianId == userId);
+
             if (from.HasValue)
             {
-                var fromUtcSl = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
-                slQuery = slQuery.Where(l => l.ActivationDate >= fromUtcSl);
+                var fromUtcTx = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
+                allTechTxQuery = allTechTxQuery.Where(t => t.CreatedAt >= fromUtcTx);
             }
             if (to.HasValue)
             {
-                var toUtcSl = DateTime.SpecifyKind(to.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
-                slQuery = slQuery.Where(l => l.ActivationDate <= toUtcSl);
+                var toUtcTx = DateTime.SpecifyKind(to.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                allTechTxQuery = allTechTxQuery.Where(t => t.CreatedAt < toUtcTx);
             }
 
-            // الإجمالي = المستقطع + إيرادات - مصاريف (نفس صيغة الداشبورد وكل العمليات)
-            var slTotalAmount = await slQuery.SumAsync(l =>
-                (decimal?)((l.BasePrice ?? 0) > 0
-                    ? (l.BasePrice ?? 0) - (l.SystemDiscountEnabled ? (l.CompanyDiscount ?? 0) : 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0)
-                    : (l.PlanPrice ?? 0) + (l.MaintenanceFee ?? 0) - (l.ManualDiscount ?? 0))) ?? 0;
-            var slCount = await slQuery.CountAsync();
-
-            // التسديدات: من TechnicianTransactions (Payment) — هذا الجدول الوحيد الذي يسجل التسديدات
-            var allTechTxQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
-                .Where(t => t.TechnicianId == userId);
+            var totalCharges = await allTechTxQuery
+                .Where(t => t.Type == TechnicianTransactionType.Charge)
+                .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
             var totalPayments = await allTechTxQuery
                 .Where(t => t.Type == TechnicianTransactionType.Payment)
                 .SumAsync(t => (decimal?)t.Amount) ?? 0;
-
-            // أجور الصيانة (من طلبات الخدمة) — ليست اشتراكات
-            var maintenanceCharges = await allTechTxQuery
-                .Where(t => t.Type == TechnicianTransactionType.Charge && t.Category == TechnicianTransactionCategory.Maintenance)
-                .SumAsync(t => (decimal?)t.Amount) ?? 0;
-
-            // الأجور الحقيقية = إجمالي الاشتراكات + أجور الصيانة
-            var totalCharges = slTotalAmount + maintenanceCharges;
 
             return Ok(new
             {
@@ -207,11 +192,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                     totalCharges,
                     totalPayments,
                     netBalance = totalPayments - totalCharges,
-                    technicianName = user.FullName,
-                    // تفاصيل إضافية للشفافية
-                    subscriptionTotal = slTotalAmount,
-                    subscriptionCount = slCount,
-                    maintenanceCharges
+                    technicianName = user.FullName
                 }
             });
         }

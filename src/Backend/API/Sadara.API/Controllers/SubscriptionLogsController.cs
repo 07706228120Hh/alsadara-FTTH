@@ -401,22 +401,35 @@ public class SubscriptionLogsController : ControllerBase
             }
         }
 
-        // حذف القيد المحاسبي المرتبط (void + soft delete)
+        // حذف القيد المحاسبي المرتبط (عكس أرصدة + void + soft delete)
         if (log.JournalEntryId.HasValue)
         {
-            var je = await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value);
+            var je = await _unitOfWork.JournalEntries.AsQueryable()
+                .Include(j => j.Lines)
+                .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId.Value);
             if (je != null && je.Status != JournalEntryStatus.Voided)
             {
+                // عكس أرصدة الحسابات أولاً
+                foreach (var line in je.Lines.Where(l => !l.IsDeleted))
+                {
+                    var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                    if (account != null)
+                    {
+                        if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                            account.CurrentBalance -= line.DebitAmount - line.CreditAmount;
+                        else
+                            account.CurrentBalance -= line.CreditAmount - line.DebitAmount;
+                        _unitOfWork.Accounts.Update(account);
+                    }
+                }
+
                 je.Status = JournalEntryStatus.Voided;
                 je.IsDeleted = true;
                 je.DeletedAt = DateTime.UtcNow;
                 _unitOfWork.JournalEntries.Update(je);
 
                 // حذف سطور القيد
-                var jeLines = await _unitOfWork.JournalEntryLines.AsQueryable()
-                    .Where(l => l.JournalEntryId == je.Id && !l.IsDeleted)
-                    .ToListAsync();
-                foreach (var line in jeLines)
+                foreach (var line in je.Lines.Where(l => !l.IsDeleted))
                 {
                     line.IsDeleted = true;
                     line.DeletedAt = DateTime.UtcNow;

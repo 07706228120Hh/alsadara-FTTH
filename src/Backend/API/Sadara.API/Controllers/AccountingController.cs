@@ -509,6 +509,12 @@ public class AccountingController : ControllerBase
             if (dto.Lines == null || dto.Lines.Count < 2)
                 return BadRequest(new { success = false, message = "القيد يجب أن يحتوي على سطرين على الأقل" });
 
+            // فحص الفترة المقفلة
+            var entryDateForCheck = dto.EntryDate ?? DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).DateTime;
+            var periodError = await CheckPeriodLockForUser(dto.CompanyId, entryDateForCheck);
+            if (periodError != null)
+                return BadRequest(new { success = false, message = periodError });
+
             var totalDebit = dto.Lines.Sum(l => l.DebitAmount);
             var totalCredit = dto.Lines.Sum(l => l.CreditAmount);
 
@@ -585,6 +591,11 @@ public class AccountingController : ControllerBase
             if (entry.Status != JournalEntryStatus.Draft)
                 return BadRequest(new { success = false, message = "القيد مُعتمد بالفعل أو ملغي" });
 
+            // فحص الفترة المقفلة
+            var periodError = await CheckPeriodLockForUser(entry.CompanyId, entry.EntryDate);
+            if (periodError != null)
+                return BadRequest(new { success = false, message = periodError });
+
             await _unitOfWork.BeginTransactionAsync();
 
             // تحديث أرصدة الحسابات
@@ -644,6 +655,11 @@ public class AccountingController : ControllerBase
 
             if (entry.Status == JournalEntryStatus.Voided)
                 return BadRequest(new { success = false, message = "القيد ملغي بالفعل" });
+
+            // فحص الفترة المقفلة
+            var periodError = await CheckPeriodLockForUser(entry.CompanyId, entry.EntryDate);
+            if (periodError != null)
+                return BadRequest(new { success = false, message = periodError });
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -3067,6 +3083,11 @@ public class AccountingController : ControllerBase
             if (entry.Status == JournalEntryStatus.Voided)
                 return BadRequest(new { success = false, message = "لا يمكن تعديل قيد ملغي" });
 
+            // فحص الفترة المقفلة
+            var periodError = await CheckPeriodLockForUser(entry.CompanyId, entry.EntryDate);
+            if (periodError != null)
+                return BadRequest(new { success = false, message = periodError });
+
             var wasPosted = entry.Status == JournalEntryStatus.Posted;
 
             await _unitOfWork.BeginTransactionAsync();
@@ -3266,6 +3287,11 @@ public class AccountingController : ControllerBase
 
             if (entry == null)
                 return NotFound(new { success = false, message = "القيد غير موجود" });
+
+            // فحص الفترة المقفلة
+            var periodError = await CheckPeriodLockForUser(entry.CompanyId, entry.EntryDate);
+            if (periodError != null)
+                return BadRequest(new { success = false, message = periodError });
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -3860,6 +3886,23 @@ public class AccountingController : ControllerBase
             if (account == null)
                 return NotFound(new { success = false, message = "الحساب غير موجود" });
 
+            // ═══ حساب الرصيد الافتتاحي (ما قبل fromDate) ═══
+            // الاتجاه الموحد: مدين - دائن (موجب = مدين، سالب = دائن)
+            decimal openingBalance = 0;
+            if (fromDate.HasValue)
+            {
+                var fromUtcForOpening = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
+                var beforeLines = await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => l.AccountId == id
+                        && l.JournalEntry != null
+                        && l.JournalEntry.Status == JournalEntryStatus.Posted
+                        && l.JournalEntry.EntryDate < fromUtcForOpening)
+                    .Select(l => new { l.DebitAmount, l.CreditAmount })
+                    .ToListAsync();
+
+                openingBalance = beforeLines.Sum(l => l.DebitAmount) - beforeLines.Sum(l => l.CreditAmount);
+            }
+
             var query = _unitOfWork.JournalEntryLines.AsQueryable()
                 .Where(l => l.AccountId == id);
 
@@ -3894,6 +3937,10 @@ public class AccountingController : ControllerBase
             var totalDebit = lines.Sum(l => l.DebitAmount);
             var totalCredit = lines.Sum(l => l.CreditAmount);
 
+            // ═══ الرصيد الختامي = الافتتاحي + (مدين - دائن) ═══
+            // الاتجاه الموحد: موجب = مدين، سالب = دائن
+            decimal closingBalance = openingBalance + (totalDebit - totalCredit);
+
             return Ok(new
             {
                 success = true,
@@ -3905,7 +3952,8 @@ public class AccountingController : ControllerBase
                     {
                         TotalDebit = totalDebit,
                         TotalCredit = totalCredit,
-                        Balance = account.CurrentBalance
+                        Balance = closingBalance,
+                        OpeningBalance = openingBalance
                     }
                 }
             });
@@ -3956,6 +4004,88 @@ public class AccountingController : ControllerBase
         {
             _logger.LogError(ex, "خطأ في ميزان المراجعة");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// إعادة حساب CurrentBalance لجميع الحسابات من القيود المرحّلة النشطة
+    /// </summary>
+    [HttpPost("recalculate-balances")]
+    public async Task<IActionResult> RecalculateAllBalances()
+    {
+        try
+        {
+            // جلب كل الحسابات النشطة (leaf)
+            var accounts = await _unitOfWork.Accounts.AsQueryable()
+                .Where(a => a.IsLeaf && a.IsActive)
+                .ToListAsync();
+
+            var results = new List<object>();
+
+            foreach (var account in accounts)
+            {
+                var oldBalance = account.CurrentBalance;
+
+                // حساب الرصيد الصحيح من القيود المرحّلة النشطة
+                var totals = await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => l.AccountId == account.Id
+                        && !l.IsDeleted
+                        && l.JournalEntry != null
+                        && l.JournalEntry.Status == JournalEntryStatus.Posted
+                        && !l.JournalEntry.IsDeleted)
+                    .GroupBy(l => l.AccountId)
+                    .Select(g => new
+                    {
+                        TotalDebit = g.Sum(l => l.DebitAmount),
+                        TotalCredit = g.Sum(l => l.CreditAmount)
+                    })
+                    .FirstOrDefaultAsync();
+
+                decimal correctBalance;
+                if (totals == null)
+                {
+                    correctBalance = 0;
+                }
+                else if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                {
+                    correctBalance = totals.TotalDebit - totals.TotalCredit;
+                }
+                else
+                {
+                    correctBalance = totals.TotalCredit - totals.TotalDebit;
+                }
+
+                if (oldBalance != correctBalance)
+                {
+                    account.CurrentBalance = correctBalance;
+                    _unitOfWork.Accounts.Update(account);
+
+                    results.Add(new
+                    {
+                        account.Code,
+                        account.Name,
+                        OldBalance = oldBalance,
+                        NewBalance = correctBalance,
+                        Difference = correctBalance - oldBalance
+                    });
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = $"تم تصحيح {results.Count} حساب",
+                totalAccounts = accounts.Count,
+                correctedAccounts = results.Count,
+                details = results
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إعادة حساب الأرصدة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
         }
     }
 
@@ -4344,6 +4474,30 @@ public class AccountingController : ControllerBase
     {
         return await _unitOfWork.ClosedPeriods.AnyAsync(
             p => p.CompanyId == companyId && p.Year == date.Year && p.Month == date.Month && !p.IsDeleted);
+    }
+
+    /// <summary>
+    /// فحص الفترة المقفلة مع استثناء مدير الشركة ومدير النظام
+    /// يرجع رسالة خطأ إذا ممنوع، أو null إذا مسموح
+    /// </summary>
+    private async Task<string?> CheckPeriodLockForUser(Guid companyId, DateTime entryDate)
+    {
+        if (!await IsPeriodClosed(companyId, entryDate))
+            return null; // الفترة مفتوحة — مسموح للجميع
+
+        // الفترة مقفلة — نتحقق من دور المستخدم
+        var roleClaim = User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                     ?? User?.FindFirst("role")?.Value;
+
+        if (int.TryParse(roleClaim, out var roleInt))
+        {
+            // CompanyAdmin = 20, SuperAdmin = 99
+            if (roleInt >= (int)UserRole.CompanyAdmin)
+                return null; // مدير الشركة أو أعلى — مسموح
+        }
+
+        var baghdadDate = entryDate.AddHours(3);
+        return $"الفترة المحاسبية {baghdadDate:yyyy/MM} مقفلة — فقط مدير الشركة يستطيع التعديل";
     }
 
     private async Task CreateAndPostJournalEntry(
