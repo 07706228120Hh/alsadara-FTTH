@@ -23,6 +23,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   List<Map<String, dynamic>> _allAccounts = [];
   List<Map<String, dynamic>> _allAccountsRaw = []; // كل الحسابات بما فيها الأب
   String _searchQuery = '';
+  String _searchMode = 'accounts'; // 'accounts' أو 'journals'
 
   // ─── فلاتر البحث المتقدم ───
   String? _selectedAccountType; // Assets, Liabilities, etc.
@@ -36,6 +37,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   List<dynamic> _statementLines = [];
   Map<String, dynamic> _statementSummary = {};
   Map<String, dynamic> _statementAccount = {};
+
+  // ─── بحث القيود ───
+  List<Map<String, dynamic>> _journalSearchResults = [];
+  bool _isSearchingJournals = false;
+  String _lastJournalQuery = '';
 
   // ─── فلتر التاريخ ───
   DateTime? _fromDate;
@@ -59,6 +65,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _stmtSearchController.dispose();
     _removeParentOverlay();
@@ -77,6 +84,58 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   void initState() {
     super.initState();
     _loadAccounts();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  /// بحث مع debounce — يبحث في القيود عند توقف الكتابة
+  Future<void> _onSearchChanged() async {
+    final query = _searchController.text.trim();
+    if (query.length < 2) {
+      if (_journalSearchResults.isNotEmpty || _isSearchingJournals) {
+        setState(() { _journalSearchResults = []; _isSearchingJournals = false; });
+      }
+      return;
+    }
+    if (query == _lastJournalQuery) return;
+    _lastJournalQuery = query;
+    setState(() => _isSearchingJournals = true);
+
+    // debounce 400ms
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted || _searchController.text.trim() != query) return;
+
+    try {
+      final result = await AccountingService.instance.getJournalEntries(
+        companyId: widget.companyId,
+        pageSize: 999999,
+      );
+      if (!mounted || _searchController.text.trim() != query) return;
+      if (result['success'] == true) {
+        final items = ((result['data'] is List ? result['data'] : (result['data']?['items'] ?? result['data']?['Items'] ?? [])) as List);
+        final q = query.toLowerCase();
+        final matched = <Map<String, dynamic>>[];
+        for (final e in items) {
+          final desc = (e['Description']?.toString() ?? '').toLowerCase();
+          final notes = (e['Notes']?.toString() ?? '').toLowerCase();
+          final entryNum = (e['EntryNumber']?.toString() ?? '').toLowerCase();
+          final amount = _fmt(((e['TotalDebit'] ?? e['TotalAmount'] ?? 0) as num).toDouble());
+          final date = e['EntryDate']?.toString() ?? '';
+          final linesText = ((e['Lines'] as List?) ?? []).map((l) =>
+            '${l['AccountName'] ?? l['Account']?['Name'] ?? ''} ${l['Description'] ?? ''} ${_fmt(((l['DebitAmount'] ?? 0) as num).toDouble())} ${_fmt(((l['CreditAmount'] ?? 0) as num).toDouble())}'
+          ).join(' ').toLowerCase();
+
+          if (desc.contains(q) || notes.contains(q) || entryNum.contains(q) ||
+              amount.contains(q) || date.contains(q) || linesText.contains(q)) {
+            matched.add(Map<String, dynamic>.from(e));
+          }
+        }
+        if (mounted) setState(() { _journalSearchResults = matched; _isSearchingJournals = false; });
+      } else {
+        if (mounted) setState(() => _isSearchingJournals = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isSearchingJournals = false);
+    }
   }
 
   Future<void> _loadAccounts() async {
@@ -128,10 +187,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
   /// هل يوجد فلتر نشط؟
   bool get _hasActiveFilter =>
-      _searchQuery.isNotEmpty ||
-      _selectedAccountType != null ||
-      _selectedParentId != null ||
-      _balanceFilter != 'all';
+      (_searchMode == 'accounts' && (_searchQuery.isNotEmpty || _selectedAccountType != null || _selectedParentId != null || _balanceFilter != 'all')) ||
+      (_searchMode == 'journals' && (_searchQuery.isNotEmpty || _journalSearchResults.isNotEmpty || _isSearchingJournals));
 
   List<Map<String, dynamic>> get _filteredAccounts {
     var list = _allAccounts.toList();
@@ -358,18 +415,27 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 children: [
                   _buildToolbar(),
                   _buildSearchBar(),
-                  if (_selectedAccount == null)
+                  if (_selectedAccount == null && _searchMode == 'accounts')
                     _buildQuickFilters(),
                   if (_selectedAccount != null) ...[
                     _buildDateFilter(),
                     _buildStatementSummaryBar(),
                     Expanded(child: _buildStatementTable()),
                   ] else ...[
-                    if (_hasActiveFilter) ...[
-                      _buildFilterSummary(),
-                      Expanded(child: _buildAccountList()),
+                    if (_searchMode == 'journals') ...[
+                      if (_hasActiveFilter) ...[
+                        _buildJournalFilterSummary(),
+                        Expanded(child: _buildJournalResults()),
+                      ] else ...[
+                        Expanded(child: _buildSearchPrompt()),
+                      ],
                     ] else ...[
-                      Expanded(child: _buildSearchPrompt()),
+                      if (_hasActiveFilter) ...[
+                        _buildFilterSummary(),
+                        Expanded(child: _buildAccountList()),
+                      ] else ...[
+                        Expanded(child: _buildSearchPrompt()),
+                      ],
                     ],
                   ],
                 ],
@@ -498,79 +564,83 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       );
     }
 
-    // وضع البحث
+    // وضع البحث — مع زر التبديل
+    final isJournalMode = _searchMode == 'journals';
     return Padding(
       padding: EdgeInsets.fromLTRB(hPad, 12, hPad, 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE0E6ED), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF3498DB).withAlpha(8),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+      child: Row(
+        children: [
+          // ─── زر التبديل ───
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F7FA),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
             ),
-          ],
-        ),
-        child: TextField(
-          controller: _searchController,
-          style: GoogleFonts.cairo(
-              fontSize: isMob ? 14 : 15,
-              color: AccountingTheme.textPrimary),
-          onChanged: (v) => setState(() => _searchQuery = v),
-          decoration: InputDecoration(
-            hintText: 'ابحث عن حساب بالاسم أو الكود...',
-            hintStyle: GoogleFonts.cairo(
-                fontSize: isMob ? 13 : 14,
-                color: const Color(0xFFADB5BD)),
-            prefixIcon: Padding(
-              padding: const EdgeInsets.only(right: 12, left: 8),
-              child: Icon(Icons.search_rounded,
-                  size: isMob ? 22 : 24, color: const Color(0xFF3498DB)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _searchModeBtn('حسابات', Icons.account_balance_wallet_outlined, !isJournalMode, () {
+                  setState(() { _searchMode = 'accounts'; _journalSearchResults = []; });
+                }),
+                _searchModeBtn('قيود', Icons.receipt_long_outlined, isJournalMode, () {
+                  setState(() { _searchMode = 'journals'; });
+                  _onSearchChanged();
+                }),
+              ],
             ),
-            suffixIcon: _searchQuery.isNotEmpty
-                ? GestureDetector(
-                    onTap: () {
-                      _searchController.clear();
-                      setState(() => _searchQuery = '');
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE74C3C).withAlpha(15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.close_rounded,
-                          size: isMob ? 18 : 20,
-                          color: const Color(0xFFE74C3C)),
-                    ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.only(left: 12, right: 8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0E6ED),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text('Ctrl+F',
-                              style: GoogleFonts.cairo(
-                                  fontSize: 10,
-                                  color: const Color(0xFF8896A6))),
-                        ),
-                      ],
-                    ),
-                  ),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(
-                horizontal: isMob ? 12 : 20, vertical: isMob ? 12 : 14),
           ),
-        ),
+          const SizedBox(width: 10),
+          // ─── حقل البحث ───
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F7FA),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE0E6ED), width: 1.5),
+              ),
+              child: TextField(
+                controller: _searchController,
+                style: GoogleFonts.cairo(
+                    fontSize: isMob ? 14 : 15,
+                    color: AccountingTheme.textPrimary),
+                onChanged: (v) => setState(() => _searchQuery = v),
+                decoration: InputDecoration(
+                  hintText: isJournalMode ? 'ابحث في القيود...' : 'ابحث عن حساب بالاسم أو الكود...',
+                  hintStyle: GoogleFonts.cairo(
+                      fontSize: isMob ? 13 : 14,
+                      color: const Color(0xFFADB5BD)),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(right: 12, left: 8),
+                    child: Icon(Icons.search_rounded,
+                        size: isMob ? 22 : 24, color: const Color(0xFF3498DB)),
+                  ),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            setState(() { _searchQuery = ''; _journalSearchResults = []; });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE74C3C).withAlpha(15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.close_rounded,
+                                size: isMob ? 18 : 20,
+                                color: const Color(0xFFE74C3C)),
+                          ),
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(
+                      horizontal: isMob ? 12 : 20, vertical: isMob ? 12 : 14),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1231,6 +1301,96 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     );
   }
 
+  /// زر تبديل وضع البحث (حسابات / قيود)
+  Widget _searchModeBtn(String label, IconData icon, bool active, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF2C3E50) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: active ? Colors.white : const Color(0xFF5D6D7E)),
+            const SizedBox(width: 5),
+            Text(label, style: GoogleFonts.cairo(
+              fontSize: 12, fontWeight: FontWeight.bold,
+              color: active ? Colors.white : const Color(0xFF5D6D7E),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// ملخص نتائج بحث القيود
+  Widget _buildJournalFilterSummary() {
+    final isMob = context.accR.isMobile;
+    final hPad = isMob ? 10.0 : 24.0;
+    final count = _journalSearchResults.length;
+
+    return Container(
+      margin: EdgeInsets.fromLTRB(hPad, 2, hPad, 6),
+      padding: EdgeInsets.symmetric(horizontal: isMob ? 10 : 14, vertical: isMob ? 6 : 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF8E44AD).withAlpha(8),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF8E44AD).withAlpha(30)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.receipt_long_rounded, size: isMob ? 14 : 16, color: const Color(0xFF8E44AD)),
+          const SizedBox(width: 6),
+          Text('نتائج القيود:', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textSecondary)),
+          const SizedBox(width: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+            decoration: BoxDecoration(
+              color: const Color(0xFF8E44AD).withAlpha(25),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: _isSearchingJournals
+                ? SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF8E44AD)))
+                : Text('$count قيد', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: FontWeight.bold, color: const Color(0xFF8E44AD))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// عرض نتائج بحث القيود فقط
+  Widget _buildJournalResults() {
+    final isMob = context.accR.isMobile;
+    final hPad = isMob ? 8.0 : 24.0;
+
+    if (_isSearchingJournals) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF8E44AD)));
+    }
+
+    if (_journalSearchResults.isEmpty && _searchQuery.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off, size: 40, color: AccountingTheme.textMuted.withAlpha(60)),
+            const SizedBox(height: 8),
+            Text('لا توجد قيود مطابقة', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 4),
+      itemCount: _journalSearchResults.length,
+      itemBuilder: (_, i) => _buildJournalResultCard(_journalSearchResults[i]),
+    );
+  }
+
   Widget _quickFilterButton(String label, IconData icon, Color color, VoidCallback onTap, {bool selected = false}) {
     final isMob = context.accR.isMobile;
     return Material(
@@ -1383,6 +1543,164 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 size: isMob ? 18 : 20,
                 color: isActive ? const Color(0xFF3498DB) : Colors.white.withAlpha(200)),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// عرض مشترك: حسابات + قيود
+  Widget _buildCombinedResults() {
+    final hasJournalResults = _searchQuery.length >= 2 && (_journalSearchResults.isNotEmpty || _isSearchingJournals);
+    final isMob = context.accR.isMobile;
+    final hPad = isMob ? 8.0 : 24.0;
+
+    if (!hasJournalResults) return _buildAccountList();
+
+    return ListView(
+      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 4),
+      children: [
+        // ─── قسم الحسابات ───
+        if (_filteredAccounts.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8, top: 4),
+            child: Row(children: [
+              Icon(Icons.account_balance_wallet_outlined, size: 16, color: const Color(0xFF3498DB)),
+              const SizedBox(width: 6),
+              Text('حسابات (${_filteredAccounts.length})', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF2C3E50))),
+            ]),
+          ),
+          ..._filteredAccounts.take(10).toList().asMap().entries.map((e) => _buildAccountCard(e.value, e.key)),
+          if (_filteredAccounts.length > 10)
+            Center(child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Text('و ${_filteredAccounts.length - 10} حساب آخر...', style: GoogleFonts.cairo(fontSize: 11, color: AccountingTheme.textMuted)),
+            )),
+          const SizedBox(height: 12),
+        ],
+        // ─── قسم القيود ───
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(children: [
+            Icon(Icons.receipt_long_rounded, size: 16, color: const Color(0xFF8E44AD)),
+            const SizedBox(width: 6),
+            Text('قيود محاسبية', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF2C3E50))),
+            if (_isSearchingJournals) ...[
+              const SizedBox(width: 8),
+              SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF8E44AD))),
+            ] else ...[
+              const SizedBox(width: 6),
+              Text('(${_journalSearchResults.length})', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.textMuted)),
+            ],
+          ]),
+        ),
+        if (_isSearchingJournals)
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF8E44AD))),
+          )
+        else if (_journalSearchResults.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Center(child: Text('لا توجد قيود مطابقة', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.textMuted))),
+          )
+        else
+          ..._journalSearchResults.map((entry) => _buildJournalResultCard(entry)),
+      ],
+    );
+  }
+
+  /// بطاقة نتيجة قيد محاسبي
+  Widget _buildJournalResultCard(Map<String, dynamic> entry) {
+    final entryNum = entry['EntryNumber']?.toString() ?? '';
+    final desc = entry['Description']?.toString() ?? '';
+    final status = entry['Status']?.toString() ?? 'Draft';
+    final dateStr = entry['EntryDate']?.toString() ?? '';
+    final totalDebit = ((entry['TotalDebit'] ?? 0) as num).toDouble();
+    final totalCredit = ((entry['TotalCredit'] ?? 0) as num).toDouble();
+    final lines = (entry['Lines'] as List?) ?? [];
+
+    String formattedDate = '';
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      formattedDate = _displayDateFmt.format(dt);
+    } catch (_) {
+      formattedDate = dateStr.length > 10 ? dateStr.substring(0, 10) : dateStr;
+    }
+
+    return InkWell(
+      onTap: () {
+        final id = entry['Id']?.toString() ?? '';
+        if (id.isNotEmpty) _showEntryEditDialog(id);
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF8E44AD).withAlpha(40)),
+          boxShadow: [BoxShadow(color: Colors.black.withAlpha(4), blurRadius: 4, offset: const Offset(0, 1))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // صف 1: رقم القيد + الحالة + التاريخ
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: const Color(0xFF8E44AD).withAlpha(15), borderRadius: BorderRadius.circular(6)),
+                child: Text(entryNum, style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF8E44AD))),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: (status == 'Posted' ? AccountingTheme.success : status == 'Voided' ? AccountingTheme.danger : AccountingTheme.warning).withAlpha(15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  status == 'Posted' ? 'مرحّل' : status == 'Voided' ? 'ملغي' : 'مسودة',
+                  style: GoogleFonts.cairo(fontSize: 9, fontWeight: FontWeight.w600,
+                      color: status == 'Posted' ? AccountingTheme.success : status == 'Voided' ? AccountingTheme.danger : AccountingTheme.warning),
+                ),
+              ),
+              const Spacer(),
+              Icon(Icons.calendar_today, size: 10, color: AccountingTheme.textMuted),
+              const SizedBox(width: 3),
+              Text(formattedDate, style: GoogleFonts.cairo(fontSize: 10, color: AccountingTheme.textMuted)),
+            ]),
+            // البيان
+            if (desc.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(desc, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF2C3E50)), maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
+            // الحسابات المتأثرة
+            if (lines.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: lines.take(4).map<Widget>((l) {
+                    final accName = (l['AccountName'] ?? l['Account']?['Name'] ?? '').toString();
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: const Color(0xFFF0F2F8), borderRadius: BorderRadius.circular(4)),
+                      child: Text(accName, style: GoogleFonts.cairo(fontSize: 9, color: const Color(0xFF5D6D7E)), overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                ),
+              ),
+            const SizedBox(height: 8),
+            // مدين + دائن
+            Row(children: [
+              Text('مدين: ${_fmt(totalDebit)}', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.danger)),
+              const SizedBox(width: 16),
+              Text('دائن: ${_fmt(totalCredit)}', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.success)),
+            ]),
+          ],
         ),
       ),
     );

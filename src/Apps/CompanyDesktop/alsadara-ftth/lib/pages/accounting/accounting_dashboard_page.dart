@@ -1165,7 +1165,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
       ),
       _SummaryItem(
         title: 'رصيد الصفحة',
-        value: _formatCurrency(accountBalances['PageBalance']),
+        value: _formatCurrency(accountBalances['PageBalance'], abs: true),
         icon: Icons.account_balance_wallet,
         color: const Color(0xFF3498DB),
       ),
@@ -1488,6 +1488,25 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
   Widget _buildSectionsGrid() {
     final pm = PermissionManager.instance;
     final sections = <_SectionItem>[
+      // ─── الصف الأول: الأهم ───
+      if (pm.canView('accounting.ftth_operators'))
+        _SectionItem(
+          title: 'حسابات التفعيلات',
+          subtitle: 'لوحة متابعة حسابات التفعيلات',
+          icon: Icons.wifi_tethering,
+          color: const Color(0xFF00897B),
+          onTap: () => _navigateTo(
+              FtthOperatorsDashboardPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.client_accounts'))
+        _SectionItem(
+          title: 'كشف الحسابات',
+          subtitle: 'عرض كشوفات الحسابات والقيود',
+          icon: Icons.account_balance_wallet,
+          color: const Color(0xFF2196F3),
+          onTap: () =>
+              _navigateTo(ClientAccountsPage(companyId: widget.companyId)),
+        ),
       if (pm.canView('accounting.compound_journals'))
         _SectionItem(
           title: 'قيد مركب',
@@ -1497,6 +1516,16 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           onTap: () => _navigateTo(
               CompoundJournalEntryPage(companyId: widget.companyId)),
         ),
+      // ─── الصف الثاني ───
+      if (pm.canView('accounting.funds_overview'))
+        _SectionItem(
+          title: 'مراقبة الأموال',
+          subtitle: 'أرصدة الصناديق والذمم والإيرادات',
+          icon: Icons.account_balance,
+          color: const Color(0xFF5C6BC0),
+          onTap: () =>
+              _navigateTo(FundsOverviewPage(companyId: widget.companyId)),
+        ),
       if (pm.canView('accounting.expenses') || pm.canView('accounting.revenue'))
         _SectionItem(
           title: 'المصاريف والإيرادات',
@@ -1504,15 +1533,6 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           icon: Icons.swap_horiz,
           color: const Color(0xFF1ABC9C),
           onTap: () => _showExpensesRevenueDialog(),
-        ),
-      if (pm.canView('accounting.client_accounts'))
-        _SectionItem(
-          title: 'حسابات العملاء',
-          subtitle: 'إضافة وإدارة حسابات العملاء',
-          icon: Icons.people,
-          color: const Color(0xFF2196F3),
-          onTap: () =>
-              _navigateTo(ClientAccountsPage(companyId: widget.companyId)),
         ),
       if (pm.canView('accounting.collections'))
         _SectionItem(
@@ -1523,6 +1543,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           onTap: () =>
               _navigateTo(CollectionsPage(companyId: widget.companyId)),
         ),
+      // ─── الصف الثالث ───
       if (pm.canView('accounting.agent_transactions'))
         _SectionItem(
           title: 'إدارة الوكلاء',
@@ -1531,24 +1552,6 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           color: const Color(0xFF3F51B5),
           onTap: () =>
               _navigateTo(AgentsManagementPage(companyId: widget.companyId)),
-        ),
-      if (pm.canView('accounting.ftth_operators'))
-        _SectionItem(
-          title: 'حسابات التفعيلات',
-          subtitle: 'لوحة متابعة حسابات التفعيلات',
-          icon: Icons.wifi_tethering,
-          color: const Color(0xFF00897B),
-          onTap: () => _navigateTo(
-              FtthOperatorsDashboardPage(companyId: widget.companyId)),
-        ),
-      if (pm.canView('accounting.funds_overview'))
-        _SectionItem(
-          title: 'مراقبة الأموال',
-          subtitle: 'أرصدة الصناديق والذمم والإيرادات',
-          icon: Icons.account_balance,
-          color: const Color(0xFF5C6BC0),
-          onTap: () =>
-              _navigateTo(FundsOverviewPage(companyId: widget.companyId)),
         ),
       if (pm.canView('accounting.withdrawals'))
         _SectionItem(
@@ -1567,6 +1570,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         onTap: () =>
             _navigateTo(SettlementReportsPage(companyId: widget.companyId)),
       ),
+      // ─── الصف الرابع ───
       _SectionItem(
         title: 'عمليات المحفظة',
         subtitle: 'عرض وتصدير جميع معاملات المحفظة',
@@ -1639,7 +1643,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             SizedBox(width: isMob ? 8 : 8),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     section.title,
@@ -1649,6 +1653,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                       fontWeight: FontWeight.bold,
                       height: 1.2,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   if (!isMob)
                     Text(
@@ -1658,6 +1663,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                         fontSize: 10,
                         height: 1.2,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                 ],
               ),
@@ -1762,10 +1768,10 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
 
   static final _currencyFmt = NumberFormat('#,##0', 'ar');
 
-  String _formatCurrency(dynamic value) {
-    if (value == null) return '0';
+  String _formatCurrency(dynamic value, {bool abs = false}) {
+    if (value == null) return '0 د.ع';
     final num n = value is num ? value : double.tryParse(value.toString()) ?? 0;
-    return '${_currencyFmt.format(n)} د.ع';
+    return '${_currencyFmt.format(abs ? n.abs() : n)} د.ع';
   }
 
   /// تنسيق مع إشارة (مديون/دائن)
