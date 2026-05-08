@@ -1434,7 +1434,7 @@ public class FtthAccountingController : ControllerBase
                 {
                     var entry = await _unitOfWork.JournalEntries.AsQueryable()
                         .Include(j => j.Lines)
-                        .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId.Value && j.Status == JournalEntryStatus.Posted);
+                        .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId.Value && j.Status != JournalEntryStatus.Voided);
 
                     if (entry != null)
                     {

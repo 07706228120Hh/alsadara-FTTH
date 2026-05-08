@@ -675,6 +675,20 @@ public class AccountingController : ControllerBase
             entry.Status = JournalEntryStatus.Voided;
             _unitOfWork.JournalEntries.Update(entry);
 
+            // ═══ فك ربط SubscriptionLog عند إلغاء قيد FTTH ═══
+            if (entry.ReferenceType == JournalReferenceType.FtthSubscription && entry.ReferenceId != null)
+            {
+                var logId = long.TryParse(entry.ReferenceId, out var lid) ? lid : 0;
+                var log = logId > 0 ? await _unitOfWork.SubscriptionLogs.GetByIdAsync(logId) : null;
+                if (log != null)
+                {
+                    log.JournalEntryId = null;
+                    log.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.SubscriptionLogs.Update(log);
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
             return Ok(new { success = true, message = "تم إلغاء القيد" });
         }
@@ -3142,9 +3156,85 @@ public class AccountingController : ControllerBase
             }
 
             _unitOfWork.JournalEntries.Update(entry);
+
+            // ═══ مزامنة عكسية: تحديث SubscriptionLog المرتبط عند تعديل قيد FTTH ═══
+            string? syncMessage = null;
+            if (entry.ReferenceType == JournalReferenceType.FtthSubscription && entry.ReferenceId != null)
+            {
+                try
+                {
+                    var logId = long.TryParse(entry.ReferenceId, out var lid) ? lid : 0;
+                    var log = logId > 0 ? await _unitOfWork.SubscriptionLogs.GetByIdAsync(logId) : null;
+                    if (log != null)
+                    {
+                        // استخراج المبالغ من أسطر القيد الجديدة (غير المحذوفة)
+                        var currentLines = await _unitOfWork.JournalEntryLines.AsQueryable()
+                            .Where(l => l.JournalEntryId == entry.Id && !l.IsDeleted)
+                            .ToListAsync();
+
+                        foreach (var line in currentLines)
+                        {
+                            var acct = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                            if (acct == null) continue;
+                            var code = acct.Code ?? "";
+
+                            if (code == AccountCodes.PageBalance && line.CreditAmount > 0)
+                            {
+                                // رصيد الصفحة (دائن) = BasePrice
+                                log.BasePrice = line.CreditAmount;
+                            }
+                            else if (code == AccountCodes.PromotionExpense)
+                            {
+                                // مصاريف عروض (مدين) = ManualDiscount
+                                log.ManualDiscount = line.DebitAmount;
+                            }
+                            else if (code == AccountCodes.MaintenanceRevenue)
+                            {
+                                // إيراد صيانة (دائن) = MaintenanceFee
+                                log.MaintenanceFee = line.CreditAmount;
+                            }
+                            else if (code == AccountCodes.CompanyDiscountRevenue)
+                            {
+                                // إيراد خصم الشركة (دائن) = CompanyDiscount
+                                log.CompanyDiscount = line.CreditAmount;
+                            }
+                            else if (code.StartsWith(AccountCodes.Cash) && code != AccountCodes.PageBalance && line.DebitAmount > 0)
+                            {
+                                // صندوق مشغل (1110xx) — تحديد CollectionType = cash
+                                log.CollectionType = "cash";
+                            }
+                            else if (code.StartsWith(AccountCodes.TechnicianReceivables) && line.DebitAmount > 0)
+                            {
+                                log.CollectionType = "technician";
+                            }
+                            else if (code.StartsWith(AccountCodes.AgentReceivables) && line.DebitAmount > 0)
+                            {
+                                log.CollectionType = "agent";
+                            }
+                            else if (code.StartsWith(AccountCodes.OperatorReceivables) && line.DebitAmount > 0)
+                            {
+                                log.CollectionType = "credit";
+                            }
+                            else if (code == AccountCodes.ElectronicPayment && line.DebitAmount > 0)
+                            {
+                                log.CollectionType = "master";
+                            }
+                        }
+
+                        log.UpdatedAt = DateTime.UtcNow;
+                        _unitOfWork.SubscriptionLogs.Update(log);
+                        syncMessage = "تم مزامنة العملية المرتبطة";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "فشل مزامنة SubscriptionLog عند تعديل القيد {EntryId}", id);
+                }
+            }
+
             await _unitOfWork.SaveChangesAsync();
             await _unitOfWork.CommitTransactionAsync();
-            return Ok(new { success = true, message = "تم تحديث القيد" });
+            return Ok(new { success = true, message = syncMessage != null ? $"تم تحديث القيد — {syncMessage}" : "تم تحديث القيد" });
         }
         catch (Exception ex)
         {
