@@ -3835,6 +3835,8 @@ public class AccountingController : ControllerBase
             if (!cid.HasValue)
                 return Ok(new { success = true, summary = new { totalIssues = 0 }, issues = new List<object>() });
 
+            _logger.LogInformation("🔍 تدقيق محاسبي — CompanyId: {CompanyId}", cid.Value);
+
             var issues = new List<object>();
 
             // ═══ 1. قيود غير متوازنة (مدين ≠ دائن) ═══
@@ -4168,12 +4170,13 @@ public class AccountingController : ControllerBase
                 companyId = cid.Value
             };
 
+            _logger.LogInformation("🔍 تدقيق انتهى — {Count} مشكلة", issues.Count);
             return Ok(new { success = true, summary, issues });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "خطأ في التدقيق المحاسبي");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+            _logger.LogError(ex, "❌ خطأ في التدقيق المحاسبي: {Message}", ex.Message);
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
         }
     }
 
