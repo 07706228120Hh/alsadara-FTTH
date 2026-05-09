@@ -41,9 +41,10 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
       final result =
           await AccountingService.instance.runAudit(companyId: cid);
       if (result['success'] == true) {
+        final data = result['data'] is Map<String, dynamic> ? result['data'] : result;
         setState(() {
-          _summary = result['summary'] as Map<String, dynamic>?;
-          _issues = (result['issues'] is List) ? result['issues'] : [];
+          _summary = data['summary'] as Map<String, dynamic>?;
+          _issues = (data['issues'] is List) ? data['issues'] : [];
         });
       } else {
         setState(() => _errorMessage = result['message'] ?? 'خطأ');
