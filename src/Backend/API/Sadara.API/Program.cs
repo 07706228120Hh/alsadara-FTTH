@@ -311,9 +311,10 @@ using (var scope = app.Services.CreateScope())
     {
         await context.Database.EnsureCreatedAsync();
     }
-    else if (app.Environment.IsDevelopment())
+    else
     {
-        await context.Database.MigrateAsync();
+        try { await context.Database.MigrateAsync(); }
+        catch (Exception ex) { Console.WriteLine($"Migration note: {ex.Message}"); }
     }
     
     // Seed core data (permissions, services, operation types, super admin)
