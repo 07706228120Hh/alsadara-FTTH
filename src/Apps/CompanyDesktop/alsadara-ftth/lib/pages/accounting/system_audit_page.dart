@@ -37,8 +37,9 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
       _errorMessage = null;
     });
     try {
+      final cid = _companyId.isNotEmpty ? _companyId : null;
       final result =
-          await AccountingService.instance.runAudit(companyId: _companyId);
+          await AccountingService.instance.runAudit(companyId: cid);
       if (result['success'] == true) {
         setState(() {
           _summary = result['summary'] as Map<String, dynamic>?;

@@ -3817,7 +3817,7 @@ public class AccountingController : ControllerBase
         try
         {
             // تحديد الشركة — نفس نمط GetDashboard
-            Guid? cid = companyId;
+            Guid? cid = (companyId.HasValue && companyId.Value != Guid.Empty) ? companyId : null;
             if (!cid.HasValue)
             {
                 var claim = User?.FindFirst("companyId")?.Value ?? User?.FindFirst("CompanyId")?.Value;
