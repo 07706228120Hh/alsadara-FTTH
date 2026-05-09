@@ -48,7 +48,7 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
         setState(() => _errorMessage = result['message'] ?? 'خطأ');
       }
     } catch (e) {
-      setState(() => _errorMessage = 'خطأ في الاتصال');
+      setState(() => _errorMessage = 'خطأ في الاتصال: $e');
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -63,99 +63,60 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
     }).toList();
   }
 
-  // ─── ألوان وأيقونات ───
-
   Color _severityColor(String severity) {
     switch (severity) {
-      case 'critical':
-        return const Color(0xFFE53935);
-      case 'high':
-        return const Color(0xFFFF6F00);
-      case 'medium':
-        return const Color(0xFFFFA726);
-      case 'warning':
-        return const Color(0xFF42A5F5);
-      default:
-        return Colors.grey;
+      case 'critical': return const Color(0xFFE53935);
+      case 'high': return const Color(0xFFFF6F00);
+      case 'medium': return const Color(0xFFFFA726);
+      case 'warning': return const Color(0xFF42A5F5);
+      default: return Colors.grey;
     }
   }
 
   IconData _severityIcon(String severity) {
     switch (severity) {
-      case 'critical':
-        return Icons.error;
-      case 'high':
-        return Icons.warning_amber_rounded;
-      case 'medium':
-        return Icons.info_outline;
-      case 'warning':
-        return Icons.lightbulb_outline;
-      default:
-        return Icons.help_outline;
+      case 'critical': return Icons.error;
+      case 'high': return Icons.warning_amber_rounded;
+      case 'medium': return Icons.info_outline;
+      case 'warning': return Icons.lightbulb_outline;
+      default: return Icons.help_outline;
     }
   }
 
   String _severityLabel(String severity) {
     switch (severity) {
-      case 'critical':
-        return 'حرج';
-      case 'high':
-        return 'عالي';
-      case 'medium':
-        return 'متوسط';
-      case 'warning':
-        return 'تنبيه';
-      default:
-        return severity;
+      case 'critical': return 'حرج';
+      case 'high': return 'عالي';
+      case 'medium': return 'متوسط';
+      case 'warning': return 'تنبيه';
+      default: return severity;
     }
   }
 
   String _categoryLabel(String category) {
     switch (category) {
-      case 'UnbalancedEntry':
-        return 'قيد غير متوازن';
-      case 'CashBoxMismatch':
-        return 'خلل رصيد صندوق';
-      case 'CashBoxAccountMismatch':
-        return 'صندوق ≠ حساب';
-      case 'VoidedCashNoReverse':
-        return 'إلغاء بدون عكس';
-      case 'ExpenseNoEntry':
-        return 'مصروف بدون قيد';
-      case 'ExpenseAmountMismatch':
-        return 'مصروف ≠ قيد';
-      case 'TechBalanceMismatch':
-        return 'خلل رصيد فني';
-      case 'FtthNoEntry':
-        return 'FTTH بدون قيد';
-      case 'SuspiciousBalance':
-        return 'رصيد مشبوه';
-      case 'OrphanEntry':
-        return 'قيد بدون معاملة';
-      case 'SalaryNoEntry':
-        return 'راتب بدون قيد';
-      case 'CashTxNoEntry':
-        return 'عملية صندوق بدون قيد';
-      case 'CollectionNoEntry':
-        return 'تحصيل بدون قيد';
-      case 'FixedExpenseNoEntry':
-        return 'مصروف ثابت بدون قيد';
-      case 'NegativeCashBox':
-        return 'صندوق سالب';
-      case 'DuplicateEntry':
-        return 'قيد مكرر';
-      case 'EntryLineMismatch':
-        return 'أسطر ≠ إجمالي';
-      case 'InsufficientLines':
-        return 'قيد ناقص الأسطر';
-      case 'AgentBalanceMismatch':
-        return 'خلل رصيد وكيل';
-      case 'StaleSalary':
-        return 'راتب معلق قديم';
-      case 'LeafWithChildren':
-        return 'حساب leaf له أبناء';
-      default:
-        return category;
+      case 'UnbalancedEntry': return 'قيد غير متوازن';
+      case 'CashBoxMismatch': return 'خلل رصيد صندوق';
+      case 'CashBoxAccountMismatch': return 'صندوق ≠ حساب';
+      case 'VoidedCashNoReverse': return 'إلغاء بدون عكس';
+      case 'ExpenseNoEntry': return 'مصروف بدون قيد';
+      case 'ExpenseAmountMismatch': return 'مصروف ≠ قيد';
+      case 'TechBalanceMismatch': return 'خلل رصيد فني';
+      case 'FtthNoEntry': return 'FTTH بدون قيد';
+      case 'SuspiciousBalance': return 'رصيد مشبوه';
+      case 'OrphanEntry': return 'قيد بدون معاملة';
+      case 'SalaryNoEntry': return 'راتب بدون قيد';
+      case 'CashTxNoEntry': return 'عملية صندوق بدون قيد';
+      case 'CollectionNoEntry': return 'تحصيل بدون قيد';
+      case 'FixedExpenseNoEntry': return 'مصروف ثابت بدون قيد';
+      case 'NegativeCashBox': return 'صندوق سالب';
+      case 'DuplicateEntry': return 'قيد مكرر';
+      case 'EntryLineMismatch': return 'أسطر ≠ إجمالي';
+      case 'InsufficientLines': return 'قيد ناقص الأسطر';
+      case 'AgentBalanceMismatch': return 'خلل رصيد وكيل';
+      case 'StaleSalary': return 'راتب معلق قديم';
+      case 'LeafWithChildren': return 'حساب leaf له أبناء';
+      default: return category;
     }
   }
 
@@ -175,26 +136,21 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
               Container(
                 padding: EdgeInsets.symmetric(
                     horizontal: isMob ? 12 : 20, vertical: isMob ? 8 : 12),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF1A237E),
-                      const Color(0xFF283593)
-                    ],
+                    colors: [Color(0xFF1A237E), Color(0xFF283593)],
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.verified_user,
                         color: Colors.white, size: isMob ? 20 : 28),
-                    SizedBox(width: 8),
-                    Text(
-                      'التدقيق المحاسبي الشامل',
+                    const SizedBox(width: 8),
+                    Text('التدقيق المحاسبي الشامل',
                       style: GoogleFonts.cairo(
                           color: Colors.white,
                           fontSize: isMob ? 14 : 20,
-                          fontWeight: FontWeight.bold),
-                    ),
+                          fontWeight: FontWeight.bold)),
                     const Spacer(),
                     if (!_isLoading)
                       IconButton(
@@ -216,13 +172,13 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.error_outline,
+                                const Icon(Icons.error_outline,
                                     size: 48, color: Colors.red),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(_errorMessage!,
                                     style: GoogleFonts.cairo(
-                                        color: Colors.red, fontSize: 16)),
-                                SizedBox(height: 16),
+                                        color: Colors.red, fontSize: 14)),
+                                const SizedBox(height: 16),
                                 ElevatedButton.icon(
                                   onPressed: _runAudit,
                                   icon: const Icon(Icons.refresh),
@@ -249,21 +205,17 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─── ملخص ───
           _buildSummaryCards(ar, isMob),
           SizedBox(height: isMob ? 12 : 20),
-
-          // ─── فلاتر ───
           _buildFilters(ar, isMob),
           SizedBox(height: isMob ? 8 : 12),
 
-          // ─── قائمة المشاكل ───
           if (filtered.isEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: AccountingTheme.success.withOpacity(0.1),
+                color: AccountingTheme.success.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AccountingTheme.success),
               ),
@@ -271,7 +223,7 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
                 children: [
                   Icon(Icons.check_circle,
                       size: 48, color: AccountingTheme.success),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     _filterCategory == 'all' && _filterSeverity == 'all'
                         ? 'لا توجد مشاكل — النظام سليم'
@@ -317,7 +269,7 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 12 : 16, vertical: isMob ? 6 : 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
@@ -329,7 +281,7 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
                   fontSize: isMob ? 18 : 24,
                   fontWeight: FontWeight.bold,
                   color: color)),
-          SizedBox(width: 6),
+          const SizedBox(width: 6),
           Text(label,
               style: GoogleFonts.cairo(
                   fontSize: isMob ? 11 : 13, color: color)),
@@ -346,47 +298,43 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        // فلتر التصنيف
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white10),
+            border: Border.all(color: Colors.grey.shade300),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _filterCategory,
-              dropdownColor: AccountingTheme.bgCard,
-              style: GoogleFonts.cairo(color: Colors.white, fontSize: isMob ? 12 : 14),
+              dropdownColor: Colors.white,
+              style: GoogleFonts.cairo(color: Colors.grey.shade800, fontSize: isMob ? 12 : 14),
               items: categories
                   .map((c) => DropdownMenuItem(
                       value: c,
-                      child: Text(
-                          c == 'all' ? 'كل التصنيفات' : _categoryLabel(c))))
+                      child: Text(c == 'all' ? 'كل التصنيفات' : _categoryLabel(c))))
                   .toList(),
               onChanged: (v) => setState(() => _filterCategory = v ?? 'all'),
             ),
           ),
         ),
-        // فلتر الخطورة
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white10),
+            border: Border.all(color: Colors.grey.shade300),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _filterSeverity,
-              dropdownColor: AccountingTheme.bgCard,
-              style: GoogleFonts.cairo(color: Colors.white, fontSize: isMob ? 12 : 14),
+              dropdownColor: Colors.white,
+              style: GoogleFonts.cairo(color: Colors.grey.shade800, fontSize: isMob ? 12 : 14),
               items: severities
                   .map((s) => DropdownMenuItem(
                       value: s,
-                      child: Text(
-                          s == 'all' ? 'كل الخطورات' : _severityLabel(s))))
+                      child: Text(s == 'all' ? 'كل الخطورات' : _severityLabel(s))))
                   .toList(),
               onChanged: (v) => setState(() => _filterSeverity = v ?? 'all'),
             ),
@@ -406,27 +354,28 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
       margin: EdgeInsets.only(bottom: isMob ? 8 : 10),
       padding: EdgeInsets.all(isMob ? 10 : 14),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         border: Border(right: BorderSide(color: color, width: 4)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 2)),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(_severityIcon(severity), color: color, size: isMob ? 20 : 24),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // شارة التصنيف + الخطورة
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.15),
+                        color: color.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(_severityLabel(severity),
@@ -435,40 +384,36 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
                               color: color,
                               fontWeight: FontWeight.bold)),
                     ),
-                    SizedBox(width: 6),
+                    const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white10,
+                        color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(_categoryLabel(category),
                           style: GoogleFonts.cairo(
                               fontSize: isMob ? 9 : 11,
-                              color: Colors.white70)),
+                              color: Colors.grey.shade600)),
                     ),
                   ],
                 ),
-                SizedBox(height: 6),
-                // الرسالة
+                const SizedBox(height: 6),
                 Text(message,
                     style: GoogleFonts.cairo(
                         fontSize: isMob ? 12 : 14,
-                        color: Colors.white.withOpacity(0.9))),
-                // تفاصيل إضافية
+                        color: Colors.grey.shade800)),
                 if (issue['difference'] != null) ...[
-                  SizedBox(height: 4),
-                  Text(
-                      'الفرق: ${(issue['difference'] as num).toStringAsFixed(0)}',
+                  const SizedBox(height: 4),
+                  Text('الفرق: ${(issue['difference'] as num).toStringAsFixed(0)}',
                       style: GoogleFonts.cairo(
-                          fontSize: isMob ? 10 : 12, color: color)),
+                          fontSize: isMob ? 10 : 12, color: color, fontWeight: FontWeight.bold)),
                 ],
                 if (issue['entryNumber'] != null) ...[
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text('رقم القيد: ${issue['entryNumber']}',
                       style: GoogleFonts.cairo(
-                          fontSize: isMob ? 10 : 12, color: Colors.white38)),
+                          fontSize: isMob ? 10 : 12, color: Colors.grey.shade500)),
                 ],
               ],
             ),
