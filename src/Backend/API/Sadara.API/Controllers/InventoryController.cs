@@ -61,6 +61,30 @@ public class InventoryController : ControllerBase
                 .IgnoreQueryFilters()
                 .CountAsync(td => td.CompanyId == companyId && td.VoucherNumber.StartsWith(pattern));
         }
+        else if (prefix == "INV" || prefix == "PINV")
+        {
+            count = await _unitOfWork.Invoices.AsQueryable()
+                .IgnoreQueryFilters()
+                .CountAsync(i => i.CompanyId == companyId && i.InvoiceNumber.StartsWith(pattern));
+        }
+        else if (prefix == "RV" || prefix == "PV")
+        {
+            count = await _unitOfWork.PaymentVouchers.AsQueryable()
+                .IgnoreQueryFilters()
+                .CountAsync(v => v.CompanyId == companyId && v.VoucherNumber.StartsWith(pattern));
+        }
+        else if (prefix == "SR" || prefix == "PR")
+        {
+            count = await _unitOfWork.ReturnOrders.AsQueryable()
+                .IgnoreQueryFilters()
+                .CountAsync(r => r.CompanyId == companyId && r.ReturnNumber.StartsWith(pattern));
+        }
+        else if (prefix == "CU")
+        {
+            count = await _unitOfWork.InventoryCustomers.AsQueryable()
+                .IgnoreQueryFilters()
+                .CountAsync(c => c.CompanyId == companyId && c.CustomerCode.StartsWith(pattern));
+        }
 
         return $"{pattern}{(count + 1).ToString("D4")}";
     }
@@ -2693,6 +2717,7 @@ public class InventoryController : ControllerBase
                     sm.StockBefore,
                     sm.StockAfter,
                     sm.Description,
+                    UserName = sm.CreatedBy != null ? sm.CreatedBy.FullName : null,
                     sm.CreatedAt
                 }).ToListAsync();
 
@@ -2813,6 +2838,1544 @@ public class InventoryController : ControllerBase
         {
             _logger.LogError(ex, "خطأ في جلب تقرير حيازات الفنيين");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  التقارير المتقدمة — Advanced Reports
+    // ══════════════════════════════════════════════════════════════════
+
+    /// <summary>أرباح وخسائر المبيعات</summary>
+    [HttpGet("reports/profit-loss")]
+    public async Task<IActionResult> GetProfitLossReport([FromQuery] Guid companyId,
+        [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
+    {
+        try
+        {
+            var query = _unitOfWork.InvoiceItems.AsQueryable()
+                .Where(ii => ii.Invoice != null && ii.Invoice.CompanyId == companyId
+                    && ii.Invoice.InvoiceType == InvoiceType.Sales
+                    && ii.Invoice.Status != InvoiceStatus.Draft && ii.Invoice.Status != InvoiceStatus.Cancelled);
+
+            if (from.HasValue) query = query.Where(ii => ii.Invoice!.InvoiceDate >= from.Value);
+            if (to.HasValue) query = query.Where(ii => ii.Invoice!.InvoiceDate <= to.Value.AddDays(1));
+
+            var items = await query.GroupBy(ii => new { ii.InventoryItemId, ii.ItemName })
+                .Select(g => new
+                {
+                    g.Key.InventoryItemId,
+                    g.Key.ItemName,
+                    QuantitySold = g.Sum(x => x.Quantity),
+                    TotalRevenue = g.Sum(x => x.TotalPrice),
+                    TotalCost = g.Sum(x => x.CostAtSale * x.Quantity),
+                    Profit = g.Sum(x => x.TotalPrice) - g.Sum(x => x.CostAtSale * x.Quantity)
+                })
+                .OrderByDescending(x => x.Profit)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                success = true,
+                data = items,
+                summary = new
+                {
+                    totalRevenue = items.Sum(x => x.TotalRevenue),
+                    totalCost = items.Sum(x => x.TotalCost),
+                    totalProfit = items.Sum(x => x.Profit)
+                }
+            });
+        }
+        catch (Exception ex) { _logger.LogError(ex, "خطأ تقرير الأرباح"); return StatusCode(500, new { success = false, message = "خطأ داخلي" }); }
+    }
+
+    /// <summary>أعمار ديون العملاء</summary>
+    [HttpGet("reports/customer-aging")]
+    public async Task<IActionResult> GetCustomerAgingReport([FromQuery] Guid companyId)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var invoices = await _unitOfWork.Invoices.AsQueryable()
+                .Where(i => i.CompanyId == companyId && i.InvoiceType == InvoiceType.Sales
+                    && i.RemainingAmount > 0 && i.Status != InvoiceStatus.Cancelled && i.Status != InvoiceStatus.Draft)
+                .Select(i => new
+                {
+                    i.CustomerId,
+                    CustomerName = i.Customer != null ? i.Customer.FullName : i.EntityName,
+                    i.InvoiceNumber, i.InvoiceDate, i.NetAmount, i.RemainingAmount,
+                    DaysOverdue = (now - i.InvoiceDate).Days
+                }).ToListAsync();
+
+            var grouped = invoices.GroupBy(i => new { i.CustomerId, i.CustomerName })
+                .Select(g => new
+                {
+                    g.Key.CustomerId, g.Key.CustomerName,
+                    TotalDue = g.Sum(x => x.RemainingAmount),
+                    Current = g.Where(x => x.DaysOverdue <= 30).Sum(x => x.RemainingAmount),
+                    Days31_60 = g.Where(x => x.DaysOverdue > 30 && x.DaysOverdue <= 60).Sum(x => x.RemainingAmount),
+                    Days61_90 = g.Where(x => x.DaysOverdue > 60 && x.DaysOverdue <= 90).Sum(x => x.RemainingAmount),
+                    Over90 = g.Where(x => x.DaysOverdue > 90).Sum(x => x.RemainingAmount),
+                    InvoiceCount = g.Count()
+                }).OrderByDescending(x => x.TotalDue).ToList();
+
+            return Ok(new { success = true, data = grouped, total = grouped.Count });
+        }
+        catch (Exception ex) { _logger.LogError(ex, "خطأ تقرير أعمار ديون العملاء"); return StatusCode(500, new { success = false, message = "خطأ داخلي" }); }
+    }
+
+    /// <summary>أعمار ديون الموردين</summary>
+    [HttpGet("reports/supplier-aging")]
+    public async Task<IActionResult> GetSupplierAgingReport([FromQuery] Guid companyId)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+            var invoices = await _unitOfWork.Invoices.AsQueryable()
+                .Where(i => i.CompanyId == companyId && i.InvoiceType == InvoiceType.Purchase
+                    && i.RemainingAmount > 0 && i.Status != InvoiceStatus.Cancelled && i.Status != InvoiceStatus.Draft)
+                .Select(i => new
+                {
+                    i.SupplierId,
+                    SupplierName = i.Supplier != null ? i.Supplier.Name : i.EntityName,
+                    i.InvoiceNumber, i.InvoiceDate, i.NetAmount, i.RemainingAmount,
+                    DaysOverdue = (now - i.InvoiceDate).Days
+                }).ToListAsync();
+
+            var grouped = invoices.GroupBy(i => new { i.SupplierId, i.SupplierName })
+                .Select(g => new
+                {
+                    g.Key.SupplierId, g.Key.SupplierName,
+                    TotalDue = g.Sum(x => x.RemainingAmount),
+                    Current = g.Where(x => x.DaysOverdue <= 30).Sum(x => x.RemainingAmount),
+                    Days31_60 = g.Where(x => x.DaysOverdue > 30 && x.DaysOverdue <= 60).Sum(x => x.RemainingAmount),
+                    Days61_90 = g.Where(x => x.DaysOverdue > 60 && x.DaysOverdue <= 90).Sum(x => x.RemainingAmount),
+                    Over90 = g.Where(x => x.DaysOverdue > 90).Sum(x => x.RemainingAmount),
+                    InvoiceCount = g.Count()
+                }).OrderByDescending(x => x.TotalDue).ToList();
+
+            return Ok(new { success = true, data = grouped, total = grouped.Count });
+        }
+        catch (Exception ex) { _logger.LogError(ex, "خطأ تقرير أعمار ديون الموردين"); return StatusCode(500, new { success = false, message = "خطأ داخلي" }); }
+    }
+
+    /// <summary>أكثر المواد مبيعاً</summary>
+    [HttpGet("reports/top-selling")]
+    public async Task<IActionResult> GetTopSellingReport([FromQuery] Guid companyId,
+        [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null, [FromQuery] int top = 20)
+    {
+        try
+        {
+            var query = _unitOfWork.InvoiceItems.AsQueryable()
+                .Where(ii => ii.Invoice != null && ii.Invoice.CompanyId == companyId
+                    && ii.Invoice.InvoiceType == InvoiceType.Sales
+                    && ii.Invoice.Status != InvoiceStatus.Draft && ii.Invoice.Status != InvoiceStatus.Cancelled);
+
+            if (from.HasValue) query = query.Where(ii => ii.Invoice!.InvoiceDate >= from.Value);
+            if (to.HasValue) query = query.Where(ii => ii.Invoice!.InvoiceDate <= to.Value.AddDays(1));
+
+            var items = await query.GroupBy(ii => new { ii.InventoryItemId, ii.ItemName })
+                .Select(g => new
+                {
+                    g.Key.InventoryItemId, g.Key.ItemName,
+                    TotalQuantity = g.Sum(x => x.Quantity),
+                    TotalRevenue = g.Sum(x => x.TotalPrice),
+                    InvoiceCount = g.Select(x => x.InvoiceId).Distinct().Count()
+                })
+                .OrderByDescending(x => x.TotalQuantity)
+                .Take(top)
+                .ToListAsync();
+
+            return Ok(new { success = true, data = items });
+        }
+        catch (Exception ex) { _logger.LogError(ex, "خطأ تقرير الأكثر مبيعاً"); return StatusCode(500, new { success = false, message = "خطأ داخلي" }); }
+    }
+
+    /// <summary>المخزون الراكد (بدون حركة خلال X يوم)</summary>
+    [HttpGet("reports/slow-moving")]
+    public async Task<IActionResult> GetSlowMovingReport([FromQuery] Guid companyId, [FromQuery] int days = 30)
+    {
+        try
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-days);
+            var items = await _unitOfWork.InventoryItems.AsQueryable()
+                .Where(i => i.CompanyId == companyId && i.IsActive)
+                .Where(i => !i.Movements.Any(m => m.CreatedAt >= cutoff))
+                .Select(i => new
+                {
+                    i.Id, i.Name, i.SKU,
+                    TotalStock = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity),
+                    StockValue = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity * s.AverageCost),
+                    LastMovement = i.Movements.OrderByDescending(m => m.CreatedAt).Select(m => (DateTime?)m.CreatedAt).FirstOrDefault()
+                })
+                .Where(x => x.TotalStock > 0)
+                .OrderByDescending(x => x.StockValue)
+                .ToListAsync();
+
+            return Ok(new { success = true, data = items, total = items.Count });
+        }
+        catch (Exception ex) { _logger.LogError(ex, "خطأ تقرير المخزون الراكد"); return StatusCode(500, new { success = false, message = "خطأ داخلي" }); }
+    }
+
+    /// <summary>دفتر حركة مادة محددة</summary>
+    [HttpGet("reports/item-ledger/{itemId}")]
+    public async Task<IActionResult> GetItemLedger(Guid itemId, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
+    {
+        try
+        {
+            var item = await _unitOfWork.InventoryItems.GetByIdAsync(itemId);
+            if (item == null) return NotFound(new { success = false, message = "المادة غير موجودة" });
+
+            var query = _unitOfWork.StockMovements.AsQueryable().Where(m => m.InventoryItemId == itemId);
+            if (from.HasValue) query = query.Where(m => m.CreatedAt >= from.Value);
+            if (to.HasValue) query = query.Where(m => m.CreatedAt <= to.Value.AddDays(1));
+
+            var movements = await query.OrderBy(m => m.CreatedAt)
+                .Select(m => new
+                {
+                    m.Id, MovementType = m.MovementType.ToString(), m.Quantity,
+                    m.StockBefore, m.StockAfter, m.UnitCost,
+                    m.ReferenceNumber, m.Description,
+                    WarehouseName = m.Warehouse != null ? m.Warehouse.Name : null,
+                    m.CreatedAt
+                }).ToListAsync();
+
+            return Ok(new { success = true, data = new { item = new { item.Id, item.Name, item.SKU }, movements }, total = movements.Count });
+        }
+        catch (Exception ex) { _logger.LogError(ex, "خطأ دفتر حركة المادة"); return StatusCode(500, new { success = false, message = "خطأ داخلي" }); }
+    }
+
+    /// <summary>ملخص مبيعات اليوم</summary>
+    [HttpGet("reports/daily-sales")]
+    public async Task<IActionResult> GetDailySalesReport([FromQuery] Guid companyId)
+    {
+        try
+        {
+            var today = DateTime.UtcNow.Date;
+            var invoices = await _unitOfWork.Invoices.AsQueryable()
+                .Where(i => i.CompanyId == companyId && i.InvoiceType == InvoiceType.Sales
+                    && i.InvoiceDate >= today && i.Status != InvoiceStatus.Cancelled && i.Status != InvoiceStatus.Draft)
+                .ToListAsync();
+
+            var totalSales = invoices.Sum(i => i.NetAmount);
+            var totalCash = invoices.Where(i => i.PaymentType == InvoicePaymentType.Cash).Sum(i => i.NetAmount);
+            var totalCredit = invoices.Where(i => i.PaymentType != InvoicePaymentType.Cash).Sum(i => i.NetAmount);
+            var totalPaid = invoices.Sum(i => i.PaidAmount);
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    date = today,
+                    invoiceCount = invoices.Count,
+                    totalSales, totalCash, totalCredit, totalPaid,
+                    totalRemaining = totalSales - totalPaid
+                }
+            });
+        }
+        catch (Exception ex) { _logger.LogError(ex, "خطأ تقرير مبيعات اليوم"); return StatusCode(500, new { success = false, message = "خطأ داخلي" }); }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  Helpers — القيود المحاسبية التلقائية
+    // ══════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// إنشاء قيد محاسبي مرحّل تلقائياً وإرجاع معرفه
+    /// </summary>
+    private async Task<Guid?> CreateJournalEntryForInventory(
+        Guid companyId, Guid createdById, string description,
+        JournalReferenceType referenceType, string? referenceId,
+        List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
+    {
+        if (lines.Count == 0) return null;
+
+        // رقم القيد التسلسلي
+        var year = DateTime.UtcNow.Year;
+        var prefix = $"JE-{year}-";
+        var maxEntry = await _unitOfWork.JournalEntries.AsQueryable()
+            .IgnoreQueryFilters()
+            .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year)
+            .Select(j => j.EntryNumber)
+            .MaxAsync();
+        int nextNum = 1;
+        if (maxEntry != null && maxEntry.StartsWith(prefix))
+        {
+            if (int.TryParse(maxEntry.Substring(prefix.Length), out var maxNum))
+                nextNum = maxNum + 1;
+        }
+        var entryNumber = $"{prefix}{nextNum:D4}";
+
+        var entryId = Guid.NewGuid();
+        var entry = new JournalEntry
+        {
+            Id = entryId,
+            EntryNumber = entryNumber,
+            EntryDate = DateTime.UtcNow,
+            Description = description,
+            TotalDebit = lines.Sum(l => l.DebitAmount),
+            TotalCredit = lines.Sum(l => l.CreditAmount),
+            ReferenceType = referenceType,
+            ReferenceId = referenceId,
+            Status = JournalEntryStatus.Posted,
+            CompanyId = companyId,
+            CreatedById = createdById,
+            ApprovedById = createdById,
+            ApprovedAt = DateTime.UtcNow,
+            Lines = lines.Select(l => new JournalEntryLine
+            {
+                AccountId = l.AccountId,
+                DebitAmount = l.DebitAmount,
+                CreditAmount = l.CreditAmount,
+                Description = l.LineDescription
+            }).ToList()
+        };
+
+        await _unitOfWork.JournalEntries.AddAsync(entry);
+
+        // تحديث أرصدة الحسابات فوراً
+        foreach (var line in lines)
+        {
+            var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+            if (account == null) continue;
+
+            if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                account.CurrentBalance += line.DebitAmount - line.CreditAmount;
+            else
+                account.CurrentBalance += line.CreditAmount - line.DebitAmount;
+
+            _unitOfWork.Accounts.Update(account);
+        }
+
+        return entryId;
+    }
+
+    /// <summary>
+    /// جلب حساب مربوط من InventoryAccountMapping
+    /// </summary>
+    private async Task<Guid?> GetMappedAccountId(Guid companyId, string accountKey)
+    {
+        var mapping = await _unitOfWork.InventoryAccountMappings.AsQueryable()
+            .FirstOrDefaultAsync(m => m.CompanyId == companyId && m.AccountKey == accountKey);
+        return mapping?.AccountId;
+    }
+
+    /// <summary>
+    /// جلب حساب المورد أو العميل — يبحث في AccountId المباشر أو ينشئ تلقائياً
+    /// </summary>
+    private async Task<Guid?> GetEntityAccountId(Guid companyId, string entityType, Guid entityId)
+    {
+        if (entityType == "Customer")
+        {
+            var customer = await _unitOfWork.InventoryCustomers.GetByIdAsync(entityId);
+            if (customer?.AccountId != null) return customer.AccountId;
+            // fallback: حساب ذمم مدينة العام
+            return await GetMappedAccountId(companyId, "accounts_receivable");
+        }
+        else
+        {
+            var supplier = await _unitOfWork.Suppliers.GetByIdAsync(entityId);
+            if (supplier?.AccountId != null) return supplier.AccountId;
+            // fallback: حساب ذمم دائنة العام
+            return await GetMappedAccountId(companyId, "accounts_payable");
+        }
+    }
+
+    /// <summary>
+    /// تحديث رصيد الصندوق + إنشاء حركة نقدية
+    /// </summary>
+    private async Task UpdateCashBox(Guid cashBoxId, decimal amount, bool isDeposit,
+        string description, JournalReferenceType refType, string? refId, Guid createdById)
+    {
+        var box = await _unitOfWork.CashBoxes.GetByIdAsync(cashBoxId);
+        if (box == null) return;
+
+        if (isDeposit)
+            box.CurrentBalance += amount;
+        else
+            box.CurrentBalance -= amount;
+
+        _unitOfWork.CashBoxes.Update(box);
+
+        var transaction = new CashTransaction
+        {
+            CashBoxId = cashBoxId,
+            TransactionType = isDeposit ? CashTransactionType.Deposit : CashTransactionType.Withdrawal,
+            Amount = amount,
+            BalanceAfter = box.CurrentBalance,
+            Description = description,
+            ReferenceType = refType,
+            ReferenceId = refId,
+            CreatedById = createdById
+        };
+        await _unitOfWork.CashTransactions.AddAsync(transaction);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  بذر الحسابات الافتراضية + ربط المخزون
+    // ══════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// بذر الحسابات المحاسبية الافتراضية لنظام المخازن (يُستدعى مرة واحدة عند التفعيل)
+    /// </summary>
+    [HttpPost("accounts/seed")]
+    [RequirePermission("inventory", "add")]
+    public async Task<IActionResult> SeedInventoryAccounts([FromBody] SeedAccountsRequest request)
+    {
+        try
+        {
+            // التحقق من عدم البذر المسبق
+            var existing = await _unitOfWork.InventoryAccountMappings.AsQueryable()
+                .AnyAsync(m => m.CompanyId == request.CompanyId);
+            if (existing)
+                return Ok(new { success = true, message = "الحسابات مُعدّة مسبقاً", alreadySeeded = true });
+
+            var companyId = request.CompanyId;
+            var userId = GetCurrentUserId();
+
+            // تعريف الحسابات المطلوبة (كود، اسم، نوع، أب)
+            var accountDefs = new (string code, string name, AccountType type, string? parentCode, string? mappingKey)[]
+            {
+                ("1130", "المخزون (بضاعة)", AccountType.Assets, null, "inventory"),
+                ("1140", "ذمم مدينة (عملاء)", AccountType.Assets, null, "accounts_receivable"),
+                ("2110", "ذمم دائنة (موردين)", AccountType.Liabilities, null, "accounts_payable"),
+                ("4100", "إيرادات المبيعات", AccountType.Revenue, null, "sales_revenue"),
+                ("5100", "تكلفة البضاعة المباعة", AccountType.Expenses, null, "cogs"),
+                ("5300", "مردودات المبيعات", AccountType.Expenses, null, "sales_returns"),
+                ("5310", "مردودات المشتريات", AccountType.Assets, null, "purchase_returns"),
+                ("2120", "ضريبة مستحقة", AccountType.Liabilities, null, "tax_payable"),
+            };
+
+            var mappings = new List<InventoryAccountMapping>();
+
+            foreach (var def in accountDefs)
+            {
+                // بحث عن الحساب إذا موجود
+                var account = await _unitOfWork.Accounts.AsQueryable()
+                    .FirstOrDefaultAsync(a => a.Code == def.code && a.CompanyId == companyId);
+
+                if (account == null)
+                {
+                    // إنشاء الحساب
+                    account = new Account
+                    {
+                        Id = Guid.NewGuid(),
+                        Code = def.code,
+                        Name = def.name,
+                        AccountType = def.type,
+                        IsSystemAccount = true,
+                        IsLeaf = true,
+                        IsActive = true,
+                        Level = 3,
+                        CompanyId = companyId
+                    };
+                    await _unitOfWork.Accounts.AddAsync(account);
+                }
+
+                if (def.mappingKey != null)
+                {
+                    mappings.Add(new InventoryAccountMapping
+                    {
+                        CompanyId = companyId,
+                        AccountKey = def.mappingKey,
+                        AccountId = account.Id
+                    });
+                }
+            }
+
+            foreach (var m in mappings)
+                await _unitOfWork.InventoryAccountMappings.AddAsync(m);
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = $"تم إنشاء {mappings.Count} حساب وربطهم بالمخزون", alreadySeeded = false });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في بذر حسابات المخزون");
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// جلب ربط الحسابات الحالي
+    /// </summary>
+    [HttpGet("accounts/mappings")]
+    public async Task<IActionResult> GetAccountMappings([FromQuery] Guid companyId)
+    {
+        var mappings = await _unitOfWork.InventoryAccountMappings.AsQueryable()
+            .Where(m => m.CompanyId == companyId)
+            .Select(m => new
+            {
+                m.AccountKey,
+                m.AccountId,
+                AccountName = m.Account != null ? m.Account.Name : null,
+                AccountCode = m.Account != null ? m.Account.Code : null
+            }).ToListAsync();
+
+        return Ok(new { success = true, data = mappings });
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  العملاء — Customers
+    // ══════════════════════════════════════════════════════════════════
+
+    [HttpGet("customers")]
+    public async Task<IActionResult> GetCustomers([FromQuery] Guid companyId, [FromQuery] string? search = null,
+        [FromQuery] InventoryCustomerType? type = null, [FromQuery] bool? activeOnly = true)
+    {
+        try
+        {
+            var query = _unitOfWork.InventoryCustomers.AsQueryable()
+                .Where(c => c.CompanyId == companyId);
+
+            if (activeOnly == true) query = query.Where(c => c.IsActive);
+            if (type.HasValue) query = query.Where(c => c.CustomerType == type);
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(c => c.FullName.Contains(search) || c.Phone!.Contains(search) || c.CustomerCode.Contains(search));
+
+            var customers = await query.OrderBy(c => c.FullName)
+                .Select(c => new
+                {
+                    c.Id, c.CustomerCode, c.FullName, c.Phone, c.Phone2, c.Email,
+                    c.City, c.Area, CustomerType = c.CustomerType.ToString(),
+                    c.CreditLimit, c.TotalSales, c.TotalPayments, c.Balance,
+                    c.IsActive, c.CreatedAt
+                }).ToListAsync();
+
+            return Ok(new { success = true, data = customers, total = customers.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب العملاء");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    [HttpGet("customers/{id}")]
+    public async Task<IActionResult> GetCustomerDetails(Guid id)
+    {
+        try
+        {
+            var c = await _unitOfWork.InventoryCustomers.AsQueryable()
+                .Where(x => x.Id == id)
+                .Select(x => new
+                {
+                    x.Id, x.CustomerCode, x.FullName, x.Phone, x.Phone2, x.Email,
+                    x.City, x.Area, x.Address, CustomerType = x.CustomerType.ToString(),
+                    x.CreditLimit, x.TotalSales, x.TotalPayments, x.Balance,
+                    x.TaxNumber, x.Notes, x.IsActive, x.AccountId, x.CompanyId, x.CreatedAt,
+                    InvoiceCount = x.Invoices.Count(i => !i.IsDeleted)
+                }).FirstOrDefaultAsync();
+
+            if (c == null) return NotFound(new { success = false, message = "العميل غير موجود" });
+            return Ok(new { success = true, data = c });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب تفاصيل العميل");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    [HttpPost("customers")]
+    [RequirePermission("inventory", "add")]
+    public async Task<IActionResult> CreateCustomer([FromBody] CreateInventoryCustomerRequest req)
+    {
+        try
+        {
+            var code = await GenerateOrderNumber("CU", req.CompanyId);
+            var customer = new InventoryCustomer
+            {
+                Id = Guid.NewGuid(),
+                CustomerCode = code,
+                FullName = req.FullName,
+                Phone = req.Phone,
+                Phone2 = req.Phone2,
+                Email = req.Email,
+                City = req.City,
+                Area = req.Area,
+                Address = req.Address,
+                CustomerType = req.CustomerType,
+                CreditLimit = req.CreditLimit,
+                TaxNumber = req.TaxNumber,
+                Notes = req.Notes,
+                CompanyId = req.CompanyId
+            };
+
+            await _unitOfWork.InventoryCustomers.AddAsync(customer);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, data = new { customer.Id, customer.CustomerCode }, message = "تم إضافة العميل" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إضافة العميل");
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
+        }
+    }
+
+    [HttpPut("customers/{id}")]
+    [RequirePermission("inventory", "edit")]
+    public async Task<IActionResult> UpdateCustomer(Guid id, [FromBody] UpdateInventoryCustomerRequest req)
+    {
+        try
+        {
+            var customer = await _unitOfWork.InventoryCustomers.GetByIdAsync(id);
+            if (customer == null) return NotFound(new { success = false, message = "العميل غير موجود" });
+
+            if (req.FullName != null) customer.FullName = req.FullName;
+            if (req.Phone != null) customer.Phone = req.Phone;
+            if (req.Phone2 != null) customer.Phone2 = req.Phone2;
+            if (req.Email != null) customer.Email = req.Email;
+            if (req.City != null) customer.City = req.City;
+            if (req.Area != null) customer.Area = req.Area;
+            if (req.Address != null) customer.Address = req.Address;
+            if (req.CustomerType.HasValue) customer.CustomerType = req.CustomerType.Value;
+            if (req.CreditLimit.HasValue) customer.CreditLimit = req.CreditLimit.Value;
+            if (req.TaxNumber != null) customer.TaxNumber = req.TaxNumber;
+            if (req.Notes != null) customer.Notes = req.Notes;
+            if (req.IsActive.HasValue) customer.IsActive = req.IsActive.Value;
+
+            _unitOfWork.InventoryCustomers.Update(customer);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم تعديل العميل" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تعديل العميل");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    [HttpDelete("customers/{id}")]
+    [RequirePermission("inventory", "edit")]
+    public async Task<IActionResult> DeleteCustomer(Guid id)
+    {
+        try
+        {
+            var customer = await _unitOfWork.InventoryCustomers.GetByIdAsync(id);
+            if (customer == null) return NotFound(new { success = false, message = "العميل غير موجود" });
+            if (customer.Balance != 0)
+                return BadRequest(new { success = false, message = $"لا يمكن حذف العميل — رصيده {customer.Balance:N0}" });
+
+            customer.IsDeleted = true;
+            customer.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.InventoryCustomers.Update(customer);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم حذف العميل" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حذف العميل");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    [HttpGet("customers/{id}/statement")]
+    public async Task<IActionResult> GetCustomerStatement(Guid id, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
+    {
+        try
+        {
+            var customer = await _unitOfWork.InventoryCustomers.GetByIdAsync(id);
+            if (customer == null) return NotFound(new { success = false, message = "العميل غير موجود" });
+
+            // فواتير
+            var invoicesQuery = _unitOfWork.Invoices.AsQueryable()
+                .Where(i => i.CustomerId == id && i.Status != InvoiceStatus.Draft && i.Status != InvoiceStatus.Cancelled);
+            if (from.HasValue) invoicesQuery = invoicesQuery.Where(i => i.InvoiceDate >= from.Value);
+            if (to.HasValue) invoicesQuery = invoicesQuery.Where(i => i.InvoiceDate <= to.Value.AddDays(1));
+
+            var invoices = await invoicesQuery.OrderBy(i => i.InvoiceDate)
+                .Select(i => new { Date = i.InvoiceDate, Reference = i.InvoiceNumber, Description = "فاتورة بيع", Debit = i.NetAmount, Credit = 0m })
+                .ToListAsync();
+
+            // سندات قبض
+            var vouchersQuery = _unitOfWork.PaymentVouchers.AsQueryable()
+                .Where(v => v.EntityType == VoucherEntityType.Customer && v.EntityId == id);
+            if (from.HasValue) vouchersQuery = vouchersQuery.Where(v => v.VoucherDate >= from.Value);
+            if (to.HasValue) vouchersQuery = vouchersQuery.Where(v => v.VoucherDate <= to.Value.AddDays(1));
+
+            var vouchers = await vouchersQuery.OrderBy(v => v.VoucherDate)
+                .Select(v => new { Date = v.VoucherDate, Reference = v.VoucherNumber, Description = "سند قبض", Debit = 0m, Credit = v.Amount })
+                .ToListAsync();
+
+            // مرتجعات
+            var returnsQuery = _unitOfWork.ReturnOrders.AsQueryable()
+                .Where(r => r.CustomerId == id && r.ReturnType == ReturnType.SalesReturn && r.Status == ReturnStatus.Confirmed);
+            if (from.HasValue) returnsQuery = returnsQuery.Where(r => r.ReturnDate >= from.Value);
+            if (to.HasValue) returnsQuery = returnsQuery.Where(r => r.ReturnDate <= to.Value.AddDays(1));
+
+            var returns = await returnsQuery.OrderBy(r => r.ReturnDate)
+                .Select(r => new { Date = r.ReturnDate, Reference = r.ReturnNumber, Description = "مرتجع مبيعات", Debit = 0m, Credit = r.TotalAmount })
+                .ToListAsync();
+
+            // دمج وترتيب
+            var allEntries = invoices.Concat(vouchers).Concat(returns).OrderBy(e => e.Date).ToList();
+
+            // حساب الرصيد التراكمي
+            decimal runningBalance = 0;
+            var statement = allEntries.Select(e =>
+            {
+                runningBalance += e.Debit - e.Credit;
+                return new { e.Date, e.Reference, e.Description, e.Debit, e.Credit, Balance = runningBalance };
+            }).ToList();
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    customer = new { customer.Id, customer.CustomerCode, customer.FullName, customer.Balance },
+                    statement,
+                    totalDebit = allEntries.Sum(e => e.Debit),
+                    totalCredit = allEntries.Sum(e => e.Credit),
+                    closingBalance = runningBalance
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب كشف حساب العميل");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  الفواتير — Invoices
+    // ══════════════════════════════════════════════════════════════════
+
+    [HttpGet("invoices")]
+    public async Task<IActionResult> GetInvoices([FromQuery] Guid companyId, [FromQuery] InvoiceType? type = null,
+        [FromQuery] InvoiceStatus? status = null, [FromQuery] Guid? customerId = null, [FromQuery] Guid? supplierId = null,
+        [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
+    {
+        try
+        {
+            var query = _unitOfWork.Invoices.AsQueryable().Where(i => i.CompanyId == companyId);
+
+            if (type.HasValue) query = query.Where(i => i.InvoiceType == type);
+            if (status.HasValue) query = query.Where(i => i.Status == status);
+            if (customerId.HasValue) query = query.Where(i => i.CustomerId == customerId);
+            if (supplierId.HasValue) query = query.Where(i => i.SupplierId == supplierId);
+            if (from.HasValue) query = query.Where(i => i.InvoiceDate >= from.Value);
+            if (to.HasValue) query = query.Where(i => i.InvoiceDate <= to.Value.AddDays(1));
+
+            var invoices = await query.OrderByDescending(i => i.InvoiceDate)
+                .Select(i => new
+                {
+                    i.Id, i.InvoiceNumber, InvoiceType = i.InvoiceType.ToString(),
+                    PaymentType = i.PaymentType.ToString(), i.EntityName,
+                    i.CustomerId, i.SupplierId, i.InvoiceDate, i.DueDate,
+                    i.SubTotal, i.DiscountAmount, i.TaxAmount, i.NetAmount,
+                    i.PaidAmount, i.RemainingAmount, Status = i.Status.ToString(),
+                    WarehouseName = i.Warehouse != null ? i.Warehouse.Name : null,
+                    ItemsCount = i.Items.Count, i.CreatedAt
+                }).ToListAsync();
+
+            return Ok(new { success = true, data = invoices, total = invoices.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب الفواتير");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    [HttpGet("invoices/{id}")]
+    public async Task<IActionResult> GetInvoiceDetails(Guid id)
+    {
+        try
+        {
+            var invoice = await _unitOfWork.Invoices.AsQueryable().Where(i => i.Id == id)
+                .Select(i => new
+                {
+                    i.Id, i.InvoiceNumber, InvoiceType = i.InvoiceType.ToString(),
+                    PaymentType = i.PaymentType.ToString(),
+                    i.CustomerId, CustomerName = i.Customer != null ? i.Customer.FullName : null,
+                    i.SupplierId, SupplierName = i.Supplier != null ? i.Supplier.Name : null,
+                    i.EntityName, i.WarehouseId,
+                    WarehouseName = i.Warehouse != null ? i.Warehouse.Name : null,
+                    i.InvoiceDate, i.DueDate, i.SubTotal,
+                    DiscountType = i.DiscountType.ToString(), i.DiscountValue, i.DiscountAmount,
+                    i.TaxRate, i.TaxAmount, i.NetAmount, i.PaidAmount, i.RemainingAmount,
+                    Status = i.Status.ToString(), i.Notes, i.JournalEntryId, i.CashBoxId,
+                    i.CompanyId, i.CreatedAt,
+                    CreatedByName = i.CreatedBy != null ? i.CreatedBy.FullName : null,
+                    Items = i.Items.Select(item => new
+                    {
+                        item.Id, item.InventoryItemId, item.ItemName, item.Quantity,
+                        item.UnitPrice, item.DiscountPercent, item.DiscountAmount,
+                        item.TaxAmount, item.TotalPrice, item.CostAtSale, item.Notes
+                    }).ToList(),
+                    Vouchers = i.PaymentVouchers.Where(v => !v.IsDeleted).Select(v => new
+                    {
+                        v.Id, v.VoucherNumber, v.Amount, v.VoucherDate,
+                        PaymentMethod = v.PaymentMethod.ToString()
+                    }).ToList()
+                }).FirstOrDefaultAsync();
+
+            if (invoice == null) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
+            return Ok(new { success = true, data = invoice });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب تفاصيل الفاتورة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    [HttpPost("invoices")]
+    [RequirePermission("inventory", "add")]
+    public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceRequest req)
+    {
+        try
+        {
+            var prefix = req.InvoiceType == InvoiceType.Sales ? "INV" : "PINV";
+            var invoiceNumber = await GenerateOrderNumber(prefix, req.CompanyId);
+            var userId = GetCurrentUserId();
+
+            // اسم الكيان
+            string? entityName = null;
+            if (req.CustomerId.HasValue)
+            {
+                var cust = await _unitOfWork.InventoryCustomers.GetByIdAsync(req.CustomerId.Value);
+                entityName = cust?.FullName;
+            }
+            else if (req.SupplierId.HasValue)
+            {
+                var sup = await _unitOfWork.Suppliers.GetByIdAsync(req.SupplierId.Value);
+                entityName = sup?.Name;
+            }
+
+            var invoice = new Invoice
+            {
+                Id = Guid.NewGuid(),
+                InvoiceNumber = invoiceNumber,
+                InvoiceType = req.InvoiceType,
+                PaymentType = req.PaymentType,
+                CustomerId = req.CustomerId,
+                SupplierId = req.SupplierId,
+                EntityName = entityName ?? req.EntityName,
+                WarehouseId = req.WarehouseId,
+                InvoiceDate = DateTime.UtcNow,
+                DueDate = req.DueDate,
+                DiscountType = req.DiscountType,
+                DiscountValue = req.DiscountValue,
+                TaxRate = req.TaxRate,
+                Status = InvoiceStatus.Draft,
+                Notes = req.Notes,
+                CashBoxId = req.CashBoxId,
+                CreatedById = userId,
+                CompanyId = req.CompanyId
+            };
+
+            // حساب البنود
+            decimal subTotal = 0;
+            foreach (var itemDto in req.Items)
+            {
+                var invItem = await _unitOfWork.InventoryItems.GetByIdAsync(itemDto.InventoryItemId);
+                var lineDiscount = itemDto.DiscountPercent > 0
+                    ? (itemDto.UnitPrice * itemDto.Quantity * itemDto.DiscountPercent / 100m)
+                    : 0;
+                var lineTotal = (itemDto.UnitPrice * itemDto.Quantity) - lineDiscount;
+
+                // تكلفة الوحدة (لحساب الربح في البيع)
+                decimal costAtSale = 0;
+                if (req.InvoiceType == InvoiceType.Sales)
+                {
+                    var stock = await _unitOfWork.WarehouseStocks.AsQueryable()
+                        .FirstOrDefaultAsync(s => s.WarehouseId == req.WarehouseId && s.InventoryItemId == itemDto.InventoryItemId && !s.IsDeleted);
+                    costAtSale = stock?.AverageCost ?? 0;
+                }
+
+                var invoiceItem = new InvoiceItem
+                {
+                    InvoiceId = invoice.Id,
+                    InventoryItemId = itemDto.InventoryItemId,
+                    ItemName = invItem?.Name ?? "",
+                    Quantity = itemDto.Quantity,
+                    UnitPrice = itemDto.UnitPrice,
+                    DiscountPercent = itemDto.DiscountPercent,
+                    DiscountAmount = lineDiscount,
+                    TotalPrice = lineTotal,
+                    CostAtSale = costAtSale,
+                    Notes = itemDto.Notes
+                };
+                await _unitOfWork.InvoiceItems.AddAsync(invoiceItem);
+                subTotal += lineTotal;
+            }
+
+            // الخصم العام
+            decimal discountAmount = req.DiscountType == DiscountType.Percentage
+                ? subTotal * req.DiscountValue / 100m
+                : req.DiscountValue;
+
+            var afterDiscount = subTotal - discountAmount;
+            var taxAmount = afterDiscount * req.TaxRate / 100m;
+            var netAmount = afterDiscount + taxAmount;
+
+            invoice.SubTotal = subTotal;
+            invoice.DiscountAmount = discountAmount;
+            invoice.TaxAmount = taxAmount;
+            invoice.NetAmount = netAmount;
+            invoice.RemainingAmount = netAmount;
+
+            // إذا نقد → المدفوع = الصافي
+            if (req.PaymentType == InvoicePaymentType.Cash)
+            {
+                invoice.PaidAmount = netAmount;
+                invoice.RemainingAmount = 0;
+            }
+            else if (req.PaymentType == InvoicePaymentType.Partial)
+            {
+                invoice.PaidAmount = req.PaidAmount;
+                invoice.RemainingAmount = netAmount - req.PaidAmount;
+            }
+
+            await _unitOfWork.Invoices.AddAsync(invoice);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, data = new { invoice.Id, invoice.InvoiceNumber, invoice.NetAmount }, message = "تم إنشاء الفاتورة" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إنشاء الفاتورة");
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// تأكيد الفاتورة — يخصم/يضيف المخزون + ينشئ القيد المحاسبي + يحدث الأرصدة
+    /// </summary>
+    [HttpPost("invoices/{id}/confirm")]
+    [RequirePermission("inventory", "edit")]
+    public async Task<IActionResult> ConfirmInvoice(Guid id)
+    {
+        try
+        {
+            var invoice = await _unitOfWork.Invoices.AsQueryable()
+                .Include(i => i.Items)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (invoice == null) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
+            if (invoice.Status != InvoiceStatus.Draft)
+                return BadRequest(new { success = false, message = "الفاتورة ليست مسودة" });
+
+            var userId = GetCurrentUserId();
+            var isSales = invoice.InvoiceType == InvoiceType.Sales;
+
+            // ── 1. حركات المخزون ──
+            decimal totalCost = 0;
+            foreach (var item in invoice.Items)
+            {
+                var stock = await _unitOfWork.WarehouseStocks.AsQueryable()
+                    .FirstOrDefaultAsync(s => s.WarehouseId == invoice.WarehouseId && s.InventoryItemId == item.InventoryItemId && !s.IsDeleted);
+
+                int oldQty = stock?.CurrentQuantity ?? 0;
+                int newQty;
+
+                if (isSales)
+                {
+                    // بيع → خصم من المخزون
+                    newQty = oldQty - item.Quantity;
+                    if (stock != null) { stock.CurrentQuantity = newQty; stock.LastStockOutDate = DateTime.UtcNow; _unitOfWork.WarehouseStocks.Update(stock); }
+                    totalCost += item.CostAtSale * item.Quantity;
+                }
+                else
+                {
+                    // شراء → إضافة للمخزون + تحديث التكلفة المتوسطة
+                    newQty = oldQty + item.Quantity;
+                    if (stock != null)
+                    {
+                        var totalValue = (stock.AverageCost * oldQty) + (item.UnitPrice * item.Quantity);
+                        stock.AverageCost = newQty > 0 ? totalValue / newQty : item.UnitPrice;
+                        stock.CurrentQuantity = newQty;
+                        stock.LastStockInDate = DateTime.UtcNow;
+                        _unitOfWork.WarehouseStocks.Update(stock);
+                    }
+                    else
+                    {
+                        await _unitOfWork.WarehouseStocks.AddAsync(new WarehouseStock
+                        {
+                            WarehouseId = invoice.WarehouseId,
+                            InventoryItemId = item.InventoryItemId,
+                            CurrentQuantity = item.Quantity,
+                            AverageCost = item.UnitPrice,
+                            LastStockInDate = DateTime.UtcNow,
+                            CompanyId = invoice.CompanyId
+                        });
+                    }
+                }
+
+                // حركة مخزنية
+                await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                {
+                    InventoryItemId = item.InventoryItemId,
+                    WarehouseId = invoice.WarehouseId,
+                    MovementType = isSales ? StockMovementType.SalesOut : StockMovementType.PurchaseIn,
+                    Quantity = item.Quantity,
+                    StockBefore = oldQty,
+                    StockAfter = isSales ? oldQty - item.Quantity : oldQty + item.Quantity,
+                    UnitCost = isSales ? item.CostAtSale : item.UnitPrice,
+                    ReferenceType = "Invoice",
+                    ReferenceId = invoice.Id.ToString(),
+                    ReferenceNumber = invoice.InvoiceNumber,
+                    Description = $"{(isSales ? "بيع" : "شراء")} - {invoice.InvoiceNumber}",
+                    CreatedById = userId,
+                    CompanyId = invoice.CompanyId
+                });
+            }
+
+            // ── 2. القيد المحاسبي ──
+            var inventoryAccId = await GetMappedAccountId(invoice.CompanyId, "inventory");
+            var cogsAccId = await GetMappedAccountId(invoice.CompanyId, "cogs");
+            var revenueAccId = await GetMappedAccountId(invoice.CompanyId, "sales_revenue");
+
+            if (inventoryAccId != null)
+            {
+                var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>();
+
+                if (isSales)
+                {
+                    // فاتورة بيع
+                    Guid? debitAccId;
+                    if (invoice.PaymentType == InvoicePaymentType.Cash && invoice.CashBoxId.HasValue)
+                    {
+                        // نقد → مدين الصندوق (عبر حساب الصندوق المربوط)
+                        var cashBox = await _unitOfWork.CashBoxes.GetByIdAsync(invoice.CashBoxId.Value);
+                        debitAccId = cashBox?.LinkedAccountId ?? await GetMappedAccountId(invoice.CompanyId, "accounts_receivable");
+                    }
+                    else
+                    {
+                        // آجل → مدين حساب العميل
+                        debitAccId = invoice.CustomerId.HasValue
+                            ? await GetEntityAccountId(invoice.CompanyId, "Customer", invoice.CustomerId.Value)
+                            : await GetMappedAccountId(invoice.CompanyId, "accounts_receivable");
+                    }
+
+                    if (debitAccId != null && revenueAccId != null)
+                    {
+                        lines.Add((debitAccId.Value, invoice.NetAmount, 0, "إيراد مبيعات"));
+                        lines.Add((revenueAccId.Value, 0, invoice.NetAmount, "إيراد مبيعات"));
+                    }
+                    if (cogsAccId != null && totalCost > 0)
+                    {
+                        lines.Add((cogsAccId.Value, totalCost, 0, "تكلفة بضاعة مباعة"));
+                        lines.Add((inventoryAccId.Value, 0, totalCost, "خصم من المخزون"));
+                    }
+                }
+                else
+                {
+                    // فاتورة شراء
+                    Guid? creditAccId;
+                    if (invoice.PaymentType == InvoicePaymentType.Cash && invoice.CashBoxId.HasValue)
+                    {
+                        var cashBox = await _unitOfWork.CashBoxes.GetByIdAsync(invoice.CashBoxId.Value);
+                        creditAccId = cashBox?.LinkedAccountId ?? await GetMappedAccountId(invoice.CompanyId, "accounts_payable");
+                    }
+                    else
+                    {
+                        creditAccId = invoice.SupplierId.HasValue
+                            ? await GetEntityAccountId(invoice.CompanyId, "Supplier", invoice.SupplierId.Value)
+                            : await GetMappedAccountId(invoice.CompanyId, "accounts_payable");
+                    }
+
+                    if (creditAccId != null)
+                    {
+                        lines.Add((inventoryAccId.Value, invoice.NetAmount, 0, "إضافة للمخزون"));
+                        lines.Add((creditAccId.Value, 0, invoice.NetAmount, isSales ? "" : "مشتريات"));
+                    }
+                }
+
+                if (lines.Count > 0)
+                {
+                    var jeId = await CreateJournalEntryForInventory(
+                        invoice.CompanyId, userId,
+                        $"{(isSales ? "فاتورة بيع" : "فاتورة شراء")} - {invoice.InvoiceNumber}",
+                        isSales ? JournalReferenceType.SalesInvoice : JournalReferenceType.PurchaseInvoice,
+                        invoice.Id.ToString(), lines);
+                    invoice.JournalEntryId = jeId;
+                }
+            }
+
+            // ── 3. تحديث الصندوق (إذا نقد) ──
+            if (invoice.PaymentType == InvoicePaymentType.Cash && invoice.CashBoxId.HasValue)
+            {
+                await UpdateCashBox(invoice.CashBoxId.Value, invoice.NetAmount,
+                    isDeposit: isSales, // بيع = إيداع، شراء = سحب
+                    $"{(isSales ? "فاتورة بيع" : "فاتورة شراء")} - {invoice.InvoiceNumber}",
+                    isSales ? JournalReferenceType.SalesInvoice : JournalReferenceType.PurchaseInvoice,
+                    invoice.Id.ToString(), userId);
+            }
+
+            // ── 4. تحديث رصيد العميل/المورد (إذا آجل) ──
+            if (invoice.PaymentType != InvoicePaymentType.Cash)
+            {
+                if (isSales && invoice.CustomerId.HasValue)
+                {
+                    var cust = await _unitOfWork.InventoryCustomers.GetByIdAsync(invoice.CustomerId.Value);
+                    if (cust != null)
+                    {
+                        cust.TotalSales += invoice.NetAmount;
+                        cust.Balance += invoice.RemainingAmount;
+                        _unitOfWork.InventoryCustomers.Update(cust);
+                    }
+                }
+                else if (!isSales && invoice.SupplierId.HasValue)
+                {
+                    var sup = await _unitOfWork.Suppliers.GetByIdAsync(invoice.SupplierId.Value);
+                    if (sup != null)
+                    {
+                        sup.TotalPurchases += invoice.NetAmount;
+                        sup.Balance += invoice.RemainingAmount;
+                        _unitOfWork.Suppliers.Update(sup);
+                    }
+                }
+            }
+
+            // ── 5. تحديث حالة الفاتورة ──
+            invoice.Status = invoice.RemainingAmount <= 0 ? InvoiceStatus.Paid
+                : invoice.PaidAmount > 0 ? InvoiceStatus.PartiallyPaid
+                : InvoiceStatus.Confirmed;
+
+            _unitOfWork.Invoices.Update(invoice);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم تأكيد الفاتورة", data = new { invoice.Id, Status = invoice.Status.ToString(), invoice.JournalEntryId } });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تأكيد الفاتورة");
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
+        }
+    }
+
+    [HttpPost("invoices/{id}/cancel")]
+    [RequirePermission("inventory", "edit")]
+    public async Task<IActionResult> CancelInvoice(Guid id)
+    {
+        try
+        {
+            var invoice = await _unitOfWork.Invoices.GetByIdAsync(id);
+            if (invoice == null) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
+            if (invoice.Status == InvoiceStatus.Cancelled)
+                return BadRequest(new { success = false, message = "الفاتورة ملغاة مسبقاً" });
+            if (invoice.Status == InvoiceStatus.Draft)
+            {
+                invoice.Status = InvoiceStatus.Cancelled;
+                _unitOfWork.Invoices.Update(invoice);
+                await _unitOfWork.SaveChangesAsync();
+                return Ok(new { success = true, message = "تم إلغاء المسودة" });
+            }
+
+            // TODO: عكس حركات المخزون + عكس القيد المحاسبي + تحديث الأرصدة
+            // (سيُنفذ لاحقاً عند الحاجة)
+            return BadRequest(new { success = false, message = "إلغاء الفواتير المؤكدة سيُتاح قريباً — استخدم المرتجعات بدلاً من ذلك" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إلغاء الفاتورة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  سندات القبض والصرف — Payment Vouchers
+    // ══════════════════════════════════════════════════════════════════
+
+    [HttpGet("vouchers")]
+    public async Task<IActionResult> GetVouchers([FromQuery] Guid companyId, [FromQuery] VoucherType? type = null,
+        [FromQuery] Guid? entityId = null, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
+    {
+        try
+        {
+            var query = _unitOfWork.PaymentVouchers.AsQueryable().Where(v => v.CompanyId == companyId);
+            if (type.HasValue) query = query.Where(v => v.VoucherType == type);
+            if (entityId.HasValue) query = query.Where(v => v.EntityId == entityId);
+            if (from.HasValue) query = query.Where(v => v.VoucherDate >= from.Value);
+            if (to.HasValue) query = query.Where(v => v.VoucherDate <= to.Value.AddDays(1));
+
+            var vouchers = await query.OrderByDescending(v => v.VoucherDate)
+                .Select(v => new
+                {
+                    v.Id, v.VoucherNumber, VoucherType = v.VoucherType.ToString(),
+                    EntityType = v.EntityType.ToString(), v.EntityId, v.EntityName,
+                    v.Amount, PaymentMethod = v.PaymentMethod.ToString(),
+                    v.VoucherDate, v.InvoiceId, v.Notes, v.CreatedAt
+                }).ToListAsync();
+
+            return Ok(new { success = true, data = vouchers, total = vouchers.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب السندات");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    [HttpPost("vouchers")]
+    [RequirePermission("inventory", "add")]
+    public async Task<IActionResult> CreateVoucher([FromBody] CreateVoucherRequest req)
+    {
+        try
+        {
+            var prefix = req.VoucherType == VoucherType.Receipt ? "RV" : "PV";
+            var voucherNumber = await GenerateOrderNumber(prefix, req.CompanyId);
+            var userId = GetCurrentUserId();
+
+            var voucher = new PaymentVoucher
+            {
+                Id = Guid.NewGuid(),
+                VoucherNumber = voucherNumber,
+                VoucherType = req.VoucherType,
+                EntityType = req.EntityType,
+                EntityId = req.EntityId,
+                EntityName = req.EntityName,
+                Amount = req.Amount,
+                PaymentMethod = req.PaymentMethod,
+                CashBoxId = req.CashBoxId,
+                VoucherDate = DateTime.UtcNow,
+                InvoiceId = req.InvoiceId,
+                Notes = req.Notes,
+                CreatedById = userId,
+                CompanyId = req.CompanyId
+            };
+
+            // ── القيد المحاسبي ──
+            Guid? entityAccId;
+            Guid? cashAccId = null;
+
+            if (req.CashBoxId.HasValue)
+            {
+                var cashBox = await _unitOfWork.CashBoxes.GetByIdAsync(req.CashBoxId.Value);
+                cashAccId = cashBox?.LinkedAccountId;
+            }
+            cashAccId ??= await GetMappedAccountId(req.CompanyId, "accounts_receivable"); // fallback
+
+            if (req.VoucherType == VoucherType.Receipt)
+            {
+                // سند قبض من عميل
+                entityAccId = await GetEntityAccountId(req.CompanyId, "Customer", req.EntityId);
+                if (entityAccId != null && cashAccId != null)
+                {
+                    var jeId = await CreateJournalEntryForInventory(req.CompanyId, userId,
+                        $"سند قبض - {voucherNumber} - {req.EntityName}",
+                        JournalReferenceType.CustomerReceipt, voucher.Id.ToString(),
+                        new List<(Guid, decimal, decimal, string?)>
+                        {
+                            (cashAccId.Value, req.Amount, 0, "قبض نقدي"),
+                            (entityAccId.Value, 0, req.Amount, $"من العميل {req.EntityName}")
+                        });
+                    voucher.JournalEntryId = jeId;
+                }
+
+                // تحديث رصيد العميل
+                var cust = await _unitOfWork.InventoryCustomers.GetByIdAsync(req.EntityId);
+                if (cust != null) { cust.TotalPayments += req.Amount; cust.Balance -= req.Amount; _unitOfWork.InventoryCustomers.Update(cust); }
+            }
+            else
+            {
+                // سند صرف لمورد
+                entityAccId = await GetEntityAccountId(req.CompanyId, "Supplier", req.EntityId);
+                var apAccId = await GetMappedAccountId(req.CompanyId, "accounts_payable");
+                entityAccId ??= apAccId;
+
+                if (entityAccId != null && cashAccId != null)
+                {
+                    var jeId = await CreateJournalEntryForInventory(req.CompanyId, userId,
+                        $"سند صرف - {voucherNumber} - {req.EntityName}",
+                        JournalReferenceType.SupplierPayment, voucher.Id.ToString(),
+                        new List<(Guid, decimal, decimal, string?)>
+                        {
+                            (entityAccId.Value, req.Amount, 0, $"دفع للمورد {req.EntityName}"),
+                            (cashAccId.Value, 0, req.Amount, "صرف نقدي")
+                        });
+                    voucher.JournalEntryId = jeId;
+                }
+
+                // تحديث رصيد المورد
+                var sup = await _unitOfWork.Suppliers.GetByIdAsync(req.EntityId);
+                if (sup != null) { sup.TotalPayments += req.Amount; sup.Balance -= req.Amount; _unitOfWork.Suppliers.Update(sup); }
+            }
+
+            // تحديث الصندوق
+            if (req.CashBoxId.HasValue)
+            {
+                await UpdateCashBox(req.CashBoxId.Value, req.Amount,
+                    isDeposit: req.VoucherType == VoucherType.Receipt,
+                    $"{(req.VoucherType == VoucherType.Receipt ? "سند قبض" : "سند صرف")} - {voucherNumber}",
+                    req.VoucherType == VoucherType.Receipt ? JournalReferenceType.CustomerReceipt : JournalReferenceType.SupplierPayment,
+                    voucher.Id.ToString(), userId);
+            }
+
+            // تحديث الفاتورة المرتبطة
+            if (req.InvoiceId.HasValue)
+            {
+                var inv = await _unitOfWork.Invoices.GetByIdAsync(req.InvoiceId.Value);
+                if (inv != null)
+                {
+                    inv.PaidAmount += req.Amount;
+                    inv.RemainingAmount = inv.NetAmount - inv.PaidAmount;
+                    if (inv.RemainingAmount <= 0) { inv.RemainingAmount = 0; inv.Status = InvoiceStatus.Paid; }
+                    else inv.Status = InvoiceStatus.PartiallyPaid;
+                    _unitOfWork.Invoices.Update(inv);
+                }
+            }
+
+            await _unitOfWork.PaymentVouchers.AddAsync(voucher);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, data = new { voucher.Id, voucher.VoucherNumber }, message = $"تم إنشاء {(req.VoucherType == VoucherType.Receipt ? "سند القبض" : "سند الصرف")}" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إنشاء السند");
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  المرتجعات — Returns
+    // ══════════════════════════════════════════════════════════════════
+
+    [HttpGet("returns")]
+    public async Task<IActionResult> GetReturns([FromQuery] Guid companyId, [FromQuery] ReturnType? type = null,
+        [FromQuery] ReturnStatus? status = null, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
+    {
+        try
+        {
+            var query = _unitOfWork.ReturnOrders.AsQueryable().Where(r => r.CompanyId == companyId);
+            if (type.HasValue) query = query.Where(r => r.ReturnType == type);
+            if (status.HasValue) query = query.Where(r => r.Status == status);
+            if (from.HasValue) query = query.Where(r => r.ReturnDate >= from.Value);
+            if (to.HasValue) query = query.Where(r => r.ReturnDate <= to.Value.AddDays(1));
+
+            var returns = await query.OrderByDescending(r => r.ReturnDate)
+                .Select(r => new
+                {
+                    r.Id, r.ReturnNumber, ReturnType = r.ReturnType.ToString(),
+                    OriginalInvoiceNumber = r.OriginalInvoice != null ? r.OriginalInvoice.InvoiceNumber : null,
+                    CustomerName = r.Customer != null ? r.Customer.FullName : null,
+                    SupplierName = r.Supplier != null ? r.Supplier.Name : null,
+                    r.TotalAmount, RefundMethod = r.RefundMethod.ToString(),
+                    Status = r.Status.ToString(), r.ReturnDate, r.Reason,
+                    ItemsCount = r.Items.Count, r.CreatedAt
+                }).ToListAsync();
+
+            return Ok(new { success = true, data = returns, total = returns.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب المرتجعات");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    [HttpPost("returns")]
+    [RequirePermission("inventory", "add")]
+    public async Task<IActionResult> CreateReturn([FromBody] CreateReturnRequest req)
+    {
+        try
+        {
+            var prefix = req.ReturnType == ReturnType.SalesReturn ? "SR" : "PR";
+            var returnNumber = await GenerateOrderNumber(prefix, req.CompanyId);
+            var userId = GetCurrentUserId();
+
+            decimal totalAmount = req.Items.Sum(i => i.UnitPrice * i.Quantity);
+
+            var returnOrder = new ReturnOrder
+            {
+                Id = Guid.NewGuid(),
+                ReturnNumber = returnNumber,
+                ReturnType = req.ReturnType,
+                OriginalInvoiceId = req.OriginalInvoiceId,
+                CustomerId = req.CustomerId,
+                SupplierId = req.SupplierId,
+                WarehouseId = req.WarehouseId,
+                TotalAmount = totalAmount,
+                RefundMethod = req.RefundMethod,
+                CashBoxId = req.CashBoxId,
+                Status = ReturnStatus.Draft,
+                ReturnDate = DateTime.UtcNow,
+                Reason = req.Reason,
+                Notes = req.Notes,
+                CreatedById = userId,
+                CompanyId = req.CompanyId
+            };
+
+            foreach (var itemDto in req.Items)
+            {
+                await _unitOfWork.ReturnOrderItems.AddAsync(new ReturnOrderItem
+                {
+                    ReturnOrderId = returnOrder.Id,
+                    InventoryItemId = itemDto.InventoryItemId,
+                    Quantity = itemDto.Quantity,
+                    UnitPrice = itemDto.UnitPrice,
+                    TotalPrice = itemDto.UnitPrice * itemDto.Quantity,
+                    Reason = itemDto.Reason
+                });
+            }
+
+            await _unitOfWork.ReturnOrders.AddAsync(returnOrder);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, data = new { returnOrder.Id, returnOrder.ReturnNumber }, message = "تم إنشاء المرتجع" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إنشاء المرتجع");
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// تأكيد المرتجع — إرجاع/خصم المخزون + قيد محاسبي + تحديث أرصدة
+    /// </summary>
+    [HttpPost("returns/{id}/confirm")]
+    [RequirePermission("inventory", "edit")]
+    public async Task<IActionResult> ConfirmReturn(Guid id)
+    {
+        try
+        {
+            var ret = await _unitOfWork.ReturnOrders.AsQueryable()
+                .Include(r => r.Items)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (ret == null) return NotFound(new { success = false, message = "المرتجع غير موجود" });
+            if (ret.Status != ReturnStatus.Draft)
+                return BadRequest(new { success = false, message = "المرتجع ليس مسودة" });
+
+            var userId = GetCurrentUserId();
+            var isSalesReturn = ret.ReturnType == ReturnType.SalesReturn;
+
+            // ── 1. حركات المخزون ──
+            foreach (var item in ret.Items)
+            {
+                var stock = await _unitOfWork.WarehouseStocks.AsQueryable()
+                    .FirstOrDefaultAsync(s => s.WarehouseId == ret.WarehouseId && s.InventoryItemId == item.InventoryItemId && !s.IsDeleted);
+
+                int oldQty = stock?.CurrentQuantity ?? 0;
+
+                if (isSalesReturn)
+                {
+                    // مرتجع بيع → إرجاع للمخزون
+                    if (stock != null) { stock.CurrentQuantity += item.Quantity; stock.LastStockInDate = DateTime.UtcNow; _unitOfWork.WarehouseStocks.Update(stock); }
+                }
+                else
+                {
+                    // مرتجع شراء → خصم من المخزون
+                    if (stock != null) { stock.CurrentQuantity -= item.Quantity; stock.LastStockOutDate = DateTime.UtcNow; _unitOfWork.WarehouseStocks.Update(stock); }
+                }
+
+                await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                {
+                    InventoryItemId = item.InventoryItemId,
+                    WarehouseId = ret.WarehouseId,
+                    MovementType = isSalesReturn ? StockMovementType.SalesReturn : StockMovementType.PurchaseReturn,
+                    Quantity = item.Quantity,
+                    StockBefore = oldQty,
+                    StockAfter = isSalesReturn ? oldQty + item.Quantity : oldQty - item.Quantity,
+                    UnitCost = item.UnitPrice,
+                    ReferenceType = "ReturnOrder",
+                    ReferenceId = ret.Id.ToString(),
+                    ReferenceNumber = ret.ReturnNumber,
+                    Description = $"{(isSalesReturn ? "مرتجع بيع" : "مرتجع شراء")} - {ret.ReturnNumber}",
+                    CreatedById = userId,
+                    CompanyId = ret.CompanyId
+                });
+            }
+
+            // ── 2. القيد المحاسبي ──
+            var inventoryAccId = await GetMappedAccountId(ret.CompanyId, "inventory");
+            var cogsAccId = await GetMappedAccountId(ret.CompanyId, "cogs");
+            var salesRetAccId = await GetMappedAccountId(ret.CompanyId, "sales_returns");
+
+            if (inventoryAccId != null)
+            {
+                var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>();
+
+                if (isSalesReturn)
+                {
+                    Guid? creditAccId = ret.RefundMethod == RefundMethod.Cash && ret.CashBoxId.HasValue
+                        ? (await _unitOfWork.CashBoxes.GetByIdAsync(ret.CashBoxId.Value))?.LinkedAccountId
+                        : ret.CustomerId.HasValue
+                            ? await GetEntityAccountId(ret.CompanyId, "Customer", ret.CustomerId.Value)
+                            : await GetMappedAccountId(ret.CompanyId, "accounts_receivable");
+
+                    if (salesRetAccId != null && creditAccId != null)
+                    {
+                        lines.Add((salesRetAccId.Value, ret.TotalAmount, 0, "مردودات مبيعات"));
+                        lines.Add((creditAccId.Value, 0, ret.TotalAmount, "إرجاع للعميل"));
+                    }
+                    if (cogsAccId != null)
+                    {
+                        lines.Add((inventoryAccId.Value, ret.TotalAmount, 0, "إرجاع للمخزون"));
+                        lines.Add((cogsAccId.Value, 0, ret.TotalAmount, "عكس تكلفة مباعة"));
+                    }
+                }
+                else
+                {
+                    Guid? debitAccId = ret.RefundMethod == RefundMethod.Cash && ret.CashBoxId.HasValue
+                        ? (await _unitOfWork.CashBoxes.GetByIdAsync(ret.CashBoxId.Value))?.LinkedAccountId
+                        : ret.SupplierId.HasValue
+                            ? await GetEntityAccountId(ret.CompanyId, "Supplier", ret.SupplierId.Value)
+                            : await GetMappedAccountId(ret.CompanyId, "accounts_payable");
+
+                    if (debitAccId != null)
+                    {
+                        lines.Add((debitAccId.Value, ret.TotalAmount, 0, "مرتجع مشتريات"));
+                        lines.Add((inventoryAccId.Value, 0, ret.TotalAmount, "خصم من المخزون"));
+                    }
+                }
+
+                if (lines.Count > 0)
+                {
+                    var jeId = await CreateJournalEntryForInventory(ret.CompanyId, userId,
+                        $"{(isSalesReturn ? "مرتجع مبيعات" : "مرتجع مشتريات")} - {ret.ReturnNumber}",
+                        isSalesReturn ? JournalReferenceType.SalesReturn : JournalReferenceType.PurchaseReturn,
+                        ret.Id.ToString(), lines);
+                    ret.JournalEntryId = jeId;
+                }
+            }
+
+            // ── 3. تحديث الصندوق (إذا نقد) ──
+            if (ret.RefundMethod == RefundMethod.Cash && ret.CashBoxId.HasValue)
+            {
+                await UpdateCashBox(ret.CashBoxId.Value, ret.TotalAmount,
+                    isDeposit: !isSalesReturn, // مرتجع بيع = سحب، مرتجع شراء = إيداع
+                    $"{(isSalesReturn ? "مرتجع بيع" : "مرتجع شراء")} - {ret.ReturnNumber}",
+                    isSalesReturn ? JournalReferenceType.SalesReturn : JournalReferenceType.PurchaseReturn,
+                    ret.Id.ToString(), userId);
+            }
+
+            // ── 4. تحديث رصيد العميل/المورد ──
+            if (ret.RefundMethod == RefundMethod.DeductFromBalance)
+            {
+                if (isSalesReturn && ret.CustomerId.HasValue)
+                {
+                    var cust = await _unitOfWork.InventoryCustomers.GetByIdAsync(ret.CustomerId.Value);
+                    if (cust != null) { cust.Balance -= ret.TotalAmount; _unitOfWork.InventoryCustomers.Update(cust); }
+                }
+                else if (!isSalesReturn && ret.SupplierId.HasValue)
+                {
+                    var sup = await _unitOfWork.Suppliers.GetByIdAsync(ret.SupplierId.Value);
+                    if (sup != null) { sup.Balance -= ret.TotalAmount; _unitOfWork.Suppliers.Update(sup); }
+                }
+            }
+
+            ret.Status = ReturnStatus.Confirmed;
+            _unitOfWork.ReturnOrders.Update(ret);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم تأكيد المرتجع", data = new { ret.Id, ret.JournalEntryId } });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تأكيد المرتجع");
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
         }
     }
 }
@@ -3038,4 +4601,111 @@ public class UseFromHoldingsItemDto
 {
     public Guid InventoryItemId { get; set; }
     public int Quantity { get; set; }
+}
+
+
+public class SeedAccountsRequest
+{
+    public Guid CompanyId { get; set; }
+}
+
+// ── Customer DTOs ──
+public class CreateInventoryCustomerRequest
+{
+    public string FullName { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Phone2 { get; set; }
+    public string? Email { get; set; }
+    public string? City { get; set; }
+    public string? Area { get; set; }
+    public string? Address { get; set; }
+    public InventoryCustomerType CustomerType { get; set; } = InventoryCustomerType.Cash;
+    public decimal CreditLimit { get; set; } = 0;
+    public string? TaxNumber { get; set; }
+    public string? Notes { get; set; }
+    public Guid CompanyId { get; set; }
+}
+
+public class UpdateInventoryCustomerRequest
+{
+    public string? FullName { get; set; }
+    public string? Phone { get; set; }
+    public string? Phone2 { get; set; }
+    public string? Email { get; set; }
+    public string? City { get; set; }
+    public string? Area { get; set; }
+    public string? Address { get; set; }
+    public InventoryCustomerType? CustomerType { get; set; }
+    public decimal? CreditLimit { get; set; }
+    public string? TaxNumber { get; set; }
+    public string? Notes { get; set; }
+    public bool? IsActive { get; set; }
+}
+
+// ── Invoice DTOs ──
+public class CreateInvoiceRequest
+{
+    public InvoiceType InvoiceType { get; set; }
+    public InvoicePaymentType PaymentType { get; set; } = InvoicePaymentType.Cash;
+    public Guid? CustomerId { get; set; }
+    public Guid? SupplierId { get; set; }
+    public string? EntityName { get; set; }
+    public Guid WarehouseId { get; set; }
+    public DateTime? DueDate { get; set; }
+    public DiscountType DiscountType { get; set; } = DiscountType.Percentage;
+    public decimal DiscountValue { get; set; } = 0;
+    public decimal TaxRate { get; set; } = 0;
+    public decimal PaidAmount { get; set; } = 0;
+    public Guid? CashBoxId { get; set; }
+    public string? Notes { get; set; }
+    public Guid CompanyId { get; set; }
+    public List<CreateInvoiceItemDto> Items { get; set; } = new();
+}
+
+public class CreateInvoiceItemDto
+{
+    public Guid InventoryItemId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal DiscountPercent { get; set; } = 0;
+    public string? Notes { get; set; }
+}
+
+// ── Voucher DTOs ──
+public class CreateVoucherRequest
+{
+    public VoucherType VoucherType { get; set; }
+    public VoucherEntityType EntityType { get; set; }
+    public Guid EntityId { get; set; }
+    public string EntityName { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.CashOnDelivery;
+    public Guid? CashBoxId { get; set; }
+    public Guid? InvoiceId { get; set; }
+    public string? Notes { get; set; }
+    public Guid CompanyId { get; set; }
+}
+
+// ── Return DTOs ──
+public class CreateReturnRequest
+{
+    public ReturnType ReturnType { get; set; }
+    public Guid OriginalInvoiceId { get; set; }
+    public Guid? CustomerId { get; set; }
+    public Guid? SupplierId { get; set; }
+    public Guid WarehouseId { get; set; }
+    public RefundMethod RefundMethod { get; set; } = RefundMethod.DeductFromBalance;
+    public Guid? CashBoxId { get; set; }
+    public string? Reason { get; set; }
+    public string? Notes { get; set; }
+    public Guid CompanyId { get; set; }
+    public List<CreateReturnItemDto> Items { get; set; } = new();
+}
+
+public class CreateReturnItemDto
+{
+    public Guid InventoryItemId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public string? Reason { get; set; }
 }

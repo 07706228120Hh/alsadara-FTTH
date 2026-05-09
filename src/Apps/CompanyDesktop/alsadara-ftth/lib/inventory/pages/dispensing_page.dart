@@ -572,8 +572,8 @@ class _DispensingPageState extends State<DispensingPage>
       itemBuilder: (context, index) {
         final techData = _holdingsData[index];
         final techName =
-            techData['technicianName'] as String? ?? 'فني غير معروف';
-        final items = techData['items'] as List<dynamic>? ?? [];
+            (techData['TechnicianName'] ?? techData['technicianName']) as String? ?? 'فني غير معروف';
+        final items = (techData['Items'] ?? techData['items']) as List<dynamic>? ?? [];
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -624,17 +624,17 @@ class _DispensingPageState extends State<DispensingPage>
                         Padding(
                           padding: const EdgeInsets.all(8),
                           child:
-                              Text(m['itemName'] as String? ?? '-'),
+                              Text((m['ItemName'] ?? m['itemName']) as String? ?? '-'),
                         ),
                         Padding(
                           padding: const EdgeInsets.all(8),
                           child:
-                              Text('${m['quantity'] ?? 0}'),
+                              Text('${m['Quantity'] ?? m['quantity'] ?? 0}'),
                         ),
                         Padding(
                           padding: const EdgeInsets.all(8),
                           child: Text(
-                              '${m['returnedQuantity'] ?? 0}'),
+                              '${m['ReturnedQuantity'] ?? m['returnedQuantity'] ?? 0}'),
                         ),
                       ]);
                     }),

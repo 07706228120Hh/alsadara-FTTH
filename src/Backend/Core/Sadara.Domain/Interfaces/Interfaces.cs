@@ -171,6 +171,15 @@ public interface IUnitOfWork : IDisposable
     IRepository<StockMovement, long> StockMovements { get; }
     IRepository<WarehouseStock, long> WarehouseStocks { get; }
 
+    // Inventory Upgrade
+    IRepository<InventoryCustomer, Guid> InventoryCustomers { get; }
+    IRepository<Invoice, Guid> Invoices { get; }
+    IRepository<InvoiceItem, long> InvoiceItems { get; }
+    IRepository<PaymentVoucher, Guid> PaymentVouchers { get; }
+    IRepository<ReturnOrder, Guid> ReturnOrders { get; }
+    IRepository<ReturnOrderItem, long> ReturnOrderItems { get; }
+    IRepository<InventoryAccountMapping, int> InventoryAccountMappings { get; }
+
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);

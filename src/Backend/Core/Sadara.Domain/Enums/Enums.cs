@@ -324,7 +324,25 @@ public enum JournalReferenceType
     InventoryPurchase = 13,
 
     /// <summary>بيع مواد مخزنية</summary>
-    InventorySales = 14
+    InventorySales = 14,
+
+    /// <summary>فاتورة بيع مخزنية</summary>
+    SalesInvoice = 15,
+
+    /// <summary>فاتورة شراء مخزنية</summary>
+    PurchaseInvoice = 16,
+
+    /// <summary>مرتجع مبيعات</summary>
+    SalesReturn = 17,
+
+    /// <summary>مرتجع مشتريات</summary>
+    PurchaseReturn = 18,
+
+    /// <summary>سند قبض من عميل</summary>
+    CustomerReceipt = 19,
+
+    /// <summary>سند صرف لمورد</summary>
+    SupplierPayment = 20
 }
 
 /// <summary>
@@ -521,5 +539,154 @@ public enum StockMovementType
     InitialStock = 7,
 
     /// <summary>تالف</summary>
-    Damaged = 8
+    Damaged = 8,
+
+    /// <summary>مرتجع مبيعات (وارد)</summary>
+    SalesReturn = 9,
+
+    /// <summary>مرتجع مشتريات (صادر)</summary>
+    PurchaseReturn = 10
+}
+
+// ==================== Inventory Upgrade Enums (تطوير المخازن) ====================
+
+/// <summary>
+/// نوع عميل المخازن
+/// </summary>
+public enum InventoryCustomerType
+{
+    /// <summary>عميل نقدي</summary>
+    Cash = 0,
+
+    /// <summary>عميل آجل</summary>
+    Credit = 1,
+
+    /// <summary>عميل مميز</summary>
+    VIP = 2
+}
+
+/// <summary>
+/// نوع المورد
+/// </summary>
+public enum SupplierType
+{
+    /// <summary>نقدي</summary>
+    Cash = 0,
+
+    /// <summary>آجل</summary>
+    Credit = 1
+}
+
+/// <summary>
+/// نوع الفاتورة
+/// </summary>
+public enum InvoiceType
+{
+    /// <summary>فاتورة بيع</summary>
+    Sales = 0,
+
+    /// <summary>فاتورة شراء</summary>
+    Purchase = 1
+}
+
+/// <summary>
+/// نوع الدفع في الفاتورة
+/// </summary>
+public enum InvoicePaymentType
+{
+    /// <summary>نقد</summary>
+    Cash = 0,
+
+    /// <summary>آجل</summary>
+    Credit = 1,
+
+    /// <summary>دفع جزئي</summary>
+    Partial = 2
+}
+
+/// <summary>
+/// حالة الفاتورة
+/// </summary>
+public enum InvoiceStatus
+{
+    /// <summary>مسودة</summary>
+    Draft = 0,
+
+    /// <summary>مؤكدة</summary>
+    Confirmed = 1,
+
+    /// <summary>مدفوعة جزئياً</summary>
+    PartiallyPaid = 2,
+
+    /// <summary>مدفوعة بالكامل</summary>
+    Paid = 3,
+
+    /// <summary>ملغاة</summary>
+    Cancelled = 4
+}
+
+/// <summary>
+/// نوع سند القبض/الصرف
+/// </summary>
+public enum VoucherType
+{
+    /// <summary>سند قبض (من عميل)</summary>
+    Receipt = 0,
+
+    /// <summary>سند صرف (لمورد)</summary>
+    Payment = 1
+}
+
+/// <summary>
+/// نوع الكيان المرتبط بالسند
+/// </summary>
+public enum VoucherEntityType
+{
+    /// <summary>عميل</summary>
+    Customer = 0,
+
+    /// <summary>مورد</summary>
+    Supplier = 1
+}
+
+/// <summary>
+/// نوع المرتجع
+/// </summary>
+public enum ReturnType
+{
+    /// <summary>مرتجع مبيعات</summary>
+    SalesReturn = 0,
+
+    /// <summary>مرتجع مشتريات</summary>
+    PurchaseReturn = 1
+}
+
+/// <summary>
+/// طريقة استرداد المرتجع
+/// </summary>
+public enum RefundMethod
+{
+    /// <summary>نقداً</summary>
+    Cash = 0,
+
+    /// <summary>خصم من رصيد العميل/المورد</summary>
+    DeductFromBalance = 1,
+
+    /// <summary>بدون استرداد</summary>
+    NoRefund = 2
+}
+
+/// <summary>
+/// حالة المرتجع
+/// </summary>
+public enum ReturnStatus
+{
+    /// <summary>مسودة</summary>
+    Draft = 0,
+
+    /// <summary>مؤكد</summary>
+    Confirmed = 1,
+
+    /// <summary>ملغي</summary>
+    Cancelled = 2
 }

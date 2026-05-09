@@ -908,3 +908,333 @@ class InventorySummary {
     };
   }
 }
+
+// ---------------------------------------------------------------------------
+// InventoryCustomer (عميل مخازن)
+// ---------------------------------------------------------------------------
+class InventoryCustomer {
+  final String id;
+  final String customerCode;
+  final String fullName;
+  final String? phone;
+  final String? phone2;
+  final String? email;
+  final String? city;
+  final String? area;
+  final String? address;
+  final String customerType;
+  final double creditLimit;
+  final double totalSales;
+  final double totalPayments;
+  final double balance;
+  final String? taxNumber;
+  final String? notes;
+  final bool isActive;
+  final int? invoiceCount;
+
+  InventoryCustomer({
+    required this.id, required this.customerCode, required this.fullName,
+    this.phone, this.phone2, this.email, this.city, this.area, this.address,
+    required this.customerType, this.creditLimit = 0, this.totalSales = 0,
+    this.totalPayments = 0, this.balance = 0, this.taxNumber, this.notes,
+    this.isActive = true, this.invoiceCount,
+  });
+
+  factory InventoryCustomer.fromJson(Map<String, dynamic> j) {
+    return InventoryCustomer(
+      id: _v(j, 'id')?.toString() ?? '',
+      customerCode: _v(j, 'customerCode')?.toString() ?? '',
+      fullName: _v(j, 'fullName')?.toString() ?? '',
+      phone: _v(j, 'phone')?.toString(),
+      phone2: _v(j, 'phone2')?.toString(),
+      email: _v(j, 'email')?.toString(),
+      city: _v(j, 'city')?.toString(),
+      area: _v(j, 'area')?.toString(),
+      address: _v(j, 'address')?.toString(),
+      customerType: _v(j, 'customerType')?.toString() ?? 'Cash',
+      creditLimit: (_v(j, 'creditLimit') as num?)?.toDouble() ?? 0,
+      totalSales: (_v(j, 'totalSales') as num?)?.toDouble() ?? 0,
+      totalPayments: (_v(j, 'totalPayments') as num?)?.toDouble() ?? 0,
+      balance: (_v(j, 'balance') as num?)?.toDouble() ?? 0,
+      taxNumber: _v(j, 'taxNumber')?.toString(),
+      notes: _v(j, 'notes')?.toString(),
+      isActive: _v(j, 'isActive') as bool? ?? true,
+      invoiceCount: (_v(j, 'invoiceCount') as num?)?.toInt(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Invoice (فاتورة)
+// ---------------------------------------------------------------------------
+class Invoice {
+  final String id;
+  final String invoiceNumber;
+  final String invoiceType;
+  final String paymentType;
+  final String? customerId;
+  final String? customerName;
+  final String? supplierId;
+  final String? supplierName;
+  final String? entityName;
+  final String warehouseId;
+  final String? warehouseName;
+  final DateTime invoiceDate;
+  final DateTime? dueDate;
+  final double subTotal;
+  final String? discountType;
+  final double discountValue;
+  final double discountAmount;
+  final double taxRate;
+  final double taxAmount;
+  final double netAmount;
+  final double paidAmount;
+  final double remainingAmount;
+  final String status;
+  final String? notes;
+  final String? journalEntryId;
+  final int? itemsCount;
+  final List<InvoiceItemModel>? items;
+  final List<VoucherSummary>? vouchers;
+
+  Invoice({
+    required this.id, required this.invoiceNumber, required this.invoiceType,
+    required this.paymentType, this.customerId, this.customerName,
+    this.supplierId, this.supplierName, this.entityName,
+    required this.warehouseId, this.warehouseName,
+    required this.invoiceDate, this.dueDate,
+    this.subTotal = 0, this.discountType, this.discountValue = 0,
+    this.discountAmount = 0, this.taxRate = 0, this.taxAmount = 0,
+    required this.netAmount, this.paidAmount = 0, this.remainingAmount = 0,
+    required this.status, this.notes, this.journalEntryId,
+    this.itemsCount, this.items, this.vouchers,
+  });
+
+  factory Invoice.fromJson(Map<String, dynamic> j) {
+    return Invoice(
+      id: _v(j, 'id')?.toString() ?? '',
+      invoiceNumber: _v(j, 'invoiceNumber')?.toString() ?? '',
+      invoiceType: _v(j, 'invoiceType')?.toString() ?? 'Sales',
+      paymentType: _v(j, 'paymentType')?.toString() ?? 'Cash',
+      customerId: _v(j, 'customerId')?.toString(),
+      customerName: _v(j, 'customerName')?.toString(),
+      supplierId: _v(j, 'supplierId')?.toString(),
+      supplierName: _v(j, 'supplierName')?.toString(),
+      entityName: _v(j, 'entityName')?.toString(),
+      warehouseId: _v(j, 'warehouseId')?.toString() ?? '',
+      warehouseName: _v(j, 'warehouseName')?.toString(),
+      invoiceDate: DateTime.tryParse(_v(j, 'invoiceDate')?.toString() ?? '') ?? DateTime.now(),
+      dueDate: DateTime.tryParse(_v(j, 'dueDate')?.toString() ?? ''),
+      subTotal: (_v(j, 'subTotal') as num?)?.toDouble() ?? 0,
+      discountType: _v(j, 'discountType')?.toString(),
+      discountValue: (_v(j, 'discountValue') as num?)?.toDouble() ?? 0,
+      discountAmount: (_v(j, 'discountAmount') as num?)?.toDouble() ?? 0,
+      taxRate: (_v(j, 'taxRate') as num?)?.toDouble() ?? 0,
+      taxAmount: (_v(j, 'taxAmount') as num?)?.toDouble() ?? 0,
+      netAmount: (_v(j, 'netAmount') as num?)?.toDouble() ?? 0,
+      paidAmount: (_v(j, 'paidAmount') as num?)?.toDouble() ?? 0,
+      remainingAmount: (_v(j, 'remainingAmount') as num?)?.toDouble() ?? 0,
+      status: _v(j, 'status')?.toString() ?? 'Draft',
+      notes: _v(j, 'notes')?.toString(),
+      journalEntryId: _v(j, 'journalEntryId')?.toString(),
+      itemsCount: (_v(j, 'itemsCount') as num?)?.toInt(),
+      items: _v(j, 'items') != null
+          ? (_v(j, 'items') as List).map((e) => InvoiceItemModel.fromJson(e as Map<String, dynamic>)).toList()
+          : null,
+      vouchers: _v(j, 'vouchers') != null
+          ? (_v(j, 'vouchers') as List).map((e) => VoucherSummary.fromJson(e as Map<String, dynamic>)).toList()
+          : null,
+    );
+  }
+}
+
+class InvoiceItemModel {
+  final String? id;
+  final String inventoryItemId;
+  final String itemName;
+  final int quantity;
+  final double unitPrice;
+  final double discountPercent;
+  final double discountAmount;
+  final double taxAmount;
+  final double totalPrice;
+  final double costAtSale;
+  final String? notes;
+
+  InvoiceItemModel({
+    this.id, required this.inventoryItemId, required this.itemName,
+    required this.quantity, required this.unitPrice,
+    this.discountPercent = 0, this.discountAmount = 0,
+    this.taxAmount = 0, required this.totalPrice,
+    this.costAtSale = 0, this.notes,
+  });
+
+  factory InvoiceItemModel.fromJson(Map<String, dynamic> j) {
+    return InvoiceItemModel(
+      id: _v(j, 'id')?.toString(),
+      inventoryItemId: _v(j, 'inventoryItemId')?.toString() ?? '',
+      itemName: _v(j, 'itemName')?.toString() ?? '',
+      quantity: (_v(j, 'quantity') as num?)?.toInt() ?? 0,
+      unitPrice: (_v(j, 'unitPrice') as num?)?.toDouble() ?? 0,
+      discountPercent: (_v(j, 'discountPercent') as num?)?.toDouble() ?? 0,
+      discountAmount: (_v(j, 'discountAmount') as num?)?.toDouble() ?? 0,
+      taxAmount: (_v(j, 'taxAmount') as num?)?.toDouble() ?? 0,
+      totalPrice: (_v(j, 'totalPrice') as num?)?.toDouble() ?? 0,
+      costAtSale: (_v(j, 'costAtSale') as num?)?.toDouble() ?? 0,
+      notes: _v(j, 'notes')?.toString(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// PaymentVoucher (سند قبض/صرف)
+// ---------------------------------------------------------------------------
+class PaymentVoucher {
+  final String id;
+  final String voucherNumber;
+  final String voucherType;
+  final String entityType;
+  final String entityId;
+  final String entityName;
+  final double amount;
+  final String paymentMethod;
+  final DateTime voucherDate;
+  final String? invoiceId;
+  final String? notes;
+
+  PaymentVoucher({
+    required this.id, required this.voucherNumber, required this.voucherType,
+    required this.entityType, required this.entityId, required this.entityName,
+    required this.amount, required this.paymentMethod,
+    required this.voucherDate, this.invoiceId, this.notes,
+  });
+
+  factory PaymentVoucher.fromJson(Map<String, dynamic> j) {
+    return PaymentVoucher(
+      id: _v(j, 'id')?.toString() ?? '',
+      voucherNumber: _v(j, 'voucherNumber')?.toString() ?? '',
+      voucherType: _v(j, 'voucherType')?.toString() ?? '',
+      entityType: _v(j, 'entityType')?.toString() ?? '',
+      entityId: _v(j, 'entityId')?.toString() ?? '',
+      entityName: _v(j, 'entityName')?.toString() ?? '',
+      amount: (_v(j, 'amount') as num?)?.toDouble() ?? 0,
+      paymentMethod: _v(j, 'paymentMethod')?.toString() ?? '',
+      voucherDate: DateTime.tryParse(_v(j, 'voucherDate')?.toString() ?? '') ?? DateTime.now(),
+      invoiceId: _v(j, 'invoiceId')?.toString(),
+      notes: _v(j, 'notes')?.toString(),
+    );
+  }
+}
+
+class VoucherSummary {
+  final String id;
+  final String voucherNumber;
+  final double amount;
+  final DateTime voucherDate;
+  final String? paymentMethod;
+
+  VoucherSummary({required this.id, required this.voucherNumber, required this.amount, required this.voucherDate, this.paymentMethod});
+
+  factory VoucherSummary.fromJson(Map<String, dynamic> j) {
+    return VoucherSummary(
+      id: _v(j, 'id')?.toString() ?? '',
+      voucherNumber: _v(j, 'voucherNumber')?.toString() ?? '',
+      amount: (_v(j, 'amount') as num?)?.toDouble() ?? 0,
+      voucherDate: DateTime.tryParse(_v(j, 'voucherDate')?.toString() ?? '') ?? DateTime.now(),
+      paymentMethod: _v(j, 'paymentMethod')?.toString(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ReturnOrder (مرتجع)
+// ---------------------------------------------------------------------------
+class ReturnOrder {
+  final String id;
+  final String returnNumber;
+  final String returnType;
+  final String? originalInvoiceNumber;
+  final String? customerName;
+  final String? supplierName;
+  final double totalAmount;
+  final String refundMethod;
+  final String status;
+  final DateTime returnDate;
+  final String? reason;
+  final int? itemsCount;
+  final List<ReturnOrderItemModel>? items;
+
+  ReturnOrder({
+    required this.id, required this.returnNumber, required this.returnType,
+    this.originalInvoiceNumber, this.customerName, this.supplierName,
+    required this.totalAmount, required this.refundMethod, required this.status,
+    required this.returnDate, this.reason, this.itemsCount, this.items,
+  });
+
+  factory ReturnOrder.fromJson(Map<String, dynamic> j) {
+    return ReturnOrder(
+      id: _v(j, 'id')?.toString() ?? '',
+      returnNumber: _v(j, 'returnNumber')?.toString() ?? '',
+      returnType: _v(j, 'returnType')?.toString() ?? '',
+      originalInvoiceNumber: _v(j, 'originalInvoiceNumber')?.toString(),
+      customerName: _v(j, 'customerName')?.toString(),
+      supplierName: _v(j, 'supplierName')?.toString(),
+      totalAmount: (_v(j, 'totalAmount') as num?)?.toDouble() ?? 0,
+      refundMethod: _v(j, 'refundMethod')?.toString() ?? '',
+      status: _v(j, 'status')?.toString() ?? 'Draft',
+      returnDate: DateTime.tryParse(_v(j, 'returnDate')?.toString() ?? '') ?? DateTime.now(),
+      reason: _v(j, 'reason')?.toString(),
+      itemsCount: (_v(j, 'itemsCount') as num?)?.toInt(),
+      items: _v(j, 'items') != null
+          ? (_v(j, 'items') as List).map((e) => ReturnOrderItemModel.fromJson(e as Map<String, dynamic>)).toList()
+          : null,
+    );
+  }
+}
+
+class ReturnOrderItemModel {
+  final String? id;
+  final String inventoryItemId;
+  final int quantity;
+  final double unitPrice;
+  final double totalPrice;
+  final String? reason;
+
+  ReturnOrderItemModel({this.id, required this.inventoryItemId, required this.quantity, required this.unitPrice, required this.totalPrice, this.reason});
+
+  factory ReturnOrderItemModel.fromJson(Map<String, dynamic> j) {
+    return ReturnOrderItemModel(
+      id: _v(j, 'id')?.toString(),
+      inventoryItemId: _v(j, 'inventoryItemId')?.toString() ?? '',
+      quantity: (_v(j, 'quantity') as num?)?.toInt() ?? 0,
+      unitPrice: (_v(j, 'unitPrice') as num?)?.toDouble() ?? 0,
+      totalPrice: (_v(j, 'totalPrice') as num?)?.toDouble() ?? 0,
+      reason: _v(j, 'reason')?.toString(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// StatementEntry (بند كشف حساب)
+// ---------------------------------------------------------------------------
+class StatementEntry {
+  final DateTime date;
+  final String reference;
+  final String description;
+  final double debit;
+  final double credit;
+  final double balance;
+
+  StatementEntry({required this.date, required this.reference, required this.description, this.debit = 0, this.credit = 0, this.balance = 0});
+
+  factory StatementEntry.fromJson(Map<String, dynamic> j) {
+    return StatementEntry(
+      date: DateTime.tryParse(_v(j, 'date')?.toString() ?? '') ?? DateTime.now(),
+      reference: _v(j, 'reference')?.toString() ?? '',
+      description: _v(j, 'description')?.toString() ?? '',
+      debit: (_v(j, 'debit') as num?)?.toDouble() ?? 0,
+      credit: (_v(j, 'credit') as num?)?.toDouble() ?? 0,
+      balance: (_v(j, 'balance') as num?)?.toDouble() ?? 0,
+    );
+  }
+}

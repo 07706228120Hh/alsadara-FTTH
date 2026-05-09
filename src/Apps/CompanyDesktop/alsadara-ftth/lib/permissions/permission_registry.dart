@@ -575,6 +575,42 @@ class PermissionRegistry {
       parent: 'inventory',
       allowedActions: ['view', 'export'],
     ),
+    PermissionEntry(
+      key: 'inventory.customers',
+      labelAr: 'عملاء المخازن',
+      description: 'إدارة العملاء وكشوفات الحساب',
+      icon: Icons.people_rounded,
+      category: 'المالية',
+      parent: 'inventory',
+      allowedActions: ['view', 'add', 'edit'],
+    ),
+    PermissionEntry(
+      key: 'inventory.invoices',
+      labelAr: 'الفواتير',
+      description: 'فواتير البيع والشراء',
+      icon: Icons.receipt_long_rounded,
+      category: 'المالية',
+      parent: 'inventory',
+      allowedActions: ['view', 'add', 'edit'],
+    ),
+    PermissionEntry(
+      key: 'inventory.vouchers',
+      labelAr: 'سندات القبض والصرف',
+      description: 'سندات القبض من العملاء والصرف للموردين',
+      icon: Icons.account_balance_wallet_rounded,
+      category: 'المالية',
+      parent: 'inventory',
+      allowedActions: ['view', 'add'],
+    ),
+    PermissionEntry(
+      key: 'inventory.returns',
+      labelAr: 'المرتجعات',
+      description: 'مرتجعات المبيعات والمشتريات',
+      icon: Icons.assignment_return_rounded,
+      category: 'المالية',
+      parent: 'inventory',
+      allowedActions: ['view', 'add', 'edit'],
+    ),
 
     // ─── المتابعة ───
     PermissionEntry(

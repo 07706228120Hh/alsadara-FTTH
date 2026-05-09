@@ -226,15 +226,14 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
       itemBuilder: (context, index) {
         final techData = _holdingsData[index];
         final techName =
-            techData['technicianName'] as String? ?? 'فني غير معروف';
-        final items = techData['items'] as List<dynamic>? ?? [];
+            (techData['TechnicianName'] ?? techData['technicianName']) as String? ?? 'فني غير معروف';
+        final items = (techData['Items'] ?? techData['items']) as List<dynamic>? ?? [];
         final totalHeld = items.fold<int>(
             0,
-            (sum, item) =>
-                sum +
-                (((item as Map<String, dynamic>)['quantity'] as num?)
-                        ?.toInt() ??
-                    0));
+            (sum, item) {
+              final m = item as Map<String, dynamic>;
+              return sum + (((m['Quantity'] ?? m['quantity']) as num?)?.toInt() ?? 0);
+            });
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -292,16 +291,16 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
                     ...items.map((item) {
                       final m = item as Map<String, dynamic>;
                       final qty =
-                          (m['quantity'] as num?)?.toInt() ?? 0;
+                          ((m['Quantity'] ?? m['quantity']) as num?)?.toInt() ?? 0;
                       final returned =
-                          (m['returnedQuantity'] as num?)?.toInt() ??
+                          ((m['ReturnedQuantity'] ?? m['returnedQuantity']) as num?)?.toInt() ??
                               0;
                       final remaining = qty - returned;
                       return TableRow(children: [
                         Padding(
                           padding: const EdgeInsets.all(8),
                           child: Text(
-                              m['itemName'] as String? ?? '-'),
+                              (m['ItemName'] ?? m['itemName']) as String? ?? '-'),
                         ),
                         Padding(
                           padding: const EdgeInsets.all(8),

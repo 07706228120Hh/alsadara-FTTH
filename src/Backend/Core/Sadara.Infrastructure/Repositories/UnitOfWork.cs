@@ -151,6 +151,15 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<StockMovement, long>? _stockMovements;
     private IRepository<WarehouseStock, long>? _warehouseStocks;
 
+    // Inventory Upgrade
+    private IRepository<InventoryCustomer, Guid>? _inventoryCustomers;
+    private IRepository<Invoice, Guid>? _invoices;
+    private IRepository<InvoiceItem, long>? _invoiceItems;
+    private IRepository<PaymentVoucher, Guid>? _paymentVouchers;
+    private IRepository<ReturnOrder, Guid>? _returnOrders;
+    private IRepository<ReturnOrderItem, long>? _returnOrderItems;
+    private IRepository<InventoryAccountMapping, int>? _inventoryAccountMappings;
+
     public UnitOfWork(SadaraDbContext context)
     {
         _context = context;
@@ -466,6 +475,22 @@ public class UnitOfWork : IUnitOfWork
         _stockMovements ??= new Repository<StockMovement, long>(_context);
     public IRepository<WarehouseStock, long> WarehouseStocks =>
         _warehouseStocks ??= new Repository<WarehouseStock, long>(_context);
+
+    // Inventory Upgrade
+    public IRepository<InventoryCustomer, Guid> InventoryCustomers =>
+        _inventoryCustomers ??= new Repository<InventoryCustomer, Guid>(_context);
+    public IRepository<Invoice, Guid> Invoices =>
+        _invoices ??= new Repository<Invoice, Guid>(_context);
+    public IRepository<InvoiceItem, long> InvoiceItems =>
+        _invoiceItems ??= new Repository<InvoiceItem, long>(_context);
+    public IRepository<PaymentVoucher, Guid> PaymentVouchers =>
+        _paymentVouchers ??= new Repository<PaymentVoucher, Guid>(_context);
+    public IRepository<ReturnOrder, Guid> ReturnOrders =>
+        _returnOrders ??= new Repository<ReturnOrder, Guid>(_context);
+    public IRepository<ReturnOrderItem, long> ReturnOrderItems =>
+        _returnOrderItems ??= new Repository<ReturnOrderItem, long>(_context);
+    public IRepository<InventoryAccountMapping, int> InventoryAccountMappings =>
+        _inventoryAccountMappings ??= new Repository<InventoryAccountMapping, int>(_context);
 
     #endregion
 

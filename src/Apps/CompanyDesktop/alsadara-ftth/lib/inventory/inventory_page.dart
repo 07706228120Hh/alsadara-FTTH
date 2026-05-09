@@ -4,15 +4,16 @@ import 'services/inventory_api_service.dart';
 import 'pages/warehouses_page.dart';
 import 'pages/materials_page.dart';
 import 'pages/suppliers_page.dart';
-import 'pages/purchases_page.dart';
-import 'pages/sales_page.dart';
 import 'pages/dispensing_page.dart';
 import 'pages/stock_levels_page.dart';
 import 'pages/movements_page.dart';
 import 'pages/inventory_reports_page.dart';
-import 'pages/purchase_form_page.dart';
-import 'pages/sale_form_page.dart';
 import 'pages/dispensing_form_page.dart';
+import 'pages/customers_page.dart';
+import 'pages/invoices_page.dart';
+import 'pages/invoice_form_page.dart';
+import 'pages/vouchers_page.dart';
+import 'pages/returns_page.dart';
 
 class InventoryPage extends StatefulWidget {
   final String? companyId;
@@ -118,9 +119,9 @@ class _InventoryPageState extends State<InventoryPage> {
   Widget _buildStatCards() {
     final stats = [
       _StatItem('إجمالي المواد', '${_summary['totalItems'] ?? 0}', Icons.inventory_2_rounded, const Color(0xFF1976D2), const Color(0xFFE3F2FD)),
-      _StatItem('قيمة المخزون', fmtN(_summary['totalStockValue']), Icons.account_balance_wallet_rounded, const Color(0xFF388E3C), const Color(0xFFE8F5E9)),
+      _StatItem('قيمة المخزون', fmtN(_summary['totalValue'] ?? _summary['totalStockValue']), Icons.account_balance_wallet_rounded, const Color(0xFF388E3C), const Color(0xFFE8F5E9)),
       _StatItem('مواد ناقصة', '${_summary['lowStockCount'] ?? 0}', Icons.warning_rounded, const Color(0xFFE65100), const Color(0xFFFFF3E0)),
-      _StatItem('حركات اليوم', '${_summary['todayMovements'] ?? 0}', Icons.trending_up_rounded, const Color(0xFF7B1FA2), const Color(0xFFF3E5F5)),
+      _StatItem('حركات اليوم', '${_summary['todayMovementsCount'] ?? _summary['todayMovements'] ?? 0}', Icons.trending_up_rounded, const Color(0xFF7B1FA2), const Color(0xFFF3E5F5)),
     ];
 
     return Row(
@@ -131,7 +132,7 @@ class _InventoryPageState extends State<InventoryPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2))],
+            border: Border.all(color: Colors.black, width: 2),
           ),
           child: Row(children: [
             Container(
@@ -157,9 +158,9 @@ class _InventoryPageState extends State<InventoryPage> {
 
   Widget _buildQuickActions() {
     return Row(children: [
-      Expanded(child: _quickBtn('شراء جديد', Icons.add_shopping_cart_rounded, const Color(0xFF1976D2), () => _go(PurchaseFormPage(companyId: _cid)))),
+      Expanded(child: _quickBtn('فاتورة بيع', Icons.receipt_long_rounded, const Color(0xFF388E3C), () => _go(InvoiceFormPage(companyId: _cid, invoiceType: 'Sales')))),
       const SizedBox(width: 10),
-      Expanded(child: _quickBtn('بيع جديد', Icons.point_of_sale_rounded, const Color(0xFF388E3C), () => _go(SaleFormPage(companyId: _cid)))),
+      Expanded(child: _quickBtn('فاتورة شراء', Icons.add_shopping_cart_rounded, const Color(0xFF1976D2), () => _go(InvoiceFormPage(companyId: _cid, invoiceType: 'Purchase')))),
       const SizedBox(width: 10),
       Expanded(child: _quickBtn('صرف مواد', Icons.engineering_rounded, const Color(0xFFE65100), () => _go(DispensingFormPage(companyId: _cid)))),
     ]);
@@ -169,13 +170,16 @@ class _InventoryPageState extends State<InventoryPage> {
     return Material(
       color: color,
       borderRadius: BorderRadius.circular(10),
-      elevation: 2,
-      shadowColor: color.withOpacity(0.3),
+      elevation: 0,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
-        child: Padding(
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.black, width: 2),
+          ),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(icon, color: Colors.white, size: 18),
             const SizedBox(width: 8),
@@ -191,33 +195,41 @@ class _InventoryPageState extends State<InventoryPage> {
   // ═══════════════════════════════════════════
 
   Widget _buildSectionGrid() {
-    final items = [
+    final row1 = [
+      _NavItem('العملاء', Icons.people_rounded, const Color(0xFF0D47A1), () => _go(CustomersPage(companyId: _cid))),
+      _NavItem('الفواتير', Icons.receipt_long_rounded, const Color(0xFF2E7D32), () => _go(InvoicesPage(companyId: _cid))),
+      _NavItem('السندات', Icons.account_balance_wallet_rounded, const Color(0xFF6A1B9A), () => _go(VouchersPage(companyId: _cid))),
+      _NavItem('المرتجعات', Icons.assignment_return_rounded, const Color(0xFFBF360C), () => _go(ReturnsPage(companyId: _cid))),
+      _NavItem('الموردين', Icons.local_shipping_rounded, const Color(0xFF795548), () => _go(SuppliersPage(companyId: _cid))),
+    ];
+
+    final row2 = [
       _NavItem('المستودعات', Icons.warehouse_rounded, const Color(0xFF3F51B5), () => _go(WarehousesPage(companyId: _cid))),
       _NavItem('المواد', Icons.category_rounded, const Color(0xFF009688), () => _go(MaterialsPage(companyId: _cid))),
-      _NavItem('الموردين', Icons.local_shipping_rounded, const Color(0xFF795548), () => _go(SuppliersPage(companyId: _cid))),
-      _NavItem('الشراء', Icons.shopping_cart_rounded, const Color(0xFF1976D2), () => _go(PurchasesPage(companyId: _cid))),
-      _NavItem('المبيعات', Icons.point_of_sale_rounded, const Color(0xFF388E3C), () => _go(SalesPage(companyId: _cid))),
-      _NavItem('صرف الفنيين', Icons.engineering_rounded, const Color(0xFFE65100), () => _go(DispensingPage(companyId: _cid))),
       _NavItem('المخزون', Icons.inventory_rounded, const Color(0xFF00838F), () => _go(StockLevelsPage(companyId: _cid))),
+      _NavItem('صرف الفنيين', Icons.engineering_rounded, const Color(0xFFE65100), () => _go(DispensingPage(companyId: _cid))),
       _NavItem('الحركات', Icons.swap_horiz_rounded, const Color(0xFF7B1FA2), () => _go(MovementsPage(companyId: _cid))),
       _NavItem('التقارير', Icons.analytics_rounded, const Color(0xFFC62828), () => _go(InventoryReportsPage(companyId: _cid))),
     ];
+
+    Widget buildRow(List<_NavItem> items) => Row(
+      children: items.map((item) => Expanded(
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: _buildNavTile(item)),
+      )).toList(),
+    );
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.black, width: 2),
       ),
-      child: Row(
-        children: items.map((item) => Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: _buildNavTile(item),
-          ),
-        )).toList(),
-      ),
+      child: Column(children: [
+        buildRow(row1),
+        const SizedBox(height: 8),
+        buildRow(row2),
+      ]),
     );
   }
 
@@ -248,7 +260,7 @@ class _InventoryPageState extends State<InventoryPage> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: item.color.withOpacity(0.2)),
+            border: Border.all(color: Colors.black, width: 1.5),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -277,7 +289,7 @@ class _InventoryPageState extends State<InventoryPage> {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 40),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.black, width: 2)),
         child: Column(children: [
           Icon(Icons.inbox_rounded, size: 48, color: Colors.grey.shade300),
           const SizedBox(height: 10),
@@ -286,35 +298,82 @@ class _InventoryPageState extends State<InventoryPage> {
       );
     }
 
+    final movements = _recentMovements.take(10).toList();
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black, width: 2),
+      ),
       clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8F9FA)),
-          headingTextStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
-          dataTextStyle: const TextStyle(fontSize: 12),
-          columnSpacing: 24, horizontalMargin: 16,
-          columns: const [
-            DataColumn(label: Text('التاريخ')),
-            DataColumn(label: Text('المادة')),
-            DataColumn(label: Text('المستودع')),
-            DataColumn(label: Text('النوع')),
-            DataColumn(label: Text('الكمية')),
-            DataColumn(label: Text('المستخدم')),
-          ],
-          rows: _recentMovements.take(10).map((m) {
-            final map = m as Map<String, dynamic>;
-            return DataRow(cells: [
-              DataCell(Text(_fmtDate(map['date'] ?? ''))),
-              DataCell(Text(map['itemName'] ?? '-')),
-              DataCell(Text(map['warehouseName'] ?? '-')),
-              DataCell(_typeChip(map['type'] ?? '')),
-              DataCell(Text(fmtN(map['quantity'] ?? 0))),
-              DataCell(Text(map['userName'] ?? '-')),
-            ]);
-          }).toList(),
+      child: Table(
+        border: const TableBorder(
+          horizontalInside: BorderSide(color: Colors.black, width: 1),
+          verticalInside: BorderSide(color: Colors.black, width: 1),
+        ),
+        columnWidths: const {
+          0: FlexColumnWidth(2.2),   // التاريخ
+          1: FlexColumnWidth(2.5),   // المادة
+          2: FlexColumnWidth(2),     // المستودع
+          3: FlexColumnWidth(1.8),   // النوع
+          4: FlexColumnWidth(1),     // الكمية
+          5: FlexColumnWidth(2),     // المستخدم
+        },
+        children: [
+          // ── Header ──
+          TableRow(
+            decoration: const BoxDecoration(color: Color(0xFFECEFF5)),
+            children: ['التاريخ', 'المادة', 'المستودع', 'النوع', 'الكمية', 'المستخدم']
+                .map((h) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      child: Center(child: Text(h, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade800))),
+                    ))
+                .toList(),
+          ),
+          // ── Rows ──
+          for (int i = 0; i < movements.length; i++)
+            _buildMovementRow(movements[i] as Map<String, dynamic>, i),
+        ],
+      ),
+    );
+  }
+
+  TableRow _buildMovementRow(Map<String, dynamic> map, int index) {
+    final date = (map['CreatedAt'] ?? map['createdAt'] ?? '').toString();
+    final itemName = (map['ItemName'] ?? map['itemName'] ?? '-').toString();
+    final warehouse = (map['WarehouseName'] ?? map['warehouseName'] ?? '-').toString();
+    final type = (map['MovementType'] ?? map['type'] ?? '').toString();
+    final qty = map['Quantity'] ?? map['quantity'] ?? 0;
+    final userName = (map['UserName'] ?? map['userName'] ?? '-').toString();
+
+    return TableRow(
+      decoration: BoxDecoration(
+        color: index.isEven ? Colors.white : const Color(0xFFF8F9FC),
+      ),
+      children: [
+        _cell(_fmtDate(date)),
+        _cell(itemName, bold: true),
+        _cell(warehouse),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Center(child: _typeChip(type)),
+        ),
+        _cell(fmtN(qty)),
+        _cell(userName),
+      ],
+    );
+  }
+
+  Widget _cell(String text, {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      child: Center(
+        child: Text(
+          text,
+          style: TextStyle(fontSize: 12, fontWeight: bold ? FontWeight.w600 : FontWeight.normal, color: const Color(0xFF1A1A2E)),
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -349,8 +408,8 @@ class _InventoryPageState extends State<InventoryPage> {
   String _fmtDate(String raw) {
     if (raw.isEmpty) return '-';
     try {
-      final dt = DateTime.parse(raw);
-      return '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+      final dt = DateTime.parse(raw).toLocal();
+      return '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')}  ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) { return raw; }
   }
 }

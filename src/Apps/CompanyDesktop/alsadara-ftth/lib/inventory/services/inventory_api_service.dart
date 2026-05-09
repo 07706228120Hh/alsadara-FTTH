@@ -444,4 +444,118 @@ class InventoryApiService {
     return await _api.get(
         '/inventory/reports/technician-holdings?companyId=$companyId');
   }
+
+  // ============================================================
+  //  العملاء (Customers)
+  // ============================================================
+
+  Future<Map<String, dynamic>> getCustomers({
+    required String companyId, String? search, String? type,
+  }) async {
+    final p = ['companyId=$companyId'];
+    if (search != null && search.isNotEmpty) p.add('search=$search');
+    if (type != null) p.add('type=$type');
+    return await _api.get('/inventory/customers?${p.join('&')}');
+  }
+
+  Future<Map<String, dynamic>> getCustomer(String id) async =>
+      await _api.get('/inventory/customers/$id');
+
+  Future<Map<String, dynamic>> createCustomer({required Map<String, dynamic> data}) async =>
+      await _api.post('/inventory/customers', body: data);
+
+  Future<Map<String, dynamic>> updateCustomer(String id, {required Map<String, dynamic> data}) async =>
+      await _api.put('/inventory/customers/$id', body: data);
+
+  Future<Map<String, dynamic>> deleteCustomer(String id) async =>
+      await _api.delete('/inventory/customers/$id');
+
+  Future<Map<String, dynamic>> getCustomerStatement(String id, {String? from, String? to}) async {
+    final p = <String>[];
+    if (from != null) p.add('from=$from');
+    if (to != null) p.add('to=$to');
+    final qs = p.isNotEmpty ? '?${p.join('&')}' : '';
+    return await _api.get('/inventory/customers/$id/statement$qs');
+  }
+
+  // ============================================================
+  //  الفواتير (Invoices)
+  // ============================================================
+
+  Future<Map<String, dynamic>> getInvoices({
+    required String companyId, String? type, String? status,
+    String? customerId, String? supplierId, String? from, String? to,
+  }) async {
+    final p = ['companyId=$companyId'];
+    if (type != null) p.add('type=$type');
+    if (status != null) p.add('status=$status');
+    if (customerId != null) p.add('customerId=$customerId');
+    if (supplierId != null) p.add('supplierId=$supplierId');
+    if (from != null) p.add('from=$from');
+    if (to != null) p.add('to=$to');
+    return await _api.get('/inventory/invoices?${p.join('&')}');
+  }
+
+  Future<Map<String, dynamic>> getInvoice(String id) async =>
+      await _api.get('/inventory/invoices/$id');
+
+  Future<Map<String, dynamic>> createInvoice({required Map<String, dynamic> data}) async =>
+      await _api.post('/inventory/invoices', body: data);
+
+  Future<Map<String, dynamic>> confirmInvoice(String id) async =>
+      await _api.post('/inventory/invoices/$id/confirm', body: {});
+
+  Future<Map<String, dynamic>> cancelInvoice(String id) async =>
+      await _api.post('/inventory/invoices/$id/cancel', body: {});
+
+  // ============================================================
+  //  سندات القبض والصرف (Vouchers)
+  // ============================================================
+
+  Future<Map<String, dynamic>> getVouchers({
+    required String companyId, String? type, String? entityId,
+    String? from, String? to,
+  }) async {
+    final p = ['companyId=$companyId'];
+    if (type != null) p.add('type=$type');
+    if (entityId != null) p.add('entityId=$entityId');
+    if (from != null) p.add('from=$from');
+    if (to != null) p.add('to=$to');
+    return await _api.get('/inventory/vouchers?${p.join('&')}');
+  }
+
+  Future<Map<String, dynamic>> createVoucher({required Map<String, dynamic> data}) async =>
+      await _api.post('/inventory/vouchers', body: data);
+
+  // ============================================================
+  //  المرتجعات (Returns)
+  // ============================================================
+
+  Future<Map<String, dynamic>> getReturns({
+    required String companyId, String? type, String? status,
+    String? from, String? to,
+  }) async {
+    final p = ['companyId=$companyId'];
+    if (type != null) p.add('type=$type');
+    if (status != null) p.add('status=$status');
+    if (from != null) p.add('from=$from');
+    if (to != null) p.add('to=$to');
+    return await _api.get('/inventory/returns?${p.join('&')}');
+  }
+
+  Future<Map<String, dynamic>> createReturn({required Map<String, dynamic> data}) async =>
+      await _api.post('/inventory/returns', body: data);
+
+  Future<Map<String, dynamic>> confirmReturn(String id) async =>
+      await _api.post('/inventory/returns/$id/confirm', body: {});
+
+  // ============================================================
+  //  حسابات المخزون (Account Mapping)
+  // ============================================================
+
+  Future<Map<String, dynamic>> seedAccounts({required String companyId}) async =>
+      await _api.post('/inventory/accounts/seed', body: {'companyId': companyId});
+
+  Future<Map<String, dynamic>> getAccountMappings({required String companyId}) async =>
+      await _api.get('/inventory/accounts/mappings?companyId=$companyId');
 }

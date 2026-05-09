@@ -125,6 +125,75 @@ public class InventoryItem : BaseEntity<Guid>
     public List<StockMovement> Movements { get; set; } = new();
 }
 
+// ==================== عملاء المخازن ====================
+
+/// <summary>
+/// عميل المخازن - للمبيعات النقدية والآجلة
+/// </summary>
+public class InventoryCustomer : BaseEntity<Guid>
+{
+    /// <summary>كود العميل (CU-0001)</summary>
+    public string CustomerCode { get; set; } = string.Empty;
+
+    /// <summary>الاسم الكامل</summary>
+    public string FullName { get; set; } = string.Empty;
+
+    /// <summary>رقم الهاتف</summary>
+    public string? Phone { get; set; }
+
+    /// <summary>رقم هاتف ثاني</summary>
+    public string? Phone2 { get; set; }
+
+    /// <summary>البريد الإلكتروني</summary>
+    public string? Email { get; set; }
+
+    /// <summary>المدينة</summary>
+    public string? City { get; set; }
+
+    /// <summary>المنطقة</summary>
+    public string? Area { get; set; }
+
+    /// <summary>العنوان</summary>
+    public string? Address { get; set; }
+
+    /// <summary>نوع العميل (نقدي / آجل / VIP)</summary>
+    public InventoryCustomerType CustomerType { get; set; } = InventoryCustomerType.Cash;
+
+    /// <summary>سقف الائتمان (للآجل)</summary>
+    public decimal CreditLimit { get; set; } = 0;
+
+    /// <summary>إجمالي المبيعات</summary>
+    public decimal TotalSales { get; set; } = 0;
+
+    /// <summary>إجمالي المدفوعات</summary>
+    public decimal TotalPayments { get; set; } = 0;
+
+    /// <summary>الرصيد (موجب = مدين لنا، سالب = له رصيد)</summary>
+    public decimal Balance { get; set; } = 0;
+
+    /// <summary>الرقم الضريبي</summary>
+    public string? TaxNumber { get; set; }
+
+    /// <summary>ملاحظات</summary>
+    public string? Notes { get; set; }
+
+    /// <summary>نشط أم لا</summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+
+    /// <summary>حساب العميل في شجرة الحسابات</summary>
+    public Guid? AccountId { get; set; }
+    public Account? Account { get; set; }
+
+    /// <summary>الفواتير</summary>
+    public List<Invoice> Invoices { get; set; } = new();
+}
+
+// ==================== الموردين (مطوّر) ====================
+
 /// <summary>
 /// المورد - مزود المواد
 /// </summary>
@@ -154,12 +223,34 @@ public class Supplier : BaseEntity<Guid>
     /// <summary>نشط أم لا</summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>نوع المورد (نقدي / آجل)</summary>
+    public SupplierType SupplierType { get; set; } = SupplierType.Cash;
+
+    /// <summary>سقف الائتمان</summary>
+    public decimal CreditLimit { get; set; } = 0;
+
+    /// <summary>إجمالي المشتريات</summary>
+    public decimal TotalPurchases { get; set; } = 0;
+
+    /// <summary>إجمالي المدفوعات</summary>
+    public decimal TotalPayments { get; set; } = 0;
+
+    /// <summary>الرصيد (موجب = ندين له، سالب = له رصيد عندنا)</summary>
+    public decimal Balance { get; set; } = 0;
+
+    /// <summary>حساب المورد في شجرة الحسابات</summary>
+    public Guid? AccountId { get; set; }
+    public Account? Account { get; set; }
+
     /// <summary>الشركة</summary>
     public Guid CompanyId { get; set; }
     public Company? Company { get; set; }
 
     /// <summary>أوامر الشراء</summary>
     public List<PurchaseOrder> PurchaseOrders { get; set; } = new();
+
+    /// <summary>الفواتير</summary>
+    public List<Invoice> Invoices { get; set; } = new();
 }
 
 /// <summary>
@@ -490,4 +581,311 @@ public class WarehouseStock : BaseEntity<long>
     /// <summary>الشركة</summary>
     public Guid CompanyId { get; set; }
     public Company? Company { get; set; }
+}
+
+// ==================== الفواتير ====================
+
+/// <summary>
+/// فاتورة بيع أو شراء
+/// </summary>
+public class Invoice : BaseEntity<Guid>
+{
+    /// <summary>رقم الفاتورة (INV-2026-0001 بيع / PINV-2026-0001 شراء)</summary>
+    public string InvoiceNumber { get; set; } = string.Empty;
+
+    /// <summary>نوع الفاتورة (بيع / شراء)</summary>
+    public InvoiceType InvoiceType { get; set; }
+
+    /// <summary>نوع الدفع (نقد / آجل / جزئي)</summary>
+    public InvoicePaymentType PaymentType { get; set; } = InvoicePaymentType.Cash;
+
+    /// <summary>العميل (لفواتير البيع)</summary>
+    public Guid? CustomerId { get; set; }
+    public InventoryCustomer? Customer { get; set; }
+
+    /// <summary>المورد (لفواتير الشراء)</summary>
+    public Guid? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
+
+    /// <summary>اسم العميل/المورد للعرض</summary>
+    public string? EntityName { get; set; }
+
+    /// <summary>المستودع</summary>
+    public Guid WarehouseId { get; set; }
+    public Warehouse? Warehouse { get; set; }
+
+    /// <summary>تاريخ الفاتورة</summary>
+    public DateTime InvoiceDate { get; set; } = DateTime.UtcNow;
+
+    /// <summary>تاريخ الاستحقاق (للآجل)</summary>
+    public DateTime? DueDate { get; set; }
+
+    /// <summary>المجموع الفرعي (قبل الخصم والضريبة)</summary>
+    public decimal SubTotal { get; set; }
+
+    /// <summary>نوع الخصم العام (نسبة / مبلغ ثابت)</summary>
+    public DiscountType DiscountType { get; set; } = DiscountType.Percentage;
+
+    /// <summary>قيمة الخصم المدخلة</summary>
+    public decimal DiscountValue { get; set; } = 0;
+
+    /// <summary>مبلغ الخصم الفعلي</summary>
+    public decimal DiscountAmount { get; set; } = 0;
+
+    /// <summary>نسبة الضريبة</summary>
+    public decimal TaxRate { get; set; } = 0;
+
+    /// <summary>مبلغ الضريبة</summary>
+    public decimal TaxAmount { get; set; } = 0;
+
+    /// <summary>المبلغ الصافي النهائي</summary>
+    public decimal NetAmount { get; set; }
+
+    /// <summary>المبلغ المدفوع</summary>
+    public decimal PaidAmount { get; set; } = 0;
+
+    /// <summary>المبلغ المتبقي</summary>
+    public decimal RemainingAmount { get; set; } = 0;
+
+    /// <summary>حالة الفاتورة</summary>
+    public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;
+
+    /// <summary>ملاحظات</summary>
+    public string? Notes { get; set; }
+
+    /// <summary>رابط المرفق</summary>
+    public string? AttachmentUrl { get; set; }
+
+    /// <summary>القيد المحاسبي</summary>
+    public Guid? JournalEntryId { get; set; }
+    public JournalEntry? JournalEntry { get; set; }
+
+    /// <summary>الصندوق (للنقد)</summary>
+    public Guid? CashBoxId { get; set; }
+    public CashBox? CashBox { get; set; }
+
+    /// <summary>المستخدم الذي أنشأ الفاتورة</summary>
+    public Guid CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
+
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+
+    /// <summary>بنود الفاتورة</summary>
+    public List<InvoiceItem> Items { get; set; } = new();
+
+    /// <summary>سندات الدفع المرتبطة</summary>
+    public List<PaymentVoucher> PaymentVouchers { get; set; } = new();
+}
+
+/// <summary>
+/// بند فاتورة
+/// </summary>
+public class InvoiceItem : BaseEntity<long>
+{
+    /// <summary>الفاتورة</summary>
+    public Guid InvoiceId { get; set; }
+    public Invoice? Invoice { get; set; }
+
+    /// <summary>المادة</summary>
+    public Guid InventoryItemId { get; set; }
+    public InventoryItem? InventoryItem { get; set; }
+
+    /// <summary>اسم المادة وقت الفاتورة (snapshot)</summary>
+    public string ItemName { get; set; } = string.Empty;
+
+    /// <summary>الكمية</summary>
+    public int Quantity { get; set; }
+
+    /// <summary>سعر الوحدة</summary>
+    public decimal UnitPrice { get; set; }
+
+    /// <summary>نسبة خصم البند</summary>
+    public decimal DiscountPercent { get; set; } = 0;
+
+    /// <summary>مبلغ خصم البند</summary>
+    public decimal DiscountAmount { get; set; } = 0;
+
+    /// <summary>مبلغ الضريبة للبند</summary>
+    public decimal TaxAmount { get; set; } = 0;
+
+    /// <summary>السعر الإجمالي النهائي للبند</summary>
+    public decimal TotalPrice { get; set; }
+
+    /// <summary>تكلفة الوحدة وقت البيع (لحساب الربح)</summary>
+    public decimal CostAtSale { get; set; } = 0;
+
+    /// <summary>ملاحظات</summary>
+    public string? Notes { get; set; }
+}
+
+// ==================== سندات القبض والصرف ====================
+
+/// <summary>
+/// سند قبض (من عميل) أو سند صرف (لمورد)
+/// </summary>
+public class PaymentVoucher : BaseEntity<Guid>
+{
+    /// <summary>رقم السند (RV-2026-0001 قبض / PV-2026-0001 صرف)</summary>
+    public string VoucherNumber { get; set; } = string.Empty;
+
+    /// <summary>نوع السند (قبض / صرف)</summary>
+    public VoucherType VoucherType { get; set; }
+
+    /// <summary>نوع الكيان (عميل / مورد)</summary>
+    public VoucherEntityType EntityType { get; set; }
+
+    /// <summary>معرف العميل أو المورد</summary>
+    public Guid EntityId { get; set; }
+
+    /// <summary>اسم العميل/المورد للعرض</summary>
+    public string EntityName { get; set; } = string.Empty;
+
+    /// <summary>المبلغ</summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>طريقة الدفع</summary>
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.CashOnDelivery;
+
+    /// <summary>الصندوق</summary>
+    public Guid? CashBoxId { get; set; }
+    public CashBox? CashBox { get; set; }
+
+    /// <summary>تاريخ السند</summary>
+    public DateTime VoucherDate { get; set; } = DateTime.UtcNow;
+
+    /// <summary>ربط بفاتورة محددة (اختياري)</summary>
+    public Guid? InvoiceId { get; set; }
+    public Invoice? Invoice { get; set; }
+
+    /// <summary>ملاحظات</summary>
+    public string? Notes { get; set; }
+
+    /// <summary>رابط المرفق</summary>
+    public string? AttachmentUrl { get; set; }
+
+    /// <summary>القيد المحاسبي</summary>
+    public Guid? JournalEntryId { get; set; }
+    public JournalEntry? JournalEntry { get; set; }
+
+    /// <summary>المستخدم الذي أنشأ السند</summary>
+    public Guid CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
+
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+}
+
+// ==================== المرتجعات ====================
+
+/// <summary>
+/// مرتجع مبيعات أو مشتريات
+/// </summary>
+public class ReturnOrder : BaseEntity<Guid>
+{
+    /// <summary>رقم المرتجع (SR-2026-0001 / PR-2026-0001)</summary>
+    public string ReturnNumber { get; set; } = string.Empty;
+
+    /// <summary>نوع المرتجع (مبيعات / مشتريات)</summary>
+    public ReturnType ReturnType { get; set; }
+
+    /// <summary>الفاتورة الأصلية</summary>
+    public Guid OriginalInvoiceId { get; set; }
+    public Invoice? OriginalInvoice { get; set; }
+
+    /// <summary>العميل (لمرتجع البيع)</summary>
+    public Guid? CustomerId { get; set; }
+    public InventoryCustomer? Customer { get; set; }
+
+    /// <summary>المورد (لمرتجع الشراء)</summary>
+    public Guid? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
+
+    /// <summary>المستودع</summary>
+    public Guid WarehouseId { get; set; }
+    public Warehouse? Warehouse { get; set; }
+
+    /// <summary>المبلغ الإجمالي للمرتجع</summary>
+    public decimal TotalAmount { get; set; }
+
+    /// <summary>طريقة الاسترداد</summary>
+    public RefundMethod RefundMethod { get; set; } = RefundMethod.DeductFromBalance;
+
+    /// <summary>الصندوق (للإرجاع النقدي)</summary>
+    public Guid? CashBoxId { get; set; }
+    public CashBox? CashBox { get; set; }
+
+    /// <summary>حالة المرتجع</summary>
+    public ReturnStatus Status { get; set; } = ReturnStatus.Draft;
+
+    /// <summary>تاريخ المرتجع</summary>
+    public DateTime ReturnDate { get; set; } = DateTime.UtcNow;
+
+    /// <summary>السبب العام</summary>
+    public string? Reason { get; set; }
+
+    /// <summary>ملاحظات</summary>
+    public string? Notes { get; set; }
+
+    /// <summary>القيد المحاسبي</summary>
+    public Guid? JournalEntryId { get; set; }
+    public JournalEntry? JournalEntry { get; set; }
+
+    /// <summary>المستخدم الذي أنشأ المرتجع</summary>
+    public Guid CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
+
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+
+    /// <summary>بنود المرتجع</summary>
+    public List<ReturnOrderItem> Items { get; set; } = new();
+}
+
+/// <summary>
+/// بند مرتجع
+/// </summary>
+public class ReturnOrderItem : BaseEntity<long>
+{
+    /// <summary>المرتجع</summary>
+    public Guid ReturnOrderId { get; set; }
+    public ReturnOrder? ReturnOrder { get; set; }
+
+    /// <summary>المادة</summary>
+    public Guid InventoryItemId { get; set; }
+    public InventoryItem? InventoryItem { get; set; }
+
+    /// <summary>الكمية المرتجعة</summary>
+    public int Quantity { get; set; }
+
+    /// <summary>سعر الوحدة</summary>
+    public decimal UnitPrice { get; set; }
+
+    /// <summary>المبلغ الإجمالي</summary>
+    public decimal TotalPrice { get; set; }
+
+    /// <summary>سبب الإرجاع لهذا البند</summary>
+    public string? Reason { get; set; }
+}
+
+// ==================== ربط حسابات المخزون ====================
+
+/// <summary>
+/// ربط الحسابات المحاسبية بنظام المخزون — يحدد أي حساب يُستخدم لكل نوع قيد
+/// </summary>
+public class InventoryAccountMapping : BaseEntity<int>
+{
+    /// <summary>الشركة</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+
+    /// <summary>مفتاح الحساب (inventory, cogs, sales_revenue, accounts_receivable, accounts_payable, sales_returns, purchase_returns, tax_payable)</summary>
+    public string AccountKey { get; set; } = string.Empty;
+
+    /// <summary>الحساب المحاسبي المربوط</summary>
+    public Guid AccountId { get; set; }
+    public Account? Account { get; set; }
 }
