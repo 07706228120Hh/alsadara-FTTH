@@ -4007,9 +4007,19 @@ public class AccountingController : ControllerBase
                     JournalReferenceType.OperatorCashDelivery => "تسليم نقد",
                     _ => dup.ReferenceType.ToString()
                 };
+                // جلب تفاصيل القيود المكررة
+                var dupEntries = await _unitOfWork.JournalEntries.AsQueryable()
+                    .Where(j => j.CompanyId == cid.Value && j.ReferenceType == dup.ReferenceType
+                        && j.ReferenceId == dup.ReferenceId && j.Status == JournalEntryStatus.Posted && !j.IsDeleted)
+                    .OrderBy(j => j.EntryDate)
+                    .Select(j => new { j.EntryNumber, j.TotalDebit, j.EntryDate, j.Description })
+                    .ToListAsync();
+                var entriesList = string.Join(" | ", dupEntries.Select(e => $"{e.EntryNumber} ({e.TotalDebit:N0})"));
+
                 issues.Add(new { category = "DuplicateEntry", severity = "high",
                     message = $"قيد مكرر: {dup.Count} قيود لنفس {refLabel} (المرجع: {dup.ReferenceId})",
-                    referenceType = refLabel, referenceId = dup.ReferenceId, count = dup.Count });
+                    referenceType = refLabel, referenceId = dup.ReferenceId, count = dup.Count,
+                    entries = entriesList });
             }
 
             // ═══ 7D. أسطر القيد لا تطابق الإجمالي ═══

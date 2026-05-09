@@ -200,6 +200,7 @@ class _SystemAuditPageState extends State<SystemAuditPage>
         'createdAt' => 'تاريخ الإنشاء',
         'accountId' => 'معرّف الحساب',
         'collectionId' => 'معرّف التحصيل',
+        'entries' => 'القيود المكررة',
         _ => k,
       };
 
