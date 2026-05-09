@@ -143,6 +143,15 @@ class _SystemAuditPageState extends State<SystemAuditPage> {
                 ),
                 child: Row(
                   children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(Icons.arrow_back_rounded,
+                          color: Colors.white, size: isMob ? 20 : 24),
+                      tooltip: 'رجوع',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ),
+                    const SizedBox(width: 4),
                     Icon(Icons.verified_user,
                         color: Colors.white, size: isMob ? 20 : 28),
                     const SizedBox(width: 8),
