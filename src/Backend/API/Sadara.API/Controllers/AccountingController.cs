@@ -3816,16 +3816,30 @@ public class AccountingController : ControllerBase
     {
         try
         {
-            var cid = companyId ?? Guid.Parse(
-                User.FindFirst("companyId")?.Value
-                ?? User.FindFirst("CompanyId")?.Value
-                ?? Guid.Empty.ToString());
+            // تحديد الشركة — نفس نمط GetDashboard
+            Guid? cid = companyId;
+            if (!cid.HasValue)
+            {
+                var claim = User?.FindFirst("companyId")?.Value ?? User?.FindFirst("CompanyId")?.Value;
+                if (!string.IsNullOrEmpty(claim) && Guid.TryParse(claim, out var parsed) && parsed != Guid.Empty)
+                    cid = parsed;
+            }
+            // إذا لا يوجد companyId → جلب أول شركة من القيود
+            if (!cid.HasValue)
+            {
+                cid = await _unitOfWork.JournalEntries.AsQueryable()
+                    .Where(j => !j.IsDeleted)
+                    .Select(j => (Guid?)j.CompanyId)
+                    .FirstOrDefaultAsync();
+            }
+            if (!cid.HasValue)
+                return Ok(new { success = true, summary = new { totalIssues = 0 }, issues = new List<object>() });
 
             var issues = new List<object>();
 
             // ═══ 1. قيود غير متوازنة (مدين ≠ دائن) ═══
             var unbalancedEntries = await _unitOfWork.JournalEntries.AsQueryable()
-                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Posted && !j.IsDeleted)
+                .Where(j => j.CompanyId == cid.Value && j.Status == JournalEntryStatus.Posted && !j.IsDeleted)
                 .Where(j => Math.Abs(j.TotalDebit - j.TotalCredit) > 0.01m)
                 .Select(j => new { j.Id, j.EntryNumber, j.Description, j.TotalDebit, j.TotalCredit, j.EntryDate })
                 .ToListAsync();
@@ -3837,7 +3851,7 @@ public class AccountingController : ControllerBase
 
             // ═══ 2. صناديق: رصيد لا يطابق مجموع العمليات ═══
             var cashBoxes = await _unitOfWork.CashBoxes.AsQueryable()
-                .Where(b => b.CompanyId == cid && !b.IsDeleted)
+                .Where(b => b.CompanyId == cid.Value && !b.IsDeleted)
                 .ToListAsync();
             foreach (var box in cashBoxes)
             {
@@ -3870,7 +3884,7 @@ public class AccountingController : ControllerBase
 
             // ═══ 3. قيود إيداع/سحب ملغاة لم تعكس الصندوق (قبل الإصلاح) ═══
             var voidedCashEntries = await _unitOfWork.JournalEntries.AsQueryable()
-                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Voided && !j.IsDeleted
+                .Where(j => j.CompanyId == cid.Value && j.Status == JournalEntryStatus.Voided && !j.IsDeleted
                     && (j.ReferenceType == JournalReferenceType.CashDeposit || j.ReferenceType == JournalReferenceType.CashWithdrawal))
                 .Select(j => new { j.Id, j.EntryNumber, j.Description, j.ReferenceType, j.EntryDate })
                 .ToListAsync();
@@ -3887,7 +3901,7 @@ public class AccountingController : ControllerBase
 
             // ═══ 4. مصاريف مبلغها لا يطابق القيد المحاسبي ═══
             var expenses = await _unitOfWork.Expenses.AsQueryable()
-                .Where(e => e.CompanyId == cid && !e.IsDeleted)
+                .Where(e => e.CompanyId == cid.Value && !e.IsDeleted)
                 .ToListAsync();
             foreach (var exp in expenses)
             {
@@ -3908,7 +3922,7 @@ public class AccountingController : ControllerBase
 
             // ═══ 5. أرصدة فنيين لا تطابق مجموع عملياتهم ═══
             var technicians = await _unitOfWork.Users.AsQueryable()
-                .Where(u => u.CompanyId == cid && u.IsActive && (u.TechTotalCharges > 0 || u.TechTotalPayments > 0))
+                .Where(u => u.CompanyId == cid.Value && u.IsActive && (u.TechTotalCharges > 0 || u.TechTotalPayments > 0))
                 .Select(u => new { u.Id, u.FullName, u.TechTotalCharges, u.TechTotalPayments, u.TechNetBalance })
                 .ToListAsync();
             foreach (var tech in technicians)
@@ -3935,7 +3949,7 @@ public class AccountingController : ControllerBase
             // ═══ 6. عمليات FTTH بدون قيد محاسبي ═══
             var orphanLogs = await _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => !l.IsDeleted && l.JournalEntryId == null
-                    && l.CompanyId == cid && l.UserId.HasValue
+                    && l.CompanyId == cid.Value && l.UserId.HasValue
                     && l.PlanPrice.HasValue && l.PlanPrice > 0
                     && l.CollectionType != null)
                 .Select(l => new { l.Id, l.CustomerName, l.PlanName, l.PlanPrice, l.CollectionType, l.CreatedAt })
@@ -3949,7 +3963,7 @@ public class AccountingController : ControllerBase
 
             // ═══ 7. حسابات برصيد سالب (أصول) أو موجب (خصوم) بشكل غير طبيعي ═══
             var suspiciousAccounts = await _unitOfWork.Accounts.AsQueryable()
-                .Where(a => a.CompanyId == cid && a.IsActive && a.IsLeaf && !a.IsDeleted)
+                .Where(a => a.CompanyId == cid.Value && a.IsActive && a.IsLeaf && !a.IsDeleted)
                 .Where(a => (a.AccountType == AccountType.Assets && a.CurrentBalance < -0.01m)
                          || (a.AccountType == AccountType.Liabilities && a.CurrentBalance > 0.01m))
                 .Select(a => new { a.Id, a.Code, a.Name, a.AccountType, a.CurrentBalance })
@@ -3970,7 +3984,7 @@ public class AccountingController : ControllerBase
 
             // ═══ 7C. قيود مكررة (نفس ReferenceId مرتين لنفس النوع) ═══
             var duplicateRefs = await _unitOfWork.JournalEntries.AsQueryable()
-                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
+                .Where(j => j.CompanyId == cid.Value && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
                     && j.ReferenceType != JournalReferenceType.Manual
                     && j.ReferenceId != null && j.ReferenceId != "")
                 .GroupBy(j => new { j.ReferenceType, j.ReferenceId })
@@ -3998,7 +4012,7 @@ public class AccountingController : ControllerBase
 
             // ═══ 7D. أسطر القيد لا تطابق الإجمالي ═══
             var entriesWithLines = await _unitOfWork.JournalEntries.AsQueryable()
-                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Posted && !j.IsDeleted)
+                .Where(j => j.CompanyId == cid.Value && j.Status == JournalEntryStatus.Posted && !j.IsDeleted)
                 .Include(j => j.Lines)
                 .ToListAsync();
             foreach (var ent in entriesWithLines)
@@ -4022,7 +4036,7 @@ public class AccountingController : ControllerBase
 
             // ═══ 7E. أرصدة وكلاء لا تطابق عملياتهم ═══
             var agents = await _unitOfWork.Agents.AsQueryable()
-                .Where(a => a.CompanyId == cid && !a.IsDeleted && (a.TotalCharges > 0 || a.TotalPayments > 0))
+                .Where(a => a.CompanyId == cid.Value && !a.IsDeleted && (a.TotalCharges > 0 || a.TotalPayments > 0))
                 .Select(a => new { a.Id, a.Name, a.TotalCharges, a.TotalPayments, a.NetBalance })
                 .ToListAsync();
             foreach (var agent in agents)
@@ -4045,7 +4059,7 @@ public class AccountingController : ControllerBase
             // ═══ 7F. رواتب معلقة قديمة (أكثر من شهرين) ═══
             var cutoffDate = DateTime.UtcNow.AddMonths(-2);
             var staleSalaries = await _unitOfWork.EmployeeSalaries.AsQueryable()
-                .Where(s => s.CompanyId == cid && s.Status == SalaryStatus.Pending && !s.IsDeleted
+                .Where(s => s.CompanyId == cid.Value && s.Status == SalaryStatus.Pending && !s.IsDeleted
                     && s.CreatedAt < cutoffDate)
                 .Select(s => new { s.Id, s.Month, s.Year, s.NetSalary, s.CreatedAt })
                 .Take(30)
@@ -4057,7 +4071,7 @@ public class AccountingController : ControllerBase
 
             // ═══ 7G. حسابات leaf لها أبناء (تناقض) ═══
             var leafWithChildren = await _unitOfWork.Accounts.AsQueryable()
-                .Where(a => a.CompanyId == cid && a.IsLeaf && a.IsActive && !a.IsDeleted)
+                .Where(a => a.CompanyId == cid.Value && a.IsLeaf && a.IsActive && !a.IsDeleted)
                 .Where(a => _unitOfWork.Accounts.AsQueryable().Any(c => c.ParentAccountId == a.Id && !c.IsDeleted))
                 .Select(a => new { a.Id, a.Code, a.Name })
                 .ToListAsync();
@@ -4069,7 +4083,7 @@ public class AccountingController : ControllerBase
             // ═══ 8. قيود مُعتمدة بدون معاملة مرتبطة (يتيمة) ═══
             // القيود غير اليدوية يجب أن يكون لها ReferenceId يشير لمعاملة موجودة
             var orphanEntries = await _unitOfWork.JournalEntries.AsQueryable()
-                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
+                .Where(j => j.CompanyId == cid.Value && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
                     && j.ReferenceType != JournalReferenceType.Manual
                     && (j.ReferenceId == null || j.ReferenceId == ""))
                 .Select(j => new { j.Id, j.EntryNumber, j.Description, j.ReferenceType, j.EntryDate, j.TotalDebit })
@@ -4099,7 +4113,7 @@ public class AccountingController : ControllerBase
 
             // 9A: رواتب مدفوعة بدون قيد
             var salariesNoEntry = await _unitOfWork.EmployeeSalaries.AsQueryable()
-                .Where(s => s.CompanyId == cid && s.Status == SalaryStatus.Paid && !s.IsDeleted && s.JournalEntryId == null)
+                .Where(s => s.CompanyId == cid.Value && s.Status == SalaryStatus.Paid && !s.IsDeleted && s.JournalEntryId == null)
                 .Select(s => new { s.Id, s.UserId, s.Month, s.Year, s.NetSalary })
                 .Take(50)
                 .ToListAsync();
@@ -4111,7 +4125,7 @@ public class AccountingController : ControllerBase
             // 9B: عمليات صندوق بدون قيد
             var cashTxNoEntry = await _unitOfWork.CashTransactions.AsQueryable()
                 .Where(ct => !ct.IsDeleted && ct.JournalEntryId == null)
-                .Join(_unitOfWork.CashBoxes.AsQueryable().Where(b => b.CompanyId == cid),
+                .Join(_unitOfWork.CashBoxes.AsQueryable().Where(b => b.CompanyId == cid.Value),
                     ct => ct.CashBoxId, b => b.Id, (ct, b) => new { ct.Id, ct.Amount, ct.TransactionType, ct.Description, BoxName = b.Name, ct.CreatedAt })
                 .Take(50)
                 .ToListAsync();
@@ -4122,7 +4136,7 @@ public class AccountingController : ControllerBase
 
             // 9C: تحصيلات فنيين بدون قيد
             var collectionsNoEntry = await _unitOfWork.TechnicianCollections.AsQueryable()
-                .Where(c => c.CompanyId == cid && !c.IsDeleted && c.JournalEntryId == null)
+                .Where(c => c.CompanyId == cid.Value && !c.IsDeleted && c.JournalEntryId == null)
                 .Select(c => new { c.Id, c.TechnicianId, c.Amount, c.CreatedAt })
                 .Take(50)
                 .ToListAsync();
@@ -4151,7 +4165,7 @@ public class AccountingController : ControllerBase
                 medium = issues.Count(i => ((dynamic)i).severity == "medium"),
                 warning = issues.Count(i => ((dynamic)i).severity == "warning"),
                 auditDate = DateTime.UtcNow,
-                companyId = cid
+                companyId = cid.Value
             };
 
             return Ok(new { success = true, summary, issues });
