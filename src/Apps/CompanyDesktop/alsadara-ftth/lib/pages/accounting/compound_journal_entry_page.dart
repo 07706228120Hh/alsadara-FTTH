@@ -35,6 +35,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
   int _currentEntryIndex = -1; // -1 = قيد جديد
   String? _viewingEntryId;
   bool _isReadOnly = false;
+  int? _selectedLineIndex;
 
   @override
   void initState() {
@@ -99,7 +100,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
         for (final l in lines) {
           final line = _JournalLine();
           line.accountId = l['AccountId']?.toString();
-          line.accountName = '${l['AccountCode'] ?? ''} - ${l['AccountName'] ?? ''}';
+          line.accountName = l['AccountName']?.toString() ?? '';
           line.debit = ((l['DebitAmount'] ?? 0) as num).toDouble();
           line.credit = ((l['CreditAmount'] ?? 0) as num).toDouble();
           line.debitCtrl.text = line.debit > 0 ? _fmtNum(line.debit) : '';
@@ -130,6 +131,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
       _viewingEntryId = null;
       _isReadOnly = false;
       _entryDate = DateTime.now();
+      _selectedLineIndex = null;
     });
   }
 
@@ -168,6 +170,17 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
   /// تحليل رقم منسق (إزالة الفواصل)
   double _parseNum(String s) {
     return double.tryParse(s.replaceAll(',', '')) ?? 0;
+  }
+
+  /// جلب معلومات الحساب من القائمة المحملة
+  Map<String, dynamic>? _getAccountInfo(String? accountId) {
+    if (accountId == null) return null;
+    try {
+      return _accounts.firstWhere(
+          (a) => a['Id']?.toString() == accountId) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
   }
 
   double get _totalDebit => _lines.fold(0, (s, l) => s + l.debit);
@@ -241,7 +254,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   fontSize: isMob ? 14 : ar.headingMedium,
                   fontWeight: FontWeight.bold,
                   color: Colors.black)),
-          if (_allEntries.isNotEmpty) ...[
+          if (_allEntries.isNotEmpty && isMob) ...[
             SizedBox(width: isMob ? 8 : 16),
             Container(
               decoration: BoxDecoration(
@@ -407,13 +420,19 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           // الصف الثاني: الوصف
           _buildDescriptionField(),
         ] else ...[
-          // شريط التاريخ والتوازن
-          _buildBalanceBar(),
-          // معلومات القيد (ديسكتوب)
-          _buildHeader(),
+          _buildDesktopHeaderRow(),
         ],
-        // خطوط القيد
-        Expanded(child: _buildLinesTable()),
+        // خطوط القيد + بطاقة معلومات الحساب
+        Expanded(
+          child: isMob
+              ? _buildLinesTable()
+              : Row(
+                  children: [
+                    Expanded(child: _buildLinesTable()),
+                    _buildAccountInfoPanel(),
+                  ],
+                ),
+        ),
         // شريط الإجماليات
         _buildTotalsBar(),
       ],
@@ -583,6 +602,103 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
+      ),
+    );
+  }
+
+  /// صف الهيدر المدمج للديسكتوب: تاريخ + وصف + ملاحظات + إضافة سطر
+  Widget _buildDesktopHeaderRow() {
+    final ar = context.accR;
+
+    return Container(
+      padding:
+          EdgeInsets.symmetric(horizontal: ar.spaceM, vertical: ar.spaceXS),
+      decoration: const BoxDecoration(
+        color: AccountingTheme.bgCard,
+        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+      ),
+      child: Row(
+        children: [
+          // التاريخ
+          InkWell(
+            onTap: _isReadOnly ? null : _pickDate,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE0E0E0)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.calendar_today_rounded,
+                      color: AccountingTheme.accent, size: 16),
+                  const SizedBox(width: 8),
+                  Text(_formatDate(_entryDate),
+                      style: GoogleFonts.cairo(
+                          color: Colors.black,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                  if (!_isReadOnly) ...[
+                    const SizedBox(width: 6),
+                    Icon(Icons.edit,
+                        size: 14,
+                        color: AccountingTheme.accent.withValues(alpha: 0.6)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          SizedBox(width: ar.spaceM),
+          // الوصف
+          Expanded(
+            flex: 3,
+            child: TextField(
+              controller: _descCtrl,
+              style: TextStyle(color: Colors.black, fontSize: ar.body),
+              decoration: _inputDeco('وصف القيد *', Icons.description),
+            ),
+          ),
+          SizedBox(width: ar.spaceM),
+          // الملاحظات
+          Expanded(
+            flex: 2,
+            child: TextField(
+              controller: _notesCtrl,
+              style: TextStyle(color: Colors.black, fontSize: ar.body),
+              decoration: _inputDeco('ملاحظات', Icons.notes),
+            ),
+          ),
+          SizedBox(width: ar.spaceS),
+          // زر إضافة سطر
+          Material(
+            color: AccountingTheme.accent.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              onTap: _addLine,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_rounded,
+                        size: 16, color: AccountingTheme.accent),
+                    const SizedBox(width: 6),
+                    Text('+ إضافة سطر',
+                        style: GoogleFonts.cairo(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AccountingTheme.accent)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -914,7 +1030,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
   }
 
   /// بناء widget بحث الحساب باستخدام Autocomplete
-  Widget _buildAccountSearch(_JournalLine line) {
+  Widget _buildAccountSearch(_JournalLine line, int lineIndex) {
     return Autocomplete<Map<String, dynamic>>(
       optionsBuilder: (TextEditingValue textEditingValue) {
         if (textEditingValue.text.isEmpty) {
@@ -927,11 +1043,12 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           return code.contains(query) || name.contains(query);
         }).cast<Map<String, dynamic>>();
       },
-      displayStringForOption: (a) => '${a['Code']} - ${a['Name']}',
+      displayStringForOption: (a) => a['Name']?.toString() ?? '',
       onSelected: (a) {
         setState(() {
           line.accountId = a['Id']?.toString();
-          line.accountName = '${a['Code']} - ${a['Name']}';
+          line.accountName = a['Name']?.toString() ?? '';
+          _selectedLineIndex = lineIndex;
         });
       },
       initialValue: line.accountName != null
@@ -1261,11 +1378,11 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           return code.contains(query) || name.contains(query);
         }).cast<Map<String, dynamic>>();
       },
-      displayStringForOption: (a) => '${a['Code']} - ${a['Name']}',
+      displayStringForOption: (a) => a['Name']?.toString() ?? '',
       onSelected: (a) {
         setState(() {
           line.accountId = a['Id']?.toString();
-          line.accountName = '${a['Code']} - ${a['Name']}';
+          line.accountName = a['Name']?.toString() ?? '';
         });
       },
       initialValue: line.accountName != null
@@ -1588,16 +1705,25 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
   Widget _buildLineRow(int index) {
     final line = _lines[index];
     final isEven = index % 2 == 0;
+    final isSelected = _selectedLineIndex == index;
 
-    return Container(
+    return Listener(
+      onPointerDown: (_) {
+        if (_selectedLineIndex != index) setState(() => _selectedLineIndex = index);
+      },
+      child: Container(
       margin: EdgeInsets.symmetric(horizontal: 0, vertical: 2),
       padding: EdgeInsets.symmetric(
           horizontal: context.accR.spaceS, vertical: context.accR.spaceXS),
       decoration: BoxDecoration(
-        color: isEven
-            ? Colors.transparent
-            : AccountingTheme.textMuted.withValues(alpha: 0.05),
-        border: Border.all(color: Colors.black, width: 1.5),
+        color: isSelected
+            ? AccountingTheme.accent.withValues(alpha: 0.06)
+            : isEven
+                ? Colors.transparent
+                : AccountingTheme.textMuted.withValues(alpha: 0.05),
+        border: Border.all(
+            color: isSelected ? AccountingTheme.accent : Colors.black,
+            width: isSelected ? 2 : 1.5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -1625,7 +1751,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           // بحث الحساب
           Expanded(
             flex: 4,
-            child: _buildAccountSearch(line),
+            child: _buildAccountSearch(line, index),
           ),
           SizedBox(width: context.accR.spaceS),
           // مبلغ المدين
@@ -1770,7 +1896,363 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           ),
         ],
       ),
+      ),
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // بطاقة معلومات الحساب الجانبية
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildAccountInfoPanel() {
+    final ar = context.accR;
+    final line = _selectedLineIndex != null && _selectedLineIndex! < _lines.length
+        ? _lines[_selectedLineIndex!]
+        : null;
+
+    final accountInfo = line != null ? _getAccountInfo(line.accountId) : null;
+    final hasAccount = accountInfo != null;
+
+    double currentBalance = 0;
+    double entryDebit = 0;
+    double entryCredit = 0;
+    double projectedBalance = 0;
+    String accountCode = '';
+    String accountName = '';
+
+    if (hasAccount) {
+      currentBalance = ((accountInfo['CurrentBalance'] ?? 0) as num).toDouble();
+      entryDebit = line!.debit;
+      entryCredit = line.credit;
+      projectedBalance = currentBalance + entryDebit - entryCredit;
+      accountCode = accountInfo['Code']?.toString() ?? '';
+      accountName = accountInfo['Name']?.toString() ?? '';
+    }
+
+    final balanceIsDebit = currentBalance >= 0;
+    final projectedIsDebit = projectedBalance >= 0;
+
+    return Container(
+      width: 260,
+      margin: EdgeInsets.only(
+          left: ar.spaceS, top: ar.spaceXS,
+          bottom: ar.spaceXS, right: ar.spaceM),
+      decoration: BoxDecoration(
+        color: AccountingTheme.bgCard,
+        borderRadius: BorderRadius.circular(ar.cardRadius),
+        border: Border.all(color: AccountingTheme.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: AccountingTheme.neonPurpleGradient,
+              borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(ar.cardRadius)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.account_balance_wallet_rounded,
+                    color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text('معلومات الحساب',
+                    style: GoogleFonts.cairo(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          if (!hasAccount)
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.touch_app_rounded,
+                          color: AccountingTheme.textMuted
+                              .withValues(alpha: 0.4),
+                          size: 40),
+                      const SizedBox(height: 12),
+                      Text(
+                        'اضغط على سطر لعرض\nرصيد الحساب',
+                        style: GoogleFonts.cairo(
+                            color: AccountingTheme.textMuted, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // كود واسم الحساب
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AccountingTheme.accent
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(accountCode,
+                              style: GoogleFonts.cairo(
+                                  color: AccountingTheme.accent,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(accountName,
+                        style: GoogleFonts.cairo(
+                            color: Colors.black,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 16),
+                    const Divider(height: 1),
+                    const SizedBox(height: 16),
+                    // الرصيد الحالي
+                    Text('الرصيد الحالي',
+                        style: GoogleFonts.cairo(
+                            color: AccountingTheme.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: (balanceIsDebit
+                                ? AccountingTheme.success
+                                : AccountingTheme.danger)
+                            .withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: (balanceIsDebit
+                                    ? AccountingTheme.success
+                                    : AccountingTheme.danger)
+                                .withValues(alpha: 0.25)),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(_fmt(currentBalance.abs()),
+                              style: GoogleFonts.cairo(
+                                  color: balanceIsDebit
+                                      ? AccountingTheme.success
+                                      : AccountingTheme.danger,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold)),
+                          Text(balanceIsDebit ? 'مدين' : 'دائن',
+                              style: GoogleFonts.cairo(
+                                  color: (balanceIsDebit
+                                          ? AccountingTheme.success
+                                          : AccountingTheme.danger)
+                                      .withValues(alpha: 0.7),
+                                  fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                    // أثر القيد
+                    if (entryDebit > 0 || entryCredit > 0) ...[
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                      Text('أثر هذا القيد',
+                          style: GoogleFonts.cairo(
+                              color: AccountingTheme.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      if (entryDebit > 0)
+                        Row(
+                          children: [
+                            Icon(Icons.arrow_upward_rounded,
+                                color: AccountingTheme.success, size: 16),
+                            const SizedBox(width: 4),
+                            Text('+ ${_fmt(entryDebit)}',
+                                style: GoogleFonts.cairo(
+                                    color: AccountingTheme.success,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 4),
+                            Text('مدين',
+                                style: GoogleFonts.cairo(
+                                    color: AccountingTheme.success
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 10)),
+                          ],
+                        ),
+                      if (entryCredit > 0)
+                        Row(
+                          children: [
+                            Icon(Icons.arrow_downward_rounded,
+                                color: AccountingTheme.danger, size: 16),
+                            const SizedBox(width: 4),
+                            Text('- ${_fmt(entryCredit)}',
+                                style: GoogleFonts.cairo(
+                                    color: AccountingTheme.danger,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 4),
+                            Text('دائن',
+                                style: GoogleFonts.cairo(
+                                    color: AccountingTheme.danger
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 10)),
+                          ],
+                        ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                      // الرصيد بعد القيد
+                      Text('الرصيد بعد القيد',
+                          style: GoogleFonts.cairo(
+                              color: AccountingTheme.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              (projectedIsDebit
+                                      ? AccountingTheme.success
+                                      : AccountingTheme.danger)
+                                  .withValues(alpha: 0.12),
+                              (projectedIsDebit
+                                      ? AccountingTheme.success
+                                      : AccountingTheme.danger)
+                                  .withValues(alpha: 0.05),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: (projectedIsDebit
+                                      ? AccountingTheme.success
+                                      : AccountingTheme.danger)
+                                  .withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(_fmt(projectedBalance.abs()),
+                                style: GoogleFonts.cairo(
+                                    color: projectedIsDebit
+                                        ? AccountingTheme.success
+                                        : AccountingTheme.danger,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold)),
+                            Text(projectedIsDebit ? 'مدين' : 'دائن',
+                                style: GoogleFonts.cairo(
+                                    color: (projectedIsDebit
+                                            ? AccountingTheme.success
+                                            : AccountingTheme.danger)
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 10)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    // زر الإكمال التلقائي
+                    if (line!.accountId != null &&
+                        (line.debit == 0 && line.credit == 0) &&
+                        !_isBalanced) ...[
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                      _buildAutoFillButton(),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoFillButton() {
+    final diff = _totalDebit - _totalCredit;
+    if (diff.abs() < 0.01) return const SizedBox.shrink();
+
+    final needCredit = diff > 0;
+    final amount = diff.abs();
+
+    return Material(
+      color: AccountingTheme.accent.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: _autoFillSelectedLine,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.auto_fix_high_rounded,
+                  color: AccountingTheme.accent, size: 16),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'إكمال ${needCredit ? "دائن" : "مدين"}: ${_fmt(amount)}',
+                  style: GoogleFonts.cairo(
+                      color: AccountingTheme.accent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _autoFillSelectedLine() {
+    if (_selectedLineIndex == null || _selectedLineIndex! >= _lines.length) return;
+    final line = _lines[_selectedLineIndex!];
+    if (line.accountId == null) return;
+
+    final diff = _totalDebit - _totalCredit;
+    if (diff.abs() < 0.01) return;
+
+    setState(() {
+      if (diff > 0) {
+        line.credit = diff;
+        line.creditCtrl.text = _fmtNum(diff);
+        line.debit = 0;
+        line.debitCtrl.clear();
+      } else {
+        line.debit = diff.abs();
+        line.debitCtrl.text = _fmtNum(diff.abs());
+        line.credit = 0;
+        line.creditCtrl.clear();
+      }
+    });
   }
 
   Widget _buildTotalsBar() {
@@ -1934,7 +2416,66 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
             )
           : Row(
               children: [
-                // عدد الأسطر (يمين)
+                // أزرار التنقل بين القيود
+                if (_allEntries.isNotEmpty) ...[
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AccountingTheme.bgCardHover,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AccountingTheme.borderColor),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: _currentEntryIndex < _allEntries.length - 1
+                              ? () => _loadEntry(_currentEntryIndex == -1
+                                  ? 0
+                                  : _currentEntryIndex + 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_left, size: 20),
+                          tooltip: 'الأقدم',
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(
+                              minWidth: 32, minHeight: 32),
+                        ),
+                        InkWell(
+                          onTap: _viewingEntryId != null ? _newEntry : null,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            child: Text(
+                              _currentEntryIndex >= 0
+                                  ? '${_allEntries[_currentEntryIndex]['EntryNumber'] ?? '${_currentEntryIndex + 1}'}'
+                                  : 'جديد',
+                              style: GoogleFonts.cairo(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: _currentEntryIndex >= 0
+                                    ? AccountingTheme.neonBlue
+                                    : AccountingTheme.neonGreen,
+                              ),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _currentEntryIndex > 0
+                              ? () => _loadEntry(_currentEntryIndex - 1)
+                              : _currentEntryIndex == 0
+                                  ? _newEntry
+                                  : null,
+                          icon: const Icon(Icons.chevron_right, size: 20),
+                          tooltip: 'الأحدث',
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(
+                              minWidth: 32, minHeight: 32),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: ar.spaceS),
+                ],
+                // عدد الأسطر
                 Text('عدد الأسطر: ',
                     style: TextStyle(color: Colors.black, fontSize: ar.body)),
                 Text('${_lines.length}',
@@ -1943,7 +2484,52 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                         fontWeight: FontWeight.bold,
                         fontSize: ar.headingSmall)),
                 const Spacer(),
-                // إجمالي المدين (وسط)
+                // حالة التوازن
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: (_isBalanced
+                            ? AccountingTheme.success
+                            : AccountingTheme.danger)
+                        .withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: (_isBalanced
+                                ? AccountingTheme.success
+                                : AccountingTheme.danger)
+                            .withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _isBalanced
+                            ? Icons.check_circle_rounded
+                            : Icons.warning_amber_rounded,
+                        color: _isBalanced
+                            ? AccountingTheme.success
+                            : AccountingTheme.danger,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _isBalanced
+                            ? 'متوازن ✓'
+                            : 'غير متوازن · الفرق: ${_fmt(_difference)}',
+                        style: GoogleFonts.cairo(
+                          color: _isBalanced
+                              ? AccountingTheme.success
+                              : AccountingTheme.danger,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: ar.spaceM),
+                // إجمالي المدين
                 Expanded(
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -2038,7 +2624,11 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
       lastDate: DateTime(2030),
     );
     if (picked != null && mounted) {
-      setState(() => _entryDate = picked);
+      final now = DateTime.now();
+      setState(() => _entryDate = DateTime(
+        picked.year, picked.month, picked.day,
+        now.hour, now.minute, now.second,
+      ));
     }
   }
 
@@ -2051,6 +2641,11 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
     setState(() {
       _lines[index].dispose();
       _lines.removeAt(index);
+      if (_selectedLineIndex == index) {
+        _selectedLineIndex = null;
+      } else if (_selectedLineIndex != null && _selectedLineIndex! > index) {
+        _selectedLineIndex = _selectedLineIndex! - 1;
+      }
     });
   }
 

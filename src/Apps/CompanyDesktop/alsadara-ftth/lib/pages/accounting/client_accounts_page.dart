@@ -50,8 +50,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   // ─── فلتر وترتيب كشف الحساب ───
   String _stmtTypeFilter = 'all'; // all, receipt, payment (قبض/صرف)
   String _stmtSearchQuery = ''; // بحث في القيود
-  String? _stmtSortColumn; // 'date', 'type'
-  bool _stmtSortAsc = true;
+  String? _stmtSortColumn = 'date'; // 'date', 'type'
+  bool _stmtSortAsc = false; // تنازلي افتراضياً (الأحدث أولاً)
 
   final _dateFmt = DateFormat('yyyy-MM-dd');
   final _displayDateFmt = DateFormat('HH:mm yyyy/MM/dd');
@@ -332,19 +332,31 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     // ترتيب
     if (_stmtSortColumn != null) {
       lines.sort((a, b) {
-        int cmp = 0;
         if (_stmtSortColumn == 'date') {
           final dA = a['EntryDate']?.toString() ?? '';
           final dB = b['EntryDate']?.toString() ?? '';
-          cmp = dA.compareTo(dB);
+          // مقارنة اليوم فقط (أول 10 حروف = yyyy-MM-dd)
+          final dayA = dA.length >= 10 ? dA.substring(0, 10) : dA;
+          final dayB = dB.length >= 10 ? dB.substring(0, 10) : dB;
+          final dayCmp = dayA.compareTo(dayB);
+          if (dayCmp != 0) return _stmtSortAsc ? dayCmp : -dayCmp;
+          // ضمن نفس اليوم: الصرف (دائن) أولاً ثم القبض (مدين)
+          final creditA = ((a['CreditAmount'] ?? 0) as num).toDouble();
+          final creditB = ((b['CreditAmount'] ?? 0) as num).toDouble();
+          final typeA = creditA > 0 ? 0 : 1; // صرف=0, قبض=1
+          final typeB = creditB > 0 ? 0 : 1;
+          if (typeA != typeB) return typeA - typeB;
+          // نفس النوع: ترتيب بالوقت
+          return _stmtSortAsc ? dA.compareTo(dB) : -dA.compareTo(dB);
         } else if (_stmtSortColumn == 'type') {
           final dA = ((a['DebitAmount'] ?? 0) as num).toDouble();
           final cA = ((a['CreditAmount'] ?? 0) as num).toDouble();
           final dB = ((b['DebitAmount'] ?? 0) as num).toDouble();
           final cB = ((b['CreditAmount'] ?? 0) as num).toDouble();
-          cmp = _txLabel(dA, cA).compareTo(_txLabel(dB, cB));
+          final cmp = _txLabel(dA, cA).compareTo(_txLabel(dB, cB));
+          return _stmtSortAsc ? cmp : -cmp;
         }
-        return _stmtSortAsc ? cmp : -cmp;
+        return 0;
       });
     }
 

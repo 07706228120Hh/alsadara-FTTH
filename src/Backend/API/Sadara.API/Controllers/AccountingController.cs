@@ -538,10 +538,8 @@ public class AccountingController : ControllerBase
                 Id = Guid.NewGuid(),
                 EntryNumber = entryNumber,
                 EntryDate = dto.EntryDate.HasValue
-                    ? DateTime.SpecifyKind(dto.EntryDate.Value.Date.AddHours(9), DateTimeKind.Utc)
-                    : DateTime.SpecifyKind(
-                        DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(9),
-                        DateTimeKind.Utc),
+                    ? DateTime.SpecifyKind(dto.EntryDate.Value.AddHours(-3), DateTimeKind.Utc)
+                    : DateTime.UtcNow,
                 Description = dto.Description,
                 TotalDebit = totalDebit,
                 TotalCredit = totalCredit,
@@ -707,9 +705,7 @@ public class AccountingController : ControllerBase
                 {
                     Id = Guid.NewGuid(),
                     EntryNumber = await GenerateEntryNumber(entry.CompanyId),
-                    EntryDate = DateTime.SpecifyKind(
-                        DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(12 - 3),
-                        DateTimeKind.Utc),
+                    EntryDate = DateTime.UtcNow,
                     Description = $"عكس قيد ملغي: {entry.EntryNumber} — {entry.Description}",
                     TotalDebit = entry.TotalCredit,
                     TotalCredit = entry.TotalDebit,
@@ -5105,9 +5101,7 @@ public class AccountingController : ControllerBase
         List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
     {
         // تاريخ القيد: اليوم بتوقيت بغداد (UTC+3)
-        var baghdadDate = DateTime.SpecifyKind(
-            DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(12 - 3),
-            DateTimeKind.Utc);
+        var baghdadDate = DateTime.UtcNow;
 
         // فحص الفترة المقفلة
         if (await IsPeriodClosed(companyId, baghdadDate))
@@ -5174,9 +5168,7 @@ public class AccountingController : ControllerBase
         List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
     {
         // تاريخ القيد: اليوم بتوقيت بغداد (UTC+3) — موحّد مع CreateAndPostJournalEntry
-        var baghdadDate = DateTime.SpecifyKind(
-            DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(12 - 3),
-            DateTimeKind.Utc);
+        var baghdadDate = DateTime.UtcNow;
 
         // فحص الفترة المقفلة
         if (await IsPeriodClosed(companyId, baghdadDate))
