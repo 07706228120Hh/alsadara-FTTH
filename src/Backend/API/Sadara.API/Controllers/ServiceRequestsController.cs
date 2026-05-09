@@ -2382,7 +2382,22 @@ public static class ServiceRequestAccountingHelper
             CompanyId = companyId
         };
 
-        await unitOfWork.Accounts.AddAsync(subAccount);
+        try
+        {
+            await unitOfWork.Accounts.AddAsync(subAccount);
+            await unitOfWork.SaveChangesAsync();
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            // Race condition — حساب بنفس الكود أُنشئ بالتوازي، نعيد البحث
+            var retryExisting = await unitOfWork.Accounts.AsQueryable()
+                .FirstOrDefaultAsync(a => a.ParentAccountId == parent.Id
+                    && a.CompanyId == companyId
+                    && a.Description == pid
+                    && a.IsActive);
+            if (retryExisting != null) return retryExisting;
+            throw; // فشل حقيقي — ليس race condition
+        }
         return subAccount;
     }
 

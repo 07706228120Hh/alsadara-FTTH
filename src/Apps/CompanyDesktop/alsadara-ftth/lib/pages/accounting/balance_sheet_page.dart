@@ -101,6 +101,22 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
   double get _totalLiabilities => _sumBalances(_liabilities);
   double get _totalEquity => _sumBalances(_equity);
 
+  /// تحذيرات: حسابات بأرصدة معكوسة (أصول سالبة أو خصوم موجبة بشكل غير طبيعي)
+  List<String> get _balanceWarnings {
+    final warnings = <String>[];
+    for (final a in _assets) {
+      if (_balance(a) < -0.01) {
+        warnings.add('${a['Name'] ?? a['Code']}: رصيد سالب (${_balance(a).toStringAsFixed(0)})');
+      }
+    }
+    for (final a in _liabilities) {
+      if (_balance(a) > 0.01) {
+        warnings.add('${a['Name'] ?? a['Code']}: رصيد موجب غير طبيعي (${_balance(a).toStringAsFixed(0)})');
+      }
+    }
+    return warnings;
+  }
+
   // صافي الدخل (الأرباح المحتجزة للفترة الحالية)
   double get _retainedEarnings {
     final rev = _sumBalances(_revenueAccounts);
@@ -461,6 +477,26 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                     fontSize: isMob ? 10 : ar.small,
                     fontWeight: FontWeight.bold,
                     color: AccountingTheme.danger),
+              ),
+            ),
+          ],
+          if (_balanceWarnings.isNotEmpty) ...[
+            SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.orange.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('تحذيرات أرصدة:', style: GoogleFonts.cairo(
+                    fontSize: isMob ? 10 : ar.small, fontWeight: FontWeight.bold, color: Colors.orange.shade700)),
+                  ..._balanceWarnings.map((w) => Text('• $w', style: GoogleFonts.cairo(
+                    fontSize: isMob ? 9 : ar.small - 1, color: Colors.orange.shade700))),
+                ],
               ),
             ),
           ],

@@ -41,9 +41,14 @@ class BalanceVerificationService {
       for (final a in leafAccounts) {
         final bal =
             ((a['Balance'] ?? a['CurrentBalance'] ?? 0) as num).toDouble();
-        if (bal > 0) {
-          totalDebits += bal;
-        } else if (bal < 0) {
+        final type = (a['AccountType'] ?? a['Type'] ?? '').toString();
+        // Assets=0, Expenses=4 → طبيعة مدينة
+        final isNaturalDebit = type == '0' || type == '4' ||
+            type.toLowerCase() == 'assets' || type.toLowerCase() == 'expenses';
+
+        if (isNaturalDebit) {
+          totalDebits += bal.abs();
+        } else {
           totalCredits += bal.abs();
         }
       }

@@ -123,11 +123,22 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
   double _balance(dynamic acc) =>
       ((acc['Balance'] ?? acc['CurrentBalance'] ?? 0) as num).toDouble();
 
+  bool _isNaturalDebit(dynamic a) {
+    final type = (a['AccountType'] ?? a['Type'] ?? '').toString();
+    // Assets=0, Expenses=4 → طبيعة مدينة | Liabilities=1, Equity=2, Revenue=3 → طبيعة دائنة
+    return type == '0' || type == '4' ||
+        type.toLowerCase() == 'assets' || type.toLowerCase() == 'expenses';
+  }
+
   double get _totalDebit {
     double sum = 0;
     for (final a in _filteredAccounts) {
       final b = _balance(a);
-      if (b > 0) sum += b;
+      if (_isNaturalDebit(a)) {
+        sum += b.abs(); // حسابات مدينة بطبيعتها
+      } else if (b > 0) {
+        sum += b; // حساب دائن برصيد مدين (عكسي)
+      }
     }
     return sum;
   }
@@ -136,7 +147,11 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
     double sum = 0;
     for (final a in _filteredAccounts) {
       final b = _balance(a);
-      if (b < 0) sum += b.abs();
+      if (!_isNaturalDebit(a)) {
+        sum += b.abs(); // حسابات دائنة بطبيعتها
+      } else if (b < 0) {
+        sum += b.abs(); // حساب مدين برصيد دائن (عكسي)
+      }
     }
     return sum;
   }

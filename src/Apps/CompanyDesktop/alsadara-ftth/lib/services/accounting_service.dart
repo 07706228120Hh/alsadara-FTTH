@@ -622,6 +622,14 @@ class AccountingService {
     return _toMap(response);
   }
 
+  /// تدقيق محاسبي شامل
+  Future<Map<String, dynamic>> runAudit({String? companyId}) async {
+    String query = '/accounting/audit';
+    if (companyId != null) query += '?companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
   /// كشف حساب
   Future<Map<String, dynamic>> getAccountStatement(
     String accountId, {

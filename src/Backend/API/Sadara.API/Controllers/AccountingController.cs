@@ -518,8 +518,15 @@ public class AccountingController : ControllerBase
             var totalDebit = dto.Lines.Sum(l => l.DebitAmount);
             var totalCredit = dto.Lines.Sum(l => l.CreditAmount);
 
-            if (Math.Abs(totalDebit - totalCredit) > 0.01m)
+            if (Math.Abs(totalDebit - totalCredit) > 0.001m)
                 return BadRequest(new { success = false, message = $"مجموع المدين ({totalDebit}) لا يساوي مجموع الدائن ({totalCredit})" });
+
+            // تحذير: نفس الحساب مدين ودائن
+            var debitAccountIds = dto.Lines.Where(l => l.DebitAmount > 0).Select(l => l.AccountId).ToHashSet();
+            var creditAccountIds = dto.Lines.Where(l => l.CreditAmount > 0).Select(l => l.AccountId).ToHashSet();
+            var duplicateAccounts = debitAccountIds.Intersect(creditAccountIds).ToList();
+            if (duplicateAccounts.Any())
+                _logger.LogWarning("⚠️ قيد يدوي يحتوي نفس الحساب في المدين والدائن: {Accounts}", string.Join(", ", duplicateAccounts));
 
             // توليد رقم القيد
             var entryNumber = await GenerateEntryNumber(dto.CompanyId);
@@ -688,6 +695,43 @@ public class AccountingController : ControllerBase
                 }
             }
 
+            // ═══ إنشاء قيد عكسي للتتبع المحاسبي ═══
+            if (entry.Status == JournalEntryStatus.Posted && entry.Lines.Any())
+            {
+                var voidingUserId = Guid.Empty;
+                var vc = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                       ?? User.FindFirst("sub")?.Value;
+                if (!string.IsNullOrEmpty(vc)) Guid.TryParse(vc, out voidingUserId);
+
+                var reversingEntry = new JournalEntry
+                {
+                    Id = Guid.NewGuid(),
+                    EntryNumber = await GenerateEntryNumber(entry.CompanyId),
+                    EntryDate = DateTime.SpecifyKind(
+                        DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(12 - 3),
+                        DateTimeKind.Utc),
+                    Description = $"عكس قيد ملغي: {entry.EntryNumber} — {entry.Description}",
+                    TotalDebit = entry.TotalCredit,
+                    TotalCredit = entry.TotalDebit,
+                    ReferenceType = entry.ReferenceType,
+                    ReferenceId = entry.Id.ToString(),
+                    Status = JournalEntryStatus.Posted,
+                    Notes = $"قيد عكسي تلقائي — القيد الأصلي: {entry.EntryNumber}",
+                    CompanyId = entry.CompanyId,
+                    CreatedById = voidingUserId,
+                    ApprovedById = voidingUserId,
+                    ApprovedAt = DateTime.UtcNow,
+                    Lines = entry.Lines.Select(l => new JournalEntryLine
+                    {
+                        AccountId = l.AccountId,
+                        DebitAmount = l.CreditAmount,
+                        CreditAmount = l.DebitAmount,
+                        Description = $"عكس: {l.Description}"
+                    }).ToList()
+                };
+                await _unitOfWork.JournalEntries.AddAsync(reversingEntry);
+            }
+
             entry.Status = JournalEntryStatus.Voided;
             _unitOfWork.JournalEntries.Update(entry);
 
@@ -701,6 +745,48 @@ public class AccountingController : ControllerBase
                     log.JournalEntryId = null;
                     log.UpdatedAt = DateTime.UtcNow;
                     _unitOfWork.SubscriptionLogs.Update(log);
+                }
+            }
+
+            // ═══ عكس عمليات الصندوق عند إلغاء قيد إيداع/سحب ═══
+            if (entry.ReferenceType == JournalReferenceType.CashDeposit
+                || entry.ReferenceType == JournalReferenceType.CashWithdrawal)
+            {
+                var cashTx = await _unitOfWork.CashTransactions.AsQueryable()
+                    .FirstOrDefaultAsync(ct => ct.JournalEntryId == id);
+                if (cashTx != null)
+                {
+                    var box = await _unitOfWork.CashBoxes.GetByIdAsync(cashTx.CashBoxId);
+                    if (box != null)
+                    {
+                        // عكس الأثر على رصيد الصندوق
+                        if (cashTx.TransactionType == CashTransactionType.Deposit)
+                            box.CurrentBalance -= cashTx.Amount;
+                        else
+                            box.CurrentBalance += cashTx.Amount;
+                        _unitOfWork.CashBoxes.Update(box);
+
+                        // إنشاء عملية عكسية للتتبع
+                        var voidUserId = Guid.Empty;
+                        var voidUserClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                                         ?? User.FindFirst("sub")?.Value;
+                        if (!string.IsNullOrEmpty(voidUserClaim))
+                            Guid.TryParse(voidUserClaim, out voidUserId);
+
+                        var reverseTx = new CashTransaction
+                        {
+                            CashBoxId = cashTx.CashBoxId,
+                            TransactionType = cashTx.TransactionType == CashTransactionType.Deposit
+                                ? CashTransactionType.Withdrawal : CashTransactionType.Deposit,
+                            Amount = cashTx.Amount,
+                            BalanceAfter = box.CurrentBalance,
+                            Description = $"عكس قيد ملغي: {cashTx.Description}",
+                            ReferenceType = entry.ReferenceType,
+                            ReferenceId = entry.Id.ToString(),
+                            CreatedById = voidUserId
+                        };
+                        await _unitOfWork.CashTransactions.AddAsync(reverseTx);
+                    }
                 }
             }
 
@@ -894,6 +980,69 @@ public class AccountingController : ControllerBase
     }
 
     /// <summary>
+    /// مطابقة صندوق: مقارنة الرصيد الحالي مع مجموع العمليات + مقارنة مع الحساب المرتبط
+    /// </summary>
+    [HttpGet("cashboxes/{id}/reconcile")]
+    public async Task<IActionResult> ReconcileCashBox(Guid id)
+    {
+        try
+        {
+            var box = await _unitOfWork.CashBoxes.GetByIdAsync(id);
+            if (box == null)
+                return NotFound(new { success = false, message = "الصندوق غير موجود" });
+
+            // مجموع العمليات
+            var deposits = await _unitOfWork.CashTransactions.AsQueryable()
+                .Where(ct => ct.CashBoxId == id && ct.TransactionType == CashTransactionType.Deposit && !ct.IsDeleted)
+                .SumAsync(ct => ct.Amount);
+            var withdrawals = await _unitOfWork.CashTransactions.AsQueryable()
+                .Where(ct => ct.CashBoxId == id && ct.TransactionType == CashTransactionType.Withdrawal && !ct.IsDeleted)
+                .SumAsync(ct => ct.Amount);
+            var computedBalance = deposits - withdrawals;
+            var boxDiff = box.CurrentBalance - computedBalance;
+
+            // مقارنة مع الحساب المرتبط
+            decimal? linkedAccountBalance = null;
+            decimal? accountDiff = null;
+            string? linkedAccountName = null;
+            if (box.LinkedAccountId.HasValue)
+            {
+                var acct = await _unitOfWork.Accounts.GetByIdAsync(box.LinkedAccountId.Value);
+                if (acct != null)
+                {
+                    linkedAccountBalance = acct.CurrentBalance;
+                    linkedAccountName = $"{acct.Code} - {acct.Name}";
+                    accountDiff = box.CurrentBalance - acct.CurrentBalance;
+                }
+            }
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    cashBoxName = box.Name,
+                    currentBalance = box.CurrentBalance,
+                    totalDeposits = deposits,
+                    totalWithdrawals = withdrawals,
+                    computedBalance,
+                    balanceDifference = boxDiff,
+                    isBoxBalanced = Math.Abs(boxDiff) < 0.01m,
+                    linkedAccountName,
+                    linkedAccountBalance,
+                    accountDifference = accountDiff,
+                    isAccountMatched = accountDiff.HasValue && Math.Abs(accountDiff.Value) < 0.01m
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في مطابقة الصندوق");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
     /// إيداع في الصندوق
     /// </summary>
     [HttpPost("cashboxes/{id}/deposit")]
@@ -925,52 +1074,41 @@ public class AccountingController : ControllerBase
             await _unitOfWork.CashTransactions.AddAsync(transaction);
 
             // === إنشاء قيد محاسبي: مدين حساب الصندوق / دائن الطرف المقابل ===
-            bool accountingSuccess = false;
-            try
+            // إذا فشل القيد → يرمي استثناء → rollback كامل (لا إيداع بدون قيد)
+            Guid? boxAccountId = box.LinkedAccountId;
+            if (boxAccountId == null)
             {
-                // تحديد حساب الصندوق (المرتبط أو الأب 1110)
-                Guid? boxAccountId = box.LinkedAccountId;
-                if (boxAccountId == null)
-                {
-                    var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
-                    boxAccountId = cashAcct?.Id;
-                }
+                var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
+                boxAccountId = cashAcct?.Id;
+            }
 
-                // تحديد حساب الطرف المقابل (مصدر الإيداع)
-                Guid? counterAcctId = dto.CounterAccountId;
-                if (counterAcctId == null)
-                {
-                    // fallback: حساب النقد الأب 1110 (لضمان التوافق مع القيود القديمة)
-                    var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
-                    counterAcctId = cashAcct?.Id;
-                }
+            Guid? counterAcctId = dto.CounterAccountId;
+            if (counterAcctId == null)
+            {
+                var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
+                counterAcctId = cashAcct?.Id;
+            }
 
-                if (boxAccountId != null && counterAcctId != null && boxAccountId != counterAcctId)
+            if (boxAccountId != null && counterAcctId != null && boxAccountId != counterAcctId)
+            {
+                var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                 {
-                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
-                    {
-                        (boxAccountId.Value, dto.Amount, 0, $"إيداع في {box.Name}"),
-                        (counterAcctId.Value, 0, dto.Amount, $"مصدر الإيداع - {dto.Description ?? "إيداع"}")
-                    };
-                    var jeId = await CreateAndPostJournalEntryReturningId(
-                        box.CompanyId, dto.CreatedById,
-                        dto.Description ?? $"إيداع في صندوق {box.Name}",
-                        JournalReferenceType.CashDeposit, transaction.Id.ToString(), lines);
-                    if (jeId != null)
-                    {
-                        transaction.JournalEntryId = jeId.Value;
-                        _unitOfWork.CashTransactions.Update(transaction);
-                    }
-                    accountingSuccess = true;
-                }
-                else if (boxAccountId != null)
+                    (boxAccountId.Value, dto.Amount, 0, $"إيداع في {box.Name}"),
+                    (counterAcctId.Value, 0, dto.Amount, $"مصدر الإيداع - {dto.Description ?? "إيداع"}")
+                };
+                var jeId = await CreateAndPostJournalEntryReturningId(
+                    box.CompanyId, dto.CreatedById,
+                    dto.Description ?? $"إيداع في صندوق {box.Name}",
+                    JournalReferenceType.CashDeposit, transaction.Id.ToString(), lines);
+                if (jeId != null)
                 {
-                    _logger.LogWarning("⚠️ إيداع بدون طرف مقابل مختلف — لم يُنشأ قيد (حسابا المصدر والوجهة متطابقان)");
+                    transaction.JournalEntryId = jeId.Value;
+                    _unitOfWork.CashTransactions.Update(transaction);
                 }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, "⚠️ فشل إنشاء قيد الإيداع — الصندوق تم تحديثه بدون قيد");
+                _logger.LogWarning("⚠️ إيداع بدون طرف مقابل مختلف — لم يُنشأ قيد (حسابا المصدر والوجهة متطابقان)");
             }
 
             await _unitOfWork.CommitTransactionAsync();
@@ -978,10 +1116,8 @@ public class AccountingController : ControllerBase
             return Ok(new
             {
                 success = true,
-                message = accountingSuccess ? "تم الإيداع مع القيد المحاسبي" : "تم الإيداع بدون قيد محاسبي",
-                newBalance = box.CurrentBalance,
-                hasAccounting = accountingSuccess,
-                accountingWarning = !accountingSuccess ? "الإيداع تم لكن بدون قيد محاسبي — تحقق من إعدادات الحسابات" : null
+                message = "تم الإيداع بنجاح",
+                newBalance = box.CurrentBalance
             });
         }
         catch (Exception ex)
@@ -1027,51 +1163,41 @@ public class AccountingController : ControllerBase
             await _unitOfWork.CashTransactions.AddAsync(transaction);
 
             // === إنشاء قيد محاسبي: مدين الطرف المقابل / دائن حساب الصندوق ===
-            bool accountingSuccess = false;
-            try
+            // إذا فشل القيد → يرمي استثناء → rollback كامل (لا سحب بدون قيد)
+            Guid? boxAccountId = box.LinkedAccountId;
+            if (boxAccountId == null)
             {
-                // تحديد حساب الصندوق (المرتبط أو الأب 1110)
-                Guid? boxAccountId = box.LinkedAccountId;
-                if (boxAccountId == null)
-                {
-                    var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
-                    boxAccountId = cashAcct?.Id;
-                }
+                var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
+                boxAccountId = cashAcct?.Id;
+            }
 
-                // تحديد حساب الطرف المقابل (وجهة السحب)
-                Guid? counterAcctId = dto.CounterAccountId;
-                if (counterAcctId == null)
-                {
-                    var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
-                    counterAcctId = cashAcct?.Id;
-                }
+            Guid? counterAcctId = dto.CounterAccountId;
+            if (counterAcctId == null)
+            {
+                var cashAcct = await FindAccountByCode(AccountCodes.Cash, box.CompanyId);
+                counterAcctId = cashAcct?.Id;
+            }
 
-                if (boxAccountId != null && counterAcctId != null && boxAccountId != counterAcctId)
+            if (boxAccountId != null && counterAcctId != null && boxAccountId != counterAcctId)
+            {
+                var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
                 {
-                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
-                    {
-                        (counterAcctId.Value, dto.Amount, 0, $"سحب - {dto.Description ?? "سحب من الصندوق"}"),
-                        (boxAccountId.Value, 0, dto.Amount, $"سحب من {box.Name}")
-                    };
-                    var jeId = await CreateAndPostJournalEntryReturningId(
-                        box.CompanyId, dto.CreatedById,
-                        dto.Description ?? $"سحب من صندوق {box.Name}",
-                        JournalReferenceType.CashWithdrawal, transaction.Id.ToString(), lines);
-                    if (jeId != null)
-                    {
-                        transaction.JournalEntryId = jeId.Value;
-                        _unitOfWork.CashTransactions.Update(transaction);
-                    }
-                    accountingSuccess = true;
-                }
-                else if (boxAccountId != null)
+                    (counterAcctId.Value, dto.Amount, 0, $"سحب - {dto.Description ?? "سحب من الصندوق"}"),
+                    (boxAccountId.Value, 0, dto.Amount, $"سحب من {box.Name}")
+                };
+                var jeId = await CreateAndPostJournalEntryReturningId(
+                    box.CompanyId, dto.CreatedById,
+                    dto.Description ?? $"سحب من صندوق {box.Name}",
+                    JournalReferenceType.CashWithdrawal, transaction.Id.ToString(), lines);
+                if (jeId != null)
                 {
-                    _logger.LogWarning("⚠️ سحب بدون طرف مقابل مختلف — لم يُنشأ قيد (حسابا المصدر والوجهة متطابقان)");
+                    transaction.JournalEntryId = jeId.Value;
+                    _unitOfWork.CashTransactions.Update(transaction);
                 }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, "⚠️ فشل إنشاء قيد السحب — الصندوق تم تحديثه بدون قيد");
+                _logger.LogWarning("⚠️ سحب بدون طرف مقابل مختلف — لم يُنشأ قيد (حسابا المصدر والوجهة متطابقان)");
             }
 
             await _unitOfWork.CommitTransactionAsync();
@@ -1079,10 +1205,8 @@ public class AccountingController : ControllerBase
             return Ok(new
             {
                 success = true,
-                message = accountingSuccess ? "تم السحب مع القيد المحاسبي" : "تم السحب بدون قيد محاسبي",
-                newBalance = box.CurrentBalance,
-                hasAccounting = accountingSuccess,
-                accountingWarning = !accountingSuccess ? "السحب تم لكن بدون قيد محاسبي — تحقق من إعدادات الحسابات" : null
+                message = "تم السحب بنجاح",
+                newBalance = box.CurrentBalance
             });
         }
         catch (Exception ex)
@@ -1201,6 +1325,35 @@ public class AccountingController : ControllerBase
                 .ToListAsync();
             if (existingSalaries.Any())
             {
+                // إلغاء قيد الاستحقاق القديم قبل إعادة التوليد
+                var oldJournalIds = existingSalaries
+                    .Where(s => s.JournalEntryId.HasValue)
+                    .Select(s => s.JournalEntryId!.Value)
+                    .Distinct()
+                    .ToList();
+                foreach (var oldJeId in oldJournalIds)
+                {
+                    var oldJe = await _unitOfWork.JournalEntries.AsQueryable()
+                        .Include(j => j.Lines)
+                        .FirstOrDefaultAsync(j => j.Id == oldJeId && j.Status == JournalEntryStatus.Posted);
+                    if (oldJe != null)
+                    {
+                        // عكس أرصدة الحسابات
+                        foreach (var line in oldJe.Lines)
+                        {
+                            var acct = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                            if (acct == null) continue;
+                            if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                                acct.CurrentBalance -= (line.DebitAmount - line.CreditAmount);
+                            else
+                                acct.CurrentBalance -= (line.CreditAmount - line.DebitAmount);
+                            _unitOfWork.Accounts.Update(acct);
+                        }
+                        oldJe.Status = JournalEntryStatus.Voided;
+                        _unitOfWork.JournalEntries.Update(oldJe);
+                    }
+                }
+
                 foreach (var es in existingSalaries)
                     _unitOfWork.EmployeeSalaries.Delete(es);
                 await _unitOfWork.SaveChangesAsync();
@@ -1745,13 +1898,16 @@ public class AccountingController : ControllerBase
                     journalLines.Add((cashAcctSal.Id, 0, salary.NetSalary, $"صرف راتب {empName} من النقدية {salary.Month}/{salary.Year}"));
                 }
 
-                await CreateAndPostJournalEntry(
+                var paymentJeId = await CreateAndPostJournalEntryReturningId(
                     salary.CompanyId, dto.PaidById,
                     duesDeducted > 0
                         ? $"صرف راتب {empName} مع خصم ذمم ({duesDeducted}) - {salary.Month}/{salary.Year}"
                         : $"صرف راتب {empName} - {salary.Month}/{salary.Year}",
                     JournalReferenceType.Salary, salary.Id.ToString(),
                     journalLines);
+                // تتبع معرّف قيد الدفع في ملاحظات الراتب
+                if (paymentJeId.HasValue)
+                    salary.Notes = (salary.Notes ?? "") + $" PaymentJE:{paymentJeId.Value}";
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -1778,16 +1934,20 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            await _unitOfWork.BeginTransactionAsync();
+
+            // جلب الرواتب داخل الـ Transaction لمنع التداخل مع PaySalary
             var pending = await _unitOfWork.EmployeeSalaries.AsQueryable()
                 .Where(s => s.CompanyId == dto.CompanyId && s.Month == dto.Month && s.Year == dto.Year && s.Status == SalaryStatus.Pending)
                 .ToListAsync();
 
             if (!pending.Any())
+            {
+                await _unitOfWork.RollbackTransactionAsync();
                 return BadRequest(new { success = false, message = "لا توجد رواتب بانتظار الصرف" });
+            }
 
             var totalAmount = pending.Sum(s => s.NetSalary);
-
-            await _unitOfWork.BeginTransactionAsync();
 
             if (dto.CashBoxId.HasValue)
             {
@@ -2823,12 +2983,14 @@ public class AccountingController : ControllerBase
             if (expense == null)
                 return NotFound(new { success = false, message = "المصروف غير موجود" });
 
+            await _unitOfWork.BeginTransactionAsync();
+
             expense.Description = dto.Description ?? expense.Description;
             expense.Category = dto.Category ?? expense.Category;
             expense.Notes = dto.Notes ?? expense.Notes;
             expense.ExpenseDate = dto.ExpenseDate ?? expense.ExpenseDate;
 
-            // إذا تغير المبلغ، تحديث الفرق في الصندوق والقيد
+            // إذا تغير المبلغ، تحديث الفرق في الصندوق والقيد المحاسبي
             if (dto.Amount.HasValue && dto.Amount.Value != expense.Amount)
             {
                 var diff = dto.Amount.Value - expense.Amount;
@@ -2838,20 +3000,61 @@ public class AccountingController : ControllerBase
                     if (box != null)
                     {
                         if (diff > 0 && box.CurrentBalance < diff)
+                        {
+                            await _unitOfWork.RollbackTransactionAsync();
                             return BadRequest(new { success = false, message = "رصيد الصندوق غير كافي للفرق" });
+                        }
                         box.CurrentBalance -= diff;
                         _unitOfWork.CashBoxes.Update(box);
                     }
                 }
+
+                // تحديث القيد المحاسبي المرتبط
+                var je = await _unitOfWork.JournalEntries.AsQueryable()
+                    .Include(j => j.Lines)
+                    .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.Expense
+                        && j.ReferenceId == expense.Id.ToString()
+                        && j.Status == JournalEntryStatus.Posted);
+                if (je != null)
+                {
+                    foreach (var line in je.Lines)
+                    {
+                        var acct = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                        if (acct == null) continue;
+
+                        // عكس الرصيد القديم
+                        if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                            acct.CurrentBalance -= (line.DebitAmount - line.CreditAmount);
+                        else
+                            acct.CurrentBalance -= (line.CreditAmount - line.DebitAmount);
+
+                        // تحديث مبلغ السطر
+                        if (line.DebitAmount > 0) line.DebitAmount = dto.Amount.Value;
+                        if (line.CreditAmount > 0) line.CreditAmount = dto.Amount.Value;
+
+                        // تطبيق الرصيد الجديد
+                        if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                            acct.CurrentBalance += (line.DebitAmount - line.CreditAmount);
+                        else
+                            acct.CurrentBalance += (line.CreditAmount - line.DebitAmount);
+
+                        _unitOfWork.Accounts.Update(acct);
+                    }
+                    je.TotalDebit = je.Lines.Sum(l => l.DebitAmount);
+                    je.TotalCredit = je.Lines.Sum(l => l.CreditAmount);
+                    _unitOfWork.JournalEntries.Update(je);
+                }
+
                 expense.Amount = dto.Amount.Value;
             }
 
             _unitOfWork.Expenses.Update(expense);
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.CommitTransactionAsync();
             return Ok(new { success = true, message = "تم تحديث المصروف" });
         }
         catch (Exception ex)
         {
+            await _unitOfWork.RollbackTransactionAsync();
             _logger.LogError(ex, "خطأ في تعديل المصروف");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
@@ -3586,6 +3789,10 @@ public class AccountingController : ControllerBase
             if (salary.Status == SalaryStatus.Paid)
                 return BadRequest(new { success = false, message = "لا يمكن حذف راتب تم صرفه" });
 
+            // فك ربط القيد المحاسبي (القيد مشترك مع رواتب أخرى — لا نلغيه)
+            if (salary.JournalEntryId.HasValue)
+                salary.JournalEntryId = null;
+
             salary.IsDeleted = true;
             salary.DeletedAt = DateTime.UtcNow;
             _unitOfWork.EmployeeSalaries.Update(salary);
@@ -3595,6 +3802,363 @@ public class AccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في حذف الراتب");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    // ==================== تدقيق محاسبي شامل - Comprehensive Audit ====================
+
+    /// <summary>
+    /// تدقيق محاسبي شامل — يكشف كل المشاكل في النظام
+    /// </summary>
+    [HttpGet("audit")]
+    public async Task<IActionResult> RunComprehensiveAudit([FromQuery] Guid? companyId = null)
+    {
+        try
+        {
+            var cid = companyId ?? Guid.Parse(
+                User.FindFirst("companyId")?.Value
+                ?? User.FindFirst("CompanyId")?.Value
+                ?? Guid.Empty.ToString());
+
+            var issues = new List<object>();
+
+            // ═══ 1. قيود غير متوازنة (مدين ≠ دائن) ═══
+            var unbalancedEntries = await _unitOfWork.JournalEntries.AsQueryable()
+                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Posted && !j.IsDeleted)
+                .Where(j => Math.Abs(j.TotalDebit - j.TotalCredit) > 0.01m)
+                .Select(j => new { j.Id, j.EntryNumber, j.Description, j.TotalDebit, j.TotalCredit, j.EntryDate })
+                .ToListAsync();
+            foreach (var e in unbalancedEntries)
+                issues.Add(new { category = "UnbalancedEntry", severity = "critical",
+                    message = $"قيد غير متوازن: {e.EntryNumber} — مدين {e.TotalDebit} / دائن {e.TotalCredit}",
+                    entryNumber = e.EntryNumber, entryId = e.Id, date = e.EntryDate,
+                    difference = Math.Abs(e.TotalDebit - e.TotalCredit) });
+
+            // ═══ 2. صناديق: رصيد لا يطابق مجموع العمليات ═══
+            var cashBoxes = await _unitOfWork.CashBoxes.AsQueryable()
+                .Where(b => b.CompanyId == cid && !b.IsDeleted)
+                .ToListAsync();
+            foreach (var box in cashBoxes)
+            {
+                var deposits = await _unitOfWork.CashTransactions.AsQueryable()
+                    .Where(ct => ct.CashBoxId == box.Id && ct.TransactionType == CashTransactionType.Deposit && !ct.IsDeleted)
+                    .SumAsync(ct => ct.Amount);
+                var withdrawals = await _unitOfWork.CashTransactions.AsQueryable()
+                    .Where(ct => ct.CashBoxId == box.Id && ct.TransactionType == CashTransactionType.Withdrawal && !ct.IsDeleted)
+                    .SumAsync(ct => ct.Amount);
+                var computed = deposits - withdrawals;
+                if (Math.Abs(box.CurrentBalance - computed) > 0.01m)
+                    issues.Add(new { category = "CashBoxMismatch", severity = "critical",
+                        message = $"صندوق {box.Name}: الرصيد المخزن ({box.CurrentBalance:N0}) ≠ مجموع العمليات ({computed:N0})",
+                        cashBoxId = box.Id, cashBoxName = box.Name,
+                        storedBalance = box.CurrentBalance, computedBalance = computed,
+                        difference = box.CurrentBalance - computed });
+
+                // مقارنة مع الحساب المرتبط
+                if (box.LinkedAccountId.HasValue)
+                {
+                    var acct = await _unitOfWork.Accounts.GetByIdAsync(box.LinkedAccountId.Value);
+                    if (acct != null && Math.Abs(box.CurrentBalance - acct.CurrentBalance) > 0.01m)
+                        issues.Add(new { category = "CashBoxAccountMismatch", severity = "high",
+                            message = $"صندوق {box.Name} ({box.CurrentBalance:N0}) ≠ حساب {acct.Code} ({acct.CurrentBalance:N0})",
+                            cashBoxId = box.Id, cashBoxName = box.Name,
+                            boxBalance = box.CurrentBalance, accountBalance = acct.CurrentBalance,
+                            accountCode = acct.Code, difference = box.CurrentBalance - acct.CurrentBalance });
+                }
+            }
+
+            // ═══ 3. قيود إيداع/سحب ملغاة لم تعكس الصندوق (قبل الإصلاح) ═══
+            var voidedCashEntries = await _unitOfWork.JournalEntries.AsQueryable()
+                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Voided && !j.IsDeleted
+                    && (j.ReferenceType == JournalReferenceType.CashDeposit || j.ReferenceType == JournalReferenceType.CashWithdrawal))
+                .Select(j => new { j.Id, j.EntryNumber, j.Description, j.ReferenceType, j.EntryDate })
+                .ToListAsync();
+            foreach (var ve in voidedCashEntries)
+            {
+                // فحص: هل يوجد عملية عكسية (الإصلاح الجديد)؟
+                var hasReverse = await _unitOfWork.CashTransactions.AsQueryable()
+                    .AnyAsync(ct => ct.ReferenceId == ve.Id.ToString() && !ct.IsDeleted);
+                if (!hasReverse)
+                    issues.Add(new { category = "VoidedCashNoReverse", severity = "high",
+                        message = $"قيد {ve.ReferenceType} ملغي ({ve.EntryNumber}) بدون عكس رصيد الصندوق",
+                        entryNumber = ve.EntryNumber, entryId = ve.Id, date = ve.EntryDate });
+            }
+
+            // ═══ 4. مصاريف مبلغها لا يطابق القيد المحاسبي ═══
+            var expenses = await _unitOfWork.Expenses.AsQueryable()
+                .Where(e => e.CompanyId == cid && !e.IsDeleted)
+                .ToListAsync();
+            foreach (var exp in expenses)
+            {
+                var je = await _unitOfWork.JournalEntries.AsQueryable()
+                    .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.Expense
+                        && j.ReferenceId == exp.Id.ToString()
+                        && j.Status == JournalEntryStatus.Posted && !j.IsDeleted);
+                if (je == null)
+                    issues.Add(new { category = "ExpenseNoEntry", severity = "medium",
+                        message = $"مصروف ({exp.Description}) بمبلغ {exp.Amount:N0} بدون قيد محاسبي",
+                        expenseId = exp.Id, amount = exp.Amount });
+                else if (Math.Abs(exp.Amount - je.TotalDebit) > 0.01m)
+                    issues.Add(new { category = "ExpenseAmountMismatch", severity = "high",
+                        message = $"مصروف ({exp.Description}): المبلغ {exp.Amount:N0} ≠ القيد {je.TotalDebit:N0}",
+                        expenseId = exp.Id, entryNumber = je.EntryNumber,
+                        expenseAmount = exp.Amount, journalAmount = je.TotalDebit });
+            }
+
+            // ═══ 5. أرصدة فنيين لا تطابق مجموع عملياتهم ═══
+            var technicians = await _unitOfWork.Users.AsQueryable()
+                .Where(u => u.CompanyId == cid && u.IsActive && (u.TechTotalCharges > 0 || u.TechTotalPayments > 0))
+                .Select(u => new { u.Id, u.FullName, u.TechTotalCharges, u.TechTotalPayments, u.TechNetBalance })
+                .ToListAsync();
+            foreach (var tech in technicians)
+            {
+                var charges = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                    .Where(t => t.TechnicianId == tech.Id && t.Type == TechnicianTransactionType.Charge && !t.IsDeleted)
+                    .SumAsync(t => t.Amount);
+                var payments = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                    .Where(t => t.TechnicianId == tech.Id && t.Type == TechnicianTransactionType.Payment && !t.IsDeleted)
+                    .SumAsync(t => t.Amount);
+                var discounts = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                    .Where(t => t.TechnicianId == tech.Id && t.Type == TechnicianTransactionType.Discount && !t.IsDeleted)
+                    .SumAsync(t => t.Amount);
+                var actualBalance = payments + discounts - charges;
+
+                if (Math.Abs(tech.TechNetBalance - actualBalance) > 0.01m)
+                    issues.Add(new { category = "TechBalanceMismatch", severity = "high",
+                        message = $"فني {tech.FullName}: الرصيد المخزن ({tech.TechNetBalance:N0}) ≠ المحسوب ({actualBalance:N0})",
+                        technicianId = tech.Id, technicianName = tech.FullName,
+                        storedBalance = tech.TechNetBalance, computedBalance = actualBalance,
+                        difference = tech.TechNetBalance - actualBalance });
+            }
+
+            // ═══ 6. عمليات FTTH بدون قيد محاسبي ═══
+            var orphanLogs = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => !l.IsDeleted && l.JournalEntryId == null
+                    && l.CompanyId == cid && l.UserId.HasValue
+                    && l.PlanPrice.HasValue && l.PlanPrice > 0
+                    && l.CollectionType != null)
+                .Select(l => new { l.Id, l.CustomerName, l.PlanName, l.PlanPrice, l.CollectionType, l.CreatedAt })
+                .Take(50)
+                .ToListAsync();
+            foreach (var ol in orphanLogs)
+                issues.Add(new { category = "FtthNoEntry", severity = "medium",
+                    message = $"عملية FTTH #{ol.Id} ({ol.CustomerName} - {ol.PlanName}) بدون قيد محاسبي",
+                    logId = ol.Id, customerName = ol.CustomerName, planPrice = ol.PlanPrice,
+                    collectionType = ol.CollectionType, date = ol.CreatedAt });
+
+            // ═══ 7. حسابات برصيد سالب (أصول) أو موجب (خصوم) بشكل غير طبيعي ═══
+            var suspiciousAccounts = await _unitOfWork.Accounts.AsQueryable()
+                .Where(a => a.CompanyId == cid && a.IsActive && a.IsLeaf && !a.IsDeleted)
+                .Where(a => (a.AccountType == AccountType.Assets && a.CurrentBalance < -0.01m)
+                         || (a.AccountType == AccountType.Liabilities && a.CurrentBalance > 0.01m))
+                .Select(a => new { a.Id, a.Code, a.Name, a.AccountType, a.CurrentBalance })
+                .ToListAsync();
+            foreach (var sa in suspiciousAccounts)
+                issues.Add(new { category = "SuspiciousBalance", severity = "warning",
+                    message = $"حساب {sa.Code} ({sa.Name}): رصيد {(sa.AccountType == AccountType.Assets ? "سالب" : "موجب")} غير طبيعي ({sa.CurrentBalance:N0})",
+                    accountId = sa.Id, accountCode = sa.Code, balance = sa.CurrentBalance });
+
+            // ═══ 7B. صناديق برصيد سالب ═══
+            foreach (var box in cashBoxes)
+            {
+                if (box.CurrentBalance < -0.01m)
+                    issues.Add(new { category = "NegativeCashBox", severity = "critical",
+                        message = $"صندوق {box.Name}: رصيد سالب ({box.CurrentBalance:N0})",
+                        cashBoxId = box.Id, cashBoxName = box.Name, balance = box.CurrentBalance });
+            }
+
+            // ═══ 7C. قيود مكررة (نفس ReferenceId مرتين لنفس النوع) ═══
+            var duplicateRefs = await _unitOfWork.JournalEntries.AsQueryable()
+                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
+                    && j.ReferenceType != JournalReferenceType.Manual
+                    && j.ReferenceId != null && j.ReferenceId != "")
+                .GroupBy(j => new { j.ReferenceType, j.ReferenceId })
+                .Where(g => g.Count() > 1)
+                .Select(g => new { g.Key.ReferenceType, g.Key.ReferenceId, Count = g.Count() })
+                .Take(30)
+                .ToListAsync();
+            foreach (var dup in duplicateRefs)
+            {
+                var refLabel = dup.ReferenceType switch
+                {
+                    JournalReferenceType.Salary => "راتب",
+                    JournalReferenceType.Expense => "مصروف",
+                    JournalReferenceType.FtthSubscription => "اشتراك FTTH",
+                    JournalReferenceType.CashDeposit => "إيداع",
+                    JournalReferenceType.CashWithdrawal => "سحب",
+                    JournalReferenceType.TechnicianCollection => "تحصيل",
+                    JournalReferenceType.OperatorCashDelivery => "تسليم نقد",
+                    _ => dup.ReferenceType.ToString()
+                };
+                issues.Add(new { category = "DuplicateEntry", severity = "high",
+                    message = $"قيد مكرر: {dup.Count} قيود لنفس {refLabel} (المرجع: {dup.ReferenceId})",
+                    referenceType = refLabel, referenceId = dup.ReferenceId, count = dup.Count });
+            }
+
+            // ═══ 7D. أسطر القيد لا تطابق الإجمالي ═══
+            var entriesWithLines = await _unitOfWork.JournalEntries.AsQueryable()
+                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Posted && !j.IsDeleted)
+                .Include(j => j.Lines)
+                .ToListAsync();
+            foreach (var ent in entriesWithLines)
+            {
+                var linesDebit = ent.Lines.Where(l => !l.IsDeleted).Sum(l => l.DebitAmount);
+                var linesCredit = ent.Lines.Where(l => !l.IsDeleted).Sum(l => l.CreditAmount);
+                if (Math.Abs(ent.TotalDebit - linesDebit) > 0.01m || Math.Abs(ent.TotalCredit - linesCredit) > 0.01m)
+                    issues.Add(new { category = "EntryLineMismatch", severity = "critical",
+                        message = $"قيد {ent.EntryNumber}: الإجمالي ({ent.TotalDebit:N0}/{ent.TotalCredit:N0}) ≠ مجموع الأسطر ({linesDebit:N0}/{linesCredit:N0})",
+                        entryNumber = ent.EntryNumber, entryId = ent.Id, date = ent.EntryDate,
+                        headerDebit = ent.TotalDebit, headerCredit = ent.TotalCredit,
+                        linesDebit, linesCredit });
+
+                // قيد بأقل من سطرين
+                var activeLines = ent.Lines.Count(l => !l.IsDeleted);
+                if (activeLines < 2)
+                    issues.Add(new { category = "InsufficientLines", severity = "high",
+                        message = $"قيد {ent.EntryNumber}: يحتوي {activeLines} سطر فقط (الحد الأدنى 2)",
+                        entryNumber = ent.EntryNumber, entryId = ent.Id, date = ent.EntryDate, lineCount = activeLines });
+            }
+
+            // ═══ 7E. أرصدة وكلاء لا تطابق عملياتهم ═══
+            var agents = await _unitOfWork.Agents.AsQueryable()
+                .Where(a => a.CompanyId == cid && !a.IsDeleted && (a.TotalCharges > 0 || a.TotalPayments > 0))
+                .Select(a => new { a.Id, a.Name, a.TotalCharges, a.TotalPayments, a.NetBalance })
+                .ToListAsync();
+            foreach (var agent in agents)
+            {
+                var agCharges = await _unitOfWork.AgentTransactions.AsQueryable()
+                    .Where(t => t.AgentId == agent.Id && t.Type == TransactionType.Charge && !t.IsDeleted)
+                    .SumAsync(t => t.Amount);
+                var agPayments = await _unitOfWork.AgentTransactions.AsQueryable()
+                    .Where(t => t.AgentId == agent.Id && t.Type == TransactionType.Payment && !t.IsDeleted)
+                    .SumAsync(t => t.Amount);
+                var agActual = agPayments - agCharges;
+                if (Math.Abs(agent.NetBalance - agActual) > 0.01m)
+                    issues.Add(new { category = "AgentBalanceMismatch", severity = "high",
+                        message = $"وكيل {agent.Name}: الرصيد المخزن ({agent.NetBalance:N0}) ≠ المحسوب ({agActual:N0})",
+                        agentId = agent.Id, agentName = agent.Name,
+                        storedBalance = agent.NetBalance, computedBalance = agActual,
+                        difference = agent.NetBalance - agActual });
+            }
+
+            // ═══ 7F. رواتب معلقة قديمة (أكثر من شهرين) ═══
+            var cutoffDate = DateTime.UtcNow.AddMonths(-2);
+            var staleSalaries = await _unitOfWork.EmployeeSalaries.AsQueryable()
+                .Where(s => s.CompanyId == cid && s.Status == SalaryStatus.Pending && !s.IsDeleted
+                    && s.CreatedAt < cutoffDate)
+                .Select(s => new { s.Id, s.Month, s.Year, s.NetSalary, s.CreatedAt })
+                .Take(30)
+                .ToListAsync();
+            foreach (var ss in staleSalaries)
+                issues.Add(new { category = "StaleSalary", severity = "warning",
+                    message = $"راتب معلق #{ss.Id} ({ss.Month}/{ss.Year}) بمبلغ {ss.NetSalary:N0} — منذ أكثر من شهرين",
+                    salaryId = ss.Id, amount = ss.NetSalary, period = $"{ss.Month}/{ss.Year}", createdAt = ss.CreatedAt });
+
+            // ═══ 7G. حسابات leaf لها أبناء (تناقض) ═══
+            var leafWithChildren = await _unitOfWork.Accounts.AsQueryable()
+                .Where(a => a.CompanyId == cid && a.IsLeaf && a.IsActive && !a.IsDeleted)
+                .Where(a => _unitOfWork.Accounts.AsQueryable().Any(c => c.ParentAccountId == a.Id && !c.IsDeleted))
+                .Select(a => new { a.Id, a.Code, a.Name })
+                .ToListAsync();
+            foreach (var lc in leafWithChildren)
+                issues.Add(new { category = "LeafWithChildren", severity = "medium",
+                    message = $"حساب {lc.Code} ({lc.Name}) مُعلّم كـ leaf لكن لديه حسابات فرعية",
+                    accountId = lc.Id, accountCode = lc.Code });
+
+            // ═══ 8. قيود مُعتمدة بدون معاملة مرتبطة (يتيمة) ═══
+            // القيود غير اليدوية يجب أن يكون لها ReferenceId يشير لمعاملة موجودة
+            var orphanEntries = await _unitOfWork.JournalEntries.AsQueryable()
+                .Where(j => j.CompanyId == cid && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
+                    && j.ReferenceType != JournalReferenceType.Manual
+                    && (j.ReferenceId == null || j.ReferenceId == ""))
+                .Select(j => new { j.Id, j.EntryNumber, j.Description, j.ReferenceType, j.EntryDate, j.TotalDebit })
+                .Take(50)
+                .ToListAsync();
+            foreach (var oe in orphanEntries)
+            {
+                var refLabel = oe.ReferenceType switch
+                {
+                    JournalReferenceType.Salary => "راتب",
+                    JournalReferenceType.Expense => "مصروف",
+                    JournalReferenceType.TechnicianCollection => "تحصيل فني",
+                    JournalReferenceType.CashDeposit => "إيداع",
+                    JournalReferenceType.CashWithdrawal => "سحب",
+                    JournalReferenceType.FtthSubscription => "اشتراك FTTH",
+                    JournalReferenceType.OperatorCashDelivery => "تسليم نقد مشغل",
+                    JournalReferenceType.OperatorCreditCollection => "تحصيل ذمم مشغل",
+                    _ => oe.ReferenceType.ToString()
+                };
+                issues.Add(new { category = "OrphanEntry", severity = "medium",
+                    message = $"قيد {oe.EntryNumber} ({refLabel}) بدون معاملة مرتبطة — {oe.Description}",
+                    entryNumber = oe.EntryNumber, entryId = oe.Id, date = oe.EntryDate,
+                    referenceType = refLabel, amount = oe.TotalDebit });
+            }
+
+            // ═══ 9. معاملات بدون قيد محاسبي ═══
+
+            // 9A: رواتب مدفوعة بدون قيد
+            var salariesNoEntry = await _unitOfWork.EmployeeSalaries.AsQueryable()
+                .Where(s => s.CompanyId == cid && s.Status == SalaryStatus.Paid && !s.IsDeleted && s.JournalEntryId == null)
+                .Select(s => new { s.Id, s.UserId, s.Month, s.Year, s.NetSalary })
+                .Take(50)
+                .ToListAsync();
+            foreach (var sal in salariesNoEntry)
+                issues.Add(new { category = "SalaryNoEntry", severity = "high",
+                    message = $"راتب مدفوع #{sal.Id} ({sal.Month}/{sal.Year}) بمبلغ {sal.NetSalary:N0} بدون قيد محاسبي",
+                    salaryId = sal.Id, amount = sal.NetSalary, period = $"{sal.Month}/{sal.Year}" });
+
+            // 9B: عمليات صندوق بدون قيد
+            var cashTxNoEntry = await _unitOfWork.CashTransactions.AsQueryable()
+                .Where(ct => !ct.IsDeleted && ct.JournalEntryId == null)
+                .Join(_unitOfWork.CashBoxes.AsQueryable().Where(b => b.CompanyId == cid),
+                    ct => ct.CashBoxId, b => b.Id, (ct, b) => new { ct.Id, ct.Amount, ct.TransactionType, ct.Description, BoxName = b.Name, ct.CreatedAt })
+                .Take(50)
+                .ToListAsync();
+            foreach (var ctx in cashTxNoEntry)
+                issues.Add(new { category = "CashTxNoEntry", severity = "medium",
+                    message = $"{(ctx.TransactionType == CashTransactionType.Deposit ? "إيداع" : "سحب")} {ctx.Amount:N0} في {ctx.BoxName} بدون قيد — {ctx.Description}",
+                    transactionId = ctx.Id, amount = ctx.Amount, date = ctx.CreatedAt });
+
+            // 9C: تحصيلات فنيين بدون قيد
+            var collectionsNoEntry = await _unitOfWork.TechnicianCollections.AsQueryable()
+                .Where(c => c.CompanyId == cid && !c.IsDeleted && c.JournalEntryId == null)
+                .Select(c => new { c.Id, c.TechnicianId, c.Amount, c.CreatedAt })
+                .Take(50)
+                .ToListAsync();
+            foreach (var col in collectionsNoEntry)
+                issues.Add(new { category = "CollectionNoEntry", severity = "medium",
+                    message = $"تحصيل فني #{col.Id} بمبلغ {col.Amount:N0} بدون قيد محاسبي",
+                    collectionId = col.Id, amount = col.Amount, date = col.CreatedAt });
+
+            // 9D: مصاريف ثابتة مدفوعة بدون قيد
+            var fixedExpNoEntry = await _unitOfWork.FixedExpensePayments.AsQueryable()
+                .Where(p => !p.IsDeleted && p.IsPaid && p.JournalEntryId == null)
+                .Select(p => new { p.Id, p.FixedExpenseId, p.Amount, p.Month, p.Year })
+                .Take(50)
+                .ToListAsync();
+            foreach (var fep in fixedExpNoEntry)
+                issues.Add(new { category = "FixedExpenseNoEntry", severity = "medium",
+                    message = $"مصروف ثابت مدفوع #{fep.Id} ({fep.Month}/{fep.Year}) بمبلغ {fep.Amount:N0} بدون قيد",
+                    paymentId = fep.Id, amount = fep.Amount, period = $"{fep.Month}/{fep.Year}" });
+
+            // ═══ ملخص ═══
+            var summary = new
+            {
+                totalIssues = issues.Count,
+                critical = issues.Count(i => ((dynamic)i).severity == "critical"),
+                high = issues.Count(i => ((dynamic)i).severity == "high"),
+                medium = issues.Count(i => ((dynamic)i).severity == "medium"),
+                warning = issues.Count(i => ((dynamic)i).severity == "warning"),
+                auditDate = DateTime.UtcNow,
+                companyId = cid
+            };
+
+            return Ok(new { success = true, summary, issues });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في التدقيق المحاسبي");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
@@ -4493,7 +5057,12 @@ public class AccountingController : ControllerBase
         {
             // CompanyAdmin = 20, SuperAdmin = 99
             if (roleInt >= (int)UserRole.CompanyAdmin)
+            {
+                var bypassUserId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+                _logger.LogWarning("🔓 تجاوز فترة مقفلة بواسطة {UserId} (دور {Role}) للفترة {Year}/{Month}",
+                    bypassUserId, roleInt, entryDate.Year, entryDate.Month);
                 return null; // مدير الشركة أو أعلى — مسموح
+            }
         }
 
         var baghdadDate = entryDate.AddHours(3);
@@ -4577,12 +5146,17 @@ public class AccountingController : ControllerBase
         string? referenceId,
         List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines)
     {
+        // تاريخ القيد: اليوم بتوقيت بغداد (UTC+3) — موحّد مع CreateAndPostJournalEntry
+        var baghdadDate = DateTime.SpecifyKind(
+            DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(12 - 3),
+            DateTimeKind.Utc);
+
         // فحص الفترة المقفلة
-        if (await IsPeriodClosed(companyId, DateTime.UtcNow))
+        if (await IsPeriodClosed(companyId, baghdadDate))
         {
             _logger.LogWarning("⛔ محاولة إنشاء قيد في فترة مقفلة ({Year}/{Month}) - {Description}",
-                DateTime.UtcNow.Year, DateTime.UtcNow.Month, description);
-            throw new InvalidOperationException($"الفترة المحاسبية {DateTime.UtcNow:yyyy/MM} مقفلة — لا يمكن إنشاء قيود جديدة");
+                baghdadDate.Year, baghdadDate.Month, description);
+            throw new InvalidOperationException($"الفترة المحاسبية {baghdadDate:yyyy/MM} مقفلة — لا يمكن إنشاء قيود جديدة");
         }
 
         var entryNumber = await GenerateEntryNumber(companyId);
@@ -4591,7 +5165,7 @@ public class AccountingController : ControllerBase
         {
             Id = entryId,
             EntryNumber = entryNumber,
-            EntryDate = DateTime.UtcNow,
+            EntryDate = baghdadDate,
             Description = description,
             TotalDebit = lines.Sum(l => l.DebitAmount),
             TotalCredit = lines.Sum(l => l.CreditAmount),
@@ -4618,6 +5192,10 @@ public class AccountingController : ControllerBase
         {
             var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
             if (account == null) continue;
+
+            // تحذير إذا الحساب ليس leaf (حساب رئيسي)
+            if (!account.IsLeaf)
+                _logger.LogWarning("⚠️ ترحيل تلقائي على حساب رئيسي (غير leaf): {Code} {Name}", account.Code, account.Name);
 
             if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
             {
@@ -5161,19 +5739,22 @@ public class AccountingController : ControllerBase
                         (expenseAcct.Id, payment.Amount, 0, $"{expenseName} - {dto.Month}/{dto.Year}"),
                         (cashAcct.Id, 0, payment.Amount, $"دفع {expenseName}")
                     };
-                    await CreateAndPostJournalEntry(
-                        dto.CompanyId, Guid.Empty,
+                    // استخراج userId من الـ Claims
+                    var fixedExpUserId = Guid.Empty;
+                    var fixedExpUserClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                                         ?? User.FindFirst("sub")?.Value;
+                    if (!string.IsNullOrEmpty(fixedExpUserClaim))
+                        Guid.TryParse(fixedExpUserClaim, out fixedExpUserId);
+
+                    var jeId = await CreateAndPostJournalEntryReturningId(
+                        dto.CompanyId, fixedExpUserId,
                         $"دفع مصروف ثابت: {expenseName} - {dto.Month}/{dto.Year}",
                         JournalReferenceType.Expense, payment.Id.ToString(), lines);
 
-                    // ربط القيد
-                    var je = await _unitOfWork.JournalEntries.AsQueryable()
-                        .Where(j => j.ReferenceType == JournalReferenceType.Expense && j.CompanyId == dto.CompanyId)
-                        .OrderByDescending(j => j.CreatedAt)
-                        .FirstOrDefaultAsync();
-                    if (je != null)
+                    // ربط القيد مباشرة بدون استعلام (آمن من race condition)
+                    if (jeId.HasValue)
                     {
-                        payment.JournalEntryId = je.Id;
+                        payment.JournalEntryId = jeId.Value;
                         _unitOfWork.FixedExpensePayments.Update(payment);
                         await _unitOfWork.SaveChangesAsync();
                     }

@@ -2698,23 +2698,27 @@ public class FtthAccountingController : ControllerBase
 
             if (line.DebitAmount != newDebit || line.CreditAmount != newCredit)
             {
-                // عكس الرصيد القديم
+                // عكس الرصيد القديم وتطبيق الجديد
                 var acct = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
-                if (acct != null)
+                if (acct == null)
                 {
-                    if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
-                        acct.CurrentBalance -= (line.DebitAmount - line.CreditAmount);
-                    else
-                        acct.CurrentBalance -= (line.CreditAmount - line.DebitAmount);
-
-                    // تطبيق الرصيد الجديد
-                    if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
-                        acct.CurrentBalance += (newDebit - newCredit);
-                    else
-                        acct.CurrentBalance += (newCredit - newDebit);
-
-                    _unitOfWork.Accounts.Update(acct);
+                    // حساب مفقود — إيقاف التحديث لمنع خلل تراكمي
+                    _logger.LogError("⛔ حساب مفقود {AccountId} في قيد {EntryId} — تم إيقاف تحديث المبالغ", line.AccountId, entry.Id);
+                    return false;
                 }
+
+                if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                    acct.CurrentBalance -= (line.DebitAmount - line.CreditAmount);
+                else
+                    acct.CurrentBalance -= (line.CreditAmount - line.DebitAmount);
+
+                // تطبيق الرصيد الجديد
+                if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
+                    acct.CurrentBalance += (newDebit - newCredit);
+                else
+                    acct.CurrentBalance += (newCredit - newDebit);
+
+                _unitOfWork.Accounts.Update(acct);
 
                 line.DebitAmount = newDebit;
                 line.CreditAmount = newCredit;

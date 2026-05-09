@@ -40,6 +40,7 @@ import 'aging_report_page.dart';
 import 'monthly_comparison_page.dart';
 import 'period_closing_page.dart';
 import 'audit_trail_page.dart';
+import 'system_audit_page.dart';
 import 'financial_ratios_page.dart';
 import 'year_comparison_page.dart';
 import 'budget_page.dart';
@@ -61,6 +62,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _dashboardData;
+  DateTime? _lastRefresh;
   bool _sidebarExpanded = false;
   Timer? _autoCollapseTimer;
   Timer? _autoRefreshTimer;
@@ -294,6 +296,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
 
         setState(() {
           _dashboardData = data;
+          _lastRefresh = DateTime.now();
           _isLoading = false;
         });
       } else if (!silent) {
@@ -551,6 +554,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                 _navigateTo(AuditTrailPage(companyId: widget.companyId)),
             forceExpanded: alwaysExpanded),
         _sidebarBtn(
+            icon: Icons.verified_user,
+            label: 'تدقيق النظام',
+            color: const Color(0xFF1A237E),
+            onTap: () =>
+                _navigateTo(SystemAuditPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
             icon: Icons.receipt_long,
             label: 'تقارير التسديدات',
             color: const Color(0xFF16A085),
@@ -806,6 +816,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                     onTap: () => _navigateTo(
                         AuditTrailPage(companyId: widget.companyId)),
                   ),
+                  _sidebarBtn(
+                    icon: Icons.verified_user,
+                    label: 'تدقيق النظام',
+                    color: const Color(0xFF1A237E),
+                    onTap: () => _navigateTo(
+                        SystemAuditPage(companyId: widget.companyId)),
+                  ),
                 ],
               ),
             ),
@@ -966,6 +983,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             style: IconButton.styleFrom(
                 foregroundColor: _showFtthWallet ? const Color(0xFF00ACC1) : Colors.white70),
           ),
+          if (_lastRefresh != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                'آخر تحديث: ${DateTime.now().difference(_lastRefresh!).inMinutes < 1 ? "الآن" : "منذ ${DateTime.now().difference(_lastRefresh!).inMinutes} د"}',
+                style: TextStyle(color: Colors.white54, fontSize: isMob ? 10 : 12),
+              ),
+            ),
           IconButton(
             onPressed: _refreshAll,
             icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
