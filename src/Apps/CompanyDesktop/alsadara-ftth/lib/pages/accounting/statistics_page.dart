@@ -1,7 +1,8 @@
-﻿import 'dart:math';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../theme/accounting_theme.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
@@ -23,32 +24,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Map<String, dynamic>? _fundsData;
   List<dynamic>? _accountsList;
 
-  // خلفية ثابتة (مواضع الجسيمات ثابتة)
-  late List<_Particle> _particles;
-
-  // ألوان
-  static const _bgCard = Color(0xE6FFFFFF); // شفافية خفيفة
-  static const _bgToolbar = Color(0xFF1E2A38);
-  static const _textDark = Color(0xFFE8ECF1);
-  static const _textMuted = Color(0xFF8899AA);
-
-  // ألوان المخططات
-  static const _clrGreen = Color(0xFF27AE60);
-  static const _clrRed = Color(0xFFE74C3C);
-  static const _clrBlue = Color(0xFF2980B9);
-  static const _clrOrange = Color(0xFFE67E22);
-  static const _clrPurple = Color(0xFF8E44AD);
-  static const _clrTeal = Color(0xFF16A085);
-  static const _clrPink = Color(0xFFE91E63);
-  static const _clrDark = Color(0xFF2C3E50);
-  static const _clrIndigo = Color(0xFF5C6BC0);
-
   @override
   void initState() {
     super.initState();
-    // إنشاء جسيمات بمواضع ثابتة (بدون حركة)
-    final rng = Random();
-    _particles = List.generate(30, (_) => _Particle.random(rng));
     _loadAllData();
   }
 
@@ -64,7 +42,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
       _errorMessage = null;
     });
     try {
-      // محاولة التحميل من الكاش أولاً
       final cachedAccounts = await AccountingCacheService.loadAccounts();
 
       late final Map<String, dynamic> dashResult;
@@ -72,7 +49,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
       late final Map<String, dynamic> fundsResult;
 
       if (cachedAccounts != null) {
-        // الحسابات موجودة في الكاش — جلب الداشبورد والأموال فقط
         final results = await Future.wait([
           AccountingService.instance.getDashboard(companyId: widget.companyId),
           AccountingService.instance
@@ -82,7 +58,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
         accountsResult = {'success': true, 'data': cachedAccounts};
         fundsResult = results[1];
       } else {
-        // لا يوجد كاش — جلب الكل بالتوازي
         final results = await Future.wait([
           AccountingService.instance.getDashboard(companyId: widget.companyId),
           AccountingService.instance.getAccounts(companyId: widget.companyId),
@@ -92,7 +67,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
         dashResult = results[0];
         accountsResult = results[1];
         fundsResult = results[2];
-        // حفظ الحسابات في الكاش
         if (accountsResult['success'] == true) {
           final accountsList = (accountsResult['data'] as List?) ?? [];
           AccountingCacheService.saveAccounts(accountsList);
@@ -104,7 +78,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
         final data = dashResult['data'] is Map<String, dynamic>
             ? dashResult['data']
             : <String, dynamic>{};
-        final balances = data['AccountBalances'] as Map<String, dynamic>? ?? {};
+        final balances =
+            data['AccountBalances'] as Map<String, dynamic>? ?? {};
         if (balances['CashRegisterBalance'] == null &&
             accountsResult['success'] == true) {
           final accounts = accountsResult['data'] as List? ?? [];
@@ -148,35 +123,22 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        body: Stack(
-          children: [
-            // الخلفية الثابتة
-            CustomPaint(
-              painter: _AnimatedBgPainter(
-                progress: 0,
-                particles: _particles,
-                particleProgress: 0,
+        backgroundColor: AccountingTheme.bgPrimary,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildToolbar(),
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: AccountingTheme.neonBlue))
+                    : _errorMessage != null
+                        ? _buildErrorView()
+                        : _buildDashboard(),
               ),
-              size: Size.infinite,
-            ),
-            // المحتوى
-            SafeArea(
-              child: Column(
-                children: [
-                  _buildToolbar(),
-                  Expanded(
-                    child: _isLoading
-                        ? const Center(
-                            child:
-                                CircularProgressIndicator(color: Colors.white))
-                        : _errorMessage != null
-                            ? _buildErrorView()
-                            : _buildDashboard(),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -190,16 +152,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMobile ? 8 : context.accR.paddingH,
           vertical: isMobile ? 4 : context.accR.spaceS),
-      decoration: BoxDecoration(
-        color: const Color(0xCC0D1B2A),
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.08)),
-        ),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
+      decoration: AccountingTheme.toolbar,
       child: Row(
         children: [
           IconButton(
@@ -207,19 +160,22 @@ class _StatisticsPageState extends State<StatisticsPage> {
             icon: Icon(Icons.arrow_forward_rounded,
                 size: isMobile ? 20 : context.accR.iconM),
             tooltip: 'رجوع',
-            style: IconButton.styleFrom(foregroundColor: Colors.white70),
+            style: IconButton.styleFrom(
+                foregroundColor: AccountingTheme.textOnDarkSecondary),
           ),
           SizedBox(width: context.accR.spaceXS),
           Icon(Icons.dashboard_rounded,
-              color: Colors.white70, size: isMobile ? 16 : context.accR.iconM),
+              color: AccountingTheme.textOnDarkSecondary,
+              size: isMobile ? 16 : context.accR.iconM),
           SizedBox(width: context.accR.spaceS),
           Expanded(
-            child: Text(isMobile ? 'الإحصائيات' : 'لوحة الإحصائيات المالية',
+            child: Text(
+                isMobile ? 'الإحصائيات' : 'لوحة الإحصائيات المالية',
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.cairo(
                     fontSize: isMobile ? 14 : context.accR.headingSmall,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white)),
+                    color: AccountingTheme.textOnDark)),
           ),
           if (!isMobile)
             _toolbarBtn(Icons.account_tree_rounded, 'شجرة الحسابات', () {
@@ -231,9 +187,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
           SizedBox(width: context.accR.spaceXS),
           IconButton(
             onPressed: _loadAllData,
-            icon: Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
+            icon:
+                Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
             tooltip: 'تحديث',
-            style: IconButton.styleFrom(foregroundColor: Colors.white70),
+            style: IconButton.styleFrom(
+                foregroundColor: AccountingTheme.textOnDarkSecondary),
           ),
         ],
       ),
@@ -254,11 +212,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white70, size: context.accR.iconXS),
+            Icon(icon,
+                color: AccountingTheme.textOnDarkSecondary,
+                size: context.accR.iconXS),
             SizedBox(width: context.accR.spaceXS),
             Text(label,
                 style: GoogleFonts.cairo(
-                    fontSize: context.accR.small, color: Colors.white70)),
+                    fontSize: context.accR.small,
+                    color: AccountingTheme.textOnDarkSecondary)),
           ],
         ),
       ),
@@ -266,32 +227,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }
 
   Widget _buildErrorView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline, color: _clrRed, size: context.accR.iconXL),
-          SizedBox(height: context.accR.spaceM),
-          Text(_errorMessage!,
-              style: GoogleFonts.cairo(
-                  color: _textMuted, fontSize: context.accR.body)),
-          SizedBox(height: context.accR.spaceM),
-          ElevatedButton.icon(
-            onPressed: _loadAllData,
-            icon: Icon(Icons.refresh,
-                color: Colors.white, size: context.accR.iconS),
-            label: Text('إعادة المحاولة',
-                style: GoogleFonts.cairo(
-                    color: Colors.white, fontSize: context.accR.small)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _clrBlue,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6)),
-            ),
-          ),
-        ],
-      ),
-    );
+    return AccountingTheme.errorView(_errorMessage!, _loadAllData);
   }
 
   // ══════════════════════ DASHBOARD BODY ══════════════════════
@@ -313,184 +249,197 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return Padding(
       padding: EdgeInsets.all(context.accR.spaceM),
       child: context.accR.isMobile
-          ? SingleChildScrollView(
-              child: Column(
-                children: [
-                  // KPI grid
-                  GridView.count(
-                    crossAxisCount: 2,
-                    childAspectRatio: 2.4,
-                    crossAxisSpacing: 4,
-                    mainAxisSpacing: 4,
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    children: [
-                      _kpi('القاصة', balances['CashRegisterBalance'], _clrTeal,
-                          Icons.point_of_sale),
-                      _kpi('الصندوق', balances['MainCashBoxBalance'], _clrDark,
-                          Icons.account_balance),
-                      _kpi('الصفحة', balances['PageBalance'], _clrBlue,
-                          Icons.account_balance_wallet),
-                      _kpi('النقدي', balances['CashAccountBalance'], _clrGreen,
-                          Icons.savings),
-                      _kpiHighlight('صافي الدخل', balances['NetIncome']),
-                      _kpi('المشغلين', balances['OperatorReceivables'],
-                          _clrPurple, Icons.people),
-                    ],
-                  ),
-                  SizedBox(height: context.accR.spaceS),
-                  // Charts stacked vertically
-                  SizedBox(
-                    height: 220,
-                    child: _chartPanel('الميزانية', Icons.balance, _clrPurple,
-                        _buildBalanceSheetChart(balances)),
-                  ),
-                  SizedBox(height: context.accR.spaceS),
-                  SizedBox(
-                    height: 220,
-                    child: _chartPanel(
-                        'إيرادات vs مصروفات',
-                        Icons.bar_chart,
-                        _clrBlue,
-                        _buildRevenueExpenseChart(
-                            balances, collections, expenses)),
-                  ),
-                  SizedBox(height: context.accR.spaceS),
-                  SizedBox(
-                    height: 220,
-                    child: _chartPanel(
-                        'إحصائيات الشهر',
-                        Icons.calendar_today,
-                        _clrOrange,
-                        _buildMonthlyChart(
-                            collections, expenses, salaries, data)),
-                  ),
-                  SizedBox(height: context.accR.spaceS),
-                  SizedBox(
-                    height: 200,
-                    child: _chartPanel(
-                        'المعلقات',
-                        Icons.pending_actions,
-                        _clrPurple,
-                        _buildPendingChart(
-                            collections, salaries, agentNet, techNet)),
-                  ),
-                  SizedBox(height: context.accR.spaceS),
-                  SizedBox(
-                    height: 200,
-                    child: _chartPanel(
-                        'الإجماليات',
-                        Icons.summarize,
-                        _clrTeal,
-                        _buildTotalsView(
-                            collections, expenses, salaries, journal)),
-                  ),
-                  SizedBox(height: context.accR.spaceS),
-                  SizedBox(
-                    height: 200,
-                    child: _chartPanel('الصناديق', Icons.inventory_2,
-                        _clrOrange, _buildCashBoxesList(cashBoxes, balances)),
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                // KPI row (desktop)
-                SizedBox(
-                  height: 62,
-                  child: Row(
-                    children: [
-                      _kpi('القاصة', balances['CashRegisterBalance'], _clrTeal,
-                          Icons.point_of_sale),
-                      SizedBox(width: context.accR.spaceXS),
-                      _kpi('الصندوق الرئيسي', balances['MainCashBoxBalance'],
-                          _clrDark, Icons.account_balance),
-                      SizedBox(width: context.accR.spaceXS),
-                      _kpi('رصيد الصفحة', balances['PageBalance'], _clrBlue,
-                          Icons.account_balance_wallet),
-                      SizedBox(width: context.accR.spaceXS),
-                      _kpi('الصندوق النقدي', balances['CashAccountBalance'],
-                          _clrGreen, Icons.savings),
-                      SizedBox(width: context.accR.spaceXS),
-                      _kpiHighlight('صافي الدخل', balances['NetIncome']),
-                      SizedBox(width: context.accR.spaceXS),
-                      _kpi('مستحقات المشغلين', balances['OperatorReceivables'],
-                          _clrPurple, Icons.people),
-                    ],
-                  ),
-                ),
-                SizedBox(height: context.accR.spaceS),
-                // Charts row (desktop)
-                Expanded(
-                  flex: 5,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _chartPanel('الميزانية العمومية', Icons.balance,
-                            _clrPurple, _buildBalanceSheetChart(balances)),
-                      ),
-                      SizedBox(width: context.accR.spaceS),
-                      Expanded(
-                        child: _chartPanel(
-                            'الإيرادات vs المصروفات',
-                            Icons.bar_chart,
-                            _clrBlue,
-                            _buildRevenueExpenseChart(
-                                balances, collections, expenses)),
-                      ),
-                      SizedBox(width: context.accR.spaceS),
-                      Expanded(
-                        child: _chartPanel(
-                            'إحصائيات الشهر',
-                            Icons.calendar_today,
-                            _clrOrange,
-                            _buildMonthlyChart(
-                                collections, expenses, salaries, data)),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: context.accR.spaceS),
-                // Bottom row (desktop)
-                Expanded(
-                  flex: 3,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: _chartPanel(
-                            'المعلقات والذمم',
-                            Icons.pending_actions,
-                            _clrPurple,
-                            _buildPendingChart(
-                                collections, salaries, agentNet, techNet)),
-                      ),
-                      SizedBox(width: context.accR.spaceS),
-                      Expanded(
-                        flex: 3,
-                        child: _chartPanel(
-                            'الإجماليات الكلية',
-                            Icons.summarize,
-                            _clrTeal,
-                            _buildTotalsView(
-                                collections, expenses, salaries, journal)),
-                      ),
-                      SizedBox(width: context.accR.spaceS),
-                      Expanded(
-                        flex: 2,
-                        child: _chartPanel(
-                            'الصناديق النقدية',
-                            Icons.inventory_2,
-                            _clrOrange,
-                            _buildCashBoxesList(cashBoxes, balances)),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          ? _buildMobileLayout(collections, expenses, salaries, balances,
+              pending, journal, cashBoxes, agentNet, techNet, data)
+          : _buildDesktopLayout(collections, expenses, salaries, balances,
+              pending, journal, cashBoxes, agentNet, techNet, data),
     );
+  }
+
+  Widget _buildMobileLayout(
+    Map<String, dynamic> collections,
+    Map<String, dynamic> expenses,
+    Map<String, dynamic> salaries,
+    Map<String, dynamic> balances,
+    Map<String, dynamic> pending,
+    Map<String, dynamic> journal,
+    List<dynamic> cashBoxes,
+    num agentNet,
+    num techNet,
+    Map<String, dynamic> data,
+  ) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          GridView.count(
+            crossAxisCount: 2,
+            childAspectRatio: 2.4,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: _buildKpiList(balances),
+          ),
+          SizedBox(height: context.accR.spaceS),
+          SizedBox(
+              height: 280,
+              child: _chartPanel('الميزانية العمومية', Icons.pie_chart_rounded,
+                  AccountingTheme.neonPurple, _buildBalanceSheetChart(balances))),
+          SizedBox(height: context.accR.spaceS),
+          SizedBox(
+              height: 300,
+              child: _chartPanel(
+                  'الإيرادات vs المصروفات',
+                  Icons.bar_chart_rounded,
+                  AccountingTheme.neonBlue,
+                  _buildRevenueExpenseChart(balances, collections, expenses))),
+          SizedBox(height: context.accR.spaceS),
+          SizedBox(
+              height: 300,
+              child: _chartPanel(
+                  'إحصائيات الشهر',
+                  Icons.calendar_month_rounded,
+                  AccountingTheme.neonOrange,
+                  _buildMonthlyChart(collections, expenses, salaries, data))),
+          SizedBox(height: context.accR.spaceS),
+          SizedBox(
+              height: 240,
+              child: _chartPanel(
+                  'المعلقات والذمم',
+                  Icons.pending_actions_rounded,
+                  AccountingTheme.neonPurple,
+                  _buildPendingChart(
+                      collections, salaries, agentNet, techNet))),
+          SizedBox(height: context.accR.spaceS),
+          SizedBox(
+              height: 260,
+              child: _chartPanel(
+                  'الإجماليات الكلية',
+                  Icons.analytics_rounded,
+                  AccountingTheme.neonBlue,
+                  _buildTotalsView(collections, expenses, salaries, journal))),
+          SizedBox(height: context.accR.spaceS),
+          SizedBox(
+              height: 220,
+              child: _chartPanel(
+                  'الصناديق النقدية',
+                  Icons.account_balance_wallet_rounded,
+                  AccountingTheme.neonOrange,
+                  _buildCashBoxesList(cashBoxes, balances))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(
+    Map<String, dynamic> collections,
+    Map<String, dynamic> expenses,
+    Map<String, dynamic> salaries,
+    Map<String, dynamic> balances,
+    Map<String, dynamic> pending,
+    Map<String, dynamic> journal,
+    List<dynamic> cashBoxes,
+    num agentNet,
+    num techNet,
+    Map<String, dynamic> data,
+  ) {
+    return Column(
+      children: [
+        // KPI row
+        SizedBox(
+          height: 72,
+          child: Row(
+              children: _buildKpiList(balances)
+                  .expand((w) => [w, SizedBox(width: context.accR.spaceS)])
+                  .toList()
+                ..removeLast()),
+        ),
+        SizedBox(height: context.accR.spaceS),
+        // Charts row (top)
+        Expanded(
+          flex: 5,
+          child: Row(
+            children: [
+              Expanded(
+                  flex: 3,
+                  child: _chartPanel(
+                      'الميزانية العمومية',
+                      Icons.pie_chart_rounded,
+                      AccountingTheme.neonPurple,
+                      _buildBalanceSheetChart(balances))),
+              SizedBox(width: context.accR.spaceS),
+              Expanded(
+                  flex: 4,
+                  child: _chartPanel(
+                      'الإيرادات vs المصروفات',
+                      Icons.bar_chart_rounded,
+                      AccountingTheme.neonBlue,
+                      _buildRevenueExpenseChart(
+                          balances, collections, expenses))),
+              SizedBox(width: context.accR.spaceS),
+              Expanded(
+                  flex: 4,
+                  child: _chartPanel(
+                      'إحصائيات الشهر',
+                      Icons.calendar_month_rounded,
+                      AccountingTheme.neonOrange,
+                      _buildMonthlyChart(
+                          collections, expenses, salaries, data))),
+            ],
+          ),
+        ),
+        SizedBox(height: context.accR.spaceS),
+        // Bottom row
+        Expanded(
+          flex: 3,
+          child: Row(
+            children: [
+              Expanded(
+                  flex: 3,
+                  child: _chartPanel(
+                      'المعلقات والذمم',
+                      Icons.pending_actions_rounded,
+                      AccountingTheme.neonPurple,
+                      _buildPendingChart(
+                          collections, salaries, agentNet, techNet))),
+              SizedBox(width: context.accR.spaceS),
+              Expanded(
+                  flex: 3,
+                  child: _chartPanel(
+                      'الإجماليات الكلية',
+                      Icons.analytics_rounded,
+                      AccountingTheme.neonBlue,
+                      _buildTotalsView(
+                          collections, expenses, salaries, journal))),
+              SizedBox(width: context.accR.spaceS),
+              Expanded(
+                  flex: 2,
+                  child: _chartPanel(
+                      'الصناديق النقدية',
+                      Icons.account_balance_wallet_rounded,
+                      AccountingTheme.neonOrange,
+                      _buildCashBoxesList(cashBoxes, balances))),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildKpiList(Map<String, dynamic> balances) {
+    return [
+      _kpi('القاصة', balances['CashRegisterBalance'],
+          AccountingTheme.neonBlue, Icons.point_of_sale_rounded),
+      _kpi('الصندوق الرئيسي', balances['MainCashBoxBalance'],
+          const Color(0xFF34495E), Icons.account_balance_rounded),
+      _kpi('رصيد الصفحة', balances['PageBalance'], AccountingTheme.info,
+          Icons.account_balance_wallet_rounded),
+      _kpi('الصندوق النقدي', balances['CashAccountBalance'],
+          AccountingTheme.success, Icons.savings_rounded),
+      _kpiHighlight('صافي الدخل', balances['NetIncome']),
+      _kpi('مستحقات المشغلين', balances['OperatorReceivables'],
+          AccountingTheme.neonPurple, Icons.people_rounded),
+    ];
   }
 
   // ══════════════════════ KPI TILES ══════════════════════
@@ -501,19 +450,21 @@ class _StatisticsPageState extends State<StatisticsPage> {
         padding: EdgeInsets.symmetric(
             horizontal: context.accR.spaceS, vertical: context.accR.spaceXS),
         decoration: BoxDecoration(
-          color: const Color(0xCC1A2332),
-          borderRadius: BorderRadius.circular(8),
-          border: Border(
-            bottom: BorderSide(color: color, width: 3),
-          ),
-          boxShadow: const [
-            BoxShadow(
-                color: Color(0x20000000), blurRadius: 4, offset: Offset(0, 1)),
-          ],
+          color: AccountingTheme.bgCard,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.15)),
+          boxShadow: AccountingTheme.cardShadow,
         ),
         child: Row(
           children: [
-            Icon(icon, color: color, size: context.accR.iconM),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: context.accR.iconS),
+            ),
             SizedBox(width: context.accR.spaceXS),
             Expanded(
               child: Column(
@@ -528,7 +479,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       style: GoogleFonts.cairo(
                         fontSize: context.accR.financialSmall,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AccountingTheme.textPrimary,
                       ),
                     ),
                   ),
@@ -537,7 +488,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.cairo(
                           fontSize: context.accR.caption,
-                          color: Colors.white60)),
+                          color: AccountingTheme.textMuted)),
                 ],
               ),
             ),
@@ -549,27 +500,34 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Widget _kpiHighlight(String label, dynamic value) {
     final isPos = _isPositive(value);
-    final color = isPos ? _clrGreen : _clrRed;
+    final color = isPos ? AccountingTheme.success : AccountingTheme.danger;
     return Expanded(
       child: Container(
         padding: EdgeInsets.symmetric(
             horizontal: context.accR.spaceS, vertical: context.accR.spaceXS),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color, color.withOpacity(0.8)],
+            colors: [color, color.withOpacity(0.85)],
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 6,
-                offset: const Offset(0, 2)),
+                color: color.withOpacity(0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 3)),
           ],
         ),
         child: Row(
           children: [
-            Icon(isPos ? Icons.trending_up : Icons.trending_down,
-                color: Colors.white, size: context.accR.iconM),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(isPos ? Icons.trending_up : Icons.trending_down,
+                  color: Colors.white, size: context.accR.iconS),
+            ),
             SizedBox(width: context.accR.spaceXS),
             Expanded(
               child: Column(
@@ -593,7 +551,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.cairo(
                           fontSize: context.accR.caption,
-                          color: Colors.white70)),
+                          color: Colors.white.withOpacity(0.85))),
                 ],
               ),
             ),
@@ -608,39 +566,44 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Widget _chartPanel(String title, IconData icon, Color color, Widget child) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xCC1A2332),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x20000000), blurRadius: 6, offset: Offset(0, 2)),
-        ],
+        color: AccountingTheme.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccountingTheme.borderColor),
+        boxShadow: AccountingTheme.cardShadow,
       ),
       child: Column(
         children: [
-          // Header
           Container(
             padding: EdgeInsets.symmetric(
                 horizontal: context.accR.spaceM,
-                vertical: context.accR.spaceXS),
+                vertical: context.accR.spaceXS + 2),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.08),
+              color: color.withOpacity(0.05),
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(8)),
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+              border: Border(
+                bottom: BorderSide(color: color.withOpacity(0.1)),
+              ),
             ),
             child: Row(
               children: [
-                Icon(icon, color: color, size: context.accR.iconXS),
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(icon, color: color, size: context.accR.iconXS),
+                ),
                 SizedBox(width: context.accR.spaceXS),
                 Text(title,
                     style: GoogleFonts.cairo(
                         fontSize: context.accR.small,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white)),
+                        color: AccountingTheme.textPrimary)),
               ],
             ),
           ),
-          // Body
           Expanded(
             child: Padding(
               padding: EdgeInsets.all(context.accR.spaceS),
@@ -664,89 +627,128 @@ class _StatisticsPageState extends State<StatisticsPage> {
       return Center(
           child: Text('لا توجد بيانات',
               style: GoogleFonts.cairo(
-                  color: _textMuted, fontSize: context.accR.small)));
+                  color: AccountingTheme.textMuted,
+                  fontSize: context.accR.small)));
     }
 
     final items = [
-      _PieItem('الأصول', assets, _clrBlue),
-      _PieItem('الالتزامات', liabilities, _clrOrange),
-      _PieItem('حقوق الملكية', equity, _clrPurple),
+      _PieItem('الأصول', assets, AccountingTheme.neonBlue),
+      _PieItem('الالتزامات', liabilities, AccountingTheme.neonOrange),
+      _PieItem('حقوق الملكية', equity, AccountingTheme.neonPurple),
     ];
 
     return Row(
       children: [
-        // Donut chart
+        // Donut chart with center total
         Expanded(
           flex: 3,
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 28,
-              sections: items
-                  .map((e) => PieChartSectionData(
-                        value: e.value.abs(),
-                        color: e.color,
-                        radius: 32,
-                        title: '',
-                      ))
-                  .toList(),
-            ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              PieChart(
+                PieChartData(
+                  sectionsSpace: 3,
+                  centerSpaceRadius: 36,
+                  sections: items
+                      .map((e) {
+                        final pct = total > 0
+                            ? (e.value.abs() / total * 100)
+                            : 0.0;
+                        return PieChartSectionData(
+                          value: e.value.abs(),
+                          color: e.color,
+                          radius: 34,
+                          title: pct >= 5 ? '${pct.toStringAsFixed(0)}%' : '',
+                          titleStyle: GoogleFonts.cairo(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          titlePositionPercentageOffset: 0.55,
+                        );
+                      })
+                      .toList(),
+                ),
+              ),
+              // Center total
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('الإجمالي',
+                      style: GoogleFonts.cairo(
+                          fontSize: 7, color: AccountingTheme.textMuted)),
+                  Text(_fmtShort(total),
+                      style: GoogleFonts.cairo(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AccountingTheme.textPrimary)),
+                ],
+              ),
+            ],
           ),
         ),
-        SizedBox(width: context.accR.spaceXS),
-        // Legend
+        SizedBox(width: context.accR.spaceS),
+        // Legend with background rows
         Expanded(
           flex: 2,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: items
-                .map((e) => _legendRow(e.label, e.value, e.color))
-                .toList(),
+            children: items.map((e) {
+              final pct =
+                  total > 0 ? (e.value.abs() / total * 100) : 0.0;
+              return _legendRow(e.label, e.value, e.color, pct);
+            }).toList(),
           ),
         ),
       ],
     );
   }
 
-  Widget _legendRow(String label, double value, Color color) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 2),
+  Widget _legendRow(String label, double value, Color color, double pct) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Row(
         children: [
           Container(
             width: 10,
             height: 10,
             decoration: BoxDecoration(
-                color: color, borderRadius: BorderRadius.circular(2)),
+                color: color, borderRadius: BorderRadius.circular(3)),
           ),
-          SizedBox(width: context.accR.spaceXS),
+          const SizedBox(width: 6),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
                     style: GoogleFonts.cairo(
-                        fontSize: context.accR.caption, color: _textMuted),
+                        fontSize: 9, color: AccountingTheme.textMuted),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(_fmtShort(value),
-                      style: GoogleFonts.cairo(
-                          fontSize: context.accR.caption,
-                          fontWeight: FontWeight.bold,
-                          color: _textDark)),
-                ),
+                Text(_fmtShort(value),
+                    style: GoogleFonts.cairo(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AccountingTheme.textPrimary)),
               ],
             ),
           ),
+          Text('${pct.toStringAsFixed(0)}%',
+              style: GoogleFonts.cairo(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: color)),
         ],
       ),
     );
   }
 
-  // ══════════════════════ CHART 2: REVENUE vs EXPENSE (BAR) ══════════════════════
+  // ══════════════════════ CHART 2: REVENUE vs EXPENSE ══════════════════════
 
   Widget _buildRevenueExpenseChart(
     Map<String, dynamic> balances,
@@ -758,31 +760,52 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final monthCollections = _num(collections['MonthlyTotal']);
     final monthExpenses = _num(expenses['MonthlyTotal']);
 
-    final maxVal = [
-      totalRevenue,
-      totalExpenses,
-      monthCollections,
-      monthExpenses
-    ].fold<double>(0, (a, b) => b.abs() > a ? b.abs() : a);
+    final maxVal = [totalRevenue, totalExpenses, monthCollections, monthExpenses]
+        .fold<double>(0, (a, b) => b.abs() > a ? b.abs() : a);
 
     return Column(
       children: [
+        // Legend row
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _chartLegendDot('إجمالي الإيرادات', AccountingTheme.success),
+              const SizedBox(width: 12),
+              _chartLegendDot('إجمالي المصروفات', AccountingTheme.danger),
+              const SizedBox(width: 12),
+              _chartLegendDot('تحصيل الشهر', AccountingTheme.neonBlue),
+              const SizedBox(width: 12),
+              _chartLegendDot('صرف الشهر', AccountingTheme.neonOrange),
+            ],
+          ),
+        ),
         Expanded(
           child: BarChart(
             BarChartData(
               alignment: BarChartAlignment.spaceAround,
-              maxY: maxVal * 1.2,
+              maxY: maxVal * 1.25,
               minY: 0,
               barTouchData: BarTouchData(
                 touchTooltipData: BarTouchTooltipData(
                   tooltipPadding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  tooltipMargin: 4,
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  tooltipMargin: 8,
+                  tooltipRoundedRadius: 8,
+                  getTooltipColor: (_) => const Color(0xF02C3E50),
                   getTooltipItem: (group, gI, rod, rI) {
+                    final labels = [
+                      'إجمالي الإيرادات',
+                      'إجمالي المصروفات',
+                      'تحصيل الشهر',
+                      'صرف الشهر'
+                    ];
+                    final idx = group.x;
                     return BarTooltipItem(
-                      _fmtShort(rod.toY),
+                      '${idx < labels.length ? labels[idx] : ''}\n${_fmt(rod.toY)}',
                       GoogleFonts.cairo(
-                          fontSize: context.accR.caption,
+                          fontSize: 10,
                           color: Colors.white,
                           fontWeight: FontWeight.bold),
                     );
@@ -790,31 +813,45 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 ),
               ),
               titlesData: FlTitlesData(
-                leftTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 42,
+                    getTitlesWidget: (val, meta) {
+                      if (val == 0) return const SizedBox();
+                      return Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 4),
+                        child: Text(_fmtShort(val),
+                            style: GoogleFonts.cairo(
+                                fontSize: 8,
+                                color: AccountingTheme.textMuted)),
+                      );
+                    },
+                    interval: maxVal > 0 ? maxVal / 3 : 1,
+                  ),
+                ),
+                rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false)),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
                     getTitlesWidget: (val, meta) {
-                      final labels = [
-                        'إيرادات\nإجمالي',
-                        'مصروفات\nإجمالي',
-                        'تحصيل\nالشهر',
-                        'صرف\nالشهر'
-                      ];
+                      final labels = ['إيرادات', 'مصروفات', 'تحصيل', 'صرف'];
                       final idx = val.toInt();
                       if (idx < 0 || idx >= labels.length)
                         return const SizedBox();
-                      return Text(labels[idx],
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.cairo(
-                              fontSize: 7, color: _textMuted));
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(labels[idx],
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.cairo(
+                                fontSize: 9,
+                                color: AccountingTheme.textSecondary)),
+                      );
                     },
-                    reservedSize: 28,
+                    reservedSize: 22,
                   ),
                 ),
               ),
@@ -822,38 +859,106 @@ class _StatisticsPageState extends State<StatisticsPage> {
               gridData: FlGridData(
                 show: true,
                 drawVerticalLine: false,
-                horizontalInterval: maxVal > 0 ? maxVal / 4 : 1,
-                getDrawingHorizontalLine: (v) =>
-                    FlLine(color: const Color(0x15000000), strokeWidth: 1),
+                horizontalInterval: maxVal > 0 ? maxVal / 3 : 1,
+                getDrawingHorizontalLine: (v) => FlLine(
+                    color: const Color(0x18000000),
+                    strokeWidth: 0.8,
+                    dashArray: [4, 3]),
               ),
               barGroups: [
-                _bar(0, totalRevenue.abs(), _clrGreen),
-                _bar(1, totalExpenses.abs(), _clrRed),
-                _bar(2, monthCollections.abs(), _clrBlue),
-                _bar(3, monthExpenses.abs(), _clrOrange),
+                _styledBar(0, totalRevenue.abs(), AccountingTheme.success),
+                _styledBar(1, totalExpenses.abs(), AccountingTheme.danger),
+                _styledBar(2, monthCollections.abs(), AccountingTheme.neonBlue),
+                _styledBar(3, monthExpenses.abs(), AccountingTheme.neonOrange),
               ],
             ),
+          ),
+        ),
+        // Summary under chart
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: AccountingTheme.bgSecondary,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _summaryChip('صافي إجمالي',
+                  totalRevenue.abs() - totalExpenses.abs(), null),
+              Container(width: 1, height: 16, color: AccountingTheme.borderColor),
+              _summaryChip('صافي الشهر',
+                  monthCollections.abs() - monthExpenses.abs(), null),
+            ],
           ),
         ),
       ],
     );
   }
 
-  BarChartGroupData _bar(int x, double val, Color color) {
+  Widget _summaryChip(String label, double value, Color? overrideColor) {
+    final color = overrideColor ??
+        (value >= 0 ? AccountingTheme.success : AccountingTheme.danger);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(value >= 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+            size: 12, color: color),
+        const SizedBox(width: 3),
+        Text(label,
+            style: GoogleFonts.cairo(
+                fontSize: 9, color: AccountingTheme.textMuted)),
+        const SizedBox(width: 4),
+        Text(_fmtShort(value.abs()),
+            style: GoogleFonts.cairo(
+                fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+      ],
+    );
+  }
+
+  Widget _chartLegendDot(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration:
+              BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+        ),
+        const SizedBox(width: 3),
+        Text(label,
+            style:
+                GoogleFonts.cairo(fontSize: 8, color: AccountingTheme.textMuted)),
+      ],
+    );
+  }
+
+  BarChartGroupData _styledBar(int x, double val, Color color) {
     return BarChartGroupData(
       x: x,
       barRods: [
         BarChartRodData(
           toY: val,
-          color: color,
-          width: 18,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [color.withOpacity(0.85), color],
+          ),
+          width: 22,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+          backDrawRodData: BackgroundBarChartRodData(
+            show: true,
+            color: color.withOpacity(0.04),
+          ),
         ),
       ],
+      showingTooltipIndicators: [],
     );
   }
 
-  // ══════════════════════ CHART 3: MONTHLY STATS (BAR) ══════════════════════
+  // ══════════════════════ CHART 3: MONTHLY STATS ══════════════════════
 
   Widget _buildMonthlyChart(
     Map<String, dynamic> collections,
@@ -865,102 +970,143 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final e = _num(expenses['MonthlyTotal']);
     final s = _num(salaries['MonthlyTotal']);
     final n = _num(data['NetMonthly']);
-    final maxVal =
-        [c, e, s, n].fold<double>(0, (a, b) => b.abs() > a ? b.abs() : a);
+    final cCount = collections['MonthlyCount'] ?? 0;
+    final eCount = expenses['MonthlyCount'] ?? 0;
+    final sCount = salaries['MonthlyCount'] ?? 0;
+
+    final items = [
+      _MonthlyItem('تحصيلات', c, cCount, const Color(0xFF1ABC9C),
+          Icons.arrow_downward_rounded),
+      _MonthlyItem('مصروفات', e, eCount, AccountingTheme.neonOrange,
+          Icons.arrow_upward_rounded),
+      _MonthlyItem('رواتب', s, sCount, AccountingTheme.neonPink,
+          Icons.people_rounded),
+    ];
+
+    final maxVal = [c, e, s].fold<double>(0, (a, b) => b.abs() > a ? b.abs() : a);
 
     return Column(
       children: [
-        Expanded(
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: maxVal * 1.2,
-              minY: 0,
-              barTouchData: BarTouchData(
-                touchTooltipData: BarTouchTooltipData(
-                  tooltipPadding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  tooltipMargin: 4,
-                  getTooltipItem: (group, gI, rod, rI) {
-                    return BarTooltipItem(
-                      _fmtShort(rod.toY),
-                      GoogleFonts.cairo(
-                          fontSize: context.accR.caption,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold),
-                    );
-                  },
-                ),
-              ),
-              titlesData: FlTitlesData(
-                leftTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles:
-                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (val, meta) {
-                      final labels = ['تحصيلات', 'مصروفات', 'رواتب', 'صافي'];
-                      final idx = val.toInt();
-                      if (idx < 0 || idx >= labels.length)
-                        return const SizedBox();
-                      return Text(labels[idx],
-                          style: GoogleFonts.cairo(
-                              fontSize: 8, color: _textMuted));
-                    },
-                    reservedSize: 20,
-                  ),
-                ),
-              ),
-              borderData: FlBorderData(show: false),
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: maxVal > 0 ? maxVal / 4 : 1,
-                getDrawingHorizontalLine: (v) =>
-                    FlLine(color: const Color(0x15000000), strokeWidth: 1),
-              ),
-              barGroups: [
-                _bar(0, c.abs(), _clrTeal),
-                _bar(1, e.abs(), _clrOrange),
-                _bar(2, s.abs(), _clrPink),
-                _bar(3, n.abs(), n >= 0 ? _clrGreen : _clrRed),
-              ],
+        // Net income banner
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: (n >= 0 ? AccountingTheme.success : AccountingTheme.danger)
+                .withOpacity(0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: (n >= 0 ? AccountingTheme.success : AccountingTheme.danger)
+                  .withOpacity(0.15),
             ),
           ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                  n >= 0
+                      ? Icons.trending_up_rounded
+                      : Icons.trending_down_rounded,
+                  size: 16,
+                  color: n >= 0
+                      ? AccountingTheme.success
+                      : AccountingTheme.danger),
+              const SizedBox(width: 6),
+              Text('صافي الشهر',
+                  style: GoogleFonts.cairo(
+                      fontSize: 10, color: AccountingTheme.textSecondary)),
+              const SizedBox(width: 8),
+              Text(_fmt(n),
+                  style: GoogleFonts.cairo(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: n >= 0
+                          ? AccountingTheme.success
+                          : AccountingTheme.danger)),
+            ],
+          ),
         ),
-        SizedBox(height: context.accR.spaceXS),
-        // عدادات تحت المخطط
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _countBadge('${collections['MonthlyCount'] ?? 0}', _clrTeal),
-            _countBadge('${expenses['MonthlyCount'] ?? 0}', _clrOrange),
-            _countBadge('${salaries['MonthlyCount'] ?? 0}', _clrPink),
-            const SizedBox(width: 18),
-          ],
+        // Monthly items as detailed rows with inline bar
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: items.map((item) {
+              final pct = maxVal > 0
+                  ? (item.value.abs() / maxVal).clamp(0.0, 1.0)
+                  : 0.0;
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: item.color.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Label + value + count
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: item.color.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Icon(item.icon,
+                              size: 12, color: item.color),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(item.label,
+                            style: GoogleFonts.cairo(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AccountingTheme.textSecondary)),
+                        const Spacer(),
+                        Text(_fmtShort(item.value.abs()),
+                            style: GoogleFonts.cairo(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AccountingTheme.textPrimary)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: item.color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text('${item.count}',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  color: item.color)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    // Progress bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: pct,
+                        minHeight: 5,
+                        backgroundColor: item.color.withOpacity(0.08),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(item.color),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ],
     );
   }
 
-  Widget _countBadge(String count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(count,
-          style: GoogleFonts.cairo(
-              fontSize: 8, fontWeight: FontWeight.bold, color: color)),
-    );
-  }
-
-  // ══════════════════════ CHART 4: PENDING (HORIZONTAL BAR) ══════════════════════
+  // ══════════════════════ CHART 4: PENDING ══════════════════════
 
   Widget _buildPendingChart(
     Map<String, dynamic> collections,
@@ -970,12 +1116,19 @@ class _StatisticsPageState extends State<StatisticsPage> {
   ) {
     final items = [
       _HBarItem('تحصيلات غير مسلمة', _num(collections['PendingDelivery']),
-          _clrPurple),
-      _HBarItem('رواتب غير مصروفة', _num(salaries['UnpaidTotal']), _clrRed),
-      _HBarItem(agentNet < 0 ? 'وكلاء (مدينون)' : 'وكلاء (دائنون)',
-          agentNet.toDouble().abs(), agentNet < 0 ? _clrRed : _clrGreen),
-      _HBarItem(techNet < 0 ? 'فنيين (مدينون)' : 'فنيين (دائنون)',
-          techNet.toDouble().abs(), techNet < 0 ? _clrPurple : _clrGreen),
+          AccountingTheme.neonPurple, Icons.local_shipping_rounded),
+      _HBarItem('رواتب غير مصروفة', _num(salaries['UnpaidTotal']),
+          AccountingTheme.danger, Icons.payments_rounded),
+      _HBarItem(
+          agentNet < 0 ? 'وكلاء (مدينون)' : 'وكلاء (دائنون)',
+          agentNet.toDouble().abs(),
+          agentNet < 0 ? AccountingTheme.danger : AccountingTheme.success,
+          Icons.support_agent_rounded),
+      _HBarItem(
+          techNet < 0 ? 'فنيين (مدينون)' : 'فنيين (دائنون)',
+          techNet.toDouble().abs(),
+          techNet < 0 ? AccountingTheme.neonPurple : AccountingTheme.success,
+          Icons.engineering_rounded),
     ];
 
     final maxVal = items.fold<double>(0, (a, b) => b.value > a ? b.value : a);
@@ -988,56 +1141,57 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Widget _hBar(_HBarItem item, double maxVal) {
     final pct = maxVal > 0 ? (item.value / maxVal).clamp(0.0, 1.0) : 0.0;
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 1),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: item.color.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
         children: [
-          SizedBox(
-            width: 85,
-            child: Text(item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
-                    fontSize: context.accR.caption, color: _textMuted)),
-          ),
-          SizedBox(width: context.accR.spaceXS),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (ctx, constraints) {
-                return Stack(
-                  children: [
-                    Container(
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: item.color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 600),
-                      height: 14,
-                      width: constraints.maxWidth * pct,
-                      decoration: BoxDecoration(
-                        color: item.color.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ],
-                );
-              },
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: item.color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
             ),
+            child: Icon(item.icon, size: 14, color: item.color),
           ),
-          SizedBox(width: context.accR.spaceXS),
-          SizedBox(
-            width: 65,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: AlignmentDirectional.centerEnd,
-              child: Text(_fmtShort(item.value),
-                  style: GoogleFonts.cairo(
-                      fontSize: context.accR.caption,
-                      fontWeight: FontWeight.bold,
-                      color: _textDark)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.cairo(
+                              fontSize: 10,
+                              color: AccountingTheme.textSecondary)),
+                    ),
+                    Text(_fmtShort(item.value),
+                        style: GoogleFonts.cairo(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AccountingTheme.textPrimary)),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: pct,
+                    minHeight: 6,
+                    backgroundColor: item.color.withOpacity(0.08),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        item.color.withOpacity(0.75)),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1053,75 +1207,118 @@ class _StatisticsPageState extends State<StatisticsPage> {
     Map<String, dynamic> salaries,
     Map<String, dynamic> journal,
   ) {
+    final totalCollected = _num(collections['TotalCollected']);
+    final totalExpenses = _num(expenses['TotalExpenses']);
+    final totalSalaries = _num(salaries['TotalSalaries']);
+    final grandTotal = totalCollected.abs() + totalExpenses.abs() + totalSalaries.abs();
+
     final items = [
       _TotalItem(
           'إجمالي التحصيلات',
-          _num(collections['TotalCollected']),
+          totalCollected,
           '${collections['TotalCount'] ?? 0}',
-          _clrGreen,
-          Icons.monetization_on),
-      _TotalItem('إجمالي المصروفات', _num(expenses['TotalExpenses']),
-          '${expenses['TotalCount'] ?? 0}', _clrRed, Icons.receipt),
-      _TotalItem('إجمالي الرواتب', _num(salaries['TotalSalaries']),
-          '${salaries['TotalCount'] ?? 0}', _clrPink, Icons.payments),
-      _TotalItem('عدد القيود', _num(journal['TotalCount']),
-          'شهري: ${journal['MonthlyCount'] ?? 0}', _clrIndigo, Icons.menu_book),
+          AccountingTheme.success,
+          Icons.monetization_on_rounded),
+      _TotalItem(
+          'إجمالي المصروفات',
+          totalExpenses,
+          '${expenses['TotalCount'] ?? 0}',
+          AccountingTheme.danger,
+          Icons.receipt_long_rounded),
+      _TotalItem(
+          'إجمالي الرواتب',
+          totalSalaries,
+          '${salaries['TotalCount'] ?? 0}',
+          AccountingTheme.neonPink,
+          Icons.payments_rounded),
+      _TotalItem(
+          'القيود المحاسبية',
+          _num(journal['TotalCount']),
+          'شهري: ${journal['MonthlyCount'] ?? 0}',
+          const Color(0xFF5C6BC0),
+          Icons.menu_book_rounded),
     ];
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: items.map((item) {
-        return Row(
-          children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: item.color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(5),
+        // For the first 3 items, compute percentage of grand total
+        final showPct = item.label != 'القيود المحاسبية' && grandTotal > 0;
+        final pct = showPct ? (item.value.abs() / grandTotal * 100) : 0.0;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: item.color.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              // Mini circular indicator
+              SizedBox(
+                width: 32,
+                height: 32,
+                child: CustomPaint(
+                  painter: _MiniRingPainter(
+                    progress: showPct ? pct / 100 : 0,
+                    color: item.color,
+                    bgColor: item.color.withOpacity(0.12),
+                  ),
+                  child: Center(
+                    child: Icon(item.icon,
+                        color: item.color, size: 13),
+                  ),
+                ),
               ),
-              child:
-                  Icon(item.icon, color: item.color, size: context.accR.iconXS),
-            ),
-            SizedBox(width: context.accR.spaceXS),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.label,
-                      style: GoogleFonts.cairo(
-                          fontSize: context.accR.caption, color: _textMuted),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      item.label == 'عدد القيود'
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.label,
+                        style: GoogleFonts.cairo(
+                            fontSize: 10,
+                            color: AccountingTheme.textMuted),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    Text(
+                      item.label == 'القيود المحاسبية'
                           ? item.value.toStringAsFixed(0)
                           : _fmtShort(item.value),
                       style: GoogleFonts.cairo(
-                          fontSize: context.accR.small,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: _textDark),
+                          color: AccountingTheme.textPrimary),
                     ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (showPct)
+                    Text('${pct.toStringAsFixed(0)}%',
+                        style: GoogleFonts.cairo(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: item.color)),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: item.color.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(item.count,
+                        style: GoogleFonts.cairo(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: item.color)),
                   ),
                 ],
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: item.color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(item.count,
-                  style: GoogleFonts.cairo(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: item.color)),
-            ),
-          ],
+            ],
+          ),
         );
       }).toList(),
     );
@@ -1141,44 +1338,119 @@ class _StatisticsPageState extends State<StatisticsPage> {
     }
     if (boxes.isEmpty) {
       return Center(
-          child: Text('لا توجد صناديق',
+          child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.inventory_2_outlined,
+              color: AccountingTheme.textMuted.withOpacity(0.4), size: 32),
+          const SizedBox(height: 6),
+          Text('لا توجد صناديق',
               style: GoogleFonts.cairo(
-                  color: _textMuted, fontSize: context.accR.caption)));
+                  color: AccountingTheme.textMuted,
+                  fontSize: context.accR.caption)),
+        ],
+      ));
     }
 
-    return ListView.separated(
-      padding: EdgeInsets.zero,
-      itemCount: boxes.length,
-      separatorBuilder: (_, __) =>
-          Divider(height: 1, color: Colors.white.withOpacity(0.08)),
-      itemBuilder: (_, i) {
-        final b = boxes[i];
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 3),
+    final totalBalance = boxes.fold<double>(0, (a, b) => a + b.balance);
+
+    return Column(
+      children: [
+        // Total row
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          margin: const EdgeInsets.only(bottom: 6),
+          decoration: BoxDecoration(
+            color: AccountingTheme.bgSecondary,
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Row(
             children: [
-              Icon(Icons.inventory_2_outlined,
-                  color: _clrTeal, size: context.accR.iconXS),
-              SizedBox(width: context.accR.spaceXS),
-              Expanded(
-                child: Text(b.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
-                        fontSize: context.accR.caption, color: _textDark)),
-              ),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(_fmtShort(b.balance),
-                    style: GoogleFonts.cairo(
-                        fontSize: context.accR.caption,
-                        fontWeight: FontWeight.bold,
-                        color: b.balance >= 0 ? _clrGreen : _clrRed)),
-              ),
+              Icon(Icons.account_balance_rounded,
+                  size: 14, color: AccountingTheme.textSecondary),
+              const SizedBox(width: 6),
+              Text('إجمالي الصناديق',
+                  style: GoogleFonts.cairo(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AccountingTheme.textSecondary)),
+              const Spacer(),
+              Text(_fmtShort(totalBalance),
+                  style: GoogleFonts.cairo(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: totalBalance >= 0
+                          ? AccountingTheme.success
+                          : AccountingTheme.danger)),
             ],
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: EdgeInsets.zero,
+            itemCount: boxes.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 4),
+            itemBuilder: (_, i) {
+              final b = boxes[i];
+              final maxBal = boxes
+                  .fold<double>(0, (a, x) => x.balance.abs() > a ? x.balance.abs() : a);
+              final pct = maxBal > 0
+                  ? (b.balance.abs() / maxBal).clamp(0.0, 1.0)
+                  : 0.0;
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: (b.balance >= 0
+                          ? AccountingTheme.success
+                          : AccountingTheme.danger)
+                      .withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.inventory_2_outlined,
+                            color: AccountingTheme.neonBlue, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(b.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.cairo(
+                                  fontSize: 10,
+                                  color: AccountingTheme.textPrimary)),
+                        ),
+                        Text(_fmtShort(b.balance),
+                            style: GoogleFonts.cairo(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: b.balance >= 0
+                                    ? AccountingTheme.success
+                                    : AccountingTheme.danger)),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: pct,
+                        minHeight: 3,
+                        backgroundColor: AccountingTheme.borderColor,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            b.balance >= 0
+                                ? AccountingTheme.success
+                                : AccountingTheme.danger),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1190,9 +1462,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return double.tryParse(value.toString()) ?? 0;
   }
 
-  bool _isPositive(dynamic value) {
-    return _num(value) >= 0;
-  }
+  bool _isPositive(dynamic value) => _num(value) >= 0;
 
   String _fmt(dynamic value) {
     final n = _num(value);
@@ -1218,134 +1488,54 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }
 }
 
-// ══════════════════════ ANIMATED BACKGROUND ══════════════════════
+// ══════════════════════ MINI RING PAINTER ══════════════════════
 
-/// جسيمة عائمة في الخلفية
-class _Particle {
-  double x, y, radius, speed, opacity;
-  Color color;
-  double angle;
-
-  _Particle({
-    required this.x,
-    required this.y,
-    required this.radius,
-    required this.speed,
-    required this.opacity,
-    required this.color,
-    required this.angle,
-  });
-
-  factory _Particle.random(Random rng) {
-    const colors = [
-      Color(0xFF3498DB),
-      Color(0xFF1ABC9C),
-      Color(0xFF9B59B6),
-      Color(0xFF2ECC71),
-      Color(0xFFE67E22),
-      Color(0xFF5C6BC0),
-      Color(0xFF00BCD4),
-    ];
-    return _Particle(
-      x: rng.nextDouble(),
-      y: rng.nextDouble(),
-      radius: rng.nextDouble() * 40 + 10,
-      speed: rng.nextDouble() * 0.0003 + 0.0001,
-      opacity: rng.nextDouble() * 0.08 + 0.03,
-      color: colors[rng.nextInt(colors.length)],
-      angle: rng.nextDouble() * 2 * pi,
-    );
-  }
-}
-
-/// رسام الخلفية المتحركة
-class _AnimatedBgPainter extends CustomPainter {
+class _MiniRingPainter extends CustomPainter {
   final double progress;
-  final List<_Particle> particles;
-  final double particleProgress;
+  final Color color;
+  final Color bgColor;
 
-  _AnimatedBgPainter({
+  _MiniRingPainter({
     required this.progress,
-    required this.particles,
-    required this.particleProgress,
+    required this.color,
+    required this.bgColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // === التدرج الرئيسي المتحرك ===
-    final angle = progress * 2 * pi;
-    final shiftX = cos(angle) * 0.15;
-    final shiftY = sin(angle * 0.7) * 0.1;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 2;
+    const strokeWidth = 3.0;
 
-    final gradient = LinearGradient(
-      begin: Alignment(-0.8 + shiftX, -1.0 + shiftY),
-      end: Alignment(0.8 - shiftX, 1.0 - shiftY),
-      colors: const [
-        Color(0xFF0F1923), // أزرق داكن جداً
-        Color(0xFF162A3A), // أزرق ليلي
-        Color(0xFF1A2940), // أزرق غامق
-        Color(0xFF0F2027), // أخضر مائي داكن
-      ],
-      stops: const [0.0, 0.35, 0.7, 1.0],
+    // Background ring
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = bgColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth,
     );
 
-    final bgPaint = Paint()
-      ..shader =
-          gradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    // === موجات خفيفة ===
-    _drawWave(canvas, size, progress, 0.4, const Color(0x08FFFFFF));
-    _drawWave(canvas, size, progress * 1.3 + 0.5, 0.6, const Color(0x06FFFFFF));
-
-    // === الجسيمات العائمة (فقاعات) ===
-    for (final p in particles) {
-      final t = (progress * 360 * p.speed + p.angle) % (2 * pi);
-      final px = (p.x + sin(t) * 0.04) * size.width;
-      final py = (p.y + cos(t * 0.8) * 0.03) * size.height;
-
-      final particlePaint = Paint()
-        ..color = p.color.withOpacity(p.opacity)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, p.radius * 0.6);
-      canvas.drawCircle(Offset(px, py), p.radius, particlePaint);
+    // Progress arc
+    if (progress > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round,
+      );
     }
-
-    // === وهج خفيف في الزاوية ===
-    final glowX = size.width * (0.8 + cos(angle * 0.5) * 0.1);
-    final glowY = size.height * (0.2 + sin(angle * 0.3) * 0.1);
-    final glowPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0x0C3498DB),
-          const Color(0x003498DB),
-        ],
-      ).createShader(
-          Rect.fromCircle(center: Offset(glowX, glowY), radius: 250));
-    canvas.drawCircle(Offset(glowX, glowY), 250, glowPaint);
-  }
-
-  void _drawWave(Canvas canvas, Size size, double t, double yPos, Color color) {
-    final path = Path();
-    path.moveTo(0, size.height);
-    for (double x = 0; x <= size.width; x += 4) {
-      final nx = x / size.width;
-      final y = size.height * yPos +
-          sin((nx * 4 * pi) + (t * 2 * pi)) * 15 +
-          cos((nx * 2 * pi) + (t * 3 * pi)) * 8;
-      if (x == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.lineTo(size.width, size.height);
-    path.lineTo(0, size.height);
-    path.close();
-    canvas.drawPath(path, Paint()..color = color);
   }
 
   @override
-  bool shouldRepaint(covariant _AnimatedBgPainter old) => false;
+  bool shouldRepaint(covariant _MiniRingPainter old) =>
+      old.progress != progress || old.color != color;
 }
 
 // ══════════════════════ DATA MODELS ══════════════════════
@@ -1361,7 +1551,17 @@ class _HBarItem {
   final String label;
   final double value;
   final Color color;
-  _HBarItem(this.label, this.value, this.color);
+  final IconData icon;
+  _HBarItem(this.label, this.value, this.color, this.icon);
+}
+
+class _MonthlyItem {
+  final String label;
+  final double value;
+  final dynamic count;
+  final Color color;
+  final IconData icon;
+  _MonthlyItem(this.label, this.value, this.count, this.color, this.icon);
 }
 
 class _TotalItem {
