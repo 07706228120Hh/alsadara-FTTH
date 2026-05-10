@@ -517,6 +517,7 @@ class _InvoicesPageState extends State<InvoicesPage>
                 _headerCell('المتبقي'),
                 _headerCell('نوع الدفع'),
                 _headerCell('الحالة'),
+                _headerCell('إجراءات'),
               ],
             ),
             // Data rows
@@ -613,8 +614,99 @@ class _InvoicesPageState extends State<InvoicesPage>
           child: _statusChip(status),
           onTap: () => _navigateToDetails(id),
         ),
+        // أزرار الإجراءات
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: _buildInvoiceActions(id, status, isSales),
+          ),
+        ),
       ],
     );
+  }
+
+  List<Widget> _buildInvoiceActions(String id, String? status, bool isSales) {
+    final actions = <Widget>[];
+
+    // تعديل — فقط للمسودة
+    if (status == 'Draft') {
+      actions.add(_invoiceActionBtn(Icons.edit_outlined, 'تعديل', Colors.blue.shade800, () {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => InvoiceFormPage(companyId: widget.companyId, invoiceType: isSales ? 'Sales' : 'Purchase'),
+        )).then((_) { _loadSales(); _loadPurchases(); });
+      }));
+    }
+
+    // تأكيد — فقط للمسودة
+    if (status == 'Draft') {
+      actions.add(_invoiceActionBtn(Icons.check_circle_outline, 'تأكيد', Colors.green.shade800, () => _confirmInvoice(id)));
+    }
+
+    // إلغاء — فقط للمسودة (الفواتير المؤكدة تحتاج مرتجع)
+    if (status == 'Draft') {
+      actions.add(_invoiceActionBtn(Icons.cancel_outlined, 'إلغاء', Colors.red.shade800, () => _cancelInvoice(id)));
+    }
+
+    // عرض التفاصيل — دائماً
+    actions.add(_invoiceActionBtn(Icons.visibility_outlined, 'عرض', Colors.grey.shade700, () => _navigateToDetails(id)));
+
+    return actions;
+  }
+
+  Widget _invoiceActionBtn(IconData icon, String tooltip, Color color, VoidCallback onTap) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: Padding(padding: const EdgeInsets.all(4), child: Icon(icon, size: 20, color: color)),
+      ),
+    );
+  }
+
+  Future<void> _confirmInvoice(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تأكيد الفاتورة'),
+        content: const Text('هل تريد تأكيد هذه الفاتورة؟ سيتم خصم/إضافة المخزون تلقائياً.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.confirmInvoice(id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تأكيد الفاتورة بنجاح'), backgroundColor: Colors.green));
+      _loadSales(); _loadPurchases();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل التأكيد: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _cancelInvoice(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إلغاء الفاتورة'),
+        content: const Text('هل تريد إلغاء هذه الفاتورة؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء الفاتورة')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.cancelInvoice(id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء الفاتورة'), backgroundColor: Colors.green));
+      _loadSales(); _loadPurchases();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    }
   }
 
   Widget _tappableCell({required Widget child, required VoidCallback onTap}) {

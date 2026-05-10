@@ -74,6 +74,31 @@ class _VouchersPageState extends State<VouchersPage>
     }
   }
 
+  Future<void> _deleteVoucher(String id, String voucherNumber) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد الحذف'),
+          content: Text('هل تريد حذف السند "$voucherNumber"؟\nسيتم عكس الأرصدة تلقائياً.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.deleteVoucher(id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف السند وعكس الأرصدة'), backgroundColor: Colors.green));
+      _loadData();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    }
+  }
+
   String _formatDate(String? raw) {
     if (raw == null || raw.isEmpty) return '-';
     final d = DateTime.tryParse(raw);
@@ -185,18 +210,20 @@ class _VouchersPageState extends State<VouchersPage>
                 _Cell('الاسم', isHeader: true),
                 _Cell('المبلغ', isHeader: true),
                 _Cell('طريقة الدفع', isHeader: true),
+                _Cell('إجراءات', isHeader: true),
               ],
             ),
             ...data.asMap().entries.map((entry) {
               final i = entry.key;
               final m = entry.value;
+              final vId = (m['Id'] ?? m['id'] ?? '').toString();
+              final vNum = (m['VoucherNumber'] ?? m['voucherNumber'] ?? '-').toString();
               return TableRow(
                 decoration: BoxDecoration(
                   color: i.isEven ? Colors.white : Colors.grey.shade50,
                 ),
                 children: [
-                  _Cell((m['VoucherNumber'] ?? m['voucherNumber'] ?? '-')
-                      .toString()),
+                  _Cell(vNum),
                   _Cell(_formatDate(
                       (m['Date'] ?? m['date'] ?? '').toString())),
                   _Cell((m['EntityName'] ?? m['entityName'] ?? '-')
@@ -206,6 +233,20 @@ class _VouchersPageState extends State<VouchersPage>
                           (m['PaymentMethod'] ?? m['paymentMethod'] ?? '')
                               .toString()] ??
                       '-'),
+                  Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Tooltip(
+                      message: 'حذف',
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(6),
+                        onTap: () => _deleteVoucher(vId, vNum),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade800),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               );
             }),

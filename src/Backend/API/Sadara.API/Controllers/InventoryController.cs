@@ -1350,15 +1350,80 @@ public class InventoryController : ControllerBase
             if (order == null || order.IsDeleted)
                 return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
 
-            if (order.Status != PurchaseOrderStatus.Draft && order.Status != PurchaseOrderStatus.Approved)
-                return BadRequest(new { success = false, message = "لا يمكن إلغاء أمر شراء تم استلامه" });
+            if (order.Status == PurchaseOrderStatus.Cancelled)
+                return BadRequest(new { success = false, message = "أمر الشراء ملغي مسبقاً" });
 
-            order.Status = PurchaseOrderStatus.Cancelled;
-            order.UpdatedAt = DateTime.UtcNow;
-            _unitOfWork.PurchaseOrders.Update(order);
-            await _unitOfWork.SaveChangesAsync();
+            if (order.Status == PurchaseOrderStatus.Received)
+                return BadRequest(new { success = false, message = "لا يمكن إلغاء أمر شراء مستلم بالكامل — استخدم مرتجع مشتريات" });
 
-            return Ok(new { success = true, message = "تم إلغاء أمر الشراء بنجاح" });
+            // Draft / Approved: إلغاء بسيط بدون عكس مخزون
+            if (order.Status == PurchaseOrderStatus.Draft || order.Status == PurchaseOrderStatus.Approved)
+            {
+                order.Status = PurchaseOrderStatus.Cancelled;
+                order.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.PurchaseOrders.Update(order);
+                await _unitOfWork.SaveChangesAsync();
+                return Ok(new { success = true, message = "تم إلغاء أمر الشراء بنجاح" });
+            }
+
+            // PartiallyReceived: إلغاء مع عكس المخزون المستلم
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var orderItems = (await _unitOfWork.PurchaseOrderItems.FindAsync(
+                    poi => poi.PurchaseOrderId == id)).ToList();
+
+                foreach (var poItem in orderItems)
+                {
+                    if (poItem.ReceivedQuantity <= 0) continue;
+
+                    var stock = await _unitOfWork.WarehouseStocks.FirstOrDefaultAsync(
+                        ws => ws.WarehouseId == order.WarehouseId
+                           && ws.InventoryItemId == poItem.InventoryItemId
+                           && !ws.IsDeleted);
+
+                    if (stock != null)
+                    {
+                        var stockBefore = stock.CurrentQuantity;
+                        stock.CurrentQuantity -= poItem.ReceivedQuantity;
+                        if (stock.CurrentQuantity < 0) stock.CurrentQuantity = 0;
+                        stock.UpdatedAt = DateTime.UtcNow;
+                        _unitOfWork.WarehouseStocks.Update(stock);
+
+                        await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                        {
+                            InventoryItemId = poItem.InventoryItemId,
+                            WarehouseId = order.WarehouseId,
+                            MovementType = StockMovementType.PurchaseReturn,
+                            Quantity = poItem.ReceivedQuantity,
+                            StockBefore = stockBefore,
+                            StockAfter = stock.CurrentQuantity,
+                            UnitCost = stock.AverageCost,
+                            ReferenceType = "PurchaseOrder",
+                            ReferenceId = order.Id.ToString(),
+                            ReferenceNumber = order.OrderNumber,
+                            Description = $"إلغاء أمر شراء - إرجاع مستلم - {order.OrderNumber}",
+                            CreatedById = currentUserId,
+                            CompanyId = order.CompanyId
+                        });
+                    }
+                }
+
+                order.Status = PurchaseOrderStatus.Cancelled;
+                order.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.PurchaseOrders.Update(order);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return Ok(new { success = true, message = "تم إلغاء أمر الشراء وإرجاع المخزون المستلم" });
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
         catch (Exception ex)
         {
@@ -1559,6 +1624,65 @@ public class InventoryController : ControllerBase
     }
 
     /// <summary>
+    /// تعديل أمر بيع (Draft فقط)
+    /// </summary>
+    [HttpPut("sales/{id}")]
+    [RequirePermission("inventory", "edit")]
+    public async Task<IActionResult> UpdateSalesOrder(Guid id, [FromBody] CreateSalesOrderRequest request)
+    {
+        try
+        {
+            var order = await _unitOfWork.SalesOrders.GetByIdAsync(id);
+            if (order == null || order.IsDeleted)
+                return NotFound(new { success = false, message = "أمر البيع غير موجود" });
+
+            if (order.Status != SalesOrderStatus.Draft)
+                return BadRequest(new { success = false, message = "لا يمكن تعديل أمر بيع مؤكد أو ملغي" });
+
+            // حذف البنود القديمة
+            var oldItems = (await _unitOfWork.SalesOrderItems.FindAsync(
+                soi => soi.SalesOrderId == id)).ToList();
+            foreach (var old in oldItems)
+                _unitOfWork.SalesOrderItems.Delete(old);
+
+            // إضافة البنود الجديدة
+            decimal totalAmount = 0;
+            foreach (var itemDto in request.Items)
+            {
+                var lineTotal = itemDto.Quantity * itemDto.UnitPrice;
+                totalAmount += lineTotal;
+
+                await _unitOfWork.SalesOrderItems.AddAsync(new SalesOrderItem
+                {
+                    SalesOrderId = order.Id,
+                    InventoryItemId = itemDto.InventoryItemId,
+                    Quantity = itemDto.Quantity,
+                    UnitPrice = itemDto.UnitPrice,
+                    TotalPrice = lineTotal
+                });
+            }
+
+            order.CustomerName = request.CustomerName ?? order.CustomerName;
+            order.CustomerPhone = request.CustomerPhone ?? order.CustomerPhone;
+            order.WarehouseId = request.WarehouseId;
+            order.PaymentMethod = request.PaymentMethod;
+            order.Notes = request.Notes ?? order.Notes;
+            order.TotalAmount = totalAmount;
+            order.NetAmount = totalAmount;
+            order.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.SalesOrders.Update(order);
+
+            await _unitOfWork.SaveChangesAsync();
+            return Ok(new { success = true, message = "تم تعديل أمر البيع بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تعديل أمر البيع");
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
     /// تأكيد عملية بيع (خصم من المخزون)
     /// </summary>
     [HttpPost("sales/{id}/confirm")]
@@ -1687,11 +1811,11 @@ public class InventoryController : ControllerBase
                             {
                                 InventoryItemId = soItem.InventoryItemId,
                                 WarehouseId = order.WarehouseId,
-                                MovementType = StockMovementType.PurchaseIn,
+                                MovementType = StockMovementType.SalesReturn,
                                 Quantity = soItem.Quantity,
                                 StockBefore = stockBefore,
                                 StockAfter = stock.CurrentQuantity,
-                                UnitCost = soItem.UnitPrice,
+                                UnitCost = stock.AverageCost,
                                 ReferenceType = "SalesOrder",
                                 ReferenceId = order.Id.ToString(),
                                 ReferenceNumber = order.OrderNumber,
@@ -1924,7 +2048,7 @@ public class InventoryController : ControllerBase
     }
 
     /// <summary>
-    /// حذف سند صرف (soft delete)
+    /// حذف سند صرف (soft delete) مع إرجاع المخزون
     /// </summary>
     [HttpDelete("dispensing/{id}")]
     [RequirePermission("inventory", "delete")]
@@ -1936,17 +2060,223 @@ public class InventoryController : ControllerBase
             if (dispensing == null || dispensing.IsDeleted)
                 return NotFound(new { success = false, message = "سند الصرف غير موجود" });
 
-            dispensing.IsDeleted = true;
-            dispensing.DeletedAt = DateTime.UtcNow;
-            _unitOfWork.TechnicianDispensings.Update(dispensing);
-            await _unitOfWork.SaveChangesAsync();
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var dispensingItems = await _unitOfWork.TechnicianDispensingItems.FindAsync(
+                    tdi => tdi.TechnicianDispensingId == id);
 
-            return Ok(new { success = true, message = "تم حذف سند الصرف" });
+                // ── إرجاع الكميات إلى المخزون (عكس عملية الصرف) ──
+                if (dispensing.Status == DispensingStatus.Approved || dispensing.Status == DispensingStatus.PartialReturn)
+                {
+                    foreach (var tdItem in dispensingItems)
+                    {
+                        // الكمية الفعلية المصروفة التي لم تُرجع بعد
+                        var netDispensed = tdItem.Quantity - tdItem.ReturnedQuantity;
+                        if (netDispensed <= 0) continue;
+
+                        var stock = await _unitOfWork.WarehouseStocks.FirstOrDefaultAsync(
+                            ws => ws.WarehouseId == dispensing.WarehouseId
+                               && ws.InventoryItemId == tdItem.InventoryItemId
+                               && !ws.IsDeleted);
+
+                        if (stock != null)
+                        {
+                            var stockBefore = stock.CurrentQuantity;
+                            stock.CurrentQuantity += netDispensed;
+                            stock.LastStockInDate = DateTime.UtcNow;
+                            stock.UpdatedAt = DateTime.UtcNow;
+                            _unitOfWork.WarehouseStocks.Update(stock);
+
+                            // حركة مخزنية عكسية
+                            await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                            {
+                                InventoryItemId = tdItem.InventoryItemId,
+                                WarehouseId = dispensing.WarehouseId,
+                                MovementType = StockMovementType.TechnicianReturn,
+                                Quantity = netDispensed,
+                                StockBefore = stockBefore,
+                                StockAfter = stock.CurrentQuantity,
+                                UnitCost = stock.AverageCost,
+                                ReferenceType = "TechnicianDispensing",
+                                ReferenceId = dispensing.Id.ToString(),
+                                ReferenceNumber = dispensing.VoucherNumber,
+                                Description = $"حذف سند صرف - إرجاع تلقائي - {dispensing.VoucherNumber}",
+                                CreatedById = currentUserId,
+                                CompanyId = dispensing.CompanyId
+                            });
+                        }
+                    }
+                }
+
+                dispensing.IsDeleted = true;
+                dispensing.DeletedAt = DateTime.UtcNow;
+                dispensing.Status = DispensingStatus.Cancelled;
+                _unitOfWork.TechnicianDispensings.Update(dispensing);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return Ok(new { success = true, message = "تم حذف سند الصرف وإرجاع المواد للمخزون" });
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في حذف سند صرف");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// تعديل سند صرف — تحديث الفني أو المواد أو الكميات
+    /// </summary>
+    [HttpPut("dispensing/{id}")]
+    [RequirePermission("inventory", "edit")]
+    public async Task<IActionResult> UpdateDispensing(Guid id, [FromBody] UpdateDispensingRequest request)
+    {
+        try
+        {
+            var dispensing = await _unitOfWork.TechnicianDispensings.GetByIdAsync(id);
+            if (dispensing == null || dispensing.IsDeleted)
+                return NotFound(new { success = false, message = "سند الصرف غير موجود" });
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var oldItems = (await _unitOfWork.TechnicianDispensingItems.FindAsync(
+                    tdi => tdi.TechnicianDispensingId == id)).ToList();
+
+                // ── 1. عكس جميع الكميات القديمة (إرجاع للمخزون) ──
+                if (dispensing.Status == DispensingStatus.Approved || dispensing.Status == DispensingStatus.PartialReturn)
+                {
+                    foreach (var oldItem in oldItems)
+                    {
+                        var netDispensed = oldItem.Quantity - oldItem.ReturnedQuantity;
+                        if (netDispensed > 0)
+                        {
+                            var stock = await _unitOfWork.WarehouseStocks.FirstOrDefaultAsync(
+                                ws => ws.WarehouseId == dispensing.WarehouseId
+                                   && ws.InventoryItemId == oldItem.InventoryItemId
+                                   && !ws.IsDeleted);
+
+                            if (stock != null)
+                            {
+                                var stockBefore = stock.CurrentQuantity;
+                                stock.CurrentQuantity += netDispensed;
+                                stock.UpdatedAt = DateTime.UtcNow;
+                                _unitOfWork.WarehouseStocks.Update(stock);
+
+                                await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                                {
+                                    InventoryItemId = oldItem.InventoryItemId,
+                                    WarehouseId = dispensing.WarehouseId,
+                                    MovementType = StockMovementType.TechnicianReturn,
+                                    Quantity = netDispensed,
+                                    StockBefore = stockBefore,
+                                    StockAfter = stock.CurrentQuantity,
+                                    UnitCost = stock.AverageCost,
+                                    ReferenceType = "TechnicianDispensing",
+                                    ReferenceId = dispensing.Id.ToString(),
+                                    ReferenceNumber = dispensing.VoucherNumber,
+                                    Description = $"تعديل سند صرف - إرجاع تلقائي - {dispensing.VoucherNumber}",
+                                    CreatedById = currentUserId,
+                                    CompanyId = dispensing.CompanyId
+                                });
+                            }
+                        }
+                        // حذف بند الصرف القديم (في كل الحالات)
+                        _unitOfWork.TechnicianDispensingItems.Delete(oldItem);
+                    }
+                }
+                else
+                {
+                    // لم يُصرف بعد — نحذف البنود فقط بدون عكس مخزني
+                    foreach (var oldItem in oldItems)
+                    {
+                        _unitOfWork.TechnicianDispensingItems.Delete(oldItem);
+                    }
+                }
+
+                // ── 2. تحديث بيانات السند ──
+                var targetWarehouseId = request.WarehouseId ?? dispensing.WarehouseId;
+                dispensing.TechnicianId = request.TechnicianId ?? dispensing.TechnicianId;
+                dispensing.WarehouseId = targetWarehouseId;
+                dispensing.Notes = request.Notes ?? dispensing.Notes;
+                dispensing.UpdatedAt = DateTime.UtcNow;
+
+                // ── 3. إضافة البنود الجديدة وخصم من المخزون ──
+                foreach (var itemDto in request.Items)
+                {
+                    var newItem = new TechnicianDispensingItem
+                    {
+                        TechnicianDispensingId = dispensing.Id,
+                        InventoryItemId = itemDto.InventoryItemId,
+                        Quantity = itemDto.Quantity,
+                        ReturnedQuantity = 0
+                    };
+                    await _unitOfWork.TechnicianDispensingItems.AddAsync(newItem);
+
+                    // خصم من المخزون
+                    var stock = await _unitOfWork.WarehouseStocks.FirstOrDefaultAsync(
+                        s => s.WarehouseId == targetWarehouseId && s.InventoryItemId == itemDto.InventoryItemId && !s.IsDeleted);
+
+                    if (stock == null || stock.CurrentQuantity < itemDto.Quantity)
+                    {
+                        await _unitOfWork.RollbackTransactionAsync();
+                        var itemName = (await _unitOfWork.InventoryItems.GetByIdAsync(itemDto.InventoryItemId))?.Name ?? "مادة غير معروفة";
+                        return BadRequest(new { success = false, message = $"المخزون غير كافٍ للمادة: {itemName} (المتاح: {stock?.CurrentQuantity ?? 0})" });
+                    }
+
+                    var oldQty = stock.CurrentQuantity;
+                    stock.CurrentQuantity -= itemDto.Quantity;
+                    stock.LastStockOutDate = DateTime.UtcNow;
+                    stock.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.WarehouseStocks.Update(stock);
+
+                    await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                    {
+                        InventoryItemId = itemDto.InventoryItemId,
+                        WarehouseId = targetWarehouseId,
+                        MovementType = StockMovementType.TechnicianDispensing,
+                        Quantity = itemDto.Quantity,
+                        StockBefore = oldQty,
+                        StockAfter = stock.CurrentQuantity,
+                        UnitCost = stock.AverageCost,
+                        ReferenceType = "TechnicianDispensing",
+                        ReferenceId = dispensing.Id.ToString(),
+                        ReferenceNumber = dispensing.VoucherNumber,
+                        Description = $"تعديل سند صرف - {dispensing.VoucherNumber}",
+                        CreatedById = currentUserId,
+                        CompanyId = dispensing.CompanyId
+                    });
+                }
+
+                // إعادة ضبط الحالة
+                dispensing.Status = DispensingStatus.Approved;
+                _unitOfWork.TechnicianDispensings.Update(dispensing);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return Ok(new { success = true, message = "تم تعديل سند الصرف بنجاح" });
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تعديل سند الصرف");
+            return StatusCode(500, new { success = false, message = $"خطأ في تعديل سند الصرف: {ex.Message}" });
         }
     }
 
@@ -3963,6 +4293,7 @@ public class InventoryController : ControllerBase
             if (invoice == null) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
             if (invoice.Status == InvoiceStatus.Cancelled)
                 return BadRequest(new { success = false, message = "الفاتورة ملغاة مسبقاً" });
+
             if (invoice.Status == InvoiceStatus.Draft)
             {
                 invoice.Status = InvoiceStatus.Cancelled;
@@ -3971,14 +4302,89 @@ public class InventoryController : ControllerBase
                 return Ok(new { success = true, message = "تم إلغاء المسودة" });
             }
 
-            // TODO: عكس حركات المخزون + عكس القيد المحاسبي + تحديث الأرصدة
-            // (سيُنفذ لاحقاً عند الحاجة)
-            return BadRequest(new { success = false, message = "إلغاء الفواتير المؤكدة سيُتاح قريباً — استخدم المرتجعات بدلاً من ذلك" });
+            // ── إلغاء فاتورة مؤكدة مع عكس المخزون والأرصدة ──
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                var invoiceItems = await _unitOfWork.InvoiceItems.FindAsync(ii => ii.InvoiceId == id);
+                var isSales = invoice.InvoiceType == InvoiceType.Sales;
+
+                // ── 1. عكس حركات المخزون ──
+                foreach (var item in invoiceItems)
+                {
+                    var stock = await _unitOfWork.WarehouseStocks.FirstOrDefaultAsync(
+                        ws => ws.WarehouseId == invoice.WarehouseId
+                           && ws.InventoryItemId == item.InventoryItemId
+                           && !ws.IsDeleted);
+
+                    if (stock != null)
+                    {
+                        var stockBefore = stock.CurrentQuantity;
+                        if (isSales)
+                        {
+                            // فاتورة بيع: إرجاع الكميات
+                            stock.CurrentQuantity += item.Quantity;
+                        }
+                        else
+                        {
+                            // فاتورة شراء: سحب الكميات
+                            stock.CurrentQuantity -= item.Quantity;
+                            if (stock.CurrentQuantity < 0) stock.CurrentQuantity = 0;
+                        }
+                        stock.UpdatedAt = DateTime.UtcNow;
+                        _unitOfWork.WarehouseStocks.Update(stock);
+
+                        await _unitOfWork.StockMovements.AddAsync(new StockMovement
+                        {
+                            InventoryItemId = item.InventoryItemId,
+                            WarehouseId = invoice.WarehouseId,
+                            MovementType = isSales ? StockMovementType.SalesReturn : StockMovementType.PurchaseReturn,
+                            Quantity = item.Quantity,
+                            StockBefore = stockBefore,
+                            StockAfter = stock.CurrentQuantity,
+                            UnitCost = stock.AverageCost,
+                            ReferenceType = "Invoice",
+                            ReferenceId = invoice.Id.ToString(),
+                            ReferenceNumber = invoice.InvoiceNumber,
+                            Description = $"إلغاء فاتورة - {invoice.InvoiceNumber}",
+                            CreatedById = currentUserId,
+                            CompanyId = invoice.CompanyId
+                        });
+                    }
+                }
+
+                // ── 2. عكس رصيد العميل/المورد ──
+                if (isSales && invoice.CustomerId.HasValue && invoice.PaymentType != InvoicePaymentType.Cash)
+                {
+                    var cust = await _unitOfWork.InventoryCustomers.GetByIdAsync(invoice.CustomerId.Value);
+                    if (cust != null) { cust.TotalSales -= invoice.NetAmount; cust.Balance -= invoice.RemainingAmount; _unitOfWork.InventoryCustomers.Update(cust); }
+                }
+                else if (!isSales && invoice.SupplierId.HasValue && invoice.PaymentType != InvoicePaymentType.Cash)
+                {
+                    var sup = await _unitOfWork.Suppliers.GetByIdAsync(invoice.SupplierId.Value);
+                    if (sup != null) { sup.TotalPurchases -= invoice.NetAmount; sup.Balance -= invoice.RemainingAmount; _unitOfWork.Suppliers.Update(sup); }
+                }
+
+                invoice.Status = InvoiceStatus.Cancelled;
+                invoice.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Invoices.Update(invoice);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return Ok(new { success = true, message = "تم إلغاء الفاتورة وعكس المخزون والأرصدة" });
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في إلغاء الفاتورة");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
         }
     }
 
@@ -4133,6 +4539,84 @@ public class InventoryController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في إنشاء السند");
+            return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// حذف سند قبض/صرف مع عكس الأرصدة والقيد المحاسبي
+    /// </summary>
+    [HttpDelete("vouchers/{id}")]
+    [RequirePermission("inventory", "delete")]
+    public async Task<IActionResult> DeleteVoucher(Guid id)
+    {
+        try
+        {
+            var voucher = await _unitOfWork.PaymentVouchers.GetByIdAsync(id);
+            if (voucher == null || voucher.IsDeleted)
+                return NotFound(new { success = false, message = "السند غير موجود" });
+
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                // ── عكس رصيد العميل/المورد ──
+                if (voucher.VoucherType == VoucherType.Receipt)
+                {
+                    var cust = await _unitOfWork.InventoryCustomers.GetByIdAsync(voucher.EntityId);
+                    if (cust != null) { cust.TotalPayments -= voucher.Amount; cust.Balance += voucher.Amount; _unitOfWork.InventoryCustomers.Update(cust); }
+                }
+                else
+                {
+                    var sup = await _unitOfWork.Suppliers.GetByIdAsync(voucher.EntityId);
+                    if (sup != null) { sup.TotalPayments -= voucher.Amount; sup.Balance += voucher.Amount; _unitOfWork.Suppliers.Update(sup); }
+                }
+
+                // ── عكس الفاتورة المرتبطة ──
+                if (voucher.InvoiceId.HasValue)
+                {
+                    var inv = await _unitOfWork.Invoices.GetByIdAsync(voucher.InvoiceId.Value);
+                    if (inv != null)
+                    {
+                        inv.PaidAmount -= voucher.Amount;
+                        if (inv.PaidAmount < 0) inv.PaidAmount = 0;
+                        inv.RemainingAmount = inv.NetAmount - inv.PaidAmount;
+                        inv.Status = inv.PaidAmount <= 0 ? InvoiceStatus.Confirmed : InvoiceStatus.PartiallyPaid;
+                        _unitOfWork.Invoices.Update(inv);
+                    }
+                }
+
+                // ── عكس الصندوق ──
+                if (voucher.CashBoxId.HasValue)
+                {
+                    var cashBox = await _unitOfWork.CashBoxes.GetByIdAsync(voucher.CashBoxId.Value);
+                    if (cashBox != null)
+                    {
+                        if (voucher.VoucherType == VoucherType.Receipt)
+                            cashBox.CurrentBalance -= voucher.Amount;
+                        else
+                            cashBox.CurrentBalance += voucher.Amount;
+                        _unitOfWork.CashBoxes.Update(cashBox);
+                    }
+                }
+
+                voucher.IsDeleted = true;
+                voucher.DeletedAt = DateTime.UtcNow;
+                _unitOfWork.PaymentVouchers.Update(voucher);
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return Ok(new { success = true, message = "تم حذف السند وعكس الأرصدة" });
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حذف السند");
             return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
         }
     }
@@ -4378,6 +4862,66 @@ public class InventoryController : ControllerBase
             return StatusCode(500, new { success = false, message = $"خطأ: {ex.Message}" });
         }
     }
+
+    /// <summary>
+    /// إلغاء مرتجع (Draft فقط)
+    /// </summary>
+    [HttpPost("returns/{id}/cancel")]
+    [RequirePermission("inventory", "edit")]
+    public async Task<IActionResult> CancelReturn(Guid id)
+    {
+        try
+        {
+            var ret = await _unitOfWork.ReturnOrders.GetByIdAsync(id);
+            if (ret == null || ret.IsDeleted)
+                return NotFound(new { success = false, message = "المرتجع غير موجود" });
+
+            if (ret.Status != ReturnStatus.Draft)
+                return BadRequest(new { success = false, message = "لا يمكن إلغاء مرتجع مؤكد — يمكن فقط إلغاء المسودات" });
+
+            ret.Status = ReturnStatus.Cancelled;
+            ret.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.ReturnOrders.Update(ret);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم إلغاء المرتجع" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إلغاء المرتجع");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// حذف مرتجع (Draft فقط — soft delete)
+    /// </summary>
+    [HttpDelete("returns/{id}")]
+    [RequirePermission("inventory", "delete")]
+    public async Task<IActionResult> DeleteReturn(Guid id)
+    {
+        try
+        {
+            var ret = await _unitOfWork.ReturnOrders.GetByIdAsync(id);
+            if (ret == null || ret.IsDeleted)
+                return NotFound(new { success = false, message = "المرتجع غير موجود" });
+
+            if (ret.Status != ReturnStatus.Draft)
+                return BadRequest(new { success = false, message = "لا يمكن حذف مرتجع مؤكد — يمكن فقط حذف المسودات" });
+
+            ret.IsDeleted = true;
+            ret.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.ReturnOrders.Update(ret);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "تم حذف المرتجع" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حذف المرتجع");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
 }
 
 // ==================== Request DTOs (inline في نفس الملف) ====================
@@ -4554,6 +5098,14 @@ public class DispensingItemDto
 {
     public Guid InventoryItemId { get; set; }
     public int Quantity { get; set; }
+}
+
+public class UpdateDispensingRequest
+{
+    public Guid? TechnicianId { get; set; }
+    public Guid? WarehouseId { get; set; }
+    public string? Notes { get; set; }
+    public List<DispensingItemDto> Items { get; set; } = new();
 }
 
 public class ReturnDispensingRequest

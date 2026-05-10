@@ -271,6 +271,14 @@ class InventoryApiService {
     return await _api.post('/inventory/sales/$id/confirm', body: {});
   }
 
+  /// تعديل أمر بيع
+  Future<Map<String, dynamic>> updateSalesOrder(
+    String id, {
+    required Map<String, dynamic> data,
+  }) async {
+    return await _api.put('/inventory/sales/$id', body: data);
+  }
+
   /// إلغاء أمر بيع
   Future<Map<String, dynamic>> cancelSalesOrder(String id) async {
     return await _api.post('/inventory/sales/$id/cancel', body: {});
@@ -317,6 +325,14 @@ class InventoryApiService {
     required Map<String, dynamic> data,
   }) async {
     return await _api.post('/inventory/dispensing', body: data);
+  }
+
+  /// تعديل عملية صرف
+  Future<Map<String, dynamic>> updateDispensing(
+    String id, {
+    required Map<String, dynamic> data,
+  }) async {
+    return await _api.put('/inventory/dispensing/$id', body: data);
   }
 
   /// اعتماد عملية صرف
@@ -548,6 +564,19 @@ class InventoryApiService {
 
   Future<Map<String, dynamic>> confirmReturn(String id) async =>
       await _api.post('/inventory/returns/$id/confirm', body: {});
+
+  Future<Map<String, dynamic>> cancelReturn(String id) async =>
+      await _api.post('/inventory/returns/$id/cancel', body: {});
+
+  Future<Map<String, dynamic>> deleteReturn(String id) async =>
+      await _api.delete('/inventory/returns/$id');
+
+  // ============================================================
+  //  حذف سند قبض/صرف
+  // ============================================================
+
+  Future<Map<String, dynamic>> deleteVoucher(String id) async =>
+      await _api.delete('/inventory/vouchers/$id');
 
   // ============================================================
   //  حسابات المخزون (Account Mapping)

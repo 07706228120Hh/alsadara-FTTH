@@ -12,7 +12,8 @@ class _DispenseItemEntry {
 
 class DispensingFormPage extends StatefulWidget {
   final String companyId;
-  const DispensingFormPage({super.key, required this.companyId});
+  final String? editDispensingId;
+  const DispensingFormPage({super.key, required this.companyId, this.editDispensingId});
 
   @override
   State<DispensingFormPage> createState() => _DispensingFormPageState();
@@ -47,13 +48,19 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
     super.dispose();
   }
 
+  bool get _isEdit => widget.editDispensingId != null;
+
   Future<void> _loadData() async {
     try {
-      final results = await Future.wait([
+      final futures = <Future>[
         _api.getWarehouses(companyId: widget.companyId),
         _api.getItems(companyId: widget.companyId, pageSize: 500),
         SadaraApiService.instance.get('/servicerequests/task-staff'),
-      ]);
+      ];
+      if (_isEdit) {
+        futures.add(_api.getDispensing(widget.editDispensingId!));
+      }
+      final results = await Future.wait(futures);
       if (!mounted) return;
       setState(() {
         _warehouses = (results[0]['data'] as List? ?? []).map((e) => Warehouse.fromJson(e as Map<String, dynamic>)).toList();
@@ -69,9 +76,30 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
           staffRaw = [];
         }
         _staffList = staffRaw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+        // ── تعبئة البيانات في وضع التعديل ──
+        if (_isEdit && results.length > 3) {
+          final editData = results[3] as Map<String, dynamic>;
+          final dispensing = TechnicianDispensingModel.fromJson(
+              editData['data'] as Map<String, dynamic>? ?? editData);
+          _selectedTechnicianId = dispensing.technicianId;
+          _selectedWarehouseId = dispensing.warehouseId;
+          _notesController.text = dispensing.notes ?? '';
+          // تعبئة المواد
+          if (dispensing.items != null && dispensing.items!.isNotEmpty) {
+            for (final item in dispensing.items!) {
+              final entry = _DispenseItemEntry()
+                ..inventoryItemId = item.inventoryItemId
+                ..itemName = item.itemName;
+              entry.qtyController.text = item.quantity.toString();
+              _items.add(entry);
+            }
+          }
+        }
+
         _loading = false;
       });
-      _addItem();
+      if (!_isEdit) _addItem();
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
@@ -153,23 +181,38 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
     }
     setState(() => _saving = true);
 
-    final data = {
-      'companyId': widget.companyId,
-      'technicianId': _selectedTechnicianId,
-      'warehouseId': _selectedWarehouseId,
-      'type': 0, // صرف
-      'notes': _notesController.text.isEmpty ? null : _notesController.text,
-      'items': validItems.map((e) => {
-        'inventoryItemId': e.inventoryItemId,
-        'quantity': int.tryParse(e.qtyController.text) ?? 0,
-      }).toList(),
-    };
+    final itemsData = validItems.map((e) => {
+      'inventoryItemId': e.inventoryItemId,
+      'quantity': int.tryParse(e.qtyController.text) ?? 0,
+    }).toList();
 
     try {
-      await _api.createDispensing(data: data);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم صرف المواد بنجاح'), backgroundColor: Colors.green));
-        Navigator.pop(context);
+      if (_isEdit) {
+        // تعديل
+        await _api.updateDispensing(widget.editDispensingId!, data: {
+          'technicianId': _selectedTechnicianId,
+          'warehouseId': _selectedWarehouseId,
+          'notes': _notesController.text.isEmpty ? null : _notesController.text,
+          'items': itemsData,
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تعديل سند الصرف بنجاح'), backgroundColor: Colors.green));
+          Navigator.pop(context);
+        }
+      } else {
+        // إنشاء جديد
+        await _api.createDispensing(data: {
+          'companyId': widget.companyId,
+          'technicianId': _selectedTechnicianId,
+          'warehouseId': _selectedWarehouseId,
+          'type': 0, // صرف
+          'notes': _notesController.text.isEmpty ? null : _notesController.text,
+          'items': itemsData,
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم صرف المواد بنجاح'), backgroundColor: Colors.green));
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -184,7 +227,7 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0, title: const Text('صرف مواد')),
+        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0, title: Text(_isEdit ? 'تعديل سند صرف' : 'صرف مواد')),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : Form(
@@ -202,7 +245,7 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
                         onPressed: _saving ? null : _save,
                         child: _saving
                             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text('حفظ', style: TextStyle(fontSize: 16)),
+                            : Text(_isEdit ? 'حفظ التعديلات' : 'حفظ', style: const TextStyle(fontSize: 16)),
                       ),
                     ),
                   ],

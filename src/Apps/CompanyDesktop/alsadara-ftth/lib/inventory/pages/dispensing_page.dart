@@ -182,9 +182,37 @@ class _DispensingPageState extends State<DispensingPage>
   }
 
   List<Widget> _buildActions(TechnicianDispensingModel d) {
-    return [
-      _actionBtn(Icons.delete_outline, 'حذف', Colors.red.shade800, () => _delete(d)),
-    ];
+    final actions = <Widget>[];
+
+    // تعديل — متاح دائماً ما لم يكن مُلغى أو مُرجع بالكامل
+    if (d.status != 'Cancelled' && d.status != 'FullyReturned') {
+      actions.add(_actionBtn(Icons.edit_outlined, 'تعديل', Colors.blue.shade800, () => _edit(d)));
+    }
+
+    // إرجاع مواد — متاح فقط إذا كان مصروف أو مرجع جزئي
+    if (d.status == 'Approved' || d.status == 'PartiallyReturned') {
+      actions.add(_actionBtn(Icons.assignment_return_outlined, 'إرجاع مواد', Colors.orange.shade800, () => _returnItems(d)));
+    }
+
+    // حذف — متاح دائماً ما لم يكن محذوف مسبقاً
+    if (d.status != 'Cancelled') {
+      actions.add(_actionBtn(Icons.delete_outline, 'حذف', Colors.red.shade800, () => _delete(d)));
+    }
+
+    return actions;
+  }
+
+  Future<void> _edit(TechnicianDispensingModel d) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DispensingFormPage(
+          companyId: widget.companyId,
+          editDispensingId: d.id,
+        ),
+      ),
+    );
+    _loadData();
   }
 
   Future<void> _delete(TechnicianDispensingModel d) async {
@@ -575,16 +603,26 @@ class _DispensingPageState extends State<DispensingPage>
             (techData['TechnicianName'] ?? techData['technicianName']) as String? ?? 'فني غير معروف';
         final items = (techData['Items'] ?? techData['items']) as List<dynamic>? ?? [];
 
+        // حساب إجمالي المتبقي لدى الفني
+        int totalRemaining = 0;
+        for (final item in items) {
+          final m = item as Map<String, dynamic>;
+          final qty = (m['Quantity'] ?? m['quantity'] ?? 0) as int;
+          final ret = (m['ReturnedQuantity'] ?? m['returnedQuantity'] ?? 0) as int;
+          totalRemaining += (qty - ret);
+        }
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ExpansionTile(
             leading: CircleAvatar(
-              backgroundColor: Colors.blue.shade100,
-              child: Icon(Icons.person, color: Colors.blue.shade700),
+              backgroundColor: totalRemaining > 0 ? Colors.orange.shade100 : Colors.green.shade100,
+              child: Icon(Icons.person, color: totalRemaining > 0 ? Colors.orange.shade700 : Colors.green.shade700),
             ),
             title: Text(techName,
                 style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${items.length} مادة بحوزته'),
+            subtitle: Text('${items.length} مادة  —  المتبقي بحوزته: $totalRemaining',
+                style: TextStyle(color: totalRemaining > 0 ? Colors.orange.shade800 : Colors.green.shade800)),
             children: [
               Padding(
                 padding:
@@ -595,6 +633,7 @@ class _DispensingPageState extends State<DispensingPage>
                     0: FlexColumnWidth(3),
                     1: FlexColumnWidth(1),
                     2: FlexColumnWidth(1),
+                    3: FlexColumnWidth(1),
                   },
                   children: [
                     TableRow(
@@ -608,35 +647,53 @@ class _DispensingPageState extends State<DispensingPage>
                         ),
                         Padding(
                           padding: EdgeInsets.all(8),
-                          child: Text('الكمية',
+                          child: Text('المصروف',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                         Padding(
                           padding: EdgeInsets.all(8),
-                          child: Text('المُرجع',
+                          child: Text('المستخدم/المُرجع',
                               style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Text('المتبقي',
+                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange)),
                         ),
                       ],
                     ),
                     ...items.map((item) {
                       final m = item as Map<String, dynamic>;
-                      return TableRow(children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child:
-                              Text((m['ItemName'] ?? m['itemName']) as String? ?? '-'),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child:
-                              Text('${m['Quantity'] ?? m['quantity'] ?? 0}'),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Text(
-                              '${m['ReturnedQuantity'] ?? m['returnedQuantity'] ?? 0}'),
-                        ),
-                      ]);
+                      final qty = (m['Quantity'] ?? m['quantity'] ?? 0) as int;
+                      final ret = (m['ReturnedQuantity'] ?? m['returnedQuantity'] ?? 0) as int;
+                      final remaining = qty - ret;
+                      return TableRow(
+                        decoration: remaining > 0 ? BoxDecoration(color: Colors.orange.shade50) : null,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text((m['ItemName'] ?? m['itemName']) as String? ?? '-'),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text('$qty'),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text('$ret'),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              '$remaining',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: remaining > 0 ? Colors.deepOrange : Colors.green.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
                     }),
                   ],
                 ),

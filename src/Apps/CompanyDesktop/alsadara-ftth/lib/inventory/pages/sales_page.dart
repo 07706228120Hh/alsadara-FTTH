@@ -123,22 +123,28 @@ class _SalesPageState extends State<SalesPage> {
 
   List<Widget> _buildActions(SalesOrder order) {
     final actions = <Widget>[];
-    switch (order.status) {
-      case 'Draft':
-        actions.addAll([
-          _actionBtn(Icons.check_circle_outline, 'تأكيد', Colors.green,
-              () => _confirmOrder(order)),
-          _actionBtn(Icons.cancel_outlined, 'إلغاء', Colors.red,
-              () => _cancelOrder(order)),
-        ]);
-        break;
-      case 'Confirmed':
-        actions.add(
-          _actionBtn(Icons.cancel_outlined, 'إلغاء', Colors.red,
-              () => _cancelOrder(order)),
-        );
-        break;
+
+    // تعديل — فقط للمسودة
+    if (order.status == 'Draft') {
+      actions.add(_actionBtn(Icons.edit_outlined, 'تعديل', Colors.blue.shade800, () {
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => SaleFormPage(companyId: widget.companyId),
+        )).then((_) => _loadData());
+      }));
     }
+
+    // تأكيد — فقط للمسودة
+    if (order.status == 'Draft') {
+      actions.add(_actionBtn(Icons.check_circle_outline, 'تأكيد', Colors.green.shade800,
+          () => _confirmOrder(order)));
+    }
+
+    // إلغاء — للمسودة والمؤكد
+    if (order.status == 'Draft' || order.status == 'Confirmed') {
+      actions.add(_actionBtn(Icons.cancel_outlined, 'إلغاء', Colors.red.shade800,
+          () => _cancelOrder(order)));
+    }
+
     return actions;
   }
 

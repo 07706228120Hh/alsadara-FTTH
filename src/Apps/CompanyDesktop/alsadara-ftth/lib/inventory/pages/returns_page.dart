@@ -78,6 +78,102 @@ class _ReturnsPageState extends State<ReturnsPage>
     return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
   }
 
+  List<Widget> _buildReturnActions(String id, String status) {
+    final actions = <Widget>[];
+    if (status == 'Draft') {
+      actions.add(_returnActionBtn(Icons.check_circle_outline, 'تأكيد', Colors.green.shade800, () => _confirmReturn(id)));
+      actions.add(_returnActionBtn(Icons.cancel_outlined, 'إلغاء', Colors.orange.shade800, () => _cancelReturn(id)));
+      actions.add(_returnActionBtn(Icons.delete_outline, 'حذف', Colors.red.shade800, () => _deleteReturn(id)));
+    }
+    return actions;
+  }
+
+  Widget _returnActionBtn(IconData icon, String tooltip, Color color, VoidCallback onTap) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: Padding(padding: const EdgeInsets.all(4), child: Icon(icon, size: 20, color: color)),
+      ),
+    );
+  }
+
+  Future<void> _confirmReturn(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد المرتجع'),
+          content: const Text('هل تريد تأكيد هذا المرتجع؟ سيتم تعديل المخزون تلقائياً.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.confirmReturn(id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تأكيد المرتجع'), backgroundColor: Colors.green));
+      _loadData();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _deleteReturn(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('حذف المرتجع'),
+          content: const Text('هل تريد حذف هذا المرتجع نهائياً؟'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.deleteReturn(id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف المرتجع'), backgroundColor: Colors.green));
+      _loadData();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _cancelReturn(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('إلغاء المرتجع'),
+          content: const Text('هل تريد إلغاء هذا المرتجع؟'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء المرتجع')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.cancelReturn(id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء المرتجع'), backgroundColor: Colors.green));
+      _loadData();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+    }
+  }
+
   Widget _statusChip(String status) {
     Color bg;
     Color fg;
@@ -219,6 +315,7 @@ class _ReturnsPageState extends State<ReturnsPage>
                 _Cell('الفاتورة الأصلية', isHeader: true),
                 _Cell('المبلغ', isHeader: true),
                 _Cell('الحالة', isHeader: true),
+                _Cell('إجراءات', isHeader: true),
               ],
             ),
             ...data.asMap().entries.map((entry) {
@@ -226,6 +323,7 @@ class _ReturnsPageState extends State<ReturnsPage>
               final m = entry.value;
               final status =
                   (m['Status'] ?? m['status'] ?? '').toString();
+              final rId = (m['Id'] ?? m['id'] ?? '').toString();
               return TableRow(
                 decoration: BoxDecoration(
                   color: i.isEven ? Colors.white : Colors.grey.shade50,
@@ -240,6 +338,13 @@ class _ReturnsPageState extends State<ReturnsPage>
                           .toString()),
                   _Cell(fmtN(m['TotalAmount'] ?? m['totalAmount'] ?? m['Amount'] ?? m['amount'])),
                   _CellWidget(child: _statusChip(status)),
+                  Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: _buildReturnActions(rId, status),
+                    ),
+                  ),
                 ],
               );
             }),

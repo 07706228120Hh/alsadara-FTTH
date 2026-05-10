@@ -601,20 +601,9 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     if (_newMaterialRows.isEmpty) return;
     final companyId = VpsAuthService.instance.currentCompanyId ?? '';
     if (companyId.isEmpty) return;
-    // نختار أول مستودع متاح كافتراضي
-    final warehouseId = _availableWarehouses.isNotEmpty
-        ? _availableWarehouses.first['id']?.toString() ?? ''
-        : '';
-    if (warehouseId.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('لا يوجد مستودع متاح'), backgroundColor: Colors.red),
-        );
-      }
-      return;
-    }
 
     final taskGuid = widget.task.guid;
+    final techId = widget.task.technicianId;
     // نحضّر البنود
     final items = _newMaterialRows
         .where((r) => (r['itemId'] ?? '').toString().isNotEmpty && (r['quantity'] ?? 0) > 0)
@@ -626,12 +615,10 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     if (items.isEmpty) return;
 
     try {
-      await InventoryApiService.instance.createDispensing(data: {
-        'technicianId': widget.task.technicianId,
-        'warehouseId': warehouseId,
+      // خصم من عُهدة الفني (وليس من المستودع مباشرة)
+      await InventoryApiService.instance.useFromTechnicianHoldings(data: {
+        'technicianId': techId,
         'serviceRequestId': taskGuid,
-        'type': 0, // Dispensing
-        'notes': 'صرف من المهمة #${widget.task.id}',
         'companyId': companyId,
         'items': items,
       });
@@ -641,7 +628,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       await _loadDispensedMaterials();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إضافة المواد بنجاح'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('تم صرف المواد من عُهدة الفني'), backgroundColor: Colors.green),
         );
       }
     } catch (e) {

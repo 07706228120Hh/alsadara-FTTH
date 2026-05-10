@@ -81,7 +81,6 @@ class _PurchasesPageState extends State<PurchasesPage> {
           _orders = list
               .map((e) =>
                   PurchaseOrder.fromJson(e as Map<String, dynamic>))
-              .where((o) => o.status != 'Cancelled') // إخفاء الملغي
               .toList();
           _totalCount = res['totalCount'] as int? ?? _orders.length;
           _loading = false;
@@ -144,9 +143,34 @@ class _PurchasesPageState extends State<PurchasesPage> {
   }
 
   List<Widget> _buildActions(PurchaseOrder order) {
-    return [
-      _actionBtn(Icons.delete_outline, 'حذف', Colors.red.shade800, () => _deleteOrder(order)),
-    ];
+    final actions = <Widget>[];
+
+    // تعديل — فقط للمسودة والمعتمد
+    if (order.status == 'Draft' || order.status == 'Approved') {
+      actions.add(_actionBtn(Icons.edit_outlined, 'تعديل', Colors.blue.shade800, () => _editOrder(order)));
+    }
+
+    // اعتماد — فقط للمسودة
+    if (order.status == 'Draft') {
+      actions.add(_actionBtn(Icons.check_circle_outline, 'اعتماد', Colors.green.shade800, () => _approveOrder(order)));
+    }
+
+    // استلام — فقط للمعتمد أو استلام جزئي
+    if (order.status == 'Approved' || order.status == 'PartiallyReceived') {
+      actions.add(_actionBtn(Icons.inventory_2_outlined, 'استلام', Colors.teal.shade800, () => _receiveOrder(order)));
+    }
+
+    // إلغاء — للمسودة والمعتمد والاستلام الجزئي
+    if (order.status == 'Draft' || order.status == 'Approved' || order.status == 'PartiallyReceived') {
+      actions.add(_actionBtn(Icons.cancel_outlined, 'إلغاء', Colors.orange.shade800, () => _cancelOrder(order)));
+    }
+
+    // حذف — فقط للمسودة
+    if (order.status == 'Draft') {
+      actions.add(_actionBtn(Icons.delete_outline, 'حذف', Colors.red.shade800, () => _deleteOrder(order)));
+    }
+
+    return actions;
   }
 
   Future<void> _deleteOrder(PurchaseOrder order) async {
