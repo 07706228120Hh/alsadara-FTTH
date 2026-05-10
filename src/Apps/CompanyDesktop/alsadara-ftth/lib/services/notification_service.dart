@@ -1,6 +1,8 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:local_notifier/local_notifier.dart';
@@ -10,6 +12,7 @@ import '../pages/chat/chat_conversation_page.dart';
 import '../widgets/window_close_handler_fixed.dart' show navigatorKey;
 import 'chat_service.dart';
 import 'in_app_notification_service.dart';
+import '../firebase_options.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -37,15 +40,25 @@ class NotificationService {
     showBadge: true,
   );
 
-  /// معالج رسائل الخلفية (يجب أن يكون top-level لكن نبقي التعريف هنا ونمرره في main عند الحاجة)
+  /// معالج رسائل الخلفية — يعمل في isolate منفصل عن التطبيق
   @pragma('vm:entry-point')
   static Future<void> firebaseMessagingBackgroundHandler(
       RemoteMessage message) async {
-    // ملاحظة: Firebase.initializeApp() تم في main
+    // الـ background isolate لا يشارك حالة main — يجب تهيئة Firebase + Local Notifications
     try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (_) {
+      // قد تكون مُهيّأة مسبقاً
+    }
+    try {
+      if (!_localNotificationsReady && !Platform.isWindows) {
+        await _initializeLocalNotifications();
+      }
       await _showRemoteAsLocal(message, fromBackground: true);
     } catch (e) {
-      debugPrint('🔥 خطأ في معالج خلفية FCM');
+      debugPrint('🔥 خطأ في معالج خلفية FCM: $e');
     }
   }
 
@@ -566,4 +579,22 @@ class NotificationService {
 
   /// الحصول على FCM Token الحالي
   static String? get fcmToken => _fcmToken;
+
+  /// طلب استثناء التطبيق من تحسين البطارية (Android فقط)
+  /// بدون هذا، أجهزة مثل Xiaomi/Samsung/Huawei تقتل FCM في الخلفية
+  static Future<void> requestBatteryOptimizationExemption() async {
+    if (!Platform.isAndroid) return;
+    try {
+      const channel = MethodChannel('com.alsadara.ftth_project/battery');
+      final isIgnoring = await channel.invokeMethod<bool>('isIgnoringBatteryOptimizations') ?? false;
+      if (!isIgnoring) {
+        await channel.invokeMethod('requestIgnoreBatteryOptimizations');
+        debugPrint('🔋 تم طلب استثناء تحسين البطارية');
+      } else {
+        debugPrint('🔋 التطبيق مستثنى من تحسين البطارية بالفعل');
+      }
+    } catch (e) {
+      debugPrint('⚠️ خطأ في طلب استثناء البطارية: $e');
+    }
+  }
 }

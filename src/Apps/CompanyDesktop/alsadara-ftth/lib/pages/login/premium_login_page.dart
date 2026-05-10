@@ -16,6 +16,7 @@ import '../../permissions/permissions.dart';
 import '../../widgets/update_dialog.dart';
 import '../../services/dual_auth_service.dart';
 import '../../services/fcm_token_service.dart';
+import '../../services/notification_service.dart';
 import '../../ftth/widgets/floating_toolbar.dart';
 import '../home_page.dart';
 import '../super_admin/super_admin_dashboard.dart';
@@ -436,6 +437,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     _performSilentFtthLogin();
     FcmTokenService.instance.registerToken();
     FcmTokenService.instance.listenForTokenRefresh();
+    NotificationService.requestBatteryOptimizationExemption();
 
     if (_authService.isSuperAdmin) {
       if (!mounted) return;
