@@ -3136,9 +3136,19 @@ public class InternalDataController : ControllerBase
             return null;
         }
 
+        // تاريخ القيد = تاريخ المعاملة (بتوقيت بغداد UTC+3) بدلاً من تاريخ اليوم
+        DateTime? activationEntryDate = null;
+        if (log.ActivationDate.HasValue)
+        {
+            activationEntryDate = DateTime.SpecifyKind(
+                log.ActivationDate.Value.AddHours(3).Date.AddHours(12 - 3),
+                DateTimeKind.Utc);
+        }
+
         await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
             _unitOfWork, companyId, userId, description,
-            JournalReferenceType.FtthSubscription, log.Id.ToString(), lines);
+            JournalReferenceType.FtthSubscription, log.Id.ToString(), lines,
+            activationEntryDate);
 
         await _unitOfWork.SaveChangesAsync();
 

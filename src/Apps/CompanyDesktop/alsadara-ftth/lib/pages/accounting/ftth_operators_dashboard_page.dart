@@ -264,6 +264,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   // ── TAB 3: المقارنة ──
   bool _isLoadingCompare = false;
   List<_ComparisonRow> _comparisonRows = [];
+  int _hoveredCompIdx = -1;
   int _totalMatched = 0;
   int _totalOursOnly = 0;
   int _totalFtthOnly = 0;
@@ -1307,24 +1308,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       // بناء خريطة (customerId|تاريخ → قائمة مبالغ) لكشف المبالغ الخاطئة
       // نستخدم List لأن نفس العميل قد يكون لديه عدة عمليات بنفس اليوم
       final Map<String, List<int>> cidDateAmounts = {};
-      // أيضاً نبني مفاتيح بتاريخ ±1 يوم لمعالجة فرق التوقيت UTC/بغداد
-      final Set<String> existingKeysExpanded = Set<String>.from(existingKeys);
+      // بناء خريطة بالتواريخ الدقيقة فقط (±1 يوم يُفحص عند المطابقة لا هنا)
       for (final key in existingKeys) {
         final parts = key.split('|');
         if (parts.length == 3) {
           final cid = parts[0];
           final amt = int.tryParse(parts[1]) ?? 0;
           final dateStr = parts[2];
-          final cidDate = '$cid|$dateStr';
-          cidDateAmounts.putIfAbsent(cidDate, () => []).add(amt);
-          // إضافة مفاتيح بتاريخ ±1 يوم لمعالجة فرق التوقيت
-          final parsed = DateTime.tryParse(dateStr);
-          if (parsed != null) {
-            final prevDay = parsed.subtract(const Duration(days: 1)).toString().substring(0, 10);
-            final nextDay = parsed.add(const Duration(days: 1)).toString().substring(0, 10);
-            existingKeysExpanded.add('$cid|$amt|$prevDay');
-            existingKeysExpanded.add('$cid|$amt|$nextDay');
-          }
+          cidDateAmounts.putIfAbsent('$cid|$dateStr', () => []).add(amt);
         }
       }
 
@@ -1406,31 +1397,23 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             if (!_subscriptionTypeSet.contains(tx.type)) continue;
             if (existingFtthIds.contains(tx.id)) {
               matchedTxs.add(tx);
+              existingFtthIds.remove(tx.id); // استهلاك البصمة لمنع المطابقة المزدوجة بين المشغلين
               continue;
             }
             final dateStr = tx.occuredAt.length >= 10 ? tx.occuredAt.substring(0, 10) : tx.occuredAt;
             final amt = tx.amount.abs().toInt();
             final cid = tx.customerId.trim();
-            // مطابقة بمعرّف العميل (مع توسيع ±1 يوم لفرق التوقيت)
-            final cidKey = '$cid|$amt|$dateStr';
-            if (existingKeysExpanded.contains(cidKey)) {
-              matchedTxs.add(tx);
-              continue;
-            }
-            // تحقق: هل معرّف العميل موجود بنفس التاريخ لكن بمبلغ مختلف؟
+            // تحقق: هل معرّف العميل موجود بنفس التاريخ أو ±1 يوم؟
             final cidDate = '$cid|$dateStr';
-            final oursAmounts = cidDateAmounts[cidDate];
-            // أيضاً تحقق بتاريخ ±1 يوم
-            List<int>? oursAmountsFallback;
-            if (oursAmounts == null) {
+            var effectiveAmounts = cidDateAmounts[cidDate];
+            if (effectiveAmounts == null || effectiveAmounts.isEmpty) {
               final parsed = DateTime.tryParse(dateStr);
               if (parsed != null) {
                 final prevDay = parsed.subtract(const Duration(days: 1)).toString().substring(0, 10);
                 final nextDay = parsed.add(const Duration(days: 1)).toString().substring(0, 10);
-                oursAmountsFallback = cidDateAmounts['$cid|$prevDay'] ?? cidDateAmounts['$cid|$nextDay'];
+                effectiveAmounts = cidDateAmounts['$cid|$prevDay'] ?? cidDateAmounts['$cid|$nextDay'];
               }
             }
-            final effectiveAmounts = oursAmounts ?? oursAmountsFallback;
             if (cid.isNotEmpty && effectiveAmounts != null && effectiveAmounts.isNotEmpty) {
               // تحقق: هل أي من المبالغ المحفوظة تطابق مبلغ FTTH؟
               if (effectiveAmounts.contains(amt)) {
@@ -1453,10 +1436,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             }
           }
 
-          // حساب دقيق
+          // حساب دقيق — نستخدم الأعداد الفعلية لا الحساب الرياضي
           final realFtthOnly = missingTxs.length;
-          final realMatched = ftthSubOps - realFtthOnly - wrongTxs.length;
-          final realOursOnly = oursCount > realMatched ? oursCount - realMatched : 0;
+          final realMatched = matchedTxs.length;
+          // عندنا فقط = الفرق بين عملياتنا والمتطابقة (مع مراعاة الخاطئة التي موجودة عندنا أيضاً)
+          final realOursOnly = oursCount > (realMatched + wrongTxs.length) ? oursCount - realMatched - wrongTxs.length : 0;
 
           matched += realMatched > 0 ? realMatched : 0;
           oursOnly += realOursOnly;
@@ -1521,25 +1505,23 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         final List<_WrongTransaction> wrongTxs = [];
         for (final tx in ftthOp.transactions) {
           if (!_subscriptionTypeSet.contains(tx.type)) continue;
-          if (existingFtthIds.contains(tx.id)) continue;
+          if (existingFtthIds.contains(tx.id)) {
+            existingFtthIds.remove(tx.id); // استهلاك البصمة
+            continue;
+          }
           final dateStr = tx.occuredAt.length >= 10 ? tx.occuredAt.substring(0, 10) : tx.occuredAt;
           final amt = tx.amount.abs().toInt();
           final cid = tx.customerId.trim();
-          // مطابقة مع توسيع ±1 يوم لفرق التوقيت
-          final cidKey = '$cid|$amt|$dateStr';
-          if (existingKeysExpanded.contains(cidKey)) continue;
           final cidDate = '$cid|$dateStr';
-          final oursAmounts2 = cidDateAmounts[cidDate];
-          List<int>? oursAmountsFb2;
-          if (oursAmounts2 == null) {
+          var eff2 = cidDateAmounts[cidDate];
+          if (eff2 == null || eff2.isEmpty) {
             final parsed = DateTime.tryParse(dateStr);
             if (parsed != null) {
               final prevDay = parsed.subtract(const Duration(days: 1)).toString().substring(0, 10);
               final nextDay = parsed.add(const Duration(days: 1)).toString().substring(0, 10);
-              oursAmountsFb2 = cidDateAmounts['$cid|$prevDay'] ?? cidDateAmounts['$cid|$nextDay'];
+              eff2 = cidDateAmounts['$cid|$prevDay'] ?? cidDateAmounts['$cid|$nextDay'];
             }
           }
-          final eff2 = oursAmounts2 ?? oursAmountsFb2;
           if (cid.isNotEmpty && eff2 != null && eff2.isNotEmpty) {
             if (eff2.contains(amt)) {
               eff2.remove(amt);
@@ -3814,6 +3796,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   ),
                   child: DataTable(
                     border: TableBorder.all(color: Colors.black, width: 1.5),
+                    showCheckboxColumn: false,
                     dividerThickness: 0,
                     headingRowColor:
                         WidgetStateProperty.all(Colors.grey.shade100),
@@ -3874,17 +3857,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       final isTech = op['isTechnician'] == true;
 
                       return DataRow(
-                        color: isTech
-                            ? WidgetStateProperty.all(Colors.teal.withOpacity(0.07))
-                            : null,
+                        onSelectChanged: (_) {},
+                        color: WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.hovered)) return Colors.lightBlue.shade100;
+                          if (isTech) return Colors.teal.withOpacity(0.07);
+                          return null;
+                        }),
                         cells: [
                         DataCell(Center(
                             child: Text('${i + 1}',
                                 style: TextStyle(
                                     fontSize: context.accR.small,
                                     fontWeight: FontWeight.w600)))),
-                        DataCell(
-                            Center(
+                        DataCell(GestureDetector(
+                            onTap: () => _openAccountStatement(op),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(
                                 child: Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -3917,14 +3905,15 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                           fontSize: context.accR.caption,
                                           color: Colors.teal.shade400)),
                               ],
-                            )),
-                            onTap: () => _openAccountStatement(op)),
-                        DataCell(Center(
+                            )))),
+                        DataCell(GestureDetector(
+                            onTap: () => _openOperatorAccount(op),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(
                             child: Text('$totalCnt',
                                 style: TextStyle(
                                     fontSize: context.accR.small,
-                                    fontWeight: FontWeight.w600))),
-                            onTap: () => _openOperatorAccount(op)),
+                                    fontWeight: FontWeight.w600))))),
                         // المستقطع من الصفحة
                         DataCell(Center(child: Text(
                           _currencyFormat.format((op['pageDeduction'] ?? 0).toDouble()),
@@ -3957,8 +3946,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               color: AccountingTheme.neonBlue),
                         ))),
                         // شراء
-                        DataCell(Center(
-                            child: Text(
+                        DataCell(GestureDetector(
+                            onTap: () => _openOperatorAccount(op, operationType: 'purchase'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(child: Text(
                           '$purchaseCnt',
                           style: TextStyle(
                               fontSize: context.accR.small,
@@ -3966,10 +3957,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               color: purchaseCnt > 0
                                   ? Colors.green.shade700
                                   : Colors.grey.shade400),
-                        )), onTap: () => _openOperatorAccount(op, operationType: 'purchase')),
+                        )))),
                         // تجديد
-                        DataCell(Center(
-                            child: Text(
+                        DataCell(GestureDetector(
+                            onTap: () => _openOperatorAccount(op, operationType: 'renewal'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(child: Text(
                           '$renewalCnt',
                           style: TextStyle(
                               fontSize: context.accR.small,
@@ -3977,10 +3970,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               color: renewalCnt > 0
                                   ? Colors.blue.shade700
                                   : Colors.grey.shade400),
-                        )), onTap: () => _openOperatorAccount(op, operationType: 'renewal')),
+                        )))),
                         // تغيير
-                        DataCell(Center(
-                            child: Text(
+                        DataCell(GestureDetector(
+                            onTap: () => _openOperatorAccount(op, operationType: 'change'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(child: Text(
                           '$changeCnt',
                           style: TextStyle(
                               fontSize: context.accR.small,
@@ -3988,57 +3983,67 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               color: changeCnt > 0
                                   ? Colors.orange.shade700
                                   : Colors.grey.shade400),
-                        )), onTap: () => _openOperatorAccount(op, operationType: 'change')),
+                        )))),
                         // نقد
-                        DataCell(Center(
-                            child: Text(
+                        DataCell(GestureDetector(
+                            onTap: () => _openOperatorAccount(op, collectionType: 'cash'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(child: Text(
                           _currencyFormat
                               .format((op['cashAmount'] ?? 0).toDouble()),
                           style: TextStyle(
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.green.shade700),
-                        )), onTap: () => _openOperatorAccount(op, collectionType: 'cash')),
+                        )))),
                         // آجل
-                        DataCell(Center(
-                            child: Text(
+                        DataCell(GestureDetector(
+                            onTap: () => _openOperatorAccount(op, collectionType: 'credit'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(child: Text(
                           _currencyFormat
                               .format((op['creditAmount'] ?? 0).toDouble()),
                           style: TextStyle(
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.orange.shade700),
-                        )), onTap: () => _openOperatorAccount(op, collectionType: 'credit')),
+                        )))),
                         // ماستر
-                        DataCell(Center(
-                            child: Text(
+                        DataCell(GestureDetector(
+                            onTap: () => _openOperatorAccount(op, collectionType: 'master'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(child: Text(
                           _currencyFormat
                               .format((op['masterAmount'] ?? 0).toDouble()),
                           style: TextStyle(
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.purple.shade700),
-                        )), onTap: () => _openOperatorAccount(op, collectionType: 'master')),
+                        )))),
                         // وكيل
-                        DataCell(Center(
-                            child: Text(
+                        DataCell(GestureDetector(
+                            onTap: () => _openOperatorAccount(op, collectionType: 'agent'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(child: Text(
                           _currencyFormat
                               .format((op['agentAmount'] ?? 0).toDouble()),
                           style: TextStyle(
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.blue.shade700),
-                        )), onTap: () => _openOperatorAccount(op, collectionType: 'agent')),
+                        )))),
                         // فني
-                        DataCell(Center(
-                            child: Text(
+                        DataCell(GestureDetector(
+                            onTap: () => _openOperatorAccount(op, collectionType: 'technician'),
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(child: Text(
                           _currencyFormat
                               .format((op['technicianAmount'] ?? 0).toDouble()),
                           style: TextStyle(
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.teal.shade700),
-                        )), onTap: () => _openOperatorAccount(op, collectionType: 'technician')),
+                        )))),
                         // المسلّم
                         DataCell(Center(
                             child: Text(
@@ -6521,12 +6526,17 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       final op = entry.value;
 
                       return DataRow(
+                          color: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.hovered)) return Colors.lightBlue.shade100;
+                            return null;
+                          }),
                           onSelectChanged: (_) => _openOperatorTransactions(op),
                           cells: [
                             DataCell(Text('${i + 1}',
                                 style: TextStyle(
                                     fontSize: context.accR.small,
-                                    fontWeight: FontWeight.w600))),
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87))),
                             DataCell(Center(
                                 child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -6537,13 +6547,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         : op.name,
                                     style: TextStyle(
                                         fontSize: context.accR.small,
-                                        fontWeight: FontWeight.w700)),
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black87)),
                                 if (op.attributedOps > 0)
                                   Text(
                                     '+${op.attributedOps} منسوبة',
                                     style: TextStyle(
                                         fontSize: context.accR.caption,
-                                        color: Colors.blue.shade600),
+                                        color: Colors.blue.shade800),
                                   ),
                               ],
                             ))),
@@ -6553,7 +6564,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         fontSize: context.accR.small,
                                         fontWeight: FontWeight.w700,
                                         color: op.purchaseOps > 0
-                                            ? Colors.teal.shade700
+                                            ? Colors.black87
                                             : Colors.grey.shade400)))),
                             DataCell(Center(
                                 child: Text('${op.renewOps}',
@@ -6561,7 +6572,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         fontSize: context.accR.small,
                                         fontWeight: FontWeight.w700,
                                         color: op.renewOps > 0
-                                            ? Colors.teal.shade600
+                                            ? Colors.black87
                                             : Colors.grey.shade400)))),
                             DataCell(Center(
                                 child: Text('${op.changeOps}',
@@ -6569,7 +6580,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.changeOps > 0
-                                            ? Colors.teal.shade500
+                                            ? Colors.black87
                                             : Colors.grey.shade400)))),
                             DataCell(Center(
                                 child: Text('${op.scheduleOps}',
@@ -6577,7 +6588,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.scheduleOps > 0
-                                            ? Colors.teal.shade400
+                                            ? Colors.black87
                                             : Colors.grey.shade400)))),
                             DataCell(Center(
                                 child: Text('${op.commissionOps}',
@@ -6585,7 +6596,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.commissionOps > 0
-                                            ? Colors.purple.shade700
+                                            ? Colors.black87
                                             : Colors.grey.shade400)))),
                             DataCell(Center(
                                 child: Text('${op.reversalOps}',
@@ -6593,7 +6604,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.reversalOps > 0
-                                            ? Colors.orange.shade700
+                                            ? Colors.black87
                                             : Colors.grey.shade400)))),
                             DataCell(Center(
                                 child: Text('${op.walletOps}',
@@ -6601,7 +6612,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         fontSize: context.accR.small,
                                         fontWeight: FontWeight.w600,
                                         color: op.walletOps > 0
-                                            ? Colors.blue.shade700
+                                            ? Colors.black87
                                             : Colors.grey.shade400)))),
                             // أخرى: إظهار كل نوع بدل رقم واحد
                             DataCell(Center(child: _buildOtherTypesCell(op))),
@@ -6609,7 +6620,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 child: Text('${op.totalCount}',
                                     style: TextStyle(
                                         fontSize: context.accR.small,
-                                        fontWeight: FontWeight.w700)))),
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black87)))),
                             // عمود الشراء
                             DataCell(Center(child: () {
                               final purchase = op.calcPurchaseAmount();
@@ -6619,7 +6631,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                     fontSize: context.accR.small,
                                     fontWeight: FontWeight.w700,
                                     color: purchase > 0
-                                        ? Colors.red.shade700
+                                        ? Colors.red.shade800
                                         : Colors.grey.shade400),
                               );
                             }())),
@@ -6632,7 +6644,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                     fontSize: context.accR.small,
                                     fontWeight: FontWeight.w700,
                                     color: renewChange > 0
-                                        ? Colors.red.shade600
+                                        ? Colors.red.shade800
                                         : Colors.grey.shade400),
                               );
                             }())),
@@ -6645,7 +6657,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   style: TextStyle(
                                       fontSize: context.accR.small,
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.orange.shade800),
+                                      color: Colors.orange.shade900),
                                 );
                               }
                               return Text('0',
@@ -6655,11 +6667,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                       color: Colors.grey.shade400));
                             }())),
                             // عمود الصافي (الشراء + التجديد/التغيير + الفرق)
-                            DataCell(Container(
-                              color: Colors.green.shade50,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              child: Center(child: () {
+                            DataCell(Center(child: () {
                                 final net = op.calcPurchaseAmount() +
                                     op.calcRenewChangeAmount() +
                                     op.calcTotalDiscount();
@@ -6669,18 +6677,17 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                       fontSize: context.accR.small,
                                       fontWeight: FontWeight.w700,
                                       color: net > 0
-                                          ? Colors.deepOrange.shade700
+                                          ? Colors.deepOrange.shade800
                                           : Colors.grey.shade400),
                                 );
-                              }()),
-                            )),
+                              }())),
                             DataCell(Center(
                                 child: Text(
                               _currencyFormat.format(op.positiveAmount),
                               style: TextStyle(
                                   fontSize: context.accR.small,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.green.shade700),
+                                  color: Colors.green.shade800),
                             ))),
                             DataCell(
                               SizedBox(
@@ -7684,14 +7691,6 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     final Map<String, List<Map<String, dynamic>>> oursByName = {};
     final Set<int> usedOursIndices = {};
 
-    // ترتيب معاملات خادمنا حسب التاريخ (الأحدث أولاً) — للمطابقة الزمنية
-    final sortedOurs = List<Map<String, dynamic>>.from(oursTxs);
-    sortedOurs.sort((a, b) {
-      final da = (_f(a, 'activationDate') ?? '').toString();
-      final db = (_f(b, 'activationDate') ?? '').toString();
-      return db.compareTo(da);
-    });
-
     for (int i = 0; i < oursTxs.length; i++) {
       final tx = oursTxs[i];
       final ftthId = (_f(tx, 'ftthTransactionId') ?? '').toString();
@@ -7751,24 +7750,28 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       if (oursTx != null) ftthToOurs[fi] = oursTx;
     }
 
-    // 4. fallback: المطابقة الزمنية — ربط المعاملات المتبقية بالترتيب
-    if (oursTxs.isNotEmpty) {
+    // fallback: ربط المتبقية بشرط تطابق المبلغ (لمنع المطابقات الوهمية)
+    {
       final unmatchedFtth = <int>[];
       for (int fi = 0; fi < ftthTxs.length; fi++) {
         if (!ftthToOurs.containsKey(fi)) unmatchedFtth.add(fi);
       }
       final unmatchedOurs = <Map<String, dynamic>>[];
-      for (int oi = 0; oi < sortedOurs.length; oi++) {
-        final origIdx = oursTxs.indexOf(sortedOurs[oi]);
-        if (!usedOursIndices.contains(origIdx)) unmatchedOurs.add(sortedOurs[oi]);
+      for (int i = 0; i < oursTxs.length; i++) {
+        if (!usedOursIndices.contains(i)) unmatchedOurs.add(oursTxs[i]);
       }
-      // ربط بالترتيب الزمني (كلاهما مرتب بالأحدث أولاً)
-      final matchCount = unmatchedFtth.length < unmatchedOurs.length ? unmatchedFtth.length : unmatchedOurs.length;
-      for (int i = 0; i < matchCount; i++) {
-        final fi = unmatchedFtth[i];
-        final oTx = unmatchedOurs[i];
-        ftthToOurs[fi] = oTx;
-        usedOursIndices.add(oursTxs.indexOf(oTx));
+      for (final fi in unmatchedFtth) {
+        final ftthAmt = ftthTxs[fi].tx.amount.abs().toInt();
+        for (int oi = 0; oi < unmatchedOurs.length; oi++) {
+          final pdVal = _f(unmatchedOurs[oi], 'pageDeduction');
+          final oursPD = (pdVal is num ? pdVal.toDouble() : double.tryParse(pdVal?.toString() ?? '') ?? 0).toInt();
+          if ((ftthAmt - oursPD).abs() < 1) {
+            ftthToOurs[fi] = unmatchedOurs[oi];
+            usedOursIndices.add(oursTxs.indexOf(unmatchedOurs[oi]));
+            unmatchedOurs.removeAt(oi);
+            break;
+          }
+        }
       }
     }
 
@@ -8295,48 +8298,56 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   ? Colors.red.shade50
                                   : Colors.orange.shade50);
 
+                      Widget compHover(Widget child) => MouseRegion(
+                        onEnter: (_) { if (_hoveredCompIdx != i) setState(() => _hoveredCompIdx = i); },
+                        onExit: (_) { if (_hoveredCompIdx == i) setState(() => _hoveredCompIdx = -1); },
+                        child: child,
+                      );
                       return DataRow(
-                        color: WidgetStateProperty.all(rowColor),
+                        color: WidgetStateProperty.all(_hoveredCompIdx == i ? Colors.lightBlue.shade100 : rowColor),
                         onSelectChanged: (_) => _showOperatorComparisonDetail(row),
                         cells: [
-                          DataCell(Center(
+                          DataCell(compHover(Center(
                               child: Text('${i + 1}',
                                   style: TextStyle(
                                       fontSize: context.accR.small,
-                                      fontWeight: FontWeight.w600)))),
-                          DataCell(Center(
+                                      fontWeight: FontWeight.w600))))),
+                          DataCell(compHover(Center(
                               child: Text(row.operatorName,
                                   style: TextStyle(
                                       fontSize: context.accR.small,
-                                      fontWeight: FontWeight.w700)))),
+                                      fontWeight: FontWeight.w700))))),
                           DataCell(Center(
                               child: Text('${row.oursCount}',
                                   style: TextStyle(
                                       fontSize: context.accR.small,
                                       fontWeight: FontWeight.w600)))),
-                          DataCell(Center(
+                          DataCell(compHover(Center(
                               child: Text(
                             _currencyFormat.format(row.oursAmount),
                             style: TextStyle(
                                 fontSize: context.accR.small,
                                 fontWeight: FontWeight.w600),
-                          ))),
-                          DataCell(Center(
+                          )))),
+                          DataCell(compHover(Center(
                               child: Text('${row.ftthCount}',
                                   style: TextStyle(
                                       fontSize: context.accR.small,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.teal.shade700)))),
-                          DataCell(Center(
+                                      color: Colors.teal.shade700))))),
+                          DataCell(compHover(Center(
                               child: Text(
                             _currencyFormat.format(row.ftthAmount),
                             style: TextStyle(
                                 fontSize: context.accR.small,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.teal.shade700),
-                          ))),
-                          DataCell(
-                              Center(
+                          )))),
+                          DataCell(compHover(GestureDetector(
+                              onTap: row.ftthTransactions.isNotEmpty
+                                  ? () => _showCompareTransactions(row)
+                                  : null,
+                              child: Center(
                                   child: Text(
                                 row.ftthTransactions.isEmpty
                                     ? '0'
@@ -8350,13 +8361,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                     decoration: row.ftthTransactions.isNotEmpty
                                         ? TextDecoration.underline
                                         : null),
-                              )),
-                              onTap: row.ftthTransactions.isNotEmpty
-                                  ? () => _showCompareTransactions(row)
-                                  : null),
+                              ))))),
                           // خاطئة
-                          DataCell(
-                              Center(
+                          DataCell(compHover(GestureDetector(
+                              onTap: row.wrongTransactions.isNotEmpty
+                                  ? () => _showWrongTransactions(row)
+                                  : null,
+                              child: Center(
                                   child: Text(
                                 row.wrongTransactions.isEmpty
                                     ? '0'
@@ -8371,14 +8382,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                         row.wrongTransactions.isNotEmpty
                                             ? TextDecoration.underline
                                             : null),
-                              )),
-                              onTap: row.wrongTransactions.isNotEmpty
-                                  ? () => _showWrongTransactions(row)
-                                  : null),
+                              ))))),
                           // فرق المبالغ — المستقطع vs FTTH للعمليات المطابقة فقط
-                          DataCell(Center(
+                          DataCell(compHover(Center(
                               child: () {
-                            // حساب الفرق من العمليات الخاطئة فقط (المطابقة فرقها = 0)
                             final wrongDiff = row.wrongTransactions.fold<double>(
                                 0, (s, w) => s + (w.ftthAmount - w.oursAmount));
                             if (wrongDiff.abs() < 1) {
@@ -8392,14 +8399,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   fontWeight: FontWeight.bold,
                                   color: wrongDiff > 0 ? Colors.blue.shade700 : Colors.red.shade700),
                             );
-                          }())),
-                          DataCell(Center(
+                          }()))),
+                          DataCell(compHover(Center(
                               child: Text('${row.matchedCount}',
                                   style: TextStyle(
                                       fontSize: context.accR.small,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.green.shade700)))),
-                          DataCell(Center(
+                                      color: Colors.green.shade700))))),
+                          DataCell(compHover(Center(
                               child: Text(
                             '${row.oursOnlyCount}',
                             style: TextStyle(
@@ -8410,8 +8417,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 color: row.oursOnlyCount > 0
                                     ? Colors.blue.shade700
                                     : Colors.grey),
-                          ))),
-                          DataCell(Center(
+                          )))),
+                          DataCell(compHover(Center(
                               child: Text(
                             '${row.ftthOnlyCount}',
                             style: TextStyle(
@@ -8422,8 +8429,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 color: row.ftthOnlyCount > 0
                                     ? Colors.red.shade700
                                     : Colors.grey),
-                          ))),
-                          DataCell(Center(child: _buildMatchBadge(percent))),
+                          )))),
+                          DataCell(compHover(Center(child: _buildMatchBadge(percent)))),
                         ],
                       );
                     }).toList()
@@ -8976,6 +8983,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
   bool _isEnriching = false;
   int _enrichedCount = 0;
   int _enrichTotal = 0;
+  int _hoveredRowIdx = -1;
 
   @override
   void initState() {
@@ -9139,12 +9147,17 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
         if (idx >= rawData.length) continue;
         final d = rawData[idx];
         if (d[1] != 'missing') continue;
-        // إيجاد الـ _DetailTx الأصلي
-        final ftthTx = widget.ftthTxs.firstWhere(
-          (dt) => dt.tx.customerName == d[2] && dt.status == 'missing',
-          orElse: () => widget.ftthTxs[idx < widget.ftthTxs.length ? idx : 0],
-        );
-        final tx = ftthTx.tx;
+        // الوصول المباشر لمرجع _FtthTransaction من rawData[19]
+        final tx = d.length > 19 ? d[19] as _FtthTransaction? : null;
+        if (tx == null) continue;
+        // تحويل paymentMode → collectionType
+        final pm = tx.paymentMode.toLowerCase().trim();
+        final collectionType = pm.contains('cash') ? 'cash'
+            : pm.contains('credit') ? 'credit'
+            : pm.contains('master') ? 'master'
+            : pm.contains('agent') ? 'agent'
+            : pm.contains('tech') ? 'technician'
+            : null;
         txsToSync.add({
           'ftthTransactionId': tx.id,
           'customerId': tx.customerId,
@@ -9153,7 +9166,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           'planName': tx.planName,
           'amount': tx.amount.abs(),
           'operationType': tx.type,
-          'createdBy': tx.createdBy,
+          'createdBy': tx.auditCreator.isNotEmpty ? tx.auditCreator : tx.createdBy,
           'occuredAt': tx.occuredAt,
           'zoneId': tx.zoneId,
           'deviceUsername': tx.deviceUsername,
@@ -9161,7 +9174,10 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           'remainingBalance': tx.remainingBalance,
           'startDate': tx.startsAt,
           'endDate': tx.endsAt,
-          'commitmentPeriod': tx.planDuration,
+          'commitmentPeriod': tx.planDuration > 0 ? tx.planDuration : null,
+          'collectionType': collectionType,
+          'operatorUserId': widget.row.operatorUserId,
+          'createAccounting': true,
         });
       }
       if (txsToSync.isEmpty) {
@@ -10218,6 +10234,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                             child: ConstrainedBox(
                               constraints: BoxConstraints(minWidth: constraints.maxWidth),
                               child: DataTable(
+                                showCheckboxColumn: false,
                                 sortColumnIndex: _sortColIndex > 0 ? _sortColIndex : null,
                                 sortAscending: _sortAsc,
                                 border: TableBorder(
@@ -10350,14 +10367,22 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       }
       if (oursTx != null) ftthToOurs[fi] = oursTx;
     }
-    // fallback زمني
-    final sortedOurs = List<Map<String, dynamic>>.from(_oursTxs);
-    sortedOurs.sort((a, b) => (_f(b, 'activationDate') ?? '').toString().compareTo((_f(a, 'activationDate') ?? '').toString()));
-    final unmatchedFtth = [for (int i = 0; i < widget.ftthTxs.length; i++) if (!ftthToOurs.containsKey(i)) i];
-    final unmatchedOurs = [for (final o in sortedOurs) if (!usedOursIndices.contains(_oursTxs.indexOf(o))) o];
-    for (int i = 0; i < unmatchedFtth.length && i < unmatchedOurs.length; i++) {
-      ftthToOurs[unmatchedFtth[i]] = unmatchedOurs[i];
-      usedOursIndices.add(_oursTxs.indexOf(unmatchedOurs[i]));
+    // fallback: ربط المتبقية بشرط تطابق المبلغ (لمنع المطابقات الوهمية)
+    {
+      final unmatchedFtth = [for (int i = 0; i < widget.ftthTxs.length; i++) if (!ftthToOurs.containsKey(i)) i];
+      final unmatchedOurs = [for (int i = 0; i < _oursTxs.length; i++) if (!usedOursIndices.contains(i)) _oursTxs[i]];
+      for (final fi in unmatchedFtth) {
+        final ftthAmt = widget.ftthTxs[fi].tx.amount.abs().toInt();
+        for (int oi = 0; oi < unmatchedOurs.length; oi++) {
+          final oursPD = _sn(_f(unmatchedOurs[oi], 'pageDeduction')).toInt();
+          if ((ftthAmt - oursPD).abs() < 1) {
+            ftthToOurs[fi] = unmatchedOurs[oi];
+            usedOursIndices.add(_oursTxs.indexOf(unmatchedOurs[oi]));
+            unmatchedOurs.removeAt(oi);
+            break;
+          }
+        }
+      }
     }
 
     for (int fi = 0; fi < widget.ftthTxs.length; fi++) {
@@ -10416,6 +10441,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           if (months <= 10) return '$months أشهر';
           return '$months شهر';
         }(),
+        tx, // [19] مرجع _FtthTransaction للمزامنة المباشرة
       ]);
     }
 
@@ -10441,6 +10467,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           isSynced, // [16] هل تمت مزامنتها؟
           (_f(tx, 'activatedBy') ?? '').toString(), // [17] المشغل
           '', // [18] فترة الاشتراك
+          null, // [19] لا يوجد عملية FTTH
         ]);
       }
     }
@@ -10477,7 +10504,12 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       final oursRevenue = (d[10] as num).toDouble();
       final oursExpense = (d[11] as num).toDouble();
       const ts = TextStyle(fontSize: 11, fontWeight: FontWeight.w700);
-      Widget cl(String text, {Color? color}) => Center(child: Text(text, style: ts.copyWith(color: color), textAlign: TextAlign.center));
+      Widget hover(Widget child) => MouseRegion(
+        onEnter: (_) { if (_hoveredRowIdx != i) setState(() => _hoveredRowIdx = i); },
+        onExit: (_) { if (_hoveredRowIdx == i) setState(() => _hoveredRowIdx = -1); },
+        child: child,
+      );
+      Widget cl(String text, {Color? color}) => hover(Center(child: Text(text, style: ts.copyWith(color: color), textAlign: TextAlign.center)));
 
       // ترجمة التحصيل للعربي
       String collAr(String v) {
@@ -10494,10 +10526,10 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
 
       // ترتيب الأعمدة: ☐, #, حالة, عميل, باقة, نوع, منطقة, مبلغFTTH, فرق, مبلغنا, مستقطع, إيرادات, مصاريف, تحصيل, تاريخنا, تاريخFTTH
       return DataRow(
-        color: WidgetStateProperty.all(rowBg),
+        color: WidgetStateProperty.all(_hoveredRowIdx == i ? Colors.lightBlue.shade100 : rowBg),
         cells: [
           // checkbox للناقصة فقط
-          DataCell(status == 'missing'
+          DataCell(hover(status == 'missing'
               ? Center(child: Checkbox(
                   value: _selectedMissing.contains(i),
                   onChanged: (_) => setState(() {
@@ -10508,9 +10540,9 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                   visualDensity: VisualDensity.compact,
                   activeColor: Colors.teal.shade700,
                 ))
-              : const SizedBox()),
+              : const SizedBox())),
           DataCell(cl('${i + 1}')),
-          DataCell(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+          DataCell(hover(Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(statusIcon, size: 14, color: statusColor), const SizedBox(width: 3),
             Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
             if (d.length > 16 && d[16] == true) ...[
@@ -10521,9 +10553,9 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                 child: Text('مزامنة', style: TextStyle(fontSize: 8, color: Colors.cyan.shade800, fontWeight: FontWeight.w700)),
               ),
             ],
-          ]))),
+          ])))),
           DataCell(cl(d.length > 17 ? d[17].toString() : '-')), // المشغل
-          DataCell(Center(child: Text(d[2], style: ts, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center))),
+          DataCell(hover(Center(child: Text(d[2], style: ts, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center)))),
           DataCell(cl(d[3].toString().isNotEmpty ? d[3] : '-', color: d[3].toString().isEmpty ? Colors.grey : null)),
           DataCell(cl(d[5].toString().isNotEmpty ? d[5] : '-', color: d[5].toString().isEmpty ? Colors.grey : null)),
           DataCell(cl(d[14].toString().isNotEmpty ? d[14] : '-', color: d[14].toString().isEmpty ? Colors.grey : null)),
@@ -10537,7 +10569,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           DataCell(cl(d[13].toString().isNotEmpty ? d[13] : '-', color: d[13].toString().isEmpty ? Colors.grey : null)),
           DataCell(cl(d[6].toString().isNotEmpty ? d[6] : '-', color: d[6].toString().isEmpty ? Colors.grey : null)),
           DataCell(cl(d.length > 18 && d[18].toString().isNotEmpty ? d[18].toString() : '-', color: d.length > 18 && d[18].toString().isNotEmpty ? null : Colors.grey)),
-          DataCell(d.length > 15 && d[15] != null
+          DataCell(hover(d.length > 15 && d[15] != null
               ? Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
                   TextButton(
                     onPressed: () => _openEditDialog(d[15] as Map<String, dynamic>),
@@ -10550,7 +10582,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                       child: Text('حذف', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                     ),
                 ]))
-              : const SizedBox()),
+              : const SizedBox())),
         ],
       );
     }).toList();
@@ -11335,6 +11367,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   final _tableScrollCtrl = ScrollController();
   final _fmt = NumberFormat('#,###', 'ar');
   final _dateFmt = DateFormat('yyyy/MM/dd');
+  final _timeFmt = DateFormat('HH:mm');
 
   // ── Inline edit ──
   String? _editingId;
@@ -11381,6 +11414,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   // ── Multi-select rows ──
   final Set<String> _selectedIds = {};
   bool _isDeletingSelected = false;
+  String? _hoveredRowId;
 
   // ── Column visibility (saved locally) ──
   Set<String> _hiddenCols = {};
@@ -11396,6 +11430,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     ['☐',           '_check',           1],
     ['#',            '_idx',             1],
     ['التاريخ',     'تاريخ التفعيل',     3],
+    ['الوقت',       'وقت التفعيل',       2],
     ['المشغل',      'المُفعِّل',          4],
     ['العميل',      'اسم العميل',        5],
     ['م.العميل',    'م.العميل',          3],
@@ -11650,6 +11685,16 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     }
   }
 
+  static String _toLocalTime(String? isoDate) {
+    if (isoDate == null || isoDate.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(isoDate).toLocal();
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   /// استخراج اسم الفني/الوكيل من الاستجابة (يجرب عدة أسماء للحقل)
   static String _extractTechName(dynamic item) {
     // أسماء محتملة للحقل في الـ JSON
@@ -11729,6 +11774,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         return {
           'id':               item['Id']?.toString() ?? '',
           'تاريخ التفعيل':   _toLocalDate(item['ActivationDate']?.toString()),
+          'وقت التفعيل':    _toLocalTime(item['ActivationDate']?.toString()),
           'المُفعِّل':        item['ActivatedBy']?.toString() ?? '',
           'اسم العميل':      item['CustomerName']?.toString() ?? '',
           'م.العميل':         item['CustomerId']?.toString() ?? '',
@@ -13074,6 +13120,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                 : i.isEven ? Colors.white : Colors.grey.shade50;
 
     final rowH = isEditing ? 52.0 : 34.0;
+    final isHovered = _hoveredRowId == id;
 
     // helper: خلية flex — دائماً في الوسط
     Widget cell(int flex, Widget child) {
@@ -13096,6 +13143,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     // helper: نص بسيط — أسود، في الوسط
     Widget txt(int flex, String text,
         {Color? color, bool bold = false}) {
+      final c = isHovered
+          ? Colors.blue.shade900
+          : text.isEmpty ? Colors.grey.shade400 : (color ?? Colors.black87);
       return cell(
         flex,
         Text(
@@ -13104,8 +13154,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           textAlign: TextAlign.center,
           style: GoogleFonts.cairo(
             fontSize: 11,
-            color: text.isEmpty ? Colors.grey.shade400 : (color ?? Colors.black87),
-            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+            color: c,
+            fontWeight: isHovered ? FontWeight.w700 : (bold ? FontWeight.w700 : FontWeight.w500),
           ),
         ),
       );
@@ -13134,7 +13184,10 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       );
     }
 
-    return Builder(builder: (rowCtx) => GestureDetector(
+    return Builder(builder: (rowCtx) => MouseRegion(
+      onEnter: (_) => setState(() => _hoveredRowId = id),
+      onExit: (_) { if (_hoveredRowId == id) setState(() => _hoveredRowId = null); },
+      child: GestureDetector(
       onSecondaryTapUp: (d) => _showRowMenu(rowCtx, d.globalPosition, r),
       onLongPress: () {
         final obj = rowCtx.findRenderObject();
@@ -13145,7 +13198,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: bgColor,
+          color: isHovered ? Colors.lightBlue.shade100 : bgColor,
           border: Border(bottom: BorderSide(color: Colors.black26)),
         ),
         child: Row(
@@ -13183,6 +13236,13 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                     ),
                   ],
                 ],
+              )),
+            // الوقت
+            if (!_hiddenCols.contains('وقت التفعيل'))
+              cell(2, Text(
+                (r['وقت التفعيل']?.toString() ?? '').isEmpty ? '-' : r['وقت التفعيل'].toString(),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.cairo(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w500),
               )),
             // المشغل
             if (!_hiddenCols.contains('المُفعِّل'))
@@ -13485,6 +13545,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           ],
         ),
       ),
-    ));
+    ),
+));
   }
 }

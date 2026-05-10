@@ -113,6 +113,56 @@ public class FtthAccountingController : ControllerBase
             };
             log.ActivatedBy = await _resolveFullName(log.ActivatedBy);
 
+            // ═══ حساب BasePrice وأجور الصيانة تلقائياً إذا لم تُرسل ═══
+            if (dto.CompanyId.HasValue)
+            {
+                var planPrice = dto.PlanPrice ?? 0;
+                // BasePrice: إذا لم يُرسل، نبحث في جدول الباقات
+                if (!dto.BasePrice.HasValue || dto.BasePrice == 0)
+                {
+                    var configuredPrice = await _unitOfWork.InternetPlans.AsQueryable()
+                        .Where(p => !p.IsDeleted && p.IsActive && p.CompanyId == dto.CompanyId
+                            && p.Name == dto.PlanName)
+                        .Select(p => p.MonthlyPrice)
+                        .FirstOrDefaultAsync();
+                    if (configuredPrice > 0)
+                    {
+                        log.BasePrice = configuredPrice;
+                        log.CompanyDiscount = configuredPrice > planPrice ? configuredPrice - planPrice : 0;
+                        log.SystemDiscountEnabled = log.CompanyDiscount > 0;
+                    }
+                    else
+                    {
+                        log.BasePrice = planPrice;
+                        log.CompanyDiscount = dto.CompanyDiscount ?? 0;
+                        log.SystemDiscountEnabled = dto.SystemDiscountEnabled;
+                    }
+                }
+                else
+                {
+                    log.BasePrice = dto.BasePrice;
+                    log.CompanyDiscount = dto.CompanyDiscount ?? 0;
+                    log.SystemDiscountEnabled = dto.SystemDiscountEnabled;
+                }
+
+                // أجور الصيانة: إذا لم تُرسل، نبحث في جدول أجور الزونات
+                if (!dto.MaintenanceFee.HasValue || dto.MaintenanceFee == 0)
+                {
+                    var zoneFee = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
+                        .Where(z => !z.IsDeleted && z.IsEnabled
+                            && (z.ZoneId == dto.ZoneId || z.ZoneName == dto.ZoneId))
+                        .Select(z => z.MaintenanceAmount)
+                        .FirstOrDefaultAsync();
+                    log.MaintenanceFee = zoneFee > 0 ? zoneFee : 0;
+                }
+                else
+                {
+                    log.MaintenanceFee = dto.MaintenanceFee;
+                }
+
+                log.ManualDiscount = dto.ManualDiscount ?? 0;
+            }
+
             await _unitOfWork.SubscriptionLogs.AddAsync(log);
             await _unitOfWork.SaveChangesAsync();
 
@@ -182,12 +232,12 @@ public class FtthAccountingController : ControllerBase
         var customerName = dto.CustomerName ?? "عميل";
         var opType = dto.OperationType?.ToLower() == "purchase" ? "شراء" : "تجديد";
 
-        // ═══ حساب المبالغ ═══
-        var basePrice = dto.BasePrice ?? dto.PlanPrice ?? 0;
-        var companyDiscount = dto.CompanyDiscount ?? 0;
-        var manualDiscount = dto.ManualDiscount ?? 0;
-        var maintenanceFee = dto.MaintenanceFee ?? 0;
-        var systemDiscountEnabled = dto.SystemDiscountEnabled;
+        // ═══ حساب المبالغ (أولوية log المحسوب > dto الخام) ═══
+        var basePrice = log.BasePrice ?? dto.BasePrice ?? dto.PlanPrice ?? 0;
+        var companyDiscount = log.CompanyDiscount ?? dto.CompanyDiscount ?? 0;
+        var manualDiscount = log.ManualDiscount ?? dto.ManualDiscount ?? 0;
+        var maintenanceFee = log.MaintenanceFee ?? dto.MaintenanceFee ?? 0;
+        var systemDiscountEnabled = log.SystemDiscountEnabled;
 
         // المستقطع من رصيد الصفحة (ثابت!)
         decimal netFromCompany;
@@ -359,10 +409,47 @@ public class FtthAccountingController : ControllerBase
             return null;
         }
 
+        // ═══ فحص التوازن قبل الحفظ ═══
+        var checkDebit = lines.Sum(l => l.DebitAmount);
+        var checkCredit = lines.Sum(l => l.CreditAmount);
+        if (checkDebit != checkCredit)
+        {
+            _logger.LogError("⛔ قيد غير متوازن! مدين={Debit} دائن={Credit} عملية={LogId} عميل={Customer}",
+                checkDebit, checkCredit, log.Id, log.CustomerName);
+            // تصحيح تلقائي: إذا الفرق = ManualDiscount ومصاريف العروض مفقودة → إضافتها
+            var diff = checkCredit - checkDebit;
+            if (diff > 0 && promotionExpenseAccount != null && diff == manualDiscount)
+            {
+                // السطر موجود لكن بقيمة 0 — تعديله
+                var promoIdx = lines.FindIndex(l => l.AccountId == promotionExpenseAccount.Id);
+                if (promoIdx >= 0)
+                    lines[promoIdx] = (promotionExpenseAccount.Id, diff, 0, $"خصم اختياري - {customerName}");
+                else
+                    lines.Add((promotionExpenseAccount.Id, diff, 0, $"خصم اختياري - {customerName}"));
+            }
+            else
+            {
+                // فرق غير معروف — لا نحفظ قيد غير متوازن
+                _logger.LogError("⛔ تم إلغاء إنشاء القيد — فرق غير قابل للتصحيح: {Diff}", diff);
+                return null;
+            }
+        }
+
+        // تاريخ القيد = تاريخ المعاملة (بتوقيت بغداد UTC+3) بدلاً من تاريخ اليوم
+        DateTime? activationEntryDate = null;
+        if (log.ActivationDate.HasValue)
+        {
+            // تحويل UTC → تاريخ بغداد عند الظهر (09:00 UTC) — نفس صيغة CreateAndPostJournalEntry
+            activationEntryDate = DateTime.SpecifyKind(
+                log.ActivationDate.Value.AddHours(3).Date.AddHours(12 - 3),
+                DateTimeKind.Utc);
+        }
+
         // إنشاء القيد
         await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
             _unitOfWork, companyId, userId, description,
-            JournalReferenceType.FtthSubscription, log.Id.ToString(), lines);
+            JournalReferenceType.FtthSubscription, log.Id.ToString(), lines,
+            activationEntryDate);
 
         await _unitOfWork.SaveChangesAsync();
 
@@ -2406,6 +2493,117 @@ public class FtthAccountingController : ControllerBase
 
         await _unitOfWork.SaveChangesAsync();
         return Ok(new { success = true, message = $"تم تصحيح {updated} سجل، {failed} فشل", updated, failed });
+    }
+
+    // ==================== 9.55b تصحيح تواريخ القيود لتطابق تواريخ المعاملات ====================
+
+    /// <summary>
+    /// تصحيح تواريخ القيود المحاسبية لتطابق تاريخ المعاملة (ActivationDate) بدلاً من تاريخ الإنشاء
+    /// </summary>
+    [HttpPost("fix-journal-entry-dates")]
+    [AllowAnonymous]
+    public async Task<IActionResult> FixJournalEntryDates(
+        [FromQuery] Guid? companyId = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] bool dryRun = false)
+    {
+        try
+        {
+            // جلب المعاملات المرتبطة بقيود محاسبية
+            var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => !l.IsDeleted
+                    && l.JournalEntryId != null
+                    && l.ActivationDate != null
+                    && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+
+            if (companyId.HasValue)
+                query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+            if (from.HasValue)
+            {
+                var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.ActivationDate >= fromUtc);
+            }
+            if (to.HasValue)
+            {
+                var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.ActivationDate <= toUtc);
+            }
+
+            var logs = await query
+                .Select(l => new { l.Id, l.JournalEntryId, l.ActivationDate, l.CustomerName })
+                .ToListAsync();
+
+            int fixed_ = 0, skipped = 0, failed = 0;
+            var examples = new List<object>();
+
+            foreach (var log in logs)
+            {
+                try
+                {
+                    var entry = await _unitOfWork.JournalEntries.AsQueryable()
+                        .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId && !j.IsDeleted);
+                    if (entry == null) { skipped++; continue; }
+
+                    // حساب التاريخ الصحيح: تاريخ المعاملة بتوقيت بغداد عند الظهر (09:00 UTC)
+                    var correctDate = DateTime.SpecifyKind(
+                        log.ActivationDate!.Value.AddHours(3).Date.AddHours(12 - 3),
+                        DateTimeKind.Utc);
+
+                    // مقارنة التاريخ (يوم بغداد فقط)
+                    var entryBaghdadDate = entry.EntryDate.AddHours(3).Date;
+                    var logBaghdadDate = log.ActivationDate!.Value.AddHours(3).Date;
+
+                    if (entryBaghdadDate == logBaghdadDate)
+                    {
+                        skipped++; // التاريخ صحيح أصلاً
+                        continue;
+                    }
+
+                    if (examples.Count < 20)
+                    {
+                        examples.Add(new
+                        {
+                            customer = log.CustomerName,
+                            logDate = logBaghdadDate.ToString("yyyy-MM-dd"),
+                            entryDate = entryBaghdadDate.ToString("yyyy-MM-dd"),
+                            entryNumber = entry.EntryNumber
+                        });
+                    }
+
+                    if (!dryRun)
+                    {
+                        entry.EntryDate = correctDate;
+                        entry.UpdatedAt = DateTime.UtcNow;
+                        _unitOfWork.JournalEntries.Update(entry);
+                    }
+                    fixed_++;
+                }
+                catch { failed++; }
+            }
+
+            if (!dryRun)
+                await _unitOfWork.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = dryRun
+                    ? $"معاينة: {fixed_} قيد بتاريخ خاطئ، {skipped} صحيح، {failed} فشل"
+                    : $"تم تصحيح {fixed_} قيد، {skipped} صحيح أصلاً، {failed} فشل",
+                dryRun,
+                total = logs.Count,
+                fixed_ ,
+                skipped,
+                failed,
+                examples
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تصحيح تواريخ القيود");
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
     }
 
     // ==================== 9.6 إعادة حساب الإيرادات للعمليات المتزامنة ====================

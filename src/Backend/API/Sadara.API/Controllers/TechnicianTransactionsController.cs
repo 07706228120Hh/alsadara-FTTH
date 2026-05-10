@@ -93,28 +93,34 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 foreach (var j in jes) jeDict[j.Id] = j.EntryNumber;
             }
 
-            // حساب الإجماليات من TechnicianTransactions (مصدر موحد مع لوحة المحاسبة)
-            var allTechTxQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
-                .Where(t => t.TechnicianId == userId);
+            // حساب الإجماليات من JournalEntryLines (مصدر الحقيقة = كشف الحسابات)
+            // البحث عن حساب الفني تحت "ذمم الفنيين" (1140) بنفس الاسم
+            var techAccount = await _unitOfWork.Accounts.AsQueryable()
+                .Where(a => a.IsLeaf && a.Name == user.FullName
+                    && a.ParentAccount != null && a.ParentAccount.Code == AccountCodes.TechnicianReceivables)
+                .FirstOrDefaultAsync();
 
-            if (from.HasValue)
+            decimal totalCharges = 0, totalPayments = 0;
+            if (techAccount != null)
             {
-                var fromUtcTx = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
-                allTechTxQuery = allTechTxQuery.Where(t => t.CreatedAt >= fromUtcTx);
+                var jlQuery = _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => l.AccountId == techAccount.Id
+                        && l.JournalEntry != null
+                        && l.JournalEntry.Status == JournalEntryStatus.Posted);
+                if (from.HasValue)
+                {
+                    var fromUtcTx = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
+                    jlQuery = jlQuery.Where(l => l.JournalEntry!.EntryDate >= fromUtcTx);
+                }
+                if (to.HasValue)
+                {
+                    var toUtcTx = DateTime.SpecifyKind(to.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                    jlQuery = jlQuery.Where(l => l.JournalEntry!.EntryDate < toUtcTx);
+                }
+                // مدين = أجور (مبالغ مطلوبة من الفني)، دائن = تسديدات
+                totalCharges = await jlQuery.SumAsync(l => (decimal?)l.DebitAmount) ?? 0;
+                totalPayments = await jlQuery.SumAsync(l => (decimal?)l.CreditAmount) ?? 0;
             }
-            if (to.HasValue)
-            {
-                var toUtcTx = DateTime.SpecifyKind(to.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
-                allTechTxQuery = allTechTxQuery.Where(t => t.CreatedAt < toUtcTx);
-            }
-
-            var totalCharges = await allTechTxQuery
-                .Where(t => t.Type == TechnicianTransactionType.Charge)
-                .SumAsync(t => (decimal?)t.Amount) ?? 0;
-
-            var totalPayments = await allTechTxQuery
-                .Where(t => t.Type == TechnicianTransactionType.Payment)
-                .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
             return Ok(new
             {
@@ -410,64 +416,79 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
             var userCompanyId = currentUser?.CompanyId;
 
-            // === المصدر الموحّد: حساب الأرصدة من جدول المعاملات مباشرة ===
-            var baseQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
-                .Where(t => !t.IsDeleted);
-            if (from.HasValue)
-                baseQuery = baseQuery.Where(t => t.CreatedAt >= from.Value.Date);
-            if (to.HasValue)
-                baseQuery = baseQuery.Where(t => t.CreatedAt < to.Value.Date.AddDays(1));
+            // === المصدر الموحّد: حساب الأرصدة من JournalEntryLines (كشف الحسابات = مصدر الحقيقة) ===
+            // جلب حساب "ذمم الفنيين" الأب
+            var techParent = await _unitOfWork.Accounts.AsQueryable()
+                .FirstOrDefaultAsync(a => a.Code == AccountCodes.TechnicianReceivables);
 
-            var techSummaries = await baseQuery
-                .GroupBy(t => t.TechnicianId)
-                .Select(g => new
-                {
-                    TechnicianId = g.Key,
-                    TotalCharges = g.Where(t => t.Type == TechnicianTransactionType.Charge).Sum(t => (decimal?)t.Amount) ?? 0,
-                    TotalPayments = g.Where(t => t.Type == TechnicianTransactionType.Payment).Sum(t => (decimal?)t.Amount) ?? 0,
-                    TransactionCount = g.Count(),
-                    LastDate = g.Max(t => t.CreatedAt)
-                })
-                .ToListAsync();
+            // جلب الحسابات الفرعية (حساب لكل فني)
+            var techAccounts = techParent != null
+                ? await _unitOfWork.Accounts.AsQueryable()
+                    .Where(a => a.ParentAccountId == techParent.Id && a.IsLeaf)
+                    .Select(a => new { a.Id, a.Name })
+                    .ToListAsync()
+                : new List<dynamic>().Select(x => new { Id = Guid.Empty, Name = "" }).ToList();
 
             // جلب بيانات الفنيين (الاسم، الهاتف) مع فلتر الشركة
-            var techIds = techSummaries.Select(s => s.TechnicianId).ToList();
-            var techUsers = await _unitOfWork.Users.AsQueryable()
-                .Where(u => techIds.Contains(u.Id)
-                    && (userCompanyId == null || u.CompanyId == userCompanyId))
+            var allTechUsers = await _unitOfWork.Users.AsQueryable()
+                .Where(u => (userCompanyId == null || u.CompanyId == userCompanyId))
                 .Select(u => new { u.Id, u.FullName, u.PhoneNumber })
                 .ToListAsync();
 
-            var techUserDict = techUsers.ToDictionary(u => u.Id);
+            // ربط: اسم الحساب → User
+            var userByName = allTechUsers.GroupBy(u => u.FullName).ToDictionary(g => g.Key, g => g.First());
 
-            // دمج البيانات — فقط الفنيين التابعين للشركة
-            var technicians = techSummaries
-                .Where(s => techUserDict.ContainsKey(s.TechnicianId))
-                .Select(s =>
+            // حساب أرصدة كل فني من JournalEntryLines
+            var technicians = new List<dynamic>();
+            foreach (var acc in techAccounts)
+            {
+                if (!userByName.TryGetValue(acc.Name, out var techUser)) continue;
+
+                var jlQuery = _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => l.AccountId == acc.Id
+                        && l.JournalEntry != null
+                        && l.JournalEntry.Status == JournalEntryStatus.Posted);
+
+                if (from.HasValue)
                 {
-                    var user = techUserDict[s.TechnicianId];
-                    var netBalance = s.TotalPayments - s.TotalCharges;
-                    return new
-                    {
-                        id = user.Id,
-                        name = user.FullName,
-                        phone = user.PhoneNumber,
-                        totalCharges = s.TotalCharges,
-                        totalPayments = s.TotalPayments,
-                        netBalance,
-                        transactionCount = s.TransactionCount,
-                        lastTransactionDate = (DateTime?)s.LastDate
-                    };
-                })
-                .OrderBy(t => t.netBalance) // الأكثر مديونية أولاً
-                .ToList();
+                    var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
+                    jlQuery = jlQuery.Where(l => l.JournalEntry!.EntryDate >= fromUtc);
+                }
+                if (to.HasValue)
+                {
+                    var toUtc = DateTime.SpecifyKind(to.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                    jlQuery = jlQuery.Where(l => l.JournalEntry!.EntryDate < toUtc);
+                }
+
+                var debit = await jlQuery.SumAsync(l => (decimal?)l.DebitAmount) ?? 0;
+                var credit = await jlQuery.SumAsync(l => (decimal?)l.CreditAmount) ?? 0;
+                var txCount = await jlQuery.CountAsync();
+                var lastDate = txCount > 0
+                    ? await jlQuery.MaxAsync(l => (DateTime?)l.JournalEntry!.EntryDate)
+                    : null;
+                var netBalance = credit - debit; // سالب = مدين
+
+                technicians.Add(new
+                {
+                    id = techUser.Id,
+                    name = techUser.FullName,
+                    phone = techUser.PhoneNumber,
+                    totalCharges = debit,
+                    totalPayments = credit,
+                    netBalance,
+                    transactionCount = txCount,
+                    lastTransactionDate = lastDate
+                });
+            }
+
+            technicians = technicians.OrderBy(t => ((dynamic)t).netBalance).ToList();
 
             // مزامنة حقول User المخزّنة مع القيم المحسوبة (لمنع التضارب مستقبلاً)
-            foreach (var t in technicians)
+            foreach (dynamic t in technicians)
             {
-                var dbUser = await _unitOfWork.Users.GetByIdAsync(t.id);
-                if (dbUser != null && (dbUser.TechTotalCharges != t.totalCharges
-                    || dbUser.TechTotalPayments != t.totalPayments))
+                var dbUser = await _unitOfWork.Users.GetByIdAsync((Guid)t.id);
+                if (dbUser != null && (dbUser.TechTotalCharges != (decimal)t.totalCharges
+                    || dbUser.TechTotalPayments != (decimal)t.totalPayments))
                 {
                     dbUser.TechTotalCharges = t.totalCharges;
                     dbUser.TechTotalPayments = t.totalPayments;
@@ -477,9 +498,9 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             }
             await _unitOfWork.SaveChangesAsync();
 
-            var totalAllCharges = technicians.Sum(t => t.totalCharges);
-            var totalAllPayments = technicians.Sum(t => t.totalPayments);
-            var totalNetBalance = technicians.Sum(t => t.netBalance);
+            var totalAllCharges = technicians.Sum(t => (decimal)((dynamic)t).totalCharges);
+            var totalAllPayments = technicians.Sum(t => (decimal)((dynamic)t).totalPayments);
+            var totalNetBalance = technicians.Sum(t => (decimal)((dynamic)t).netBalance);
 
             return Ok(new
             {
@@ -490,7 +511,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                     totalCharges = totalAllCharges,
                     totalPayments = totalAllPayments,
                     totalNetBalance = totalNetBalance,
-                    debtorCount = technicians.Count(t => t.netBalance < 0)
+                    debtorCount = technicians.Count(t => (decimal)((dynamic)t).netBalance < 0)
                 }
             });
         }
