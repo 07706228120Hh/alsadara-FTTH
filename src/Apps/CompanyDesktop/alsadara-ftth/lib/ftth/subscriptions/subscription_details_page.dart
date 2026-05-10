@@ -648,6 +648,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         '🔑 Auth Token: ${widget.authToken.length > 20 ? widget.authToken.substring(0, 20) : widget.authToken}...');
     debugPrint('👨‍💼 Activated By: ${widget.activatedBy}');
     debugPrint('🆕 Is New Subscription: $isNewSubscription');
+
+    // تفعيل خصم الشركة افتراضياً عند شراء اشتراك جديد
+    if (isNewSubscription) {
+      systemDiscountEnabled = true;
+    }
+
     if (widget.importantFtthApiPermissions != null) {
       debugPrint(
           '🔐 Important FTTH perms (passed): ${widget.importantFtthApiPermissions}');
