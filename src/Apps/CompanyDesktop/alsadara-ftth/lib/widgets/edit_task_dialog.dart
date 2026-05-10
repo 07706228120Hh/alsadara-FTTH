@@ -568,7 +568,8 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         _dispensedItems = items;
         _isLoadingMaterials = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('⚠️ خطأ في تحميل المواد المصروفة: $e');
       if (mounted) setState(() => _isLoadingMaterials = false);
     }
   }
@@ -591,7 +592,9 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                 .map((e) => Map<String, dynamic>.from(e as Map))
                 .toList();
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('⚠️ خطأ في تحميل بيانات المخزون: $e');
+    }
   }
 
   Future<void> _submitNewMaterials() async {

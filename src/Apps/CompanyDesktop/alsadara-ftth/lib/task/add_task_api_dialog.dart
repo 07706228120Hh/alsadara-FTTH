@@ -59,7 +59,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   final _subscriptionAmountController = TextEditingController();
   final _deliveryFeeController = TextEditingController();
 
-  // المواد المصروفة (لمهام شراء اشتراك)
+  // المواد المصروفة
   List<Map<String, dynamic>> _allInventoryItems = [];
   final List<_AddTaskMaterialRow> _materialRows = [];
   bool _isLoadingItems = false;
@@ -141,6 +141,25 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     }
 
     _loadDataFromApi();
+    _preloadInventoryItems();
+  }
+
+  /// تحميل المواد مسبقاً حتى تكون جاهزة عند فتح قسم المواد
+  Future<void> _preloadInventoryItems() async {
+    try {
+      final companyId = VpsAuthService.instance.currentCompanyId ?? '';
+      if (companyId.isEmpty) return;
+      final res = await InventoryApiService.instance.getItems(companyId: companyId, pageSize: 200);
+      if (mounted) {
+        setState(() {
+          _allInventoryItems = ((res['data'] as List?) ?? [])
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ فشل التحميل المسبق للمواد: $e');
+    }
   }
 
   Future<void> _fetchDeviceLocation() async {
@@ -380,23 +399,24 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
       );
 
       if (result['success'] == true) {
-        // صرف المواد على المنشئ (لمهام شراء اشتراك)
+        // صرف المواد على المنشئ
         final validMaterials = _materialRows.where((r) => r.itemId.isNotEmpty && r.quantity > 0).toList();
-        if (validMaterials.isNotEmpty && _selectedTaskType == 'شراء اشتراك') {
+        bool materialsFailed = false;
+        if (validMaterials.isNotEmpty) {
           final taskId = result['data']?['Id']?.toString() ?? '';
           final creatorId = VpsAuthService.instance.currentUser?.id ?? '';
           final companyId = VpsAuthService.instance.currentCompanyId ?? '';
           if (taskId.isNotEmpty && creatorId.isNotEmpty) {
             try {
               await InventoryApiService.instance.useFromTechnicianHoldings(data: {
-                'technicianId': creatorId, // المنشئ وليس الفني
+                'technicianId': creatorId,
                 'serviceRequestId': taskId,
                 'companyId': companyId,
                 'items': validMaterials.map((r) => {'inventoryItemId': r.itemId, 'quantity': r.quantity}).toList(),
               });
-            } catch (_) {
-              // لا نوقف العملية إذا فشل صرف المواد
-              debugPrint('⚠️ فشل صرف المواد على المنشئ');
+            } catch (e) {
+              debugPrint('⚠️ فشل صرف المواد: $e');
+              materialsFailed = true;
             }
           }
         }
@@ -416,7 +436,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(children: [
-                const Icon(Icons.check_circle, color: Colors.white),
+                Icon(materialsFailed ? Icons.warning_amber_rounded : Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -425,15 +445,17 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                     children: [
                       const Text('تمت إضافة المهمة بنجاح!'),
                       Text(
-                        'رقم الطلب: ${result['data']?['RequestNumber'] ?? ''}',
+                        materialsFailed
+                            ? 'تنبيه: فشل صرف المواد — يمكنك إضافتها من بطاقة المهمة'
+                            : 'رقم الطلب: ${result['data']?['RequestNumber'] ?? ''}',
                         style: const TextStyle(fontSize: 11),
                       ),
                     ],
                   ),
                 ),
               ]),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
+              backgroundColor: materialsFailed ? Colors.orange : Colors.green,
+              duration: Duration(seconds: materialsFailed ? 5 : 3),
             ),
           );
 
@@ -805,9 +827,9 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             if (_selectedTaskType == 'شراء اشتراك') ...[
               _buildSubscriptionSection(),
               const SizedBox(height: 6),
-              _buildMaterialsSection(),
-              const SizedBox(height: 6),
             ],
+            _buildMaterialsSection(),
+            const SizedBox(height: 6),
             _buildAdditionalSection(),
             const SizedBox(height: 6),
             _buildActionButtons(),
@@ -893,9 +915,9 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             if (_selectedTaskType == 'شراء اشتراك') ...[
               _buildSubscriptionSection(),
               const SizedBox(height: 8),
-              _buildMaterialsSection(),
-              const SizedBox(height: 8),
             ],
+            _buildMaterialsSection(),
+            const SizedBox(height: 8),
             _buildAdditionalSection(),
           ],
         );
@@ -1392,11 +1414,23 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                   setState(() => _isLoadingItems = true);
                   try {
                     final companyId = VpsAuthService.instance.currentCompanyId ?? '';
-                    final res = await InventoryApiService.instance.getItems(companyId: companyId);
+                    if (companyId.isEmpty) {
+                      if (mounted) _showError('لا يمكن تحميل المواد — لم يتم تحديد الشركة');
+                      if (mounted) setState(() => _isLoadingItems = false);
+                      return;
+                    }
+                    final res = await InventoryApiService.instance.getItems(companyId: companyId, pageSize: 200);
                     _allInventoryItems = ((res['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-                  } catch (_) {}
+                    if (_allInventoryItems.isEmpty && mounted) {
+                      _showError('لا توجد مواد مسجلة في النظام');
+                    }
+                  } catch (e) {
+                    debugPrint('❌ خطأ في تحميل المواد: $e');
+                    if (mounted) _showError('فشل في تحميل قائمة المواد');
+                  }
                   if (mounted) setState(() => _isLoadingItems = false);
                 }
+                if (_allInventoryItems.isEmpty) return;
                 setState(() => _materialRows.add(_AddTaskMaterialRow()));
               },
               icon: Icon(Icons.add, size: 14, color: Colors.orange.shade700),
