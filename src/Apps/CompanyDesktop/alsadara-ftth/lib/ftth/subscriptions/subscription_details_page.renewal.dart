@@ -2,10 +2,6 @@
 // هذا الملف جزء من subscription_details_page.dart
 part of 'subscription_details_page.dart';
 
-/// قائمة لتتبع المشتركين الذين تم تفعيلهم اليوم (لمنع التفعيل المكرر)
-/// Key: subscriptionId, Value: تاريخ التفعيل
-final Map<String, DateTime> _activatedSubscriptionsToday = {};
-
 /// Extension للدوال المتعلقة بالتجديد والتفعيل
 extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
   /// زر موحد (تجديد أو تغيير أو شراء) حسب الحالة
@@ -89,25 +85,40 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       }
     }
 
-    // التحقق من التفعيل المكرر في نفس اليوم
+    // التحقق من التفعيل المكرر في نفس اليوم — عبر سيرفر VPS
     final subscriptionId = widget.subscriptionId;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final customerId = subscriptionInfo!.customerId;
 
-    // تنظيف القائمة من التفعيلات القديمة (غير اليوم)
-    _activatedSubscriptionsToday.removeWhere((key, date) {
-      final activationDate = DateTime(date.year, date.month, date.day);
-      return activationDate != today;
-    });
+    if (customerId.isNotEmpty) {
+      try {
+        final checkResult = await SubscriptionLogsService.instance
+            .checkActivationToday(
+          subscriptionId: subscriptionId,
+          customerId: customerId,
+        );
 
-    // التحقق إذا تم تفعيل هذا المشترك اليوم
-    if (_activatedSubscriptionsToday.containsKey(subscriptionId)) {
-      final lastActivation = _activatedSubscriptionsToday[subscriptionId]!;
-      final timeAgo = now.difference(lastActivation);
-      final minutesAgo = timeAgo.inMinutes;
+        if (checkResult != null && checkResult['activatedToday'] == true) {
+          // حساب الوقت منذ آخر تفعيل
+          int minutesAgo = 0;
+          final logData = checkResult['log'];
+          if (logData != null && logData['activationDate'] != null) {
+            try {
+              final lastDate = DateTime.parse(logData['activationDate'].toString());
+              minutesAgo = DateTime.now().difference(lastDate).inMinutes;
+            } catch (_) {}
+          }
 
-      final shouldContinue = await _showDuplicateActivationWarning(minutesAgo);
-      if (!shouldContinue) return;
+          final shouldContinue = await _showDuplicateActivationWarning(
+            minutesAgo,
+            activatedBy: logData?['activatedBy']?.toString(),
+            operationType: logData?['operationType']?.toString(),
+            planName: logData?['planName']?.toString(),
+          );
+          if (!shouldContinue) return;
+        }
+      } catch (e) {
+        debugPrint('⚠️ فشل فحص التكرار من السيرفر: $e - المتابعة...');
+      }
     }
 
     // تأكد من وجود خطة ومدة محددتين
@@ -438,26 +449,41 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     final activatedTechnician = _selectedLinkedTechnician;
 
     try {
-      // 1️⃣ تفعيل الاشتراك
-      debugPrint('🚀 [1/5] بدء تفعيل الاشتراك...');
+      // 1️⃣ حفظ البيانات الأولي في VPS (قبل التفعيل — لضمان تسجيل العملية)
+      debugPrint('📊 [1/6] حفظ البيانات الأولي في VPS...');
+      try {
+        if (partnerWalletBalanceBefore == 0.0) {
+          partnerWalletBalanceBefore = walletBalance;
+        }
+        if (customerWalletBalanceBefore == 0.0) {
+          customerWalletBalanceBefore = customerWalletBalance;
+        }
+        await _saveToServer();
+        safeSetState(() => _isSavedToSheets = true);
+        debugPrint('✅ [1/6] تم الحفظ الأولي بنجاح');
+      } catch (e) {
+        debugPrint('⚠️ [1/6] فشل الحفظ الأولي: $e - المتابعة...');
+      }
+
+      // 2️⃣ تفعيل الاشتراك
+      debugPrint('🚀 [2/6] بدء تفعيل الاشتراك...');
       final activationSuccess = await _executeChangeSubscription();
       if (!activationSuccess) {
         debugPrint('❌ فشل تفعيل الاشتراك - إيقاف العملية');
         return;
       }
-      debugPrint('✅ [1/5] تم تفعيل الاشتراك بنجاح');
+      debugPrint('✅ [2/6] تم تفعيل الاشتراك بنجاح');
 
-      // تسجيل التفعيل الناجح في القائمة + الفاصل الزمني
-      _activatedSubscriptionsToday[subscriptionId] = DateTime.now();
+      // تسجيل الفاصل الزمني
       _lastActivationTime = DateTime.now();
 
-      // 2️⃣ تحديث الصفحة للحصول على البيانات المحدثة
-      debugPrint('🔄 [2/5] تحديث بيانات الصفحة...');
+      // 3️⃣ تحديث الصفحة للحصول على البيانات المحدثة
+      debugPrint('🔄 [3/6] تحديث بيانات الصفحة...');
       try {
         await fetchSubscriptionDetails();
-        debugPrint('✅ [2/5] تم تحديث الصفحة بنجاح');
+        debugPrint('✅ [3/6] تم تحديث الصفحة بنجاح');
       } catch (e) {
-        debugPrint('⚠️ [2/5] فشل تحديث الصفحة: $e - المتابعة...');
+        debugPrint('⚠️ [3/6] فشل تحديث الصفحة: $e - المتابعة...');
       }
 
       // ملاحظة: subscriptionInfo.expiresAt الآن يحتوي التاريخ الحقيقي من API بعد التفعيل
@@ -469,25 +495,18 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       _selectedLinkedAgent = activatedAgent;
       _selectedLinkedTechnician = activatedTechnician;
 
+      // 4️⃣ تحديث سجل VPS بالبيانات الجديدة بعد التفعيل (تاريخ الانتهاء، الحالة، الرصيد)
+      debugPrint('🔄 [4/6] تحديث سجل VPS بالبيانات الجديدة...');
+      try {
+        await _updateLogAfterActivation();
+        debugPrint('✅ [4/6] تم تحديث سجل VPS بالبيانات الجديدة');
+      } catch (e) {
+        debugPrint('⚠️ [4/6] فشل تحديث سجل VPS: $e - المتابعة...');
+      }
+
       // 🎉 عرض نافذة النجاح مع معلومات الاشتراك المحدثة
       if (mounted) {
         await _showActivationSuccessDialog();
-      }
-
-      // 3️⃣ حفظ البيانات في VPS فوراً بعد رسالة النجاح
-      debugPrint('📊 [3/5] حفظ البيانات...');
-      try {
-        if (partnerWalletBalanceBefore == 0.0) {
-          partnerWalletBalanceBefore = walletBalance;
-        }
-        if (customerWalletBalanceBefore == 0.0) {
-          customerWalletBalanceBefore = customerWalletBalance;
-        }
-        await _saveToServer();
-        safeSetState(() => _isSavedToSheets = true);
-        debugPrint('✅ [3/5] تم الحفظ بنجاح');
-      } catch (e) {
-        debugPrint('⚠️ [3/5] فشل الحفظ: $e - المتابعة...');
       }
 
       // ========== تحرير الشاشة — المشغل يستطيع الرجوع الآن ==========
@@ -634,31 +653,36 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       }
     }
 
-    // 4️⃣ طباعة الوصل
-    debugPrint('🖨️ [4/5] طباعة الوصل...');
+    // 5️⃣ طباعة الوصل
+    debugPrint('🖨️ [5/6] طباعة الوصل...');
     try {
       await _executePrintReceipt();
-      debugPrint('✅ [4/5] تم طباعة الوصل');
+      debugPrint('✅ [5/6] تم طباعة الوصل');
     } catch (e) {
-      debugPrint('⚠️ [4/5] فشل الطباعة: $e');
+      debugPrint('⚠️ [5/6] فشل الطباعة: $e');
     }
 
-    // 5️⃣ إرسال واتساب
+    // 6️⃣ إرسال واتساب
     if (hasWhatsApp) {
-      debugPrint('📱 [5/5] إرسال رسالة واتساب...');
+      debugPrint('📱 [6/6] إرسال رسالة واتساب...');
       try {
         await sendWhatsAppMessage();
-        debugPrint('✅ [5/5] تم إرسال الواتساب');
+        debugPrint('✅ [6/6] تم إرسال الواتساب');
       } catch (e) {
-        debugPrint('⚠️ [5/5] فشل إرسال الواتساب');
+        debugPrint('⚠️ [6/6] فشل إرسال الواتساب');
       }
     }
 
     debugPrint('🎉 اكتملت جميع العمليات الخلفية!');
   }
 
-  /// عرض تحذير التفعيل المكرر في نفس اليوم
-  Future<bool> _showDuplicateActivationWarning(int minutesAgo) async {
+  /// عرض تحذير التفعيل المكرر في نفس اليوم (بيانات من السيرفر)
+  Future<bool> _showDuplicateActivationWarning(
+    int minutesAgo, {
+    String? activatedBy,
+    String? operationType,
+    String? planName,
+  }) async {
     String timeText;
     if (minutesAgo < 1) {
       timeText = 'منذ أقل من دقيقة';
@@ -666,7 +690,19 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       timeText = 'منذ $minutesAgo دقيقة';
     } else {
       final hours = minutesAgo ~/ 60;
-      timeText = 'منذ $hours ساعة';
+      final mins = minutesAgo % 60;
+      timeText = mins > 0 ? 'منذ $hours ساعة و $mins دقيقة' : 'منذ $hours ساعة';
+    }
+
+    // ترجمة نوع العملية
+    String opText = '';
+    if (operationType != null) {
+      switch (operationType) {
+        case 'renewal': opText = 'تجديد'; break;
+        case 'purchase': opText = 'شراء'; break;
+        case 'change': opText = 'تغيير'; break;
+        default: opText = operationType;
+      }
     }
 
     final customerName = subscriptionInfo?.customerName ?? 'هذا المشترك';
@@ -722,7 +758,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'تم الضغط على التفعيل التلقائي لـ',
+                    'تم تفعيل هذا المشترك اليوم مسبقاً',
                     style: TextStyle(
                       fontSize: dupSmall ? 12 : 14,
                       color: Colors.grey.shade700,
@@ -738,21 +774,46 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
+                  // تفاصيل التفعيل السابق من السيرفر
                   Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: dupSmall ? 8 : 12, vertical: 6),
+                    padding: EdgeInsets.all(dupSmall ? 8 : 10),
                     decoration: BoxDecoration(
                       color: Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
-                      timeText,
-                      style: TextStyle(
-                        fontSize: dupSmall ? 12 : 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.orange.shade800,
-                      ),
+                    child: Column(
+                      children: [
+                        Text(
+                          timeText,
+                          style: TextStyle(
+                            fontSize: dupSmall ? 13 : 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange.shade800,
+                          ),
+                        ),
+                        if (opText.isNotEmpty || planName != null) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            '${opText.isNotEmpty ? "العملية: $opText" : ""}${planName != null ? " — $planName" : ""}',
+                            style: TextStyle(
+                              fontSize: dupSmall ? 11 : 13,
+                              color: Colors.grey.shade700,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                        if (activatedBy != null && activatedBy.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'بواسطة: $activatedBy',
+                            style: TextStyle(
+                              fontSize: dupSmall ? 11 : 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -887,7 +948,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
               ),
               const SizedBox(height: 12),
               Text(
-                'سيتم الآن: حفظ البيانات، طباعة الوصل، وإرسال الواتساب',
+                'تم حفظ البيانات — سيتم الآن: طباعة الوصل وإرسال الواتساب',
                 style: TextStyle(
                   fontSize: successSmall ? 11 : 12,
                   color: Colors.grey.shade600,

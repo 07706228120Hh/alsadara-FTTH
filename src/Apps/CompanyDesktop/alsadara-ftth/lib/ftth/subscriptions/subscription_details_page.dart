@@ -5323,6 +5323,49 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     }
   }
 
+  /// تحديث سجل VPS بالبيانات الجديدة بعد التفعيل وتحديث الصفحة
+  Future<void> _updateLogAfterActivation() async {
+    final logId = await _getOrFindVpsLogId();
+    if (logId == null) {
+      debugPrint('⚠️ لا يوجد logId لتحديث البيانات بعد التفعيل');
+      return;
+    }
+
+    try {
+      final fields = <String, dynamic>{};
+
+      // تاريخ الانتهاء الجديد من بيانات الاشتراك المحدثة
+      final newEndDate = _calculateEndDate();
+      if (newEndDate.isNotEmpty) {
+        fields['endDate'] = newEndDate;
+      }
+
+      // الحالة الجديدة
+      if (subscriptionInfo?.status != null &&
+          subscriptionInfo!.status.isNotEmpty) {
+        fields['currentStatus'] = subscriptionInfo!.status;
+      }
+
+      // الرصيد الفعلي بعد العملية
+      final actualBalanceAfter = _selectedWalletSource == 'customer'
+          ? customerWalletBalance
+          : walletBalance;
+      fields['walletBalanceAfter'] = actualBalanceAfter;
+
+      if (fields.isNotEmpty) {
+        final success = await SubscriptionLogsService.instance.updateLogFields(
+          logId: logId,
+          fields: fields,
+        );
+        if (success) {
+          debugPrint('✅ تم تحديث سجل VPS بالبيانات الجديدة بعد التفعيل: $fields');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ فشل تحديث سجل VPS بعد التفعيل: $e');
+    }
+  }
+
   /// تحديث حالة الطباعة في VPS
   Future<void> _updatePrintStatusInVps() async {
     final logId = await _getOrFindVpsLogId();

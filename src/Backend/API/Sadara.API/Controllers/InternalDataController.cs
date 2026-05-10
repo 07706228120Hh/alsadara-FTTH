@@ -2273,6 +2273,48 @@ public class InternalDataController : ControllerBase
     }
 
     /// <summary>
+    /// التحقق من وجود تفعيل اليوم لنفس الاشتراك والمشترك
+    /// يُستخدم لمنع التفعيل المكرر
+    /// </summary>
+    [HttpGet("subscriptionlogs/check-today")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CheckActivationToday(
+        [FromQuery] string subscriptionId,
+        [FromQuery] string customerId)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        if (string.IsNullOrWhiteSpace(subscriptionId) || string.IsNullOrWhiteSpace(customerId))
+            return BadRequest(new { success = false, message = "subscriptionId و customerId مطلوبان" });
+
+        var todayUtc = DateTime.UtcNow.Date;
+
+        var existingLog = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => l.SubscriptionId == subscriptionId
+                     && l.CustomerId == customerId
+                     && l.ActivationDate.HasValue
+                     && l.ActivationDate.Value.Date == todayUtc)
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new
+            {
+                l.Id,
+                l.ActivationDate,
+                l.ActivationTime,
+                l.OperationType,
+                l.PlanName,
+                l.ActivatedBy,
+            })
+            .FirstOrDefaultAsync();
+
+        return Ok(new
+        {
+            activatedToday = existingLog != null,
+            log = existingLog,
+        });
+    }
+
+    /// <summary>
     /// كشف وإصلاح السجلات التي PaymentMethod لا يطابق CollectionType
     /// GET → عرض فقط، POST → إصلاح تلقائي
     /// </summary>

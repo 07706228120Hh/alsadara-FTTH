@@ -217,6 +217,65 @@ class SubscriptionLogsService {
     }
   }
 
+  /// تحديث حقول السجل بعد التفعيل (تاريخ الانتهاء، الحالة، الرصيد، إلخ)
+  Future<bool> updateLogFields({
+    required int logId,
+    required Map<String, dynamic> fields,
+  }) async {
+    if (fields.isEmpty) return true;
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/subscriptionlogs/$logId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': apiKey,
+        },
+        body: jsonEncode(fields),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ SubscriptionLogsService: تم تحديث حقول السجل $logId بنجاح');
+        return true;
+      } else {
+        debugPrint(
+            '❌ SubscriptionLogsService: فشل تحديث حقول السجل $logId - ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ SubscriptionLogsService: خطأ في تحديث الحقول - $e');
+      return false;
+    }
+  }
+
+  /// التحقق من وجود تفعيل اليوم لنفس الاشتراك والمشترك
+  /// يرجع Map بالنتيجة: {activatedToday: bool, log: {...}} أو null عند الخطأ
+  Future<Map<String, dynamic>?> checkActivationToday({
+    required String subscriptionId,
+    required String customerId,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/subscriptionlogs/check-today')
+          .replace(queryParameters: {
+        'subscriptionId': subscriptionId,
+        'customerId': customerId,
+      });
+
+      final response = await http.get(
+        uri,
+        headers: {'X-Api-Key': apiKey},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      debugPrint('⚠️ checkActivationToday: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      debugPrint('⚠️ checkActivationToday: خطأ - $e');
+      return null;
+    }
+  }
+
   /// البحث عن سجل بواسطة SessionId — يرجع الـ ID أو null
   Future<int?> findLogBySessionId(String sessionId) async {
     try {
