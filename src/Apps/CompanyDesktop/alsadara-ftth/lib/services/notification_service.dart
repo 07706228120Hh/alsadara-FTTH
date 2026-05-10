@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:local_notifier/local_notifier.dart';
@@ -580,19 +581,22 @@ class NotificationService {
   /// الحصول على FCM Token الحالي
   static String? get fcmToken => _fcmToken;
 
-  /// طلب استثناء التطبيق من تحسين البطارية (Android فقط)
-  /// بدون هذا، أجهزة مثل Xiaomi/Samsung/Huawei تقتل FCM في الخلفية
+  /// طلب استثناء التطبيق من تحسين البطارية (Android فقط — مرة واحدة)
   static Future<void> requestBatteryOptimizationExemption() async {
     if (!Platform.isAndroid) return;
     try {
+      // لا نسأل إلا مرة واحدة
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('battery_opt_requested') == true) return;
+
       const channel = MethodChannel('com.alsadara.ftth_project/battery');
       final isIgnoring = await channel.invokeMethod<bool>('isIgnoringBatteryOptimizations') ?? false;
       if (!isIgnoring) {
         await channel.invokeMethod('requestIgnoreBatteryOptimizations');
         debugPrint('🔋 تم طلب استثناء تحسين البطارية');
-      } else {
-        debugPrint('🔋 التطبيق مستثنى من تحسين البطارية بالفعل');
       }
+      // سواء وافق أو لا — لا نسأل مرة ثانية
+      await prefs.setBool('battery_opt_requested', true);
     } catch (e) {
       debugPrint('⚠️ خطأ في طلب استثناء البطارية: $e');
     }
