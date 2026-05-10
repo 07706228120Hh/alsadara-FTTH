@@ -1204,4 +1204,232 @@ class AccountingService {
     final response = await _client.delete('/zone-maintenance-fees/$id', (json) => json);
     return _toMap(response);
   }
+
+  // ═══════════════════════════════════════════
+  // سياسات الرواتب - Salary Policies
+  // ═══════════════════════════════════════════
+
+  Future<Map<String, dynamic>> getSalaryPolicies({String? companyId}) async {
+    String query = '/accounting/salary-policies';
+    if (companyId != null) query += '?companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> createSalaryPolicy({
+    required String companyId,
+    String? name,
+    bool isDefault = false,
+    required double deductionPerLateMinute,
+    required double maxLateDeductionPercent,
+    required double absentDayMultiplier,
+    required double deductionPerEarlyDepartureMinute,
+    required double overtimeHourlyMultiplier,
+    required int maxOvertimeHoursPerMonth,
+    required double unpaidLeaveDayMultiplier,
+    required int workDaysPerMonth,
+  }) async {
+    final body = {
+      'CompanyId': companyId,
+      'Name': name ?? 'سياسة افتراضية',
+      'IsDefault': isDefault,
+      'DeductionPerLateMinute': deductionPerLateMinute,
+      'MaxLateDeductionPercent': maxLateDeductionPercent,
+      'AbsentDayMultiplier': absentDayMultiplier,
+      'DeductionPerEarlyDepartureMinute': deductionPerEarlyDepartureMinute,
+      'OvertimeHourlyMultiplier': overtimeHourlyMultiplier,
+      'MaxOvertimeHoursPerMonth': maxOvertimeHoursPerMonth,
+      'UnpaidLeaveDayMultiplier': unpaidLeaveDayMultiplier,
+      'WorkDaysPerMonth': workDaysPerMonth,
+    };
+    final response = await _client.post('/accounting/salary-policies', body, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> updateSalaryPolicy(
+    dynamic id, {
+    required String companyId,
+    String? name,
+    bool isDefault = false,
+    required double deductionPerLateMinute,
+    required double maxLateDeductionPercent,
+    required double absentDayMultiplier,
+    required double deductionPerEarlyDepartureMinute,
+    required double overtimeHourlyMultiplier,
+    required int maxOvertimeHoursPerMonth,
+    required double unpaidLeaveDayMultiplier,
+    required int workDaysPerMonth,
+  }) async {
+    final body = {
+      'CompanyId': companyId,
+      'Name': name ?? 'سياسة افتراضية',
+      'IsDefault': isDefault,
+      'DeductionPerLateMinute': deductionPerLateMinute,
+      'MaxLateDeductionPercent': maxLateDeductionPercent,
+      'AbsentDayMultiplier': absentDayMultiplier,
+      'DeductionPerEarlyDepartureMinute': deductionPerEarlyDepartureMinute,
+      'OvertimeHourlyMultiplier': overtimeHourlyMultiplier,
+      'MaxOvertimeHoursPerMonth': maxOvertimeHoursPerMonth,
+      'UnpaidLeaveDayMultiplier': unpaidLeaveDayMultiplier,
+      'WorkDaysPerMonth': workDaysPerMonth,
+    };
+    final response = await _client.put('/accounting/salary-policies/$id', body, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> deleteSalaryPolicy(dynamic id) async {
+    final response = await _client.delete('/accounting/salary-policies/$id', (json) => json);
+    return _toMap(response);
+  }
+
+  // ═══════════════════════════════════════════
+  // التعديلات اليدوية - Employee Adjustments
+  // ═══════════════════════════════════════════
+
+  Future<Map<String, dynamic>> getEmployeeAdjustments({
+    String? companyId,
+    String? userId,
+    int? month,
+    int? year,
+    int? type,
+  }) async {
+    String query = '/accounting/employee-adjustments?';
+    if (companyId != null) query += 'companyId=$companyId&';
+    if (userId != null) query += 'userId=$userId&';
+    if (month != null) query += 'month=$month&';
+    if (year != null) query += 'year=$year&';
+    if (type != null) query += 'type=$type&';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> createEmployeeAdjustment({
+    required String userId,
+    required String companyId,
+    required int type,
+    String? category,
+    required double amount,
+    required int month,
+    required int year,
+    String? description,
+    String? notes,
+    required String createdById,
+    bool isRecurring = false,
+  }) async {
+    final body = {
+      'UserId': userId,
+      'CompanyId': companyId,
+      'Type': type,
+      'Category': category,
+      'Amount': amount,
+      'Month': month,
+      'Year': year,
+      'Description': description,
+      'Notes': notes,
+      'CreatedById': createdById,
+      'IsRecurring': isRecurring,
+    };
+    body.removeWhere((key, value) => value == null);
+    final response = await _client.post('/accounting/employee-adjustments', body, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> updateEmployeeAdjustment(
+    dynamic id, {
+    int? type,
+    String? category,
+    double? amount,
+    String? description,
+    String? notes,
+    bool? isRecurring,
+    bool? isActive,
+  }) async {
+    final body = <String, dynamic>{
+      'Type': type,
+      'Category': category,
+      'Amount': amount,
+      'Description': description,
+      'Notes': notes,
+      'IsRecurring': isRecurring,
+      'IsActive': isActive,
+    };
+    body.removeWhere((key, value) => value == null);
+    final response = await _client.put('/accounting/employee-adjustments/$id', body, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> deleteEmployeeAdjustment(dynamic id) async {
+    final response = await _client.delete('/accounting/employee-adjustments/$id', (json) => json);
+    return _toMap(response);
+  }
+
+  // ═══════════════════════════════════════════
+  // تقارير الموارد البشرية - HR Reports
+  // ═══════════════════════════════════════════
+
+  Future<Map<String, dynamic>> getHrDashboard({
+    String? companyId,
+    int? month,
+    int? year,
+  }) async {
+    String query = '/hr-reports/dashboard?';
+    if (companyId != null) query += 'companyId=$companyId&';
+    if (month != null) query += 'month=$month&';
+    if (year != null) query += 'year=$year&';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> getMonthlyAttendanceReport({
+    String? companyId,
+    int? month,
+    int? year,
+  }) async {
+    String query = '/hr-reports/attendance/monthly?';
+    if (companyId != null) query += 'companyId=$companyId&';
+    if (month != null) query += 'month=$month&';
+    if (year != null) query += 'year=$year&';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> getMonthlySalaryReport({
+    String? companyId,
+    int? month,
+    int? year,
+  }) async {
+    String query = '/hr-reports/salaries/monthly?';
+    if (companyId != null) query += 'companyId=$companyId&';
+    if (month != null) query += 'month=$month&';
+    if (year != null) query += 'year=$year&';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> getLeavesSummary({
+    String? companyId,
+    int? month,
+    int? year,
+  }) async {
+    String query = '/hr-reports/leaves/summary?';
+    if (companyId != null) query += 'companyId=$companyId&';
+    if (month != null) query += 'month=$month&';
+    if (year != null) query += 'year=$year&';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
+  Future<Map<String, dynamic>> getEmployeeReport(
+    String userId, {
+    int? month,
+    int? year,
+    String? companyId,
+  }) async {
+    String query = '/hr-reports/employee/$userId?';
+    if (companyId != null) query += 'companyId=$companyId&';
+    if (month != null) query += 'month=$month&';
+    if (year != null) query += 'year=$year&';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
 }

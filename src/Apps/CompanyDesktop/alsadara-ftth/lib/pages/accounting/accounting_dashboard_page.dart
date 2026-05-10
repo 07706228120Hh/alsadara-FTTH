@@ -46,6 +46,9 @@ import 'year_comparison_page.dart';
 import 'budget_page.dart';
 import 'settlement_reports_page.dart';
 import 'wallet_transactions_page.dart';
+import 'salary_policy_page.dart';
+import 'employee_adjustments_page.dart';
+import 'hr_reports_page.dart';
 
 /// لوحة المحاسبة الرئيسية
 class AccountingDashboardPage extends StatefulWidget {
@@ -437,6 +440,27 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             onTap: () => _navigateTo(SalariesPage(companyId: widget.companyId)),
             forceExpanded: alwaysExpanded),
         _sidebarBtn(
+            icon: Icons.policy_rounded,
+            label: 'سياسات الرواتب',
+            color: const Color(0xFFAD1457),
+            permKey: 'accounting.salaries',
+            onTap: () => _navigateTo(SalaryPolicyPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.tune_rounded,
+            label: 'الخصومات والمكافآت',
+            color: const Color(0xFFD81B60),
+            permKey: 'accounting.salaries',
+            onTap: () => _navigateTo(EmployeeAdjustmentsPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
+            icon: Icons.assessment_rounded,
+            label: 'تقارير HR',
+            color: const Color(0xFF6A1B9A),
+            permKey: 'accounting.salaries',
+            onTap: () => _navigateTo(HrReportsPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
             icon: Icons.balance_rounded,
             label: 'ميزان المراجعة',
             color: const Color(0xFF1ABC9C),
@@ -698,6 +722,30 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                     permKey: 'accounting.salaries',
                     onTap: () =>
                         _navigateTo(SalariesPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.policy_rounded,
+                    label: 'سياسات الرواتب',
+                    color: const Color(0xFFAD1457),
+                    permKey: 'accounting.salaries',
+                    onTap: () => _navigateTo(
+                        SalaryPolicyPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.tune_rounded,
+                    label: 'الخصومات والمكافآت',
+                    color: const Color(0xFFD81B60),
+                    permKey: 'accounting.salaries',
+                    onTap: () => _navigateTo(
+                        EmployeeAdjustmentsPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.assessment_rounded,
+                    label: 'تقارير HR',
+                    color: const Color(0xFF6A1B9A),
+                    permKey: 'accounting.salaries',
+                    onTap: () => _navigateTo(
+                        HrReportsPage(companyId: widget.companyId)),
                   ),
                   _sidebarBtn(
                     icon: Icons.balance_rounded,
