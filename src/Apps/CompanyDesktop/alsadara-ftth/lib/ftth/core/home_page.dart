@@ -57,6 +57,7 @@ import '../transactions/transactions_page.dart';
 import '../../services/badge_service.dart';
 import '../../services/auth/session_manager.dart';
 import '../../services/vps_sync_service.dart';
+import '../../services/vps_upload_service.dart';
 import '../../services/auth/auth_context.dart';
 import '../../services/dual_auth_service.dart';
 import '../../services/ftth/ftth_cache_service.dart';
@@ -225,6 +226,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // بدء المزامنة التلقائية من VPS (تنزيل صامت في الخلفية)
     VpsSyncService.instance.startAutoSync();
+
+    // بدء المزامنة التلقائية للجهاز الرئيسي (جلب FTTH + رفع للسيرفر)
+    VpsUploadService.instance.startAutoSync();
 
     // الزر العائم للواتساب يتم إظهاره بعد تحميل الصلاحيات في _initializeApp
   }
@@ -470,6 +474,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     BackgroundSyncService.instance.onSyncComplete = null;
 
     VpsSyncService.instance.stopAutoSync();
+    VpsUploadService.instance.stopAutoSync();
     _autoCollapseTimer?.cancel();
     _timer?.cancel();
     _walletTimer?.cancel();

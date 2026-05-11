@@ -23,23 +23,26 @@ public class FtthSyncBackgroundService : BackgroundService
 
     // ═══ ثوابت مطابقة للتطبيق (sync_settings_service.dart defaults) ═══
     private const int PageSize = 150;                   // عدد العناصر في كل صفحة/دفعة
-    private const int SubscriptionParallel = 10;         // اشتراكات: 10 صفحات متوازية — مثل التطبيق
-    private const int DetailsParallel = 500;            // تفاصيل: 500 دفعة متوازية — مثل التطبيق
-    private const int PhoneParallel = 500;              // هواتف: 500 طلب متوازي — مثل التطبيق
+    private const int SubscriptionParallel = 3;           // اشتراكات: 3 صفحات متوازية — أقل من التطبيق لتجنب حظر IP السيرفر الثابت
+    private const int DetailsParallel = 10;             // تفاصيل: 10 دفعات متوازية — مثل التطبيق
+    private const int PhoneParallel = 10;               // هواتف: 10 طلبات متوازية — مثل التطبيق
     private const int PhoneTimeoutSeconds = 3;          // timeout هاتف: 3 ثواني (مثل التطبيق)
     private const int DetailTimeoutSeconds = 90;        // timeout تفاصيل: 90 ثانية
     private const int SubscriptionTimeoutSeconds = 60;  // timeout اشتراك: 60 ثانية
     private const int MaxBatchRetries = 3;              // 3 محاولات إعادة للدفعات
     private const int MaxPageRetries = 5;               // 5 محاولات إعادة لكل طلب
     private const int PhoneBatchesBeforeSave = 10;      // تخزين الهواتف كل 10 دفعات
+    private const int SubscriptionRefreshEveryPages = 20; // تجديد التوكن كل 20 صفحة أثناء جلب الاشتراكات
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<FtthSyncBackgroundService> _logger;
     private readonly Dictionary<Guid, CancellationTokenSource> _activeSyncs = new();
 
-    // FTTH credentials للتجديد أثناء المزامنة
+    // FTTH credentials + token management — مطابق لـ AuthService في Flutter
     private string _ftthUsername = "";
     private string _ftthPassword = "";
+    private string? _refreshToken;
+    private DateTime _tokenExpiry = DateTime.MinValue;
 
     public FtthSyncBackgroundService(IServiceScopeFactory scopeFactory, ILogger<FtthSyncBackgroundService> logger)
     {
@@ -75,6 +78,9 @@ public class FtthSyncBackgroundService : BackgroundService
         {
             if (stoppingToken.IsCancellationRequested) break;
             if (_activeSyncs.ContainsKey(settings.CompanyId)) continue;
+
+            // وضع الجهاز الرئيسي — لا حاجة لمزامنة مباشرة من FTTH
+            if (settings.IsMasterSyncEnabled) continue;
 
             if (settings.IsSyncInProgress)
             {
@@ -226,6 +232,7 @@ public class FtthSyncBackgroundService : BackgroundService
     private async Task<List<Dictionary<string, object?>>> FetchAllSubscriptions(string token, CancellationToken ct, Guid companyId)
     {
         var all = new List<Dictionary<string, object?>>();
+        var currentToken = token;
 
         // الصفحة الأولى لمعرفة totalCount — مع retry
         string firstJson = "";
@@ -233,7 +240,7 @@ public class FtthSyncBackgroundService : BackgroundService
         {
             try
             {
-                using var c = CreateClient(token, SubscriptionTimeoutSeconds);
+                using var c = CreateClient(currentToken, SubscriptionTimeoutSeconds);
                 firstJson = await c.GetStringAsync($"{FtthBaseUrl}/api/subscriptions?sortCriteria.property=expires&sortCriteria.direction=asc&hierarchyLevel=0&pageNumber=1&pageSize={PageSize}", ct);
                 break;
             }
@@ -254,8 +261,17 @@ public class FtthSyncBackgroundService : BackgroundService
 
         // جلب باقي الصفحات — 10 متوازي مع retry 3
         var currentPage = 2;
+        int pagesSinceRefresh = 0;
         while (currentPage <= totalPages && !ct.IsCancellationRequested)
         {
+            // تجديد التوكن كل N صفحة — لتجنب انتهاء الصلاحية أثناء جلب الاشتراكات
+            pagesSinceRefresh += SubscriptionParallel;
+            if (pagesSinceRefresh >= SubscriptionRefreshEveryPages)
+            {
+                currentToken = await RefreshTokenIfNeeded(currentToken);
+                pagesSinceRefresh = 0;
+            }
+
             var endPage = Math.Min(currentPage + SubscriptionParallel - 1, totalPages);
             var pagesToFetch = Enumerable.Range(currentPage, endPage - currentPage + 1).ToList();
 
@@ -269,7 +285,7 @@ public class FtthSyncBackgroundService : BackgroundService
                     _logger.LogInformation("Subscription retry: {Count} pages (attempt {A})", failed.Count, retry + 1);
                     await Task.Delay(TimeSpan.FromSeconds(retry * 2), ct);
                 }
-                var tasks = failed.Select(p => FetchOnePage(token, p, ct)).ToList();
+                var tasks = failed.Select(p => FetchOnePage(currentToken, p, ct)).ToList();
                 var results = await Task.WhenAll(tasks);
                 var nextFailed = new List<int>();
                 for (int i = 0; i < failed.Count; i++)
@@ -283,17 +299,23 @@ public class FtthSyncBackgroundService : BackgroundService
             currentPage = endPage + 1;
             var pct = 5 + (int)(20.0 * all.Count / Math.Max(totalCount, 1));
             await UpdateProgress(companyId, "subscribers", pct, $"جلب الاشتراكات: {all.Count:N0}/{totalCount:N0} — صفحة {Math.Min(endPage, totalPages)}/{totalPages}", all.Count, totalCount);
-            if (currentPage <= totalPages && !ct.IsCancellationRequested) await Task.Delay(300, ct); // 300ms مثل التطبيق
+            // Flutter: 300ms تأخير + وقت حفظ DB (~500ms) = ~800ms فعلياً بين كل دفعة
+            // Backend يحفظ في الذاكرة (فوري) فنضيف التأخير الكامل
+            if (currentPage <= totalPages && !ct.IsCancellationRequested) await Task.Delay(800, ct);
         }
 
         _logger.LogInformation("Subscriptions done: {Count}/{Total}", all.Count, totalCount);
         return all;
     }
 
+    /// <summary>
+    /// جلب صفحة واحدة — مطابق لـ _fetchSinglePage + _httpGetWithRetry في Flutter:
+    /// Flutter يستخدم maxRetries=3 مع backoff (attempt*2s عادي، attempt*3s لـ ClientException)
+    /// </summary>
     private async Task<List<Dictionary<string, object?>>> FetchOnePage(string token, int pageNum, CancellationToken ct)
     {
         var url = $"{FtthBaseUrl}/api/subscriptions?sortCriteria.property=expires&sortCriteria.direction=asc&hierarchyLevel=0&pageNumber={pageNum}&pageSize={PageSize}";
-        for (int attempt = 1; attempt <= MaxPageRetries; attempt++)
+        for (int attempt = 1; attempt <= MaxBatchRetries; attempt++) // 3 محاولات مثل Flutter
         {
             try
             {
@@ -306,10 +328,11 @@ public class FtthSyncBackgroundService : BackgroundService
                     foreach (var item in doc.RootElement.GetProperty("items").EnumerateArray()) result.Add(ConvertSubscription(item));
                     return result;
                 }
-                if ((int)res.StatusCode == 418) { await Task.Delay(TimeSpan.FromSeconds(attempt * 5), ct); continue; }
+                // Flutter لا يتعامل مع 418 بشكل خاص — يعامله كخطأ عادي
+                if (attempt < MaxBatchRetries) await Task.Delay(TimeSpan.FromSeconds(attempt * 2), ct);
             }
             catch (OperationCanceledException) { throw; }
-            catch { if (attempt < MaxPageRetries) await Task.Delay(TimeSpan.FromSeconds(attempt * 2), ct); }
+            catch { if (attempt < MaxBatchRetries) await Task.Delay(TimeSpan.FromSeconds(attempt * 2), ct); }
         }
         return new();
     }
@@ -627,7 +650,7 @@ public class FtthSyncBackgroundService : BackgroundService
     private async Task<(int newCount, int updatedCount, int skippedCount, int deletedCount)> SmartSaveSubscribers(
         SadaraDbContext context, Guid companyId, List<Dictionary<string, object?>> subscribers)
     {
-        int newCount = 0, updatedCount = 0, skippedCount = 0, deletedCount = 0;
+        int newCount = 0, updatedCount = 0, skippedCount = 0;
 
         // جلب كل الموجودين في DB (بما فيها المحذوفة soft delete)
         var existingAll = await context.FtthSubscriberCaches
@@ -703,20 +726,11 @@ public class FtthSyncBackgroundService : BackgroundService
             }
         }
 
-        // حذف المشتركين الموجودين في DB لكن غير موجودين في FTTH (zombie records)
-        foreach (var (subId, existing) in existingMap)
-        {
-            if (!ftthIds.Contains(subId))
-            {
-                existing.IsDeleted = true;
-                existing.DeletedAt = DateTime.UtcNow;
-                context.FtthSubscriberCaches.Update(existing);
-                deletedCount++;
-            }
-        }
+        // لا نحذف أي مشتركين — نفس سلوك التخزين المحلي في Flutter
+        // التخزين المحلي يعمل بـ upsert فقط بدون حذف
 
         await context.SaveChangesAsync();
-        return (newCount, updatedCount, skippedCount, deletedCount);
+        return (newCount, updatedCount, skippedCount, deletedCount: 0);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -773,37 +787,46 @@ public class FtthSyncBackgroundService : BackgroundService
                 failed = nextFailed;
             }
 
-            // تطبيق النتائج على DB مباشرة
+            // تطبيق النتائج على DB مباشرة — مع حماية كاملة من Null
             foreach (var batchIdx in successful.Keys.OrderBy(k => k))
             {
                 foreach (var (customerId, data) in successful[batchIdx])
                 {
-                    if (string.IsNullOrEmpty(customerId) || !customerMap.TryGetValue(customerId, out var entities)) continue;
-                    if (data.ValueKind != JsonValueKind.Object) continue;
-                    var dd = data.TryGetProperty("deviceDetails", out var d) && d.ValueKind == JsonValueKind.Object ? d : default;
-                    var gps = data.TryGetProperty("gpsCoordinate", out var g) && g.ValueKind == JsonValueKind.Object ? g : default;
-
-                    foreach (var entity in entities)
+                    try
                     {
-                        if (dd.ValueKind != JsonValueKind.Undefined)
+                        if (string.IsNullOrEmpty(customerId) || !customerMap.TryGetValue(customerId, out var entities)) continue;
+                        if (data.ValueKind != JsonValueKind.Object) continue;
+
+                        // حماية من Null — FTTH API قد يرجع null في أي حقل
+                        var hasDd = data.TryGetProperty("deviceDetails", out var d) && d.ValueKind == JsonValueKind.Object;
+                        var hasGps = data.TryGetProperty("gpsCoordinate", out var g) && g.ValueKind == JsonValueKind.Object;
+
+                        foreach (var entity in entities)
                         {
-                            if (dd.TryGetProperty("username", out var u)) entity.Username = u.ToString();
-                            if (dd.TryGetProperty("fdt", out var fdt) && fdt.TryGetProperty("displayValue", out var fdtV)) entity.FdtName = fdtV.ToString();
-                            if (dd.TryGetProperty("fat", out var fat) && fat.TryGetProperty("displayValue", out var fatV)) entity.FatName = fatV.ToString();
-                            if (dd.TryGetProperty("serial", out var s)) entity.DeviceSerial = s.ToString();
+                            if (hasDd)
+                            {
+                                if (d.TryGetProperty("username", out var u) && u.ValueKind == JsonValueKind.String) entity.Username = u.GetString() ?? "";
+                                if (d.TryGetProperty("fdt", out var fdt) && fdt.ValueKind == JsonValueKind.Object && fdt.TryGetProperty("displayValue", out var fdtV)) entity.FdtName = fdtV.ToString();
+                                if (d.TryGetProperty("fat", out var fat) && fat.ValueKind == JsonValueKind.Object && fat.TryGetProperty("displayValue", out var fatV)) entity.FatName = fatV.ToString();
+                                if (d.TryGetProperty("serial", out var s) && s.ValueKind == JsonValueKind.String) entity.DeviceSerial = s.GetString() ?? "";
+                            }
+                            if (hasGps)
+                            {
+                                if (g.TryGetProperty("latitude", out var lat) && lat.ValueKind != JsonValueKind.Null) entity.GpsLat = lat.ToString();
+                                if (g.TryGetProperty("longitude", out var lng) && lng.ValueKind != JsonValueKind.Null) entity.GpsLng = lng.ToString();
+                            }
+                            entity.IsTrial = data.TryGetProperty("isTrial", out var tr) && tr.ValueKind == JsonValueKind.True;
+                            entity.IsPending = data.TryGetProperty("isPending", out var pn) && pn.ValueKind == JsonValueKind.True;
+                            entity.DetailsFetched = true;
+                            entity.DetailsFetchedAt = DateTime.UtcNow;
+                            entity.UpdatedAt = DateTime.UtcNow;
+                            context.FtthSubscriberCaches.Update(entity);
+                            detailsLinked++;
                         }
-                        if (gps.ValueKind != JsonValueKind.Undefined)
-                        {
-                            if (gps.TryGetProperty("latitude", out var lat)) entity.GpsLat = lat.ToString();
-                            if (gps.TryGetProperty("longitude", out var lng)) entity.GpsLng = lng.ToString();
-                        }
-                        entity.IsTrial = data.TryGetProperty("isTrial", out var tr) && tr.ValueKind == JsonValueKind.True;
-                        entity.IsPending = data.TryGetProperty("isPending", out var pn) && pn.ValueKind == JsonValueKind.True;
-                        entity.DetailsFetched = true;
-                        entity.DetailsFetchedAt = DateTime.UtcNow;
-                        entity.UpdatedAt = DateTime.UtcNow;
-                        context.FtthSubscriberCaches.Update(entity);
-                        detailsLinked++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("Details: skipping customer {CId} due to parse error: {Error}", customerId, ex.Message);
                     }
                 }
             }
@@ -914,9 +937,12 @@ public class FtthSyncBackgroundService : BackgroundService
     // أدوات مساعدة
     // ═══════════════════════════════════════════════════════════
 
+    /// <summary>
+    /// إنشاء HttpClient لجلب البيانات — مع Origin/Referer/User-Agent
+    /// FTTH WAF يرفض الطلبات بدون هذه الـ headers
+    /// </summary>
     private HttpClient CreateClient(string token, int timeoutSeconds)
     {
-        // نفس الطريقة التي كانت تعمل في الإصدار السابق
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(timeoutSeconds) };
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -928,6 +954,7 @@ public class FtthSyncBackgroundService : BackgroundService
         return client;
     }
 
+    /// <summary>تسجيل دخول كامل — يحفظ access_token + refresh_token + expiry</summary>
     private async Task<string?> LoginToFtth(string username, string password)
     {
         try
@@ -947,15 +974,85 @@ public class FtthSyncBackgroundService : BackgroundService
             var response = await client.PostAsync($"{FtthBaseUrl}/api/auth/Contractor/token", content);
             if (!response.IsSuccessStatusCode) { _logger.LogWarning("FTTH login failed: {Status}", response.StatusCode); return null; }
             var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            return doc.RootElement.GetProperty("access_token").GetString();
+            var accessToken = doc.RootElement.GetProperty("access_token").GetString();
+
+            // حفظ refresh_token و expiry — مطابق لـ AuthService._saveTokens() في Flutter
+            if (doc.RootElement.TryGetProperty("refresh_token", out var rt))
+                _refreshToken = rt.GetString();
+            var expiresIn = doc.RootElement.TryGetProperty("expires_in", out var ei) ? ei.GetDouble() : 3600;
+            _tokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn);
+            _logger.LogInformation("FTTH login: token expires in {Sec}s, refresh_token={Has}",
+                expiresIn, !string.IsNullOrEmpty(_refreshToken));
+
+            return accessToken;
         }
         catch (Exception ex) { _logger.LogError(ex, "FTTH login error"); return null; }
     }
 
+    /// <summary>تجديد التوكن عبر refresh_token — مطابق لـ AuthService._refreshAccessToken() في Flutter</summary>
+    private async Task<string?> RefreshViaRefreshToken()
+    {
+        if (string.IsNullOrEmpty(_refreshToken)) return null;
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+            client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
+            client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
+            client.DefaultRequestHeaders.Add("x-client-app", FtthClientApp);
+            client.DefaultRequestHeaders.Add("x-user-role", "0");
+            var content = new FormUrlEncodedContent(new[] {
+                new KeyValuePair<string, string>("refresh_token", _refreshToken),
+                new KeyValuePair<string, string>("grant_type", "refresh_token"),
+            });
+            var response = await client.PostAsync($"{FtthBaseUrl}/api/auth/Contractor/refresh", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("FTTH refresh_token failed: {Status}", response.StatusCode);
+                return null;
+            }
+            var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var accessToken = doc.RootElement.GetProperty("access_token").GetString();
+            if (doc.RootElement.TryGetProperty("refresh_token", out var rt))
+                _refreshToken = rt.GetString();
+            var expiresIn = doc.RootElement.TryGetProperty("expires_in", out var ei) ? ei.GetDouble() : 3600;
+            _tokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn);
+            return accessToken;
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "FTTH refresh_token error"); return null; }
+    }
+
+    /// <summary>
+    /// تجديد ذكي — مطابق لـ AuthService.getAccessToken() في Flutter:
+    /// 1. إذا التوكن صالح (بقي > 4 دقائق) → يرجعه كما هو
+    /// 2. إذا قارب الانتهاء → يستخدم refresh_token (سريع)
+    /// 3. إذا فشل refresh → يعيد login كامل
+    /// </summary>
     private async Task<string> RefreshTokenIfNeeded(string currentToken)
     {
-        var newToken = await LoginToFtth(_ftthUsername, _ftthPassword);
-        if (!string.IsNullOrEmpty(newToken)) { _logger.LogInformation("Token refreshed"); return newToken; }
+        // إذا التوكن لا يزال صالحاً (بقي أكثر من 4 دقائق) — مثل Flutter
+        if (DateTime.UtcNow.AddMinutes(4) < _tokenExpiry)
+            return currentToken;
+
+        _logger.LogInformation("Token expiring soon, refreshing...");
+
+        // محاولة 1: استخدام refresh_token (سريع، بدون كلمة سر)
+        var newToken = await RefreshViaRefreshToken();
+        if (!string.IsNullOrEmpty(newToken))
+        {
+            _logger.LogInformation("Token refreshed via refresh_token");
+            return newToken;
+        }
+
+        // محاولة 2: login كامل (fallback)
+        _logger.LogInformation("refresh_token failed, falling back to full login");
+        newToken = await LoginToFtth(_ftthUsername, _ftthPassword);
+        if (!string.IsNullOrEmpty(newToken))
+        {
+            _logger.LogInformation("Token refreshed via full login");
+            return newToken;
+        }
+
+        _logger.LogWarning("All token refresh methods failed, using current token");
         return currentToken;
     }
 

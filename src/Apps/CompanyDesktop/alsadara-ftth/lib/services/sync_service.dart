@@ -226,29 +226,38 @@ class SyncService {
         }
       }
 
-      // المرحلة 3: جلب العناوين
-      if (fetchAddresses && customerIds.isNotEmpty) {
-        final totalAddressRequests = customerIds.length;
+      // المرحلة 3: جلب العناوين — فقط للمشتركين بدون تفاصيل
+      if (fetchAddresses) {
+        final idsWithoutDetails = await _db.getSubscribersWithoutDetails();
 
-        onProgress(SyncProgress(
-          stage: 'addresses',
-          current: 0,
-          total: totalAddressRequests,
-          message: 'جاري جلب العناوين...',
-        ));
+        if (idsWithoutDetails.isNotEmpty) {
+          onProgress(SyncProgress(
+            stage: 'addresses',
+            current: 0,
+            total: idsWithoutDetails.length,
+            message: 'جلب تفاصيل ${idsWithoutDetails.length} مشترك بدون تفاصيل...',
+          ));
 
-        addressesCount = await _fetchAddresses(
-          token: token,
-          customerIds: customerIds,
-          onProgress: (current, total) {
-            onProgress(SyncProgress(
-              stage: 'addresses',
-              current: current,
-              total: total,
-              message: 'جلب العناوين: $current من $total',
-            ));
-          },
-        );
+          addressesCount = await _fetchAddresses(
+            token: token,
+            customerIds: idsWithoutDetails,
+            onProgress: (current, total) {
+              onProgress(SyncProgress(
+                stage: 'addresses',
+                current: current,
+                total: total,
+                message: 'جلب التفاصيل: $current من $total',
+              ));
+            },
+          );
+        } else {
+          onProgress(SyncProgress(
+            stage: 'addresses',
+            current: 1,
+            total: 1,
+            message: 'كل المشتركين لديهم تفاصيل ✅',
+          ));
+        }
       }
 
       if (_isCancelled) {
@@ -1533,7 +1542,7 @@ class SyncService {
       final response = await http
           .get(Uri.parse('$_baseUrl/api/customers/$customerId'),
               headers: _getHeaders(token))
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

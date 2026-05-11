@@ -78,6 +78,7 @@ public class CompanyFtthSettingsController : ControllerBase
                 isSyncInProgress = settings.IsSyncInProgress,
                 currentDbCount = settings.CurrentDbCount,
                 consecutiveFailures = settings.ConsecutiveFailures,
+                isMasterSyncEnabled = settings.IsMasterSyncEnabled,
             }
         });
     }
@@ -103,6 +104,7 @@ public class CompanyFtthSettingsController : ControllerBase
             existing.IsAutoSyncEnabled = request.IsAutoSyncEnabled;
             existing.SyncStartHour = request.SyncStartHour;
             existing.SyncEndHour = request.SyncEndHour;
+            existing.IsMasterSyncEnabled = request.IsMasterSyncEnabled;
             existing.UpdatedAt = DateTime.UtcNow;
             _unitOfWork.CompanyFtthSettings.Update(existing);
         }
@@ -118,6 +120,7 @@ public class CompanyFtthSettingsController : ControllerBase
                 IsAutoSyncEnabled = request.IsAutoSyncEnabled,
                 SyncStartHour = request.SyncStartHour,
                 SyncEndHour = request.SyncEndHour,
+                IsMasterSyncEnabled = request.IsMasterSyncEnabled,
             };
             await _unitOfWork.CompanyFtthSettings.AddAsync(settings);
         }
@@ -250,6 +253,7 @@ public class CompanyFtthSettingsController : ControllerBase
                 syncMessage = settings.SyncMessage,
                 syncFetchedCount = settings.SyncFetchedCount,
                 syncTotalCount = settings.SyncTotalCount,
+                isMasterSyncEnabled = settings.IsMasterSyncEnabled,
             }
         });
     }
@@ -266,6 +270,9 @@ public class CompanyFtthSettingsController : ControllerBase
 
         if (settings == null)
             return NotFound(new { success = false, message = "لم يتم إعداد FTTH بعد" });
+
+        if (settings.IsMasterSyncEnabled)
+            return Ok(new { success = false, message = "وضع الجهاز الرئيسي مفعل — المزامنة تتم من التطبيق" });
 
         if (settings.IsSyncInProgress)
             return Ok(new { success = false, message = "المزامنة قيد التنفيذ بالفعل" });
@@ -641,4 +648,5 @@ public record SaveFtthSettingsRequest(
     int SyncIntervalMinutes = 60,
     bool IsAutoSyncEnabled = true,
     int SyncStartHour = 6,
-    int SyncEndHour = 23);
+    int SyncEndHour = 23,
+    bool IsMasterSyncEnabled = false);

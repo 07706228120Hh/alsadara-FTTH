@@ -4,6 +4,10 @@ import '../../services/custom_auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/ftth_settings_service.dart';
 import '../../services/vps_sync_service.dart';
+import '../../services/vps_upload_service.dart';
+import '../../services/local_database_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/sync_service.dart';
 
 class FtthSyncSettingsPage extends StatefulWidget {
   const FtthSyncSettingsPage({super.key});
@@ -27,6 +31,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
   bool _autoSync = true;
   int _syncStartHour = 6;
   int _syncEndHour = 23;
+  bool _isMasterSync = false;
 
   DateTime? _lastSyncAt;
   String? _lastSyncError;
@@ -40,6 +45,8 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
   // إحصائيات البيانات الناقصة
   Map<String, dynamic>? _missingStats;
   bool _refetching = false;
+  String _refetchStage = '';
+  double? _refetchProgress;
 
   // إحصائيات تفصيلية
   Map<String, dynamic>? _detailedStats;
@@ -93,6 +100,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
           _autoSync = settings['isAutoSyncEnabled'] ?? true;
           _syncStartHour = settings['syncStartHour'] ?? 6;
           _syncEndHour = settings['syncEndHour'] ?? 23;
+          _isMasterSync = settings['isMasterSyncEnabled'] ?? false;
         }
         if (status != null && status['configured'] == true) {
           _lastSyncAt = status['lastSyncAt'] != null
@@ -224,6 +232,14 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
       isAutoSyncEnabled: _autoSync,
       syncStartHour: _syncStartHour,
       syncEndHour: _syncEndHour,
+      isMasterSyncEnabled: _isMasterSync,
+    );
+    // حفظ إعدادات Master محلياً أيضاً (للقراءة السريعة بدون API)
+    await VpsUploadService.saveLocalSettings(
+      isMasterSyncEnabled: _isMasterSync,
+      syncStartHour: _syncStartHour,
+      syncEndHour: _syncEndHour,
+      syncIntervalMinutes: _syncInterval,
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -279,21 +295,87 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
   Future<void> _refetchMissing() async {
     if (_companyId == null) return;
     setState(() => _refetching = true);
-    final result = await FtthSettingsService.refetchMissing(_companyId!);
-    if (!mounted) return;
-    setState(() => _refetching = false);
-    if (result != null && result['success'] == true) {
-      final msg = result['message'] ?? 'بدأت المزامنة';
-      _showSnack(msg);
-      setState(() => _isSyncInProgress = true);
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          _loadSettings();
-          _loadMissingStats();
+
+    if (_isMasterSync) {
+      // الجهاز الرئيسي: يجلب الناقصين محلياً من FTTH ثم يرفع للسيرفر
+      try {
+        final token = await AuthService.instance.getAccessToken();
+        if (token == null || token.isEmpty) {
+          if (mounted) setState(() => _refetching = false);
+          _showSnack('لا يوجد توكن FTTH', isError: true);
+          return;
         }
-      });
+
+        // جلب الهواتف الناقصة
+        if (mounted) setState(() { _refetchStage = 'جلب الهواتف الناقصة...'; _refetchProgress = 0; });
+        await SyncService().fetchPhoneNumbers(
+          token: token,
+          onProgress: (p) {
+            if (mounted) setState(() => _refetchProgress = p.total > 0 ? p.current / p.total : 0);
+          },
+          onlyWithoutPhone: true,
+        );
+
+        // جلب التفاصيل الناقصة
+        if (mounted) setState(() { _refetchStage = 'جلب التفاصيل الناقصة...'; _refetchProgress = 0; });
+        await SyncService().fetchSubscriptionAddresses(
+          token: token,
+          onProgress: (p) {
+            if (mounted) setState(() => _refetchProgress = p.total > 0 ? p.current / p.total : 0);
+          },
+          onlyWithoutDetails: true,
+        );
+
+        // رفع للسيرفر
+        if (mounted) setState(() { _refetchStage = 'رفع البيانات للسيرفر...'; _refetchProgress = null; });
+        final uploadResult = await VpsUploadService.instance.uploadToVps();
+
+        if (!mounted) return;
+        setState(() { _refetching = false; _refetchStage = ''; _refetchProgress = null; });
+
+        // تحديث الإحصائيات قبل إظهار الرسالة
+        await Future.wait([
+          _loadMissingStats(),
+          _loadDetailedStats(),
+        ]);
+        if (!mounted) return;
+        _loadSettings();
+
+        // فحص هل بقي ناقص بعد الجلب
+        final newMissing = _missingStats;
+        final stillMissingPhone = newMissing?['withoutPhone'] ?? 0;
+        final stillMissingDetails = newMissing?['withoutDetails'] ?? 0;
+        final hasRemaining = stillMissingPhone > 0 || stillMissingDetails > 0;
+
+        if (uploadResult.success) {
+          _showSnack(hasRemaining
+              ? 'اكتمل الجلب — بقي $stillMissingPhone بدون هاتف و $stillMissingDetails بدون تفاصيل (غير متوفرة في FTTH)'
+              : 'تم جلب كل البيانات الناقصة ورفعها للسيرفر');
+        } else {
+          _showSnack('فشل الرفع: ${uploadResult.error}', isError: true);
+        }
+      } catch (e) {
+        if (mounted) setState(() { _refetching = false; _refetchStage = ''; _refetchProgress = null; });
+        _showSnack('خطأ: $e', isError: true);
+      }
     } else {
-      _showSnack('فشل إعادة جلب البيانات الناقصة', isError: true);
+      // الجهاز العادي: يطلب من السيرفر أن يزامن
+      final result = await FtthSettingsService.refetchMissing(_companyId!);
+      if (!mounted) return;
+      setState(() => _refetching = false);
+      if (result != null && result['success'] == true) {
+        final msg = result['message'] ?? 'بدأت المزامنة';
+        _showSnack(msg);
+        setState(() => _isSyncInProgress = true);
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) {
+            _loadSettings();
+            _loadMissingStats();
+          }
+        });
+      } else {
+        _showSnack('فشل إعادة جلب البيانات الناقصة', isError: true);
+      }
     }
   }
 
@@ -395,42 +477,43 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Column(children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _buildCredentialsCard()),
-            const SizedBox(width: 10),
-            Expanded(child: _buildSyncSettingsCard()),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _buildSyncStatusCard()),
-            const SizedBox(width: 10),
-            Expanded(child: _buildVpsDownloadCard()),
-          ],
-        ),
-        const SizedBox(height: 10),
-        _buildMissingDataCard(),
-        const SizedBox(height: 10),
-        _buildCompletionProgressCard(),
-        const SizedBox(height: 10),
-        _buildDataManagementCard(),
-        const SizedBox(height: 10),
-        _buildSaveButton(),
+        _cardRow(_buildSyncStatusCard(), _isMasterSync ? _buildMasterUploadStatusCard() : _buildVpsDownloadCard()),
         const SizedBox(height: 8),
+        _cardRow(_buildCredentialsCard(), _buildSyncSettingsCard()),
+        const SizedBox(height: 8),
+        _cardRow(_isMasterSync ? _buildVpsDownloadCard() : _buildCompletionProgressCard(), _buildMissingDataCard()),
+        const SizedBox(height: 8),
+        _cardRow(_isMasterSync ? _buildCompletionProgressCard() : _buildDataManagementCard(), _isMasterSync ? _buildDataManagementCard() : _buildSaveButton()),
+        const SizedBox(height: 8),
+        if (_isMasterSync) _buildSaveButton(),
+        if (_isMasterSync) const SizedBox(height: 8),
       ]),
+    );
+  }
+
+  /// صف من بطاقتين بنفس الارتفاع (بدون فراغات)
+  Widget _cardRow(Widget left, Widget right) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: left),
+          const SizedBox(width: 8),
+          Expanded(child: right),
+        ],
+      ),
     );
   }
 
   Widget _buildCredentialsCard() {
     return Card(
       color: Colors.white,
-      elevation: 0.5,
+      elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: Colors.black, width: 1.2),
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -507,12 +590,284 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
     );
   }
 
+  Widget _buildMasterUploadStatusCard() {
+    return ListenableBuilder(
+      listenable: VpsUploadService.instance,
+      builder: (context, _) {
+        final svc = VpsUploadService.instance;
+        final lastResult = svc.lastResult;
+        final isWorking = svc.isUploading || svc.isAutoSyncing;
+
+        return Card(
+          color: Colors.white,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: Colors.black, width: 1.2),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.cloud_sync_rounded, size: 18, color: Colors.green.shade600),
+                const SizedBox(width: 6),
+                const Text('حالة الجهاز الرئيسي',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                if (isWorking)
+                  _badge(svc.isAutoSyncing ? 'مزامنة تلقائية' : 'جاري الرفع', Colors.green),
+              ]),
+              const Divider(height: 16),
+
+              // حالة الرفع الحالية
+              if (isWorking) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          value: svc.progress > 0 ? svc.progress : null,
+                          color: Colors.green.shade600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(svc.statusMessage,
+                            style: TextStyle(fontSize: 11, color: Colors.green.shade800, fontWeight: FontWeight.w500),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      if (svc.progress > 0)
+                        Text('${(svc.progress * 100).toInt()}%',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
+                    ]),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: svc.progress > 0 ? svc.progress : null,
+                        minHeight: 6,
+                        backgroundColor: Colors.green.shade100,
+                        valueColor: AlwaysStoppedAnimation(Colors.green.shade600),
+                      ),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 10),
+              ],
+
+              // آخر نتيجة رفع
+              if (!isWorking && lastResult != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: lastResult.success ? Colors.green.shade50 : Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Icon(
+                        lastResult.success ? Icons.check_circle : Icons.error_outline,
+                        size: 16,
+                        color: lastResult.success ? Colors.green.shade700 : Colors.red.shade700,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        lastResult.success ? 'آخر رفع ناجح' : 'فشل آخر رفع',
+                        style: TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600,
+                          color: lastResult.success ? Colors.green.shade700 : Colors.red.shade700,
+                        ),
+                      ),
+                    ]),
+                    if (lastResult.success) ...[
+                      const SizedBox(height: 6),
+                      Wrap(spacing: 12, children: [
+                        _miniStat('المجموع', lastResult.uploadedCount, Colors.green),
+                        _miniStat('جديد', lastResult.newCount, Colors.blue),
+                        _miniStat('محدّث', lastResult.updatedCount, Colors.orange),
+                        _miniStat('بدون تغيير', lastResult.skippedCount, Colors.grey),
+                      ]),
+                    ],
+                    if (!lastResult.success && lastResult.error != null) ...[
+                      const SizedBox(height: 4),
+                      Text(lastResult.error!, style: TextStyle(fontSize: 11, color: Colors.red.shade600)),
+                    ],
+                  ]),
+                ),
+                const SizedBox(height: 10),
+              ],
+
+              // معلومات المقارنة: سيرفر vs محلي
+              Row(children: [
+                Expanded(child: _infoBox('السيرفر', _subscriberCount, Icons.cloud_rounded, Colors.blue)),
+                const SizedBox(width: 8),
+                Expanded(child: FutureBuilder<int>(
+                  future: LocalDatabaseService.instance.getStatistics().then((s) => s['subscribers'] ?? 0),
+                  builder: (ctx, snap) => _infoBox('المحلي', snap.data ?? 0, Icons.storage_rounded, Colors.teal),
+                )),
+              ]),
+              const SizedBox(height: 10),
+
+              // زر المزامنة اليدوية (جلب + رفع)
+              _buildManualMasterSyncButton(svc),
+              const SizedBox(height: 6),
+              // زر الرفع فقط (بدون جلب)
+              _buildUploadButton(),
+            ]),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _miniStat(String label, int count, Color color) {
+    return Text('$label: ${NumberFormat('#,###').format(count)}',
+        style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600));
+  }
+
+  Widget _infoBox(String label, int count, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 8),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+          Text(NumberFormat('#,###').format(count),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _buildManualMasterSyncButton(VpsUploadService svc) {
+    final isWorking = svc.isUploading || svc.isAutoSyncing;
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: isWorking
+            ? null
+            : () async {
+                final token = await AuthService.instance.getAccessToken();
+                if (token == null || token.isEmpty) {
+                  _showSnack('لا يوجد توكن FTTH — سجّل الدخول أولاً', isError: true);
+                  return;
+                }
+                // جلب من FTTH
+                setState(() => _statusMessage = 'جلب البيانات من FTTH...');
+                final syncResult = await SyncService().fullSync(
+                  token: token,
+                  onProgress: (p) {
+                    if (mounted) setState(() => _statusMessage = p.message);
+                  },
+                );
+                if (!mounted) return;
+                if (!syncResult.success) {
+                  _showSnack('فشل الجلب: ${syncResult.error ?? "خطأ"}', isError: true);
+                  setState(() => _statusMessage = '');
+                  return;
+                }
+                // رفع للسيرفر
+                setState(() => _statusMessage = 'رفع للسيرفر...');
+                final uploadResult = await VpsUploadService.instance.uploadToVps();
+                if (!mounted) return;
+                setState(() => _statusMessage = '');
+                _showSnack(
+                  uploadResult.success
+                      ? 'تم جلب ${syncResult.subscribersCount} مشترك ورفع ${uploadResult.uploadedCount} للسيرفر'
+                      : 'فشل الرفع: ${uploadResult.error}',
+                  isError: !uploadResult.success,
+                );
+                _loadSettings();
+              },
+        icon: isWorking
+            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : const Icon(Icons.sync_rounded, size: 18),
+        label: Text(isWorking ? _statusMessage.isNotEmpty ? _statusMessage : 'جاري...' : 'مزامنة الآن (جلب + رفع)',
+            style: const TextStyle(fontSize: 12)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue.shade700,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+    );
+  }
+
+  String _statusMessage = '';
+
+  Widget _buildUploadButton() {
+    return ListenableBuilder(
+      listenable: VpsUploadService.instance,
+      builder: (context, _) {
+        final svc = VpsUploadService.instance;
+        if (svc.isUploading) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              LinearProgressIndicator(value: svc.progress, minHeight: 6,
+                  backgroundColor: Colors.green.shade50, color: Colors.green),
+              const SizedBox(height: 4),
+              Text(svc.statusMessage,
+                  style: const TextStyle(fontSize: 11, color: Colors.green),
+                  textAlign: TextAlign.center),
+            ],
+          );
+        }
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              final result = await VpsUploadService.instance.uploadToVps();
+              if (!mounted) return;
+              _showSnack(
+                result.success
+                    ? 'تم رفع ${result.uploadedCount} مشترك (جديد: ${result.newCount}, محدّث: ${result.updatedCount})'
+                    : 'فشل الرفع: ${result.error}',
+                isError: !result.success,
+              );
+              _loadSettings();
+            },
+            icon: const Icon(Icons.cloud_upload, size: 18),
+            label: const Text('رفع البيانات المحلية للسيرفر', style: TextStyle(fontSize: 12)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSyncSettingsCard() {
     return Card(
       color: Colors.white,
-      elevation: 0.5,
+      elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: Colors.black, width: 1.2),
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -524,12 +879,36 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
           ]),
           const Divider(height: 16),
           SwitchListTile(
+            title: Text(
+                _isMasterSync ? 'هذا الجهاز هو المزامن الرئيسي ✅' : 'هذا الجهاز هو المزامن الرئيسي',
+                style: TextStyle(fontSize: 13, fontWeight: _isMasterSync ? FontWeight.bold : FontWeight.normal,
+                    color: _isMasterSync ? Colors.green.shade700 : null)),
+            subtitle: Text(
+                _isMasterSync
+                    ? 'يجلب البيانات من FTTH ويرفعها للسيرفر — بقية الأجهزة تقرأ من السيرفر'
+                    : 'عند التفعيل: هذا الجهاز يرفع البيانات للسيرفر بدل أن يجلبها السيرفر مباشرة',
+                style: const TextStyle(fontSize: 11)),
+            value: _isMasterSync,
+            onChanged: (v) => setState(() => _isMasterSync = v),
+            activeColor: Colors.green,
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+          if (_isMasterSync) ...[
+            const SizedBox(height: 4),
+            _buildUploadButton(),
+            const SizedBox(height: 8),
+          ],
+          SwitchListTile(
             title: const Text('المزامنة التلقائية',
                 style: TextStyle(fontSize: 13)),
-            subtitle: const Text('مزامنة تلقائية من FTTH',
-                style: TextStyle(fontSize: 11)),
-            value: _autoSync,
-            onChanged: (v) => setState(() => _autoSync = v),
+            subtitle: Text(
+                _isMasterSync
+                    ? 'غير مطلوبة — المزامنة تتم من هذا الجهاز'
+                    : 'مزامنة تلقائية من FTTH',
+                style: const TextStyle(fontSize: 11)),
+            value: _isMasterSync ? false : _autoSync,
+            onChanged: _isMasterSync ? null : (v) => setState(() => _autoSync = v),
             activeColor: Colors.deepPurple,
             contentPadding: EdgeInsets.zero,
             dense: true,
@@ -654,9 +1033,12 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
 
     return Card(
       color: Colors.white,
-      elevation: 0.5,
+      elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: Colors.black, width: 1.2),
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -778,6 +1160,24 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             ),
           ],
           const SizedBox(height: 10),
+          if (_isMasterSync)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(children: [
+                Icon(Icons.info_outline, size: 14, color: Colors.green.shade700),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('المزامنة تتم من هذا الجهاز — السيرفر لا يزامن مباشرة',
+                      style: TextStyle(fontSize: 11, color: Colors.green.shade700)),
+                ),
+              ]),
+            )
+          else
           Row(children: [
             Expanded(
               child: SizedBox(
@@ -873,10 +1273,12 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         final vps = VpsSyncService.instance;
         return Card(
           color: Colors.white,
-          elevation: 0.5,
+          elevation: 0,
           margin: EdgeInsets.zero,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: Colors.black, width: 1.2),
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
             child:
@@ -1044,18 +1446,21 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
 
   Widget _buildMissingDataCard() {
     final stats = _missingStats;
-    final total = stats?['totalSubscribers'] ?? 0;
-    final missingFat = stats?['missingFat'] ?? 0;
-    final missingFdt = stats?['missingFdt'] ?? 0;
-    final missingPhone = stats?['missingPhone'] ?? 0;
-    final missingAddress = stats?['missingAddress'] ?? 0;
+    final total = stats?['total'] ?? 0;
+    final missingFat = stats?['withoutFat'] ?? 0;
+    final missingFdt = stats?['withoutFdt'] ?? 0;
+    final missingPhone = stats?['withoutPhone'] ?? 0;
+    final missingAddress = stats?['withoutDetails'] ?? 0;
     final hasMissing = missingFat > 0 || missingPhone > 0 || missingAddress > 0;
 
     return Card(
       color: Colors.white,
-      elevation: 0.5,
+      elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: Colors.black, width: 1.2),
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1103,37 +1508,84 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               _missingChip('بدون عنوان', missingAddress,
                   missingAddress > 0 ? Colors.orange : Colors.green),
             ]),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 36,
-              child: ElevatedButton.icon(
-                onPressed: !hasMissing || _refetching || _isSyncInProgress
-                    ? null
-                    : _refetchMissing,
-                icon: _refetching
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.download_for_offline_rounded, size: 18),
-                label: Text(
-                  _refetching
-                      ? 'جاري...'
-                      : hasMissing
-                          ? 'جلب البيانات الناقصة'
-                          : 'لا توجد بيانات ناقصة',
-                  style: const TextStyle(fontSize: 12),
+            if (hasMissing && !_refetching) ...[
+              const SizedBox(height: 6),
+              Text('هذه البيانات قد تكون غير متوفرة في نظام FTTH (مشتركين بدون أجهزة أو حسابات معلّقة)',
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontStyle: FontStyle.italic)),
+            ],
+            if (hasMissing) ...[
+              const SizedBox(height: 8),
+              if (_refetching) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      SizedBox(width: 14, height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange.shade600,
+                          value: _refetchProgress,
+                        )),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_refetchStage,
+                          style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.w500))),
+                      if (_refetchProgress != null)
+                        Text('${(_refetchProgress! * 100).toInt()}%',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade700)),
+                    ]),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: _refetchProgress,
+                        minHeight: 6,
+                        backgroundColor: Colors.orange.shade100,
+                        valueColor: AlwaysStoppedAnimation(Colors.orange.shade600),
+                      ),
+                    ),
+                  ]),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+              ] else
+              SizedBox(
+                width: double.infinity,
+                height: 36,
+                child: ElevatedButton.icon(
+                  onPressed: _isSyncInProgress ? null : _refetchMissing,
+                  icon: const Icon(Icons.download_for_offline_rounded, size: 18),
+                  label: Text(
+                    _isMasterSync
+                        ? 'جلب الناقصة من FTTH ورفعها للسيرفر'
+                        : 'جلب البيانات الناقصة',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade600,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ),
-            ),
+            ] else ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.check_circle, size: 16, color: Colors.green.shade700),
+                  const SizedBox(width: 6),
+                  Text('لا توجد بيانات ناقصة', style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
+                ]),
+              ),
+            ],
           ],
         ]),
       ),
@@ -1161,8 +1613,12 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
     if (s == null || (s['total'] ?? 0) == 0) {
       return Card(
         color: Colors.white,
-        elevation: 0.3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: Colors.black, width: 1.2),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(children: [
@@ -1194,8 +1650,11 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
 
     return Card(
       color: Colors.white,
-      elevation: 0.3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: Colors.black, width: 1.2),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1319,8 +1778,11 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
   Widget _buildDataManagementCard() {
     return Card(
       color: Colors.white,
-      elevation: 0.3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: Colors.black, width: 1.2),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1362,7 +1824,17 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
   }
 
   Widget _buildSaveButton() {
-    return SizedBox(
+    return Card(
+      color: Colors.white,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: Colors.black, width: 1.2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: SizedBox(
       width: double.infinity,
       height: 42,
       child: ElevatedButton.icon(
@@ -1383,6 +1855,8 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
+    ),
+    ),
     );
   }
 
@@ -1442,9 +1916,12 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
 
     return Card(
       color: Colors.white,
-      elevation: 0.3,
+      elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: Colors.black, width: 1.2),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

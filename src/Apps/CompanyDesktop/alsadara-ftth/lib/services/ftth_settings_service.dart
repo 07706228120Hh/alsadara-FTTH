@@ -27,6 +27,7 @@ class FtthSettingsService {
     bool isAutoSyncEnabled = true,
     int syncStartHour = 6,
     int syncEndHour = 23,
+    bool isMasterSyncEnabled = false,
   }) async {
     try {
       final res = await _client.post(
@@ -39,6 +40,7 @@ class FtthSettingsService {
           'isAutoSyncEnabled': isAutoSyncEnabled,
           'syncStartHour': syncStartHour,
           'syncEndHour': syncEndHour,
+          'isMasterSyncEnabled': isMasterSyncEnabled,
         },
         (json) => json,
         useInternalKey: true,

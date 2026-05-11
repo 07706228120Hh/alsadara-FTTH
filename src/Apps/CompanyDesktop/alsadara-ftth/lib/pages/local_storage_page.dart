@@ -15,6 +15,7 @@ import '../services/sync_settings_service.dart';
 import '../services/auth_service.dart';
 import '../services/background_sync_service.dart';
 import '../services/vps_sync_service.dart';
+import '../services/vps_upload_service.dart';
 import '../permissions/permissions.dart';
 import 'local_subscriber_details_page.dart';
 
@@ -119,6 +120,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
   @override
   void dispose() {
     _vpsSyncService.removeListener(_onVpsSyncChanged);
+    _backgroundSync.onSyncComplete = null; // منع callbacks مكررة
     _searchController.dispose();
     _nameFilterController.dispose();
     _phoneFilterController.dispose();
@@ -186,6 +188,24 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
 
     // مزامنة تلقائية من VPS عند فتح الصفحة (إذا مرّ وقت كافٍ)
     _vpsSyncService.syncIfNeeded();
+  }
+
+  /// رفع تلقائي للسيرفر بعد نجاح المزامنة المحلية — فقط إذا كان الجهاز الرئيسي
+  Future<void> _autoUploadIfMaster() async {
+    try {
+      // قراءة محلية سريعة بدون API
+      final isMaster = await VpsUploadService.isMasterDevice();
+      if (!isMaster) return;
+
+      debugPrint('📤 وضع الجهاز الرئيسي مفعّل — بدء الرفع التلقائي...');
+      final result = await VpsUploadService.instance.uploadToVps();
+      if (!mounted) return;
+      if (result.success) {
+        _showMessage('تم رفع ${result.uploadedCount} مشترك للسيرفر تلقائياً ✅');
+      }
+    } catch (e) {
+      debugPrint('❌ خطأ في الرفع التلقائي: $e');
+    }
   }
 
   Future<void> _loadStatistics() async {
@@ -545,6 +565,9 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
         _loadSubscribers();
         _loadFilters();
       });
+
+      // رفع تلقائي للسيرفر إذا كان وضع الجهاز الرئيسي مفعّلاً
+      if (success) _autoUploadIfMaster();
     };
 
     // بدء الجلب

@@ -42,6 +42,9 @@ public class CompanyFtthSettings : BaseEntity<Guid>
     /// <summary>عدد الفشل المتتالي</summary>
     public int ConsecutiveFailures { get; set; }
 
+    /// <summary>هل وضع الجهاز الرئيسي مفعل؟ عند التفعيل يتوقف السيرفر عن المزامنة المباشرة من FTTH</summary>
+    public bool IsMasterSyncEnabled { get; set; }
+
     // ============ تتبع التقدم أثناء المزامنة ============
 
     /// <summary>المرحلة الحالية (subscribers, details, phones, saving)</summary>
