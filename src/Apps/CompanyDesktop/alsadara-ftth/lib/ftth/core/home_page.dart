@@ -224,11 +224,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // إعداد إشعار المزامنة في الخلفية
     _setupBackgroundSyncNotification();
 
-    // بدء المزامنة التلقائية من VPS (تنزيل صامت في الخلفية)
-    VpsSyncService.instance.startAutoSync();
-
-    // بدء المزامنة التلقائية للجهاز الرئيسي (جلب FTTH + رفع للسيرفر)
-    VpsUploadService.instance.startAutoSync();
+    // بدء المزامنة التلقائية حسب وضع الجهاز
+    // Master: يجلب من FTTH ويرفع للسيرفر — لا يحتاج تنزيل من VPS
+    // عادي: ينزّل من VPS فقط
+    VpsUploadService.isMasterDevice().then((isMaster) {
+      if (isMaster) {
+        VpsUploadService.instance.startAutoSync();
+      } else {
+        VpsSyncService.instance.startAutoSync();
+      }
+    });
 
     // الزر العائم للواتساب يتم إظهاره بعد تحميل الصلاحيات في _initializeApp
   }

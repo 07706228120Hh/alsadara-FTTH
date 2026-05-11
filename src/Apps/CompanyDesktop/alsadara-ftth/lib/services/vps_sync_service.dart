@@ -7,6 +7,7 @@ import 'local_database_service.dart';
 import 'custom_auth_service.dart';
 import 'vps_auth_service.dart';
 import 'ftth_settings_service.dart';
+import 'vps_upload_service.dart';
 
 /// خدمة تنزيل بيانات المشتركين من VPS (بدل الاتصال المباشر بـ FTTH)
 ///
@@ -470,6 +471,10 @@ class VpsSyncService extends ChangeNotifier {
   /// مزامنة صامتة (لا تُظهر أي شيء عند النجاح بدون تحديثات)
   Future<void> _silentSync() async {
     if (_isSyncing) return;
+
+    // الجهاز الرئيسي لا ينزّل من VPS — هو من يرفع
+    final isMaster = await VpsUploadService.isMasterDevice();
+    if (isMaster) return;
 
     final tenantId = _tenantId;
     if (tenantId == null) return;

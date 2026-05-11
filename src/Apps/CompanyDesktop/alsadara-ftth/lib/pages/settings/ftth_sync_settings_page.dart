@@ -779,7 +779,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                 );
                 if (!mounted) return;
                 if (!syncResult.success) {
-                  _showSnack('فشل الجلب: ${syncResult.error ?? "خطأ"}', isError: true);
+                  _showSnack(_translateError(syncResult.error ?? 'خطأ'), isError: true);
                   setState(() => _statusMessage = '');
                   return;
                 }
@@ -791,7 +791,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                 _showSnack(
                   uploadResult.success
                       ? 'تم جلب ${syncResult.subscribersCount} مشترك ورفع ${uploadResult.uploadedCount} للسيرفر'
-                      : 'فشل الرفع: ${uploadResult.error}',
+                      : _translateError(uploadResult.error ?? 'خطأ'),
                   isError: !uploadResult.success,
                 );
                 _loadSettings();
@@ -1016,7 +1016,9 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
 
   /// ترجمة أخطاء المزامنة للعربي
   String _translateError(String error) {
+    if (error.contains('Connection closed') || error.contains('ClientException')) return 'سيرفر FTTH أغلق الاتصال — حاول مرة أخرى لاحقاً';
     if (error.contains('sending the request')) return 'فشل الاتصال بسيرفر FTTH — قد يكون محظوراً مؤقتاً';
+    if (error.contains('SocketException') || error.contains('خطأ اتصال')) return 'لا يوجد اتصال بسيرفر FTTH — تحقق من الشبكة';
     if (error.contains('saving the entity')) return 'فشل حفظ البيانات في قاعدة البيانات';
     if (error.contains('login') || error.contains('Login')) return 'فشل تسجيل الدخول — تحقق من بيانات الدخول';
     if (error.contains('timeout') || error.contains('Timeout')) return 'انتهت مهلة الاتصال — السيرفر لا يستجيب';
