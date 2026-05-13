@@ -168,7 +168,8 @@ public class FtthAccountingController : ControllerBase
 
             // 2. إنشاء قيد محاسبي (إذا يوجد CompanyId وUserId ومبلغ)
             Guid? journalEntryId = null;
-            if (dto.CompanyId.HasValue && dto.UserId.HasValue && dto.PlanPrice.HasValue && dto.PlanPrice > 0)
+            var hasAmount = (dto.PlanPrice.HasValue && dto.PlanPrice > 0) || (dto.BasePrice.HasValue && dto.BasePrice > 0);
+            if (dto.CompanyId.HasValue && dto.UserId.HasValue && hasAmount)
             {
                 try
                 {
@@ -254,6 +255,15 @@ public class FtthAccountingController : ControllerBase
 
         // الإيرادات = أجور صيانة + خصم شركة (إذا لم يُمرر)
         var revenue = maintenanceFee + companyDiscountProfit;
+
+        // حماية: الخصم اليدوي لا يتجاوز الإجمالي المتاح (لضمان توازن القيد)
+        var maxDiscount = netFromCompany + revenue;
+        if (manualDiscount > maxDiscount)
+        {
+            _logger.LogWarning("خصم يدوي {Discount} أكبر من الإجمالي {Max} — تم تقليصه تلقائياً. عملية={LogId}",
+                manualDiscount, maxDiscount, log.Id);
+            manualDiscount = maxDiscount;
+        }
 
         // الإجمالي = المستقطع + الإيرادات - المصاريف (ما يدفعه العميل)
         var collectedAmount = netFromCompany + revenue - manualDiscount;
@@ -383,17 +393,15 @@ public class FtthAccountingController : ControllerBase
         // ═══ بناء سطور القيد ═══
         var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>();
 
-        // مدين: حساب التحصيل (المبلغ المحصّل من العميل)
-        if (collectedAmount > 0)
-            lines.Add((debitAccount.Id, collectedAmount, 0, $"{debitAccount.Name} - {opType} {planName}"));
+        // مدين: حساب التحصيل (المبلغ المحصّل من العميل) — دائماً
+        lines.Add((debitAccount.Id, Math.Max(collectedAmount, 0), 0, $"{debitAccount.Name} - {opType} {planName}"));
 
-        // مدين: مصاريف عروض (الخصم الاختياري) — دائماً (حتى لو 0) لتسهيل التعديل لاحقاً
+        // مدين: مصاريف عروض (الخصم الاختياري) — دائماً
         if (promotionExpenseAccount != null)
             lines.Add((promotionExpenseAccount.Id, manualDiscount, 0, $"خصم اختياري - {customerName}"));
 
-        // دائن: رصيد الصفحة (صافي الشركة)
-        if (netFromCompany > 0)
-            lines.Add((pageBalanceAccount.Id, 0, netFromCompany, $"خصم من رصيد الصفحة - {opType} {planName}"));
+        // دائن: رصيد الصفحة (صافي الشركة) — دائماً
+        lines.Add((pageBalanceAccount.Id, 0, Math.Max(netFromCompany, 0), $"خصم من رصيد الصفحة - {opType} {planName}"));
 
         // دائن: إيراد صيانة — دائماً (حتى لو 0) لتسهيل التعديل لاحقاً
         if (maintenanceRevenueAccount != null)
@@ -868,6 +876,28 @@ public class FtthAccountingController : ControllerBase
                     .ToListAsync()
                 : new List<dynamic>().Select(x => new { AccountId = Guid.Empty, Total = 0m }).ToList();
 
+            // ── رصيد صندوق المشغل: Debit - Credit في حسابات 1110xx ──
+            var cashBoxBalanceByAccount = cashAccountIds.Any()
+                ? await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => cashAccountIds.Contains(l.AccountId) && !l.IsDeleted)
+                    .Join(jeDateQuery, l => l.JournalEntryId, j => j.Id,
+                        (l, j) => new { l.AccountId, l.DebitAmount, l.CreditAmount })
+                    .GroupBy(x => x.AccountId)
+                    .Select(g => new { AccountId = g.Key, Balance = g.Sum(x => x.DebitAmount) - g.Sum(x => x.CreditAmount) })
+                    .ToListAsync()
+                : new List<object>().Select(x => new { AccountId = Guid.Empty, Balance = 0m }).ToList();
+
+            // ── رصيد ذمة المشغل: Debit - Credit في حسابات 1160xx ──
+            var operatorDebtByAccount = creditAccountIds.Any()
+                ? await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => creditAccountIds.Contains(l.AccountId) && !l.IsDeleted)
+                    .Join(jeDateQuery, l => l.JournalEntryId, j => j.Id,
+                        (l, j) => new { l.AccountId, l.DebitAmount, l.CreditAmount })
+                    .GroupBy(x => x.AccountId)
+                    .Select(g => new { AccountId = g.Key, Balance = g.Sum(x => x.DebitAmount) - g.Sum(x => x.CreditAmount) })
+                    .ToListAsync()
+                : new List<object>().Select(x => new { AccountId = Guid.Empty, Balance = 0m }).ToList();
+
             // ── ذمم الفنيين للمشغلين: حسابات 1140xx المرتبطة بنفس userId ──
             var operatorTechDebtAccounts = await _unitOfWork.Accounts.AsQueryable()
                 .Where(a => a.Code.StartsWith(AccountCodes.TechnicianReceivables) && a.Description != null
@@ -932,13 +962,24 @@ public class FtthAccountingController : ControllerBase
                 var remainingCash = g.CashAmount - delivered;
                 var remainingCredit = g.CreditAmount - collected;
 
-                // ذمم فني: إذا كان المشغل عنده حساب فني (1140xx) نحسب رصيده
+                // رصيد صندوق المشغل (1110xx)
+                var cashBoxBal = cashAccId.HasValue
+                    ? cashBoxBalanceByAccount.FirstOrDefault(d => d.AccountId == cashAccId.Value)?.Balance ?? 0m
+                    : 0m;
+
+                // رصيد ذمة المشغل: 1140xx + 1160xx
+                var opDebt1160 = creditAccId.HasValue
+                    ? operatorDebtByAccount.FirstOrDefault(d => d.AccountId == creditAccId.Value)?.Balance ?? 0m
+                    : 0m;
+
                 var techDebtAccId = g.UserId.HasValue
                     ? operatorTechDebtAccounts.FirstOrDefault(a => a.Description == g.UserId.Value.ToString())?.Id
                     : (Guid?)null;
-                var techDebtTotal = techDebtAccId.HasValue
+                var opDebt1140 = techDebtAccId.HasValue
                     ? operatorTechDebtByAccount.FirstOrDefault(d => d.AccountId == techDebtAccId.Value)?.Balance ?? 0m
                     : 0m;
+
+                var opDebtBal = opDebt1140 + opDebt1160;
 
                 return new
                 {
@@ -964,7 +1005,8 @@ public class FtthAccountingController : ControllerBase
                     deliveredCash = delivered,
                     collectedCredit = collected,
                     netOwed = remainingCash + remainingCredit,
-                    techDebt = techDebtTotal,
+                    cashBoxBalance = cashBoxBal,
+                    operatorDebt = opDebtBal,
                     // أنواع العمليات
                     purchaseCount = g.PurchaseCount,
                     purchaseAmount = g.PurchaseAmount,
@@ -2256,11 +2298,17 @@ public class FtthAccountingController : ControllerBase
                             companyId ??= user.CompanyId;
                         }
                     }
-                    // رابعاً: إذا لم يُربط بأي طريقة — استخدم CompanyId الافتراضي ولا تترك فارغاً
+                    // رابعاً: إذا لم يُربط بأي طريقة — استخدم مستخدم "مزامنة" كـ fallback لإنشاء القيد
                     if (userId == null)
                     {
-                        _logger.LogWarning("عملية {TxId} بدون مشغل: CreatedBy='{CreatedBy}', OperatorUserId='{OpId}'",
+                        _logger.LogWarning("عملية {TxId} بدون مشغل: CreatedBy='{CreatedBy}', OperatorUserId='{OpId}' — سيُستخدم مستخدم مزامنة",
                             tx.FtthTransactionId, tx.CreatedBy, tx.OperatorUserId);
+                        var syncUser = userMap.FirstOrDefault(u => u.Username == "sync");
+                        if (syncUser != null)
+                        {
+                            userId = syncUser.Id;
+                            companyId ??= syncUser.CompanyId;
+                        }
                     }
 
                     var planPrice = tx.Amount != null ? Math.Abs(tx.Amount.Value) : (decimal?)null;
@@ -2383,7 +2431,7 @@ public class FtthAccountingController : ControllerBase
                     saved++;
 
                     // إنشاء قيد محاسبي تلقائياً لكل عملية مزامنة
-                    if (userId.HasValue && companyId.HasValue && planPrice > 0)
+                    if (userId.HasValue && companyId.HasValue && (planPrice > 0 || (log.BasePrice.HasValue && log.BasePrice > 0)))
                     {
                         try
                         {

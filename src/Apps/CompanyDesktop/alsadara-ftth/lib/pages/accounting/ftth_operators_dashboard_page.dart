@@ -3828,7 +3828,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       DataColumn(label: _sortableHeader('المسلّم', 'deliveredCash')),
                       DataColumn(label: _sortableHeader('المستحق', 'netOwed')),
                       if (_oursTabIndex == 0)
-                        DataColumn(label: _sortableHeader('ذمم فني', 'techDebt', color: Colors.deepOrange)),
+                        DataColumn(label: _sortableHeader('صندوق', 'cashBoxBalance', color: Colors.teal)),
+                      if (_oursTabIndex == 0)
+                        DataColumn(label: _sortableHeader('ذمم', 'operatorDebt', color: Colors.deepOrange)),
                       const DataColumn(label: Expanded(child: Center(child: Text('مطابقة')))),
                       DataColumn(label: Expanded(child: Center(child: Text('إجراءات')))),
                     ],
@@ -4066,20 +4068,36 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   ? Colors.red.shade700
                                   : Colors.green.shade700),
                         ))),
-                        // ذمم فني (فقط في تبويب المشغلون)
+                        // صندوق المشغل (فقط في تبويب المشغلون)
                         if (_oursTabIndex == 0)
                           DataCell(Center(
                               child: () {
-                            final techDebt = (op['techDebt'] ?? 0).toDouble();
-                            if (techDebt == 0) {
+                            final cashBox = (op['cashBoxBalance'] ?? 0).toDouble();
+                            if (cashBox == 0) {
                               return Text('-', style: TextStyle(fontSize: context.accR.small, color: Colors.grey));
                             }
                             return Text(
-                              _currencyFormat.format(techDebt),
+                              _currencyFormat.format(cashBox),
                               style: TextStyle(
                                   fontSize: context.accR.small,
                                   fontWeight: FontWeight.bold,
-                                  color: techDebt > 0 ? Colors.deepOrange : Colors.green.shade700),
+                                  color: cashBox > 0 ? Colors.teal : Colors.red.shade700),
+                            );
+                          }())),
+                        // ذمم المشغل (فقط في تبويب المشغلون)
+                        if (_oursTabIndex == 0)
+                          DataCell(Center(
+                              child: () {
+                            final opDebt = (op['operatorDebt'] ?? 0).toDouble();
+                            if (opDebt == 0) {
+                              return Text('-', style: TextStyle(fontSize: context.accR.small, color: Colors.grey));
+                            }
+                            return Text(
+                              _currencyFormat.format(opDebt),
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold,
+                                  color: opDebt > 0 ? Colors.deepOrange : Colors.green.shade700),
                             );
                           }())),
                         // مطابقة
@@ -4157,7 +4175,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['deliveredCash'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['netOwed'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.red.shade700)))),
                         if (_oursTabIndex == 0)
-                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['techDebt'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.deepOrange)))),
+                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['cashBoxBalance'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.teal)))),
+                        if (_oursTabIndex == 0)
+                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['operatorDebt'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.deepOrange)))),
                         DataCell(Center(child: Text('', style: TextStyle(fontSize: context.accR.small)))),
                         DataCell(Center(child: Text(''))),
                       ],
@@ -8720,8 +8740,6 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             SizedBox(width: context.accR.spaceXS),
             _filterChip('اليوم + أمس', 'اليوم + أمس'),
             SizedBox(width: context.accR.spaceXS),
-            _filterChip('آخر 7 أيام', 'آخر 7 أيام'),
-            SizedBox(width: context.accR.spaceXS),
             _filterChip('هذا الشهر', 'هذا الشهر'),
             SizedBox(width: context.accR.spaceXS),
             _filterChip('الكل', 'الكل'),
@@ -8843,8 +8861,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           _dateLabel = 'هذا الشهر';
           break;
         case 'الكل':
-          _fromDate = null;
-          _toDate = null;
+          _fromDate = DateTime(now.year, now.month, 1);
+          _toDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
           _dateLabel = 'الكل';
           break;
       }
@@ -9014,10 +9032,14 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
 
   Future<void> _loadAllOurData() async {
     try {
-      String url = 'https://api.ramzalsadara.tech/api/internal/subscriptionlogs?pageSize=2000';
+      // إذا لم يُحدد تاريخ — نجلب الشهر الحالي افتراضياً (لتجنب جلب آلاف السجلات)
+      final now = DateTime.now();
+      final effectiveFrom = widget.fromDate ?? DateTime(now.year, now.month, 1);
+      final effectiveTo = widget.toDate ?? DateTime(now.year, now.month, now.day, 23, 59, 59);
+      String url = 'https://api.ramzalsadara.tech/api/internal/subscriptionlogs?pageSize=15000';
       if (widget._companyId.isNotEmpty) url += '&companyId=${widget._companyId}';
-      if (widget.fromDate != null) url += '&fromDate=${widget.fromDate!.toIso8601String().split('T')[0]}';
-      if (widget.toDate != null) url += '&toDate=${widget.toDate!.toIso8601String().split('T')[0]}';
+      url += '&fromDate=${effectiveFrom.toIso8601String().split('T')[0]}';
+      url += '&toDate=${effectiveTo.toIso8601String().split('T')[0]}';
       final response = await http.get(Uri.parse(url), headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'});
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -11421,6 +11443,10 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   bool _showSyncedOnly = false;
   static const _prefKey = 'allops_hidden_cols_v2';
 
+  final _globalSearchCtrl = TextEditingController();
+  bool _isGlobalSearching = false;
+  bool _isGlobalSearchActive = false;
+
   static const _baseUrl =
       'https://api.ramzalsadara.tech/api/internal/subscriptionlogs';
   static const _apiKey = 'sadara-internal-2024-secure-key';
@@ -11631,12 +11657,83 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _globalSearchCtrl.dispose();
     _tableScrollCtrl.dispose();
     _editOperatorCtrl.dispose();
     _editPriceCtrl.dispose();
     _editRevenueCtrl.dispose();
     _editExpenseCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _globalSearch(String query) async {
+    if (query.trim().isEmpty) {
+      // إزالة البحث — العودة للبيانات العادية
+      setState(() { _isGlobalSearchActive = false; _isGlobalSearching = false; });
+      _load();
+      return;
+    }
+    setState(() { _isGlobalSearching = true; _isGlobalSearchActive = true; });
+    try {
+      String url = '$_baseUrl?pageSize=500&search=${Uri.encodeComponent(query.trim())}';
+      if (widget.companyId.isNotEmpty) url += '&companyId=${widget.companyId}';
+      final response = await http.get(Uri.parse(url), headers: {'X-Api-Key': _apiKey});
+      if (response.statusCode != 200) throw Exception('خطأ ${response.statusCode}');
+      final body = jsonDecode(response.body);
+      final List<dynamic> items = body is List ? body : ((body['data'] ?? body['items'] ?? []) as List<dynamic>);
+      final result = items.map<Map<String, dynamic>>((item) {
+        final planPrice = (item['PlanPrice'] as num?)?.toDouble() ?? 0;
+        final basePrice = (item['BasePrice'] as num?)?.toDouble() ?? 0;
+        final companyDiscount = (item['CompanyDiscount'] as num?)?.toDouble() ?? 0;
+        final manualDiscount = (item['ManualDiscount'] as num?)?.toDouble() ?? 0;
+        final maintenanceFee = (item['MaintenanceFee'] as num?)?.toDouble() ?? 0;
+        final sysDiscountEnabled = item['SystemDiscountEnabled'] == true;
+        final pd = basePrice > 0 ? basePrice - companyDiscount
+            : sysDiscountEnabled ? planPrice : planPrice - companyDiscount;
+        final rev = maintenanceFee + (sysDiscountEnabled ? 0 : companyDiscount);
+        final exp = manualDiscount;
+        final total = pd + rev - exp;
+        DateTime? actDate;
+        if (item['ActivationDate'] != null) {
+          actDate = DateTime.tryParse(item['ActivationDate'].toString());
+          if (actDate != null) actDate = actDate.toLocal();
+        }
+        return {
+          'id': item['Id']?.toString() ?? '',
+          'اسم العميل': item['CustomerName'] ?? '',
+          'م.العميل': item['PhoneNumber'] ?? '',
+          'م.الاشتراك': item['SubscriptionId'] ?? '',
+          'اسم الباقة': item['PlanName'] ?? '',
+          'المُفعِّل': item['ActivatedBy'] ?? '',
+          'تاريخ التفعيل': actDate != null ? _dateFmt.format(actDate) : '',
+          'وقت التفعيل': actDate != null ? _timeFmt.format(actDate) : '',
+          'نوع العملية': item['OperationType'] ?? '',
+          'نوع التحصيل': item['CollectionType'] ?? 'cash',
+          'الدفع': item['PaymentMethod'] ?? '',
+          'المستقطع': pd,
+          'الإيرادات': rev,
+          'المصاريف': exp,
+          'الإجمالي': total,
+          'الالتزام': _resolveCommitment(item),
+          'الفني': item['TechnicianName'] ?? '',
+          'الوكيل': '',
+          'FBG': item['FbgInfo'] ?? '',
+          'الهاتف': item['PhoneNumber'] ?? '',
+          'المنطقة': item['ZoneName'] ?? '',
+          'مطابقة_raw': item['IsReconciled'] == true,
+          'محاسبة_raw': item['JournalEntryId'] != null,
+          'PlanPrice': planPrice, 'BasePrice': basePrice,
+          'CompanyDiscount': companyDiscount, 'ManualDiscount': manualDiscount,
+          'MaintenanceFee': maintenanceFee, 'SystemDiscountEnabled': sysDiscountEnabled,
+        };
+      }).toList();
+      if (mounted) {
+        setState(() { _records = result; _isGlobalSearching = false; });
+        _applyFiltersFromRecords(result);
+      }
+    } catch (e) {
+      if (mounted) setState(() { _isGlobalSearching = false; });
+    }
   }
 
   /// حساب فترة الالتزام: إذا موجودة من API نأخذها، وإلا نحسبها من StartDate/EndDate
@@ -11726,10 +11823,13 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   Future<void> _load() async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      String url = '$_baseUrl?pageSize=2000';
+      final now = DateTime.now();
+      final effectiveFrom = widget.fromDate ?? DateTime(now.year, now.month, 1);
+      final effectiveTo = widget.toDate ?? DateTime(now.year, now.month, now.day, 23, 59, 59);
+      String url = '$_baseUrl?pageSize=15000';
       if (widget.companyId.isNotEmpty) url += '&companyId=${widget.companyId}';
-      if (widget.fromDate != null) url += '&fromDate=${widget.fromDate!.toIso8601String().split('T')[0]}';
-      if (widget.toDate != null) url += '&toDate=${widget.toDate!.toIso8601String().split('T')[0]}';
+      url += '&fromDate=${effectiveFrom.toIso8601String().split('T')[0]}';
+      url += '&toDate=${effectiveTo.toIso8601String().split('T')[0]}';
 
       final response = await http.get(Uri.parse(url), headers: {'X-Api-Key': _apiKey});
       if (response.statusCode != 200) {
@@ -11879,8 +11979,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
 
       bool nameMatches(String v) {
         final vLow = v.toLowerCase();
-        return (ftthUser.isNotEmpty && vLow == ftthUser) ||
-            vLow == arName || vLow.contains(arName) || arName.contains(vLow);
+        return (ftthUser.isNotEmpty && vLow == ftthUser) || vLow == arName;
       }
 
       if (widget.filterIsTechnician) {
@@ -12819,34 +12918,73 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           child: _buildAllOpsSummaryCards(),
         ),
         SizedBox(height: ar.spaceS),
-        // حقل البحث
+        // حقول البحث
         Padding(
           padding: EdgeInsets.symmetric(horizontal: ar.spaceS),
-          child: SizedBox(
-            height: 36,
-            child: TextField(
-              controller: _searchCtrl,
-              style: GoogleFonts.cairo(fontSize: 12),
-              decoration: InputDecoration(
-                hintText: 'بحث في كل الحقول...',
-                hintStyle: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
-                prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close, size: 14),
-                        onPressed: () => _searchCtrl.clear(),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      )
-                    : null,
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.blue, width: 2)),
+          child: Row(
+            children: [
+              // بحث محلي (ضمن البيانات المحمّلة)
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: TextField(
+                    controller: _searchCtrl,
+                    style: GoogleFonts.cairo(fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: 'بحث في النتائج الحالية...',
+                      hintStyle: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
+                      prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close, size: 14),
+                              onPressed: () => _searchCtrl.clear(),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.blue, width: 2)),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              // بحث شامل (في كل قاعدة البيانات)
+              SizedBox(
+                width: 280,
+                height: 36,
+                child: TextField(
+                  controller: _globalSearchCtrl,
+                  style: GoogleFonts.cairo(fontSize: 12),
+                  onSubmitted: _globalSearch,
+                  decoration: InputDecoration(
+                    hintText: 'بحث شامل في كل السجلات...',
+                    hintStyle: GoogleFonts.cairo(fontSize: 11, color: Colors.orange.shade300),
+                    prefixIcon: _isGlobalSearching
+                        ? const Padding(padding: EdgeInsets.all(10), child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)))
+                        : Icon(Icons.manage_search, size: 18, color: Colors.orange.shade700),
+                    suffixIcon: _isGlobalSearchActive
+                        ? IconButton(
+                            icon: Icon(Icons.close, size: 14, color: Colors.orange.shade700),
+                            onPressed: () { _globalSearchCtrl.clear(); _globalSearch(''); },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: _isGlobalSearchActive ? Colors.orange.shade50 : Colors.grey.shade50,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.orange.shade700, width: 1.5)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.orange.shade700, width: 1.5)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.orange.shade900, width: 2)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         SizedBox(height: ar.spaceXS),

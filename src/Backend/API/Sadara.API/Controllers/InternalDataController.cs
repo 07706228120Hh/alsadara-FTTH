@@ -1736,6 +1736,7 @@ public class InternalDataController : ControllerBase
         [FromQuery] string? companyId,
         [FromQuery] DateTime? fromDate,
         [FromQuery] DateTime? toDate,
+        [FromQuery] string? search,
         [FromQuery] int pageSize = 500)
     {
         if (!ValidateApiKey())
@@ -1747,19 +1748,37 @@ public class InternalDataController : ControllerBase
         if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cId))
             query = query.Where(l => l.CompanyId == cId);
 
-        if (fromDate.HasValue)
+        // بحث شامل في كل قاعدة البيانات (بدون فلتر تاريخ)
+        if (!string.IsNullOrEmpty(search))
         {
-            var from = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
-            query = query.Where(l => l.ActivationDate >= from);
+            var s = search.Trim().ToLower();
+            query = query.Where(l =>
+                (l.CustomerName != null && l.CustomerName.ToLower().Contains(s)) ||
+                (l.PhoneNumber != null && l.PhoneNumber.Contains(s)) ||
+                (l.DeviceUsername != null && l.DeviceUsername.ToLower().Contains(s)) ||
+                (l.ActivatedBy != null && l.ActivatedBy.ToLower().Contains(s)) ||
+                (l.ZoneName != null && l.ZoneName.ToLower().Contains(s)) ||
+                (l.FtthTransactionId != null && l.FtthTransactionId.Contains(s)) ||
+                (l.SubscriptionNotes != null && l.SubscriptionNotes.ToLower().Contains(s))
+            );
+        }
+        else
+        {
+            // فلتر التاريخ فقط عند عدم البحث
+            if (fromDate.HasValue)
+            {
+                var from = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.ActivationDate >= from);
+            }
+
+            if (toDate.HasValue)
+            {
+                var to = DateTime.SpecifyKind(toDate.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.ActivationDate <= to);
+            }
         }
 
-        if (toDate.HasValue)
-        {
-            var to = DateTime.SpecifyKind(toDate.Value.AddDays(1).AddHours(-3), DateTimeKind.Utc);
-            query = query.Where(l => l.ActivationDate <= to);
-        }
-
-        var effectivePageSize = Math.Min(pageSize < 1 ? 500 : pageSize, 2000);
+        var effectivePageSize = Math.Min(pageSize < 1 ? 500 : pageSize, 15000);
 
         var logs = await query
             .OrderByDescending(l => l.ActivationDate)
@@ -3328,7 +3347,7 @@ public class InternalDataController : ControllerBase
             query = query.Where(r => r.ReportDate < to);
         }
 
-        var effectivePageSize = Math.Min(pageSize < 1 ? 500 : pageSize, 2000);
+        var effectivePageSize = Math.Min(pageSize < 1 ? 500 : pageSize, 15000);
 
         var reports = await query
             .OrderByDescending(r => r.ReportDate)
