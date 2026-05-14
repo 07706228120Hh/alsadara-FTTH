@@ -2512,7 +2512,7 @@ public class InternalDataController : ControllerBase
         var orphanLogs = await _unitOfWork.SubscriptionLogs.AsQueryable()
             .Where(l => !l.IsDeleted && l.JournalEntryId == null
                 && l.CompanyId.HasValue && l.UserId.HasValue
-                && l.PlanPrice.HasValue && l.PlanPrice > 0
+                && ((l.PlanPrice.HasValue && l.PlanPrice > 0) || (l.BasePrice.HasValue && l.BasePrice > 0))
                 && l.CollectionType != null)
             .ToListAsync();
 
@@ -2720,7 +2720,8 @@ public class InternalDataController : ControllerBase
 
             // إنشاء قيد محاسبي تلقائي إذا توفرت البيانات
             Guid? journalEntryId = null;
-            if (log.CompanyId.HasValue && log.UserId.HasValue && log.PlanPrice.HasValue && log.PlanPrice > 0 && !string.IsNullOrEmpty(log.CollectionType))
+            var hasLogAmount = (log.PlanPrice.HasValue && log.PlanPrice > 0) || (log.BasePrice.HasValue && log.BasePrice > 0);
+            if (log.CompanyId.HasValue && log.UserId.HasValue && hasLogAmount && !string.IsNullOrEmpty(log.CollectionType))
             {
                 try
                 {
