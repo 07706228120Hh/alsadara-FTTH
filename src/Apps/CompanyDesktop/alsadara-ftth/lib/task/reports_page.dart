@@ -581,8 +581,6 @@ class _ReportsPageState extends State<ReportsPage> {
             const SizedBox(width: 6),
             _dateChip('أمس', yesterday),
             const SizedBox(width: 6),
-            _dateChip('7 أيام', last7),
-            const SizedBox(width: 6),
             _dateChip('هذا الشهر', thisMonth),
             const SizedBox(width: 6),
             ActionChip(
@@ -592,7 +590,6 @@ class _ReportsPageState extends State<ReportsPage> {
                 color: _dateLabel != 'الكل' &&
                         _dateLabel != 'اليوم' &&
                         _dateLabel != 'أمس' &&
-                        _dateLabel != '7 أيام' &&
                         _dateLabel != 'هذا الشهر'
                     ? Colors.white
                     : Colors.blue[700],
@@ -601,7 +598,6 @@ class _ReportsPageState extends State<ReportsPage> {
                 _dateLabel != 'الكل' &&
                         _dateLabel != 'اليوم' &&
                         _dateLabel != 'أمس' &&
-                        _dateLabel != '7 أيام' &&
                         _dateLabel != 'هذا الشهر'
                     ? _dateLabel
                     : 'مخصص',
@@ -610,7 +606,6 @@ class _ReportsPageState extends State<ReportsPage> {
                   color: _dateLabel != 'الكل' &&
                           _dateLabel != 'اليوم' &&
                           _dateLabel != 'أمس' &&
-                          _dateLabel != '7 أيام' &&
                           _dateLabel != 'هذا الشهر'
                       ? Colors.white
                       : null,
@@ -619,7 +614,6 @@ class _ReportsPageState extends State<ReportsPage> {
               backgroundColor: _dateLabel != 'الكل' &&
                       _dateLabel != 'اليوم' &&
                       _dateLabel != 'أمس' &&
-                      _dateLabel != '7 أيام' &&
                       _dateLabel != 'هذا الشهر'
                   ? Colors.blue[700]
                   : null,
