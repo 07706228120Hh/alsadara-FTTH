@@ -643,6 +643,21 @@ class AccountingService {
     return _toMap(response);
   }
 
+  /// كشف حساب مدمج — كل حسابات الشخص في كشف واحد
+  Future<Map<String, dynamic>> getPersonStatement(
+    String userId, {
+    String? companyId,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    String query = '/accounting/person/$userId/statement?';
+    if (companyId != null) query += 'companyId=$companyId&';
+    if (fromDate != null) query += 'fromDate=$fromDate&';
+    if (toDate != null) query += 'toDate=$toDate&';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
   /// ميزان المراجعة
   Future<Map<String, dynamic>> getTrialBalance({String? companyId}) async {
     String query = '/accounting/reports/trial-balance';

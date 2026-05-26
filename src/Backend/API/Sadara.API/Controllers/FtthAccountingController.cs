@@ -367,6 +367,7 @@ public class FtthAccountingController : ControllerBase
                 tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
                 _unitOfWork.Users.Update(tech);
 
+                var techCompanyId = companyId != Guid.Empty ? companyId : (tech.CompanyId ?? companyId);
                 var techTx = new TechnicianTransaction
                 {
                     TechnicianId = tech.Id,
@@ -377,7 +378,7 @@ public class FtthAccountingController : ControllerBase
                     Description = $"{opType} {planName} - {customerName}",
                     ReferenceNumber = log.Id.ToString(),
                     CreatedById = userId,
-                    CompanyId = companyId,
+                    CompanyId = techCompanyId,
                     CreatedAt = DateTime.UtcNow
                 };
                 await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
@@ -839,8 +840,9 @@ public class FtthAccountingController : ControllerBase
 
             // ── النقد المسلّم + الآجل المحصّل: من أي قيد محاسبي (يدوي أو تلقائي) ──
             // المبدأ: CreditAmount في حساب المشغل/الفني = تسديد، بغض النظر عن ReferenceType
+            // ملاحظة: Posted فقط — لتتطابق مع كشف الحساب (كانت != Voided فتشمل Draft)
             var jeDateQuery = _unitOfWork.JournalEntries.AsQueryable()
-                .Where(j => j.Status != JournalEntryStatus.Voided && !j.IsDeleted);
+                .Where(j => j.Status == JournalEntryStatus.Posted && !j.IsDeleted);
             if (from.HasValue)
             {
                 var fromUtcJe = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
@@ -947,39 +949,35 @@ public class FtthAccountingController : ControllerBase
                 var user = g.UserId.HasValue ? users.FirstOrDefault(u => u.Id == g.UserId.Value) : null;
                 var userIdStr = g.UserId?.ToString();
 
-                // النقد المسلّم لهذا المشغل
-                var cashAccId = operatorCashAccounts.FirstOrDefault(a => a.Description == userIdStr)?.Id;
-                var delivered = cashAccId.HasValue
-                    ? deliveredByAccount.FirstOrDefault(d => d.AccountId == cashAccId.Value)?.Total ?? 0m
+                // جمع كل الحسابات المطابقة (بدلاً من FirstOrDefault — يمنع ضياع بيانات عند وجود حسابات مكررة)
+                var cashAccIds = operatorCashAccounts.Where(a => a.Description == userIdStr).Select(a => a.Id).ToList();
+                var delivered = cashAccIds.Any()
+                    ? deliveredByAccount.Where(d => cashAccIds.Contains(d.AccountId)).Sum(d => d.Total)
                     : 0m;
 
-                // الآجل المحصّل لهذا المشغل
-                var creditAccId = operatorCreditAccounts.FirstOrDefault(a => a.Description == userIdStr)?.Id;
-                var collected = creditAccId.HasValue
-                    ? collectedByAccount.FirstOrDefault(c => c.AccountId == creditAccId.Value)?.Total ?? 0m
+                var creditAccIds = operatorCreditAccounts.Where(a => a.Description == userIdStr).Select(a => a.Id).ToList();
+                var collected = creditAccIds.Any()
+                    ? collectedByAccount.Where(c => creditAccIds.Contains(c.AccountId)).Sum(c => c.Total)
                     : 0m;
 
                 var remainingCash = g.CashAmount - delivered;
                 var remainingCredit = g.CreditAmount - collected;
 
-                // رصيد صندوق المشغل (1110xx)
-                var cashBoxBal = cashAccId.HasValue
-                    ? cashBoxBalanceByAccount.FirstOrDefault(d => d.AccountId == cashAccId.Value)?.Balance ?? 0m
+                // رصيد صندوق المشغل (1110xx) — جمع كل الحسابات
+                var cashBoxBal = cashAccIds.Any()
+                    ? cashBoxBalanceByAccount.Where(d => cashAccIds.Contains(d.AccountId)).Sum(d => d.Balance)
                     : 0m;
 
-                // رصيد ذمة المشغل: 1140xx + 1160xx
-                var opDebt1160 = creditAccId.HasValue
-                    ? operatorDebtByAccount.FirstOrDefault(d => d.AccountId == creditAccId.Value)?.Balance ?? 0m
+                // رصيد ذمة المشغل: 1160xx
+                var opDebt1160 = creditAccIds.Any()
+                    ? operatorDebtByAccount.Where(d => creditAccIds.Contains(d.AccountId)).Sum(d => d.Balance)
                     : 0m;
 
-                var techDebtAccId = g.UserId.HasValue
-                    ? operatorTechDebtAccounts.FirstOrDefault(a => a.Description == g.UserId.Value.ToString())?.Id
-                    : (Guid?)null;
-                var opDebt1140 = techDebtAccId.HasValue
-                    ? operatorTechDebtByAccount.FirstOrDefault(d => d.AccountId == techDebtAccId.Value)?.Balance ?? 0m
+                // رصيد ذمم الفنيين: 1140xx — جمع كل الحسابات
+                var techDebtAccIds = operatorTechDebtAccounts.Where(a => a.Description == userIdStr).Select(a => a.Id).ToList();
+                var opDebt1140 = techDebtAccIds.Any()
+                    ? operatorTechDebtByAccount.Where(d => techDebtAccIds.Contains(d.AccountId)).Sum(d => d.Balance)
                     : 0m;
-
-                var opDebtBal = opDebt1140 + opDebt1160;
 
                 return new
                 {
@@ -1004,9 +1002,11 @@ public class FtthAccountingController : ControllerBase
                     unclassifiedCount = g.UnclassifiedCount,
                     deliveredCash = delivered,
                     collectedCredit = collected,
-                    netOwed = remainingCash + remainingCredit,
                     cashBoxBalance = cashBoxBal,
-                    operatorDebt = opDebtBal,
+                    techDebt = opDebt1140,       // ذمم الفنيين (1140xx) — يطابق كشف الحساب
+                    operatorCredit = opDebt1160, // ذمم المشغل (1160xx)
+                    // المستحق = صندوق + ذمم فني + ذمم مشغل — كلها من القيود المحاسبية (Posted)
+                    netOwed = cashBoxBal + opDebt1140 + opDebt1160,
                     // أنواع العمليات
                     purchaseCount = g.PurchaseCount,
                     purchaseAmount = g.PurchaseAmount,
@@ -1088,8 +1088,9 @@ public class FtthAccountingController : ControllerBase
 
             var techAccountIds = techAccounts.Select(a => a.Id).ToList();
             // جلب CreditAmount من القيود المرحّلة (تسديدات) مع فلتر التاريخ
+            // ملاحظة: Posted فقط — لتتطابق مع كشف الحساب
             var techJeQuery = _unitOfWork.JournalEntries.AsQueryable()
-                .Where(j => j.Status != JournalEntryStatus.Voided && !j.IsDeleted);
+                .Where(j => j.Status == JournalEntryStatus.Posted && !j.IsDeleted);
             if (from.HasValue)
             {
                 var fromUtcTech = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
@@ -1110,14 +1111,29 @@ public class FtthAccountingController : ControllerBase
                     .ToListAsync()
                 : new List<object>().Select(x => new { AccountId = Guid.Empty, TotalPayments = 0m }).ToList();
 
+            // ── رصيد حساب الفني الكامل (Debit - Credit) — يطابق كشف الحساب ──
+            var techBalances = techAccountIds.Any()
+                ? await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => techAccountIds.Contains(l.AccountId) && !l.IsDeleted)
+                    .Join(techJeQuery, l => l.JournalEntryId, j => j.Id,
+                        (l, j) => new { l.AccountId, l.DebitAmount, l.CreditAmount })
+                    .GroupBy(x => x.AccountId)
+                    .Select(g => new { AccountId = g.Key, Balance = g.Sum(x => x.DebitAmount) - g.Sum(x => x.CreditAmount) })
+                    .ToListAsync()
+                : new List<object>().Select(x => new { AccountId = Guid.Empty, Balance = 0m }).ToList();
+
             var technicianRows = techRows.Select(t =>
             {
                 var techUser = t.TechId.HasValue ? techUsers.FirstOrDefault(u => u.Id == t.TechId.Value) : null;
-                var techAccId = t.TechId.HasValue
-                    ? techAccounts.FirstOrDefault(a => a.Description == t.TechId.Value.ToString())?.Id
-                    : (Guid?)null;
-                var paid = techAccId.HasValue
-                    ? techPayments.FirstOrDefault(p => p.AccountId == techAccId.Value)?.TotalPayments ?? 0m
+                var techIdStr = t.TechId?.ToString();
+                // جمع كل الحسابات المطابقة (بدلاً من FirstOrDefault)
+                var techAccIdsForUser = techAccounts.Where(a => a.Description == techIdStr).Select(a => a.Id).ToList();
+                var paid = techAccIdsForUser.Any()
+                    ? techPayments.Where(p => techAccIdsForUser.Contains(p.AccountId)).Sum(p => p.TotalPayments)
+                    : 0m;
+                // رصيد القيود المحاسبي (Debit - Credit) — نفس مصدر كشف الحساب
+                var jeBalance = techAccIdsForUser.Any()
+                    ? techBalances.Where(b => techAccIdsForUser.Contains(b.AccountId)).Sum(b => b.Balance)
                     : 0m;
                 var techExtraRevenue = t.TechId.HasValue
                     ? techRevenueByUser.FirstOrDefault(d => d.TechnicianId == t.TechId.Value)?.Total ?? 0m
@@ -1145,7 +1161,7 @@ public class FtthAccountingController : ControllerBase
                     unclassifiedCount = 0,
                     deliveredCash = paid,
                     collectedCredit = 0m,
-                    netOwed = t.TotalAmount - paid,
+                    netOwed = jeBalance, // رصيد القيود (Debit-Credit) بدلاً من SubscriptionLogs - paid
                     purchaseCount = t.PurchaseCount,
                     purchaseAmount = t.PurchaseAmount,
                     renewalCount = t.RenewalCount,
@@ -1255,6 +1271,11 @@ public class FtthAccountingController : ControllerBase
                     totalPageDeduction = result.Sum(r => r.pageDeduction),
                     totalRevenue = result.Sum(r => r.revenue),
                     totalExpense = result.Sum(r => r.expense),
+                    // تفصيل المستحق والآجل
+                    totalCollectedCredit = result.Sum(r => r.collectedCredit),
+                    totalCashBoxBalance = result.Sum(r => r.cashBoxBalance),
+                    totalTechDebt = result.Sum(r => r.techDebt),
+                    totalOperatorCredit = result.Sum(r => r.operatorCredit),
                     // مطابقة
                     reconciledCount = reconciledTotal,
                     reconciledPercentage = totalRecords > 0
@@ -1806,7 +1827,7 @@ public class FtthAccountingController : ControllerBase
             if (log.PaidMonths >= log.RenewalCycleMonths)
             {
                 log.PaymentStatus = "مسدد";
-                log.CollectionType = "cash";
+                // لا نغيّر CollectionType — تحصيل الآجل لا يعني تغيير نوع العملية الأصلي
                 log.NextRenewalDate = null;
             }
             else
@@ -1880,14 +1901,14 @@ public class FtthAccountingController : ControllerBase
                 description, JournalReferenceType.OperatorCreditCollection,
                 dto.OperatorUserId.ToString(), lines);
 
-            // تحديث حالة السجل إذا محدد — يصبح نقد بعد التسديد
+            // تحديث حالة السجل إذا محدد
             if (dto.SubscriptionLogId.HasValue)
             {
                 var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(dto.SubscriptionLogId.Value);
                 if (log != null)
                 {
                     log.PaymentStatus = "مسدد";
-                    log.CollectionType = "cash";
+                    // لا نغيّر CollectionType — العملية تبقى "آجل" والتحصيل يُسجّل بقيد منفصل
                     _unitOfWork.SubscriptionLogs.Update(log);
                 }
             }
@@ -2094,9 +2115,12 @@ public class FtthAccountingController : ControllerBase
                 .Select(l => l.FtthTransactionId!)
                 .ToListAsync();
 
-            // 2. بصمات بمعرّف العميل: customerId|المستقطع|تاريخ
+            // 2. بصمات بمعرّف العميل: فقط من عمليات بدون FtthTransactionId (يدوية)
+            // العمليات المزامنة (لها FtthTransactionId) تُطابق بالـ FtthId مباشرة — لا تحتاج بصمة
+            // هذا يمنع التفعيل المزدوج في FTTH من المطابقة مرتين
             var fingerprints = await baseQuery
                 .Where(l => l.CustomerId != null && l.CustomerId != "")
+                .Where(l => l.FtthTransactionId == null || l.FtthTransactionId == "")
                 .Select(l => new {
                     l.CustomerId, l.PlanPrice, l.ActivationDate,
                     l.BasePrice, l.CompanyDiscount, l.ManualDiscount,
@@ -2104,7 +2128,8 @@ public class FtthAccountingController : ControllerBase
                 })
                 .ToListAsync();
 
-            var keys = fingerprints.Select(f =>
+            var keys = new List<string>();
+            foreach (var f in fingerprints)
             {
                 var cid = f.CustomerId!.Trim();
                 // المستقطع: BasePrice>0 → BasePrice-CompanyDiscount، وإلا خصم مفعّل → PlanPrice، وإلا → PlanPrice-CompanyDiscount
@@ -2114,14 +2139,33 @@ public class FtthAccountingController : ControllerBase
                         ? (f.PlanPrice ?? 0)
                         : (f.PlanPrice ?? 0) - (f.CompanyDiscount ?? 0);
                 var price = (int)pageDeduction;
+                var planPrice = (int)(f.PlanPrice ?? 0);
                 // تحويل التاريخ من UTC إلى توقيت بغداد (+3) ليطابق تاريخ FTTH
                 var date = f.ActivationDate.HasValue
                     ? f.ActivationDate.Value.AddHours(3).ToString("yyyy-MM-dd")
                     : "";
-                return $"{cid}|{price}|{date}";
-            }).ToList();
+                // بصمة أولى: المستقطع (الدقيقة)
+                keys.Add($"{cid}|{price}|{date}");
+                // بصمة ثانية: PlanPrice (لمطابقة مبلغ FTTH مباشرة) — فقط إذا مختلفة عن المستقطع
+                if (planPrice != price && planPrice > 0)
+                    keys.Add($"{cid}|{planPrice}|{date}");
+            }
 
-            return Ok(new { success = true, ids, keys });
+            // 3. عمليات بدون CustomerId (لا يمكن مطابقتها أبداً)
+            var noCustomerIdCount = await baseQuery
+                .Where(l => l.FtthTransactionId == null || l.FtthTransactionId == "")
+                .Where(l => l.CustomerId == null || l.CustomerId == "")
+                .CountAsync();
+
+            // 4. كشف العمليات المكررة المحتملة (نفس CustomerId + PlanName + نفس اليوم)
+            var duplicates = await baseQuery
+                .Where(l => l.CustomerId != null && l.CustomerId != "")
+                .GroupBy(l => new { l.CustomerId, l.PlanName, Date = l.ActivationDate!.Value.Date })
+                .Where(g => g.Count() > 1)
+                .Select(g => new { g.Key.CustomerId, g.Key.PlanName, g.Key.Date, Count = g.Count() })
+                .ToListAsync();
+
+            return Ok(new { success = true, ids, keys, noCustomerIdCount, duplicates });
         }
         catch (Exception ex)
         {
@@ -2147,9 +2191,9 @@ public class FtthAccountingController : ControllerBase
             if (dto.Transactions == null || dto.Transactions.Count == 0)
                 return BadRequest(new { success = false, message = "لا توجد عمليات للمزامنة" });
 
-            // جلب معرّفات العمليات المحفوظة مسبقاً
+            // جلب معرّفات العمليات المحفوظة مسبقاً (النشطة فقط — استبعاد المحذوفة)
             var existingIds = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                .Where(l => l.FtthTransactionId != null && l.FtthTransactionId != "")
+                .Where(l => !l.IsDeleted && l.FtthTransactionId != null && l.FtthTransactionId != "")
                 .Select(l => l.FtthTransactionId!)
                 .ToListAsync();
             var existingSet = new HashSet<string>(existingIds);
@@ -2210,12 +2254,15 @@ public class FtthAccountingController : ControllerBase
 
             int saved = 0, skipped = 0, failed = 0, updated = 0;
             var errors = new List<string>();
+            _logger.LogInformation("📥 مزامنة: {Count} عملية مطلوبة، {ExistingCount} FtthId موجود",
+                dto.Transactions.Count, existingSet.Count);
 
             foreach (var tx in dto.Transactions)
             {
                 // تحديث السجلات الموجودة إذا كانت بياناتها ناقصة
                 if (!string.IsNullOrEmpty(tx.FtthTransactionId) && existingSet.Contains(tx.FtthTransactionId))
                 {
+                    _logger.LogInformation("⏭️ تخطي: FtthId={FtthId} موجود — {Customer}", tx.FtthTransactionId, tx.CustomerName);
                     // تحقق إن كانت البيانات الجديدة أفضل
                     bool hasNewData = !string.IsNullOrEmpty(tx.CollectionType) || !string.IsNullOrEmpty(tx.CreatedBy);
                     if (hasNewData)
@@ -2265,6 +2312,51 @@ public class FtthAccountingController : ControllerBase
                     }
                     skipped++;
                     continue;
+                }
+
+                // ═══ فحص التكرار: هل يوجد عملية يدوية بنفس CustomerId + التاريخ + المبلغ؟ ═══
+                if (!string.IsNullOrEmpty(tx.CustomerId) && tx.OccuredAt.HasValue && tx.Amount.HasValue)
+                {
+                    // FTTH يرسل توقيت بغداد (UTC+3) — نحوّل لـ UTC ثم نحسب بداية/نهاية اليوم بتوقيت بغداد
+                    var txDateUtc = tx.OccuredAt.Value.Kind == DateTimeKind.Utc
+                        ? tx.OccuredAt.Value
+                        : DateTime.SpecifyKind(tx.OccuredAt.Value.AddHours(-3), DateTimeKind.Utc);
+                    // بداية اليوم بتوقيت بغداد = تاريخ بغداد (UTC+3) ثم نطرح 3 للعودة لـ UTC
+                    var baghdadDate = txDateUtc.AddHours(3).Date; // يوم بغداد
+                    var txDateStart = DateTime.SpecifyKind(baghdadDate.AddHours(-3), DateTimeKind.Utc); // بداية اليوم بـ UTC
+                    var txDateEnd = txDateStart.AddDays(1); // نهاية اليوم بـ UTC
+                    var txAmount = Math.Abs(tx.Amount.Value);
+                    var cid = tx.CustomerId.Trim();
+
+                    var similarLog = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                        .FirstOrDefaultAsync(l => !l.IsDeleted
+                            && l.CustomerId == cid
+                            && l.ActivationDate >= txDateStart && l.ActivationDate < txDateEnd
+                            && l.PlanPrice == txAmount
+                            && (l.FtthTransactionId == null || l.FtthTransactionId == ""));
+
+                    if (similarLog != null)
+                    {
+                        // دمج: تحديث العملية اليدوية ببيانات FTTH بدلاً من إنشاء نسخة جديدة
+                        similarLog.FtthTransactionId = tx.FtthTransactionId;
+                        if (string.IsNullOrEmpty(similarLog.CustomerId)) similarLog.CustomerId = tx.CustomerId;
+                        if (string.IsNullOrEmpty(similarLog.SubscriptionId)) similarLog.SubscriptionId = tx.SubscriptionId;
+                        if (string.IsNullOrEmpty(similarLog.ZoneId)) similarLog.ZoneId = tx.ZoneId;
+                        if (string.IsNullOrEmpty(similarLog.ZoneName)) similarLog.ZoneName = tx.ZoneName;
+                        if (string.IsNullOrEmpty(similarLog.DeviceUsername)) similarLog.DeviceUsername = tx.DeviceUsername;
+                        if (string.IsNullOrEmpty(similarLog.PhoneNumber)) similarLog.PhoneNumber = tx.PhoneNumber;
+                        if (string.IsNullOrEmpty(similarLog.StartDate) && tx.StartDate.HasValue) similarLog.StartDate = tx.StartDate.Value.ToString("yyyy-MM-dd");
+                        if (string.IsNullOrEmpty(similarLog.EndDate) && tx.EndDate.HasValue) similarLog.EndDate = tx.EndDate.Value.ToString("yyyy-MM-dd");
+                        similarLog.WalletBalanceAfter ??= tx.RemainingBalance;
+                        similarLog.IsReconciled = true;
+                        similarLog.ReconciliationNotes = "دمج تلقائي — عملية يدوية + مزامنة FTTH";
+                        _unitOfWork.SubscriptionLogs.Update(similarLog);
+                        await _unitOfWork.SaveChangesAsync();
+                        updated++;
+                        _logger.LogInformation("🔗 دمج تلقائي: عملية يدوية #{LogId} مع FTTH {TxId} — {Customer}",
+                            similarLog.Id, tx.FtthTransactionId, tx.CustomerName);
+                        continue;
+                    }
                 }
 
                 try
@@ -2429,6 +2521,8 @@ public class FtthAccountingController : ControllerBase
                     await _unitOfWork.SubscriptionLogs.AddAsync(log);
                     await _unitOfWork.SaveChangesAsync();
                     saved++;
+                    _logger.LogInformation("✅ حُفظ: FtthId={FtthId}, Customer={Customer}, Amount={Amount}",
+                        tx.FtthTransactionId, tx.CustomerName, planPrice);
 
                     // إنشاء قيد محاسبي تلقائياً لكل عملية مزامنة
                     if (userId.HasValue && companyId.HasValue && (planPrice > 0 || (log.BasePrice.HasValue && log.BasePrice > 0)))
@@ -3257,7 +3351,7 @@ public class FtthAccountingController : ControllerBase
                 description, JournalReferenceType.OperatorCreditCollection,
                 dto.OperatorUserId.ToString(), lines);
 
-            // تحديث حالة السجلات المحددة — تتحول من آجل إلى نقد بعد التسديد
+            // تحديث حالة السجلات المحددة
             if (dto.SubscriptionLogIds != null && dto.SubscriptionLogIds.Any())
             {
                 foreach (var logId in dto.SubscriptionLogIds)
@@ -3267,12 +3361,11 @@ public class FtthAccountingController : ControllerBase
                     {
                         if (log.RenewalCycleMonths.HasValue && log.RenewalCycleMonths > 1)
                         {
-                            // اشتراك مكرر — يُحسب كتحصيل شهر واحد فقط
                             log.PaidMonths += 1;
                             if (log.PaidMonths >= log.RenewalCycleMonths)
                             {
                                 log.PaymentStatus = "مسدد";
-                                log.CollectionType = "cash";
+                                // لا نغيّر CollectionType — التحصيل يُسجّل بقيد منفصل
                                 log.NextRenewalDate = null;
                             }
                             else if (log.ActivationDate.HasValue)
@@ -3282,9 +3375,8 @@ public class FtthAccountingController : ControllerBase
                         }
                         else
                         {
-                            // اشتراك عادي (غير مكرر) — يُسدد بالكامل
                             log.PaymentStatus = "مسدد";
-                            log.CollectionType = "cash";
+                            // لا نغيّر CollectionType
                         }
                         log.UpdatedAt = DateTime.UtcNow;
                         _unitOfWork.SubscriptionLogs.Update(log);

@@ -9,8 +9,11 @@ import '../../theme/accounting_responsive.dart';
 class ClientAccountsPage extends StatefulWidget {
   final String? companyId;
   final String? initialAccountId;
+  /// إذا تم تمرير personUserId يُفتح كشف حساب مدمج (كل حسابات الشخص)
+  final String? personUserId;
+  final String? personName;
 
-  const ClientAccountsPage({super.key, this.companyId, this.initialAccountId});
+  const ClientAccountsPage({super.key, this.companyId, this.initialAccountId, this.personUserId, this.personName});
 
   @override
   State<ClientAccountsPage> createState() => _ClientAccountsPageState();
@@ -83,8 +86,41 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   @override
   void initState() {
     super.initState();
-    _loadAccounts();
+    if (widget.personUserId != null) {
+      // كشف حساب مدمج — تحميل مباشر بدون جلب قائمة الحسابات
+      _loadPersonStatement();
+    } else {
+      _loadAccounts();
+    }
     _searchController.addListener(_onSearchChanged);
+  }
+
+  /// تحميل كشف حساب مدمج لشخص (كل حساباته في كشف واحد)
+  Future<void> _loadPersonStatement() async {
+    final now = DateTime.now();
+    setState(() {
+      _isLoading = false;
+      _isLoadingStatement = true;
+      _fromDate ??= DateTime(now.year, now.month, 1);
+      _toDate ??= DateTime(now.year, now.month, now.day);
+      _selectedAccount = {'Id': 'combined', 'Code': 'مدمج', 'Name': widget.personName ?? ''};
+    });
+    try {
+      final result = await AccountingService.instance.getPersonStatement(
+        widget.personUserId!,
+        companyId: widget.companyId,
+        fromDate: _fromDate != null ? _dateFmt.format(_fromDate!) : null,
+        toDate: _toDate != null ? _dateFmt.format(_toDate!) : null,
+      );
+      if (!mounted) return;
+      if (result['success'] == true) {
+        final data = result['data'] ?? {};
+        _statementLines = (data['Lines'] as List?) ?? [];
+        _statementSummary = Map<String, dynamic>.from(data['Summary'] ?? {});
+        _statementAccount = Map<String, dynamic>.from(data['Account'] ?? {});
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingStatement = false);
   }
 
   /// بحث مع debounce — يبحث في القيود عند توقف الكتابة
@@ -271,7 +307,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   }
 
   void _reloadStatement() {
-    if (_selectedAccount != null) {
+    if (widget.personUserId != null) {
+      _loadPersonStatement();
+    } else if (_selectedAccount != null) {
       _loadStatement(_selectedAccount!, resetDates: false);
     }
   }

@@ -2325,10 +2325,11 @@ public static class ServiceRequestAccountingHelper
             throw new Exception($"الحساب الأب {parentCode} غير موجود");
 
         var pid = personId.ToString();
+        // البحث بالـ Description فقط (personId) — إزالة Name.Contains لمنع ربط خاطئ بأسماء متشابهة
         var existing = await unitOfWork.Accounts.AsQueryable()
             .FirstOrDefaultAsync(a => a.ParentAccountId == parent.Id
                 && a.CompanyId == companyId
-                && (a.Description == pid || a.Name.Contains(personName))
+                && a.Description == pid
                 && a.IsActive);
 
         if (existing != null)

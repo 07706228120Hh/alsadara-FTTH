@@ -268,6 +268,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   int _totalMatched = 0;
   int _totalOursOnly = 0;
   int _totalFtthOnly = 0;
+  int _compareNoCustomerIdCount = 0;
+  List<dynamic> _compareDuplicates = [];
+  // بصمات المقارنة — تُحفظ لتمريرها لصفحة التفاصيل (توحيد الخوارزمية)
+  Set<String> _compareExistingFtthIds = {};
+  Map<String, List<int>> _compareCidDateAmounts = {};
+  // عمليات كل المشغلين — تُجلب مرة واحدة وتُمرر للتفاصيل (لمنع اختلاف الأرقام)
+  Map<String, List<Map<String, dynamic>>> _compareOperatorTxs = {};
 
   @override
   void initState() {
@@ -1300,7 +1307,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         );
         existingFtthIds = (result['ids'] ?? []).toSet();
         existingKeys = (result['keys'] ?? []).toSet();
-        debugPrint('📊 بصمات محفوظة: ${existingFtthIds.length} IDs، ${existingKeys.length} keys');
+        _compareNoCustomerIdCount = (result['noCustomerIdCount'] ?? 0) as int;
+        _compareDuplicates = (result['duplicates'] as List?) ?? [];
+        debugPrint('📊 بصمات محفوظة: ${existingFtthIds.length} IDs، ${existingKeys.length} keys | بدون CustomerId: $_compareNoCustomerIdCount | مكررة: ${_compareDuplicates.length}');
       } catch (e) {
         debugPrint('⚠️ فشل جلب بصمات العمليات المحفوظة: $e');
       }
@@ -1317,6 +1326,38 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           final dateStr = parts[2];
           cidDateAmounts.putIfAbsent('$cid|$dateStr', () => []).add(amt);
         }
+      }
+
+      // حفظ البصمات لتمريرها لصفحة التفاصيل
+      _compareExistingFtthIds = Set<String>.from(existingFtthIds);
+      _compareCidDateAmounts = cidDateAmounts.map((k, v) => MapEntry(k, List<int>.from(v)));
+
+      // 2.7 جلب كل عمليات المشغلين دفعة واحدة (لتمريرها لصفحة التفاصيل بدون إعادة جلب)
+      try {
+        String txUrl = 'https://api.ramzalsadara.tech/api/internal/subscriptionlogs?pageSize=15000';
+        if (_companyId.isNotEmpty) txUrl += '&companyId=$_companyId';
+        if (_fromDate != null) txUrl += '&fromDate=${_fromDate!.toIso8601String().split('T')[0]}';
+        if (_toDate != null) txUrl += '&toDate=${_toDate!.toIso8601String().split('T')[0]}';
+        final txResponse = await http.get(Uri.parse(txUrl), headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'});
+        if (txResponse.statusCode == 200) {
+          final txBody = jsonDecode(txResponse.body);
+          final allTxsRaw = ((txBody is List ? txBody : (txBody['data'] ?? txBody['items'] ?? [])) as List)
+              .cast<Map<String, dynamic>>();
+          // فلتر FIBER فقط — نفس فلتر الداشبورد
+          final allTxs = allTxsRaw.where((tx) {
+            final plan = (tx['PlanName'] ?? tx['planName'] ?? '').toString().toUpperCase();
+            return plan.contains('FIBER');
+          }).toList();
+          // تجميع حسب userId
+          _compareOperatorTxs = {};
+          for (final tx in allTxs) {
+            final uid = (tx['UserId'] ?? tx['userId'] ?? '').toString();
+            if (uid.isNotEmpty) _compareOperatorTxs.putIfAbsent(uid, () => []).add(tx);
+          }
+          debugPrint('📊 تم جلب ${allTxs.length} عملية لـ ${_compareOperatorTxs.length} مشغل');
+        }
+      } catch (e) {
+        debugPrint('⚠️ فشل جلب عمليات المشغلين: $e');
       }
 
       // 3. بناء خريطة مشغلينا مع عدة مفاتيح للمطابقة
@@ -1398,20 +1439,38 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             if (existingFtthIds.contains(tx.id)) {
               matchedTxs.add(tx);
               existingFtthIds.remove(tx.id); // استهلاك البصمة لمنع المطابقة المزدوجة بين المشغلين
+              // استهلاك بصمة cidDate أيضاً لمنع مطابقة عملية FTTH ثانية (تفعيل مزدوج) مع نفس العملية عندنا
+              final cid2 = tx.customerId.trim();
+              final dateStr2 = tx.occuredAt.length >= 10 ? tx.occuredAt.substring(0, 10) : tx.occuredAt;
+              final amt2 = tx.amount.abs().toInt();
+              final key2 = '$cid2|$dateStr2';
+              final amts2 = cidDateAmounts[key2];
+              if (amts2 != null && amts2.contains(amt2)) amts2.remove(amt2);
               continue;
             }
             final dateStr = tx.occuredAt.length >= 10 ? tx.occuredAt.substring(0, 10) : tx.occuredAt;
             final amt = tx.amount.abs().toInt();
             final cid = tx.customerId.trim();
-            // تحقق: هل معرّف العميل موجود بنفس التاريخ أو ±1 يوم؟
+            // تحقق: هل معرّف العميل موجود — أولوية التاريخ التام ثم ±1 يوم
             final cidDate = '$cid|$dateStr';
             var effectiveAmounts = cidDateAmounts[cidDate];
-            if (effectiveAmounts == null || effectiveAmounts.isEmpty) {
+            // فقط إذا لم يوجد تطابق تام نبحث ±1 يوم
+            if ((effectiveAmounts == null || effectiveAmounts.isEmpty) && cid.isNotEmpty) {
               final parsed = DateTime.tryParse(dateStr);
               if (parsed != null) {
                 final prevDay = parsed.subtract(const Duration(days: 1)).toString().substring(0, 10);
                 final nextDay = parsed.add(const Duration(days: 1)).toString().substring(0, 10);
-                effectiveAmounts = cidDateAmounts['$cid|$prevDay'] ?? cidDateAmounts['$cid|$nextDay'];
+                // نفضّل اليوم السابق أولاً (فرق التوقيت UTC/بغداد)
+                final prevAmounts = cidDateAmounts['$cid|$prevDay'];
+                final nextAmounts = cidDateAmounts['$cid|$nextDay'];
+                // نختار الذي فيه مطابقة مبلغ أولاً
+                if (prevAmounts != null && prevAmounts.contains(amt)) {
+                  effectiveAmounts = prevAmounts;
+                } else if (nextAmounts != null && nextAmounts.contains(amt)) {
+                  effectiveAmounts = nextAmounts;
+                } else {
+                  effectiveAmounts = prevAmounts ?? nextAmounts;
+                }
               }
             }
             if (cid.isNotEmpty && effectiveAmounts != null && effectiveAmounts.isNotEmpty) {
@@ -1422,8 +1481,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 matchedTxs.add(tx);
                 continue;
               }
+              // إذا لم يتبقَ مبالغ أخرى → ناقصة (تفعيل مزدوج في FTTH بدون عملية عندنا)
+              if (effectiveAmounts.isEmpty) {
+                missingTxs.add(tx);
+                continue;
+              }
               // المبلغ مختلف — عملية "خاطئة"
-              // نأخذ أقرب مبلغ للمقارنة
               final closest = effectiveAmounts.reduce((a, b) => (a - amt).abs() < (b - amt).abs() ? a : b);
               wrongTxs.add(_WrongTransaction(
                 ftthTx: tx,
@@ -1437,8 +1500,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           }
 
           // حساب دقيق — نستخدم الأعداد الفعلية لا الحساب الرياضي
-          final realFtthOnly = missingTxs.length;
-          final realMatched = matchedTxs.length;
+          var realFtthOnly = missingTxs.length;
+          var realMatched = matchedTxs.length;
+          // لا حاجة لتصحيح حسابي — البصمات تُنشأ فقط من عمليات بدون FtthTransactionId
+          // التفعيل المزدوج في FTTH يذهب تلقائياً لـ missingTxs
           // عندنا فقط = الفرق بين عملياتنا والمتطابقة (مع مراعاة الخاطئة التي موجودة عندنا أيضاً)
           final realOursOnly = oursCount > (realMatched + wrongTxs.length) ? oursCount - realMatched - wrongTxs.length : 0;
 
@@ -3395,41 +3460,58 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     final row1 = <Widget>[
       _summaryCard('المستقطع', (_oursSummary!['totalPageDeduction'] ?? 0).toDouble(), '',
           Colors.indigo.shade600,
-          icon: Icons.account_balance),
+          icon: Icons.account_balance,
+          onTap: () => _openAllOperationsFiltered()),
       _summaryCard('الإيرادات', (_oursSummary!['totalRevenue'] ?? 0).toDouble(), '',
           Colors.green.shade700,
-          icon: Icons.trending_up),
+          icon: Icons.trending_up,
+          onTap: () => _showBreakdownDialog('تفصيل الإيرادات', 'revenue', Colors.green.shade700)),
       _summaryCard('المصاريف', (_oursSummary!['totalExpense'] ?? 0).toDouble(), '',
           Colors.red.shade600,
-          icon: Icons.trending_down),
+          icon: Icons.trending_down,
+          onTap: () => _showBreakdownDialog('تفصيل المصاريف', 'expense', Colors.red.shade600)),
       _summaryCard(
           'إجمالي العمليات',
           (_oursSummary!['totalAmount'] ?? 0).toDouble(),
           '${_oursSummary!['totalActivations'] ?? 0} عملية بواسطة ${_oursSummary!['totalOperators'] ?? 0} مشغل',
           AccountingTheme.neonBlue,
-          icon: Icons.analytics_outlined),
+          icon: Icons.analytics_outlined,
+          onTap: () => _openAllOperationsFiltered()),
       _summaryCard('نقد', (_oursSummary!['totalCash'] ?? 0).toDouble(), '',
           Colors.green.shade600,
-          icon: Icons.attach_money),
+          icon: Icons.attach_money,
+          onTap: () => _openAllOperationsFiltered(collectionType: 'cash')),
     ];
+
+    // subtitle آجل: محصّل ومتبقي
+    final collectedCredit = (_oursSummary!['totalCollectedCredit'] ?? 0).toDouble();
+    final remainingCredit = (_oursSummary!['totalOperatorCredit'] ?? 0).toDouble();
+    final creditSub = collectedCredit > 0 || remainingCredit != 0
+        ? 'محصّل: ${_currencyFormat.format(collectedCredit)} | متبقي: ${_currencyFormat.format(remainingCredit)}'
+        : '';
 
     // الصف الثاني: تحصيل + مستحق
     final row2 = <Widget>[
-      _summaryCard('آجل', (_oursSummary!['totalCredit'] ?? 0).toDouble(), '',
+      _summaryCard('آجل', (_oursSummary!['totalCredit'] ?? 0).toDouble(), creditSub,
           Colors.orange.shade600,
-          icon: Icons.schedule),
+          icon: Icons.schedule,
+          onTap: () => _openAllOperationsFiltered(collectionType: 'credit')),
       _summaryCard('ماستر', (_oursSummary!['totalMaster'] ?? 0).toDouble(), '',
           Colors.purple.shade600,
-          icon: Icons.credit_card),
+          icon: Icons.credit_card,
+          onTap: () => _openAllOperationsFiltered(collectionType: 'master')),
       _summaryCard('وكيل', (_oursSummary!['totalAgent'] ?? 0).toDouble(), '',
           Colors.blue.shade600,
-          icon: Icons.store),
+          icon: Icons.store,
+          onTap: () => _openAllOperationsFiltered(collectionType: 'agent')),
       _summaryCard('فني', (_oursSummary!['totalTechnician'] ?? 0).toDouble(),
           '', Colors.teal.shade600,
-          icon: Icons.engineering),
+          icon: Icons.engineering,
+          onTap: () => _openAllOperationsFiltered(collectionType: 'technician')),
       _summaryCard('المستحق', (_oursSummary!['totalNetOwed'] ?? 0).toDouble(),
-          'نقد + آجل بعد خصم التسليمات', Colors.red.shade600,
-          icon: Icons.warning_amber_rounded),
+          'صندوق + ذمم فني + ذمم مشغل', Colors.red.shade600,
+          icon: Icons.warning_amber_rounded,
+          onTap: () => _showOwedBreakdownDialog()),
       if ((_oursSummary!['totalUnclassified'] ?? 0).toDouble() > 0)
         _summaryCard(
             'غير مصنّفة',
@@ -3826,11 +3908,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       DataColumn(label: _sortableHeader('وكيل', 'agentAmount')),
                       DataColumn(label: _sortableHeader('فني', 'technicianAmount')),
                       DataColumn(label: _sortableHeader('المسلّم', 'deliveredCash')),
-                      DataColumn(label: _sortableHeader('المستحق', 'netOwed')),
                       if (_oursTabIndex == 0)
                         DataColumn(label: _sortableHeader('صندوق', 'cashBoxBalance', color: Colors.teal)),
                       if (_oursTabIndex == 0)
-                        DataColumn(label: _sortableHeader('ذمم', 'operatorDebt', color: Colors.deepOrange)),
+                        DataColumn(label: _sortableHeader('ذمم فني', 'techDebt', color: Colors.deepOrange)),
+                      if (_oursTabIndex == 0)
+                        DataColumn(label: _sortableHeader('ذمم مشغل', 'operatorCredit', color: Colors.orange)),
+                      DataColumn(label: _sortableHeader('المستحق', 'netOwed', color: Colors.red)),
                       const DataColumn(label: Expanded(child: Center(child: Text('مطابقة')))),
                       DataColumn(label: Expanded(child: Center(child: Text('إجراءات')))),
                     ],
@@ -4046,9 +4130,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               fontWeight: FontWeight.w600,
                               color: Colors.teal.shade700),
                         )))),
-                        // المسلّم
-                        DataCell(Center(
-                            child: Text(
+                        // المسلّم — عند الضغط يفتح الكشف المدمج (التسليمات من عدة حسابات)
+                        DataCell(GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _openAccountStatement(op),
+                            child: Center(child: Text(
                           _currencyFormat.format(
                               ((op['deliveredCash'] ?? 0).toDouble()) +
                                   ((op['collectedCredit'] ?? 0).toDouble())),
@@ -4056,22 +4142,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: Colors.green.shade700),
-                        ))),
-                        // المستحق
-                        DataCell(Center(
-                            child: Text(
-                          _currencyFormat.format(netOwed),
-                          style: TextStyle(
-                              fontSize: context.accR.small,
-                              fontWeight: FontWeight.bold,
-                              color: netOwed > 0
-                                  ? Colors.red.shade700
-                                  : Colors.green.shade700),
-                        ))),
-                        // صندوق المشغل (فقط في تبويب المشغلون)
+                        )))),
+                        // صندوق المشغل (1110xx)
                         if (_oursTabIndex == 0)
-                          DataCell(Center(
-                              child: () {
+                          DataCell(GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _openSpecificAccountStatement(op, '1110'),
+                              child: Center(child: () {
                             final cashBox = (op['cashBoxBalance'] ?? 0).toDouble();
                             if (cashBox == 0) {
                               return Text('-', style: TextStyle(fontSize: context.accR.small, color: Colors.grey));
@@ -4083,23 +4160,56 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   fontWeight: FontWeight.bold,
                                   color: cashBox > 0 ? Colors.teal : Colors.red.shade700),
                             );
-                          }())),
-                        // ذمم المشغل (فقط في تبويب المشغلون)
+                          }()))),
+                        // ذمم الفني (1140xx)
                         if (_oursTabIndex == 0)
-                          DataCell(Center(
-                              child: () {
-                            final opDebt = (op['operatorDebt'] ?? 0).toDouble();
-                            if (opDebt == 0) {
+                          DataCell(GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _openSpecificAccountStatement(op, '1140'),
+                              child: Center(child: () {
+                            final tDebt = (op['techDebt'] ?? 0).toDouble();
+                            if (tDebt == 0) {
                               return Text('-', style: TextStyle(fontSize: context.accR.small, color: Colors.grey));
                             }
                             return Text(
-                              _currencyFormat.format(opDebt),
+                              _currencyFormat.format(tDebt),
                               style: TextStyle(
                                   fontSize: context.accR.small,
                                   fontWeight: FontWeight.bold,
-                                  color: opDebt > 0 ? Colors.deepOrange : Colors.green.shade700),
+                                  color: tDebt > 0 ? Colors.deepOrange : Colors.green.shade700),
                             );
-                          }())),
+                          }()))),
+                        // ذمم المشغل (1160xx)
+                        if (_oursTabIndex == 0)
+                          DataCell(GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _openSpecificAccountStatement(op, '1160'),
+                              child: Center(child: () {
+                            final opCr = (op['operatorCredit'] ?? 0).toDouble();
+                            if (opCr == 0) {
+                              return Text('-', style: TextStyle(fontSize: context.accR.small, color: Colors.grey));
+                            }
+                            return Text(
+                              _currencyFormat.format(opCr),
+                              style: TextStyle(
+                                  fontSize: context.accR.small,
+                                  fontWeight: FontWeight.bold,
+                                  color: opCr > 0 ? Colors.orange : Colors.green.shade700),
+                            );
+                          }()))),
+                        // المستحق = صندوق + ذمم فني + ذمم مشغل (آخر عمود)
+                        DataCell(GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _openAccountStatement(op),
+                            child: Center(child: Text(
+                          _currencyFormat.format(netOwed),
+                          style: TextStyle(
+                              fontSize: context.accR.small,
+                              fontWeight: FontWeight.w900,
+                              color: netOwed > 0
+                                  ? Colors.red.shade700
+                                  : Colors.green.shade700),
+                        )))),
                         // مطابقة
                         DataCell(Center(
                             child: Text(
@@ -4173,11 +4283,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['agentAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['technicianAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['deliveredCash'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
-                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['netOwed'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.red.shade700)))),
                         if (_oursTabIndex == 0)
                           DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['cashBoxBalance'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.teal)))),
                         if (_oursTabIndex == 0)
-                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['operatorDebt'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.deepOrange)))),
+                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['techDebt'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.deepOrange)))),
+                        if (_oursTabIndex == 0)
+                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['operatorCredit'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.orange)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['netOwed'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.red.shade700)))),
                         DataCell(Center(child: Text('', style: TextStyle(fontSize: context.accR.small)))),
                         DataCell(Center(child: Text(''))),
                       ],
@@ -4442,14 +4554,25 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     return sorted;
   }
 
-  /// فتح كشف حساب الصندوق (للمشغل) أو الذمم (للفني)
+  /// فتح كشف حساب مدمج — كل حسابات الشخص (صندوق + ذمم فني + ذمم مشغل) في كشف واحد
   void _openAccountStatement(Map<String, dynamic> op) {
     final userId = op['userId']?.toString();
     if (userId == null || userId.isEmpty) return;
-    final isTech = op['isTechnician'] == true;
 
-    // المشغل → صندوق (1110xx)، الفني → ذمة (1140xx)
-    final prefix = isTech ? '1140' : '1110';
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => ClientAccountsPage(
+        companyId: _companyId,
+        personUserId: userId,
+        personName: op['operatorName']?.toString(),
+      ),
+    ));
+  }
+
+  /// فتح كشف حساب محدد (صندوق 1110 أو ذمم فني 1140 أو ذمم مشغل 1160)
+  void _openSpecificAccountStatement(Map<String, dynamic> op, String prefix) {
+    final userId = op['userId']?.toString();
+    if (userId == null || userId.isEmpty) return;
+
     AccountingService.instance.getAccounts(companyId: _companyId).then((result) {
       if (result['success'] != true || !mounted) return;
       final accounts = (result['data'] as List?) ?? [];
@@ -4465,10 +4588,119 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           ),
         ));
       } else {
-        // إذا لم يُوجد حساب، افتح صفحة عمليات المشغل
-        _openOperatorAccount(op);
+        // لم يُوجد حساب بهذا النوع — افتح الكشف المدمج
+        _openAccountStatement(op);
       }
     });
+  }
+
+  /// فتح صفحة العمليات مع فلتر (بدون تحديد مشغل — كل المشغلين)
+  void _openAllOperationsFiltered({String? collectionType, String? operationType}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _AllOperationsPage(
+          companyId: _companyId,
+          fromDate: _fromDate,
+          toDate: _toDate,
+          operators: _oursOperators.map((o) => (o['ftthUsername'] ?? '').toString()).where((s) => s.isNotEmpty).toList(),
+          filterCollectionType: collectionType,
+          filterOperationType: operationType,
+        ),
+      ),
+    );
+  }
+
+  /// dialog تفصيل حقل معيّن لكل مشغل (إيرادات، مصاريف، إلخ)
+  void _showBreakdownDialog(String title, String field, Color color) {
+    final operators = _oursOperators
+        .where((o) => o['isTechnician'] != true && ((o[field] ?? 0) as num).toDouble() != 0)
+        .toList()
+      ..sort((a, b) => ((b[field] ?? 0) as num).compareTo((a[field] ?? 0) as num));
+    final total = operators.fold<double>(0, (s, o) => s + ((o[field] ?? 0) as num).toDouble());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: 450,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('المجموع: ${_currencyFormat.format(total)} د.ع', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 12),
+            const Divider(),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 400),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: operators.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, i) {
+                  final op = operators[i];
+                  return ListTile(
+                    dense: true,
+                    title: Text(op['operatorName'] ?? '-'),
+                    trailing: Text('${_currencyFormat.format(((op[field] ?? 0) as num).toDouble())} د.ع',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+                  );
+                },
+              ),
+            ),
+          ]),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إغلاق'))],
+      ),
+    );
+  }
+
+  /// dialog تفصيل المستحق (صندوق + ذمم فني + ذمم مشغل) لكل مشغل
+  void _showOwedBreakdownDialog() {
+    final operators = _oursOperators
+        .where((o) => o['isTechnician'] != true && ((o['netOwed'] ?? 0) as num).toDouble() != 0)
+        .toList()
+      ..sort((a, b) => ((b['netOwed'] ?? 0) as num).compareTo((a['netOwed'] ?? 0) as num));
+    final totalCB = operators.fold<double>(0, (s, o) => s + ((o['cashBoxBalance'] ?? 0) as num).toDouble());
+    final totalTD = operators.fold<double>(0, (s, o) => s + ((o['techDebt'] ?? 0) as num).toDouble());
+    final totalOC = operators.fold<double>(0, (s, o) => s + ((o['operatorCredit'] ?? 0) as num).toDouble());
+    final totalOwed = operators.fold<double>(0, (s, o) => s + ((o['netOwed'] ?? 0) as num).toDouble());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تفصيل المستحق', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+        content: SizedBox(
+          width: 600,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columnSpacing: 16,
+              columns: const [
+                DataColumn(label: Text('المشغل', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('صندوق', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)), numeric: true),
+                DataColumn(label: Text('ذمم فني', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange)), numeric: true),
+                DataColumn(label: Text('ذمم مشغل', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)), numeric: true),
+                DataColumn(label: Text('المستحق', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)), numeric: true),
+              ],
+              rows: [
+                ...operators.map((op) => DataRow(cells: [
+                  DataCell(Text(op['operatorName'] ?? '-')),
+                  DataCell(Text(_currencyFormat.format(((op['cashBoxBalance'] ?? 0) as num).toDouble()), style: const TextStyle(color: Colors.teal))),
+                  DataCell(Text(_currencyFormat.format(((op['techDebt'] ?? 0) as num).toDouble()), style: const TextStyle(color: Colors.deepOrange))),
+                  DataCell(Text(_currencyFormat.format(((op['operatorCredit'] ?? 0) as num).toDouble()), style: const TextStyle(color: Colors.orange))),
+                  DataCell(Text(_currencyFormat.format(((op['netOwed'] ?? 0) as num).toDouble()), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red))),
+                ])),
+                DataRow(color: WidgetStateProperty.all(Colors.grey.shade200), cells: [
+                  const DataCell(Text('المجموع', style: TextStyle(fontWeight: FontWeight.w900))),
+                  DataCell(Text(_currencyFormat.format(totalCB), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.teal))),
+                  DataCell(Text(_currencyFormat.format(totalTD), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.deepOrange))),
+                  DataCell(Text(_currencyFormat.format(totalOC), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.orange))),
+                  DataCell(Text(_currencyFormat.format(totalOwed), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.red))),
+                ]),
+              ],
+            ),
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إغلاق'))],
+      ),
+    );
   }
 
   void _openOperatorAccount(Map<String, dynamic> op, {String? collectionType, String? operationType}) {
@@ -7512,6 +7744,25 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildCompareSummaryCards(),
+          if (_compareNoCustomerIdCount > 0 || _compareDuplicates.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(spacing: 8, runSpacing: 4, children: [
+                if (_compareNoCustomerIdCount > 0)
+                  Chip(
+                    avatar: const Icon(Icons.warning, color: Colors.orange, size: 18),
+                    label: Text('$_compareNoCustomerIdCount عملية بدون معرّف عميل (لا يمكن مطابقتها)'),
+                    backgroundColor: Colors.orange.shade50,
+                  ),
+                if (_compareDuplicates.isNotEmpty)
+                  ActionChip(
+                    avatar: const Icon(Icons.copy, color: Colors.red, size: 18),
+                    label: Text('${_compareDuplicates.length} عملية مكررة محتملة'),
+                    backgroundColor: Colors.red.shade50,
+                    onPressed: () => _showDuplicatesDialog(),
+                  ),
+              ]),
+            ),
           SizedBox(height: context.accR.spaceXS),
           _buildCompareTable(),
         ],
@@ -7523,7 +7774,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     final total = _totalMatched + _totalOursOnly + _totalFtthOnly;
     final matchPercent = total > 0 ? (_totalMatched / total * 100) : 0;
 
-    return Row(
+    return Column(children: [Row(
       children: [
         Expanded(child: _summaryCard(
             'مطابقة',
@@ -7541,6 +7792,39 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             'غير موجودة عندنا', Colors.red.shade600,
             icon: Icons.error_outline, isCount: true)),
       ],
+    )]);
+  }
+
+  void _showDuplicatesDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('عمليات مكررة محتملة', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+        content: SizedBox(
+          width: 500,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 400),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: _compareDuplicates.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final d = _compareDuplicates[i];
+                return ListTile(
+                  dense: true,
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.red.shade100,
+                    child: Text('${d['Count'] ?? d['count'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                  ),
+                  title: Text(d['PlanName'] ?? d['planName'] ?? '-'),
+                  subtitle: Text('العميل: ${d['CustomerId'] ?? d['customerId'] ?? '-'} — ${d['Date'] ?? d['date'] ?? '-'}'),
+                );
+              },
+            ),
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إغلاق'))],
+      ),
     );
   }
 
@@ -7666,8 +7950,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         formatTxDate: _formatTxDate,
         subscriptionTypeLabel: _subscriptionTypeLabel,
         currencyFormat: _currencyFormat,
+        existingFtthIds: _compareExistingFtthIds,
+        cidDateAmounts: _compareCidDateAmounts,
+        preloadedOursTxs: row.operatorUserId != null ? _compareOperatorTxs[row.operatorUserId] : null,
       ),
-    ));
+    )).then((_) {
+      // إعادة تحميل المقارنة عند العودة لتحديث الأرقام
+      if (mounted) _buildComparison();
+    });
   }
 
   Widget _colHeader(String label, String? server, [Color? color]) {
@@ -8608,14 +8898,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
   /// بطاقة ملخص عامة (تُستخدم في تاب خادمنا)
   Widget _summaryCard(String title, double value, String subtitle, Color color,
-      {IconData? icon, bool isCount = false}) {
+      {IconData? icon, bool isCount = false, VoidCallback? onTap}) {
     final isMobile = context.accR.isMobile;
     final pad = isMobile ? 6.0 : context.accR.spaceL;
     final iconSz = isMobile ? 16.0 : context.accR.iconM;
     final titleFs = isMobile ? 10.0 : context.accR.small;
     final valueFs = isMobile ? 13.0 : context.accR.headingSmall;
     final subFs = isMobile ? 8.0 : context.accR.caption;
-    return Card(
+    final card = Card(
       elevation: isMobile ? 1 : 2,
       margin: isMobile ? const EdgeInsets.all(0) : null,
       shape: RoundedRectangleBorder(
@@ -8672,6 +8962,14 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ),
       ),
     );
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(isMobile ? 8 : context.accR.cardRadius),
+        child: card,
+      );
+    }
+    return card;
   }
 
   Widget _emptyCard(String text) {
@@ -8970,6 +9268,11 @@ class _ComparisonDetailPage extends StatefulWidget {
   final String Function(String) formatTxDate;
   final String Function(String) subscriptionTypeLabel;
   final NumberFormat currencyFormat;
+  /// بصمات المقارنة من الداشبورد — لتوحيد خوارزمية المطابقة
+  final Set<String> existingFtthIds;
+  final Map<String, List<int>> cidDateAmounts;
+  /// عمليات المشغل محمّلة مسبقاً من الداشبورد (لمنع اختلاف الأرقام)
+  final List<Map<String, dynamic>>? preloadedOursTxs;
 
   const _ComparisonDetailPage({
     required this.row,
@@ -8982,6 +9285,9 @@ class _ComparisonDetailPage extends StatefulWidget {
     required this.formatTxDate,
     required this.subscriptionTypeLabel,
     required this.currencyFormat,
+    required this.existingFtthIds,
+    required this.cidDateAmounts,
+    this.preloadedOursTxs,
   }) : _companyId = companyId;
 
   @override
@@ -9011,7 +9317,6 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
 
   void _loadOurData() {
     if (widget.row.operatorUserId == null) {
-      // كل المشغلين — نحمل من internal API
       _loadAllOurData();
       return;
     }
@@ -10046,6 +10351,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
 
     // بناء بيانات الصفوف
     var rawData = _buildSortableData();
+    debugPrint('📊 التفاصيل: ftthTxs=${widget.ftthTxs.length}, oursTxs=${_oursTxs.length}, oursLoading=$_oursLoading, rawData=${rawData.length}');
 
     // حساب الأعداد الحية من البيانات الحالية
     int liveMatched = 0, liveWrong = 0, liveMissing = 0, liveOursOnly = 0, liveSynced = 0;
@@ -10060,6 +10366,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       if (d.length > 16 && d[16] == true) liveSynced++;
       liveOursAmount += (d[8] as num).toDouble(); // المستقطع
     }
+    // لا حاجة لتصحيح حسابي — البصمات تُنشأ فقط من عمليات بدون FtthTransactionId
     final liveTotal = liveMatched + liveMissing + liveWrong + liveOursOnly;
     final percent = liveTotal > 0 ? (liveMatched / liveTotal * 100).toStringAsFixed(0) : '0';
 
@@ -10131,7 +10438,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                 children: [
                   Icon(Icons.dns, size: 16, color: Colors.indigo),
                   const SizedBox(width: 4),
-                  Text('خادمنا: ${liveTotal - liveMissing} عملية  ${fmt.format(liveOursAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo)),
+                  Text('خادمنا: ${_oursTxs.length} عملية  ${fmt.format(liveOursAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo)),
                   const SizedBox(width: 24),
                   Icon(Icons.cloud, size: 16, color: Colors.teal),
                   const SizedBox(width: 4),
@@ -10364,47 +10671,73 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     for (int i = 0; i < _oursTxs.length; i++) {
       final tx = _oursTxs[i];
       final ftthId = (_f(tx, 'ftthTransactionId') ?? '').toString();
-      if (ftthId.isNotEmpty) oursByFtthId[ftthId] = tx;
+      if (ftthId.isNotEmpty) {
+        oursByFtthId[ftthId] = tx;
+        // عمليات مزامنة (لها FtthTransactionId) → تُطابق بالـ FtthId فقط — لا تُضاف للبصمات
+        continue;
+      }
+      // عمليات يدوية (بدون FtthTransactionId) → تُطابق بالبصمة (customerId+date+amount)
       final cid = (_f(tx, 'customerId') ?? '').toString().trim();
       if (cid.isNotEmpty) oursByCid.putIfAbsent(cid, () => []).add(tx);
       final name = (_f(tx, 'customerName') ?? '').toString().trim();
       if (name.isNotEmpty) oursByName.putIfAbsent(name, () => []).add(tx);
     }
 
-    // مطابقة مسبقة
+    // ═══ مطابقة موحّدة — نفس خوارزمية الداشبورد ═══
+    // نسخة محلية من بصمات الداشبورد (لاستهلاكها بدون التأثير على الأصل)
+    final localFtthIds = Set<String>.from(widget.existingFtthIds);
+    final localCidAmounts = widget.cidDateAmounts.map((k, v) => MapEntry(k, List<int>.from(v)));
+
     final Map<int, Map<String, dynamic>> ftthToOurs = {};
     for (int fi = 0; fi < widget.ftthTxs.length; fi++) {
       final tx = widget.ftthTxs[fi].tx;
       Map<String, dynamic>? oursTx;
+
+      // المرحلة 1: بالـ FtthTransactionId (أعلى دقة)
       if (oursByFtthId.containsKey(tx.id)) {
-        oursTx = oursByFtthId[tx.id]; usedOursIndices.add(_oursTxs.indexOf(oursTx!));
+        oursTx = oursByFtthId[tx.id];
+        final idx = _oursTxs.indexOf(oursTx!);
+        usedOursIndices.add(idx);
+        localFtthIds.remove(tx.id);
+        // إزالة من oursByCid لمنع المطابقة المزدوجة (تفعيل مزدوج في FTTH)
+        final cidKey = (_f(oursTx, 'customerId') ?? '').toString().trim();
+        if (cidKey.isNotEmpty) oursByCid[cidKey]?.remove(oursTx);
       }
+
+      // المرحلة 2: بالـ customerId + تاريخ + مبلغ — نفس خوارزمية الداشبورد بالضبط
       if (oursTx == null && tx.customerId.trim().isNotEmpty) {
-        final c = oursByCid[tx.customerId.trim()];
-        if (c != null) for (final x in c) { final i = _oursTxs.indexOf(x); if (!usedOursIndices.contains(i)) { oursTx = x; usedOursIndices.add(i); c.remove(x); break; } }
-      }
-      if (oursTx == null && tx.customerName.trim().isNotEmpty) {
-        final c = oursByName[tx.customerName.trim()];
-        if (c != null) for (final x in c) { final i = _oursTxs.indexOf(x); if (!usedOursIndices.contains(i)) { oursTx = x; usedOursIndices.add(i); c.remove(x); break; } }
-      }
-      if (oursTx != null) ftthToOurs[fi] = oursTx;
-    }
-    // fallback: ربط المتبقية بشرط تطابق المبلغ (لمنع المطابقات الوهمية)
-    {
-      final unmatchedFtth = [for (int i = 0; i < widget.ftthTxs.length; i++) if (!ftthToOurs.containsKey(i)) i];
-      final unmatchedOurs = [for (int i = 0; i < _oursTxs.length; i++) if (!usedOursIndices.contains(i)) _oursTxs[i]];
-      for (final fi in unmatchedFtth) {
-        final ftthAmt = widget.ftthTxs[fi].tx.amount.abs().toInt();
-        for (int oi = 0; oi < unmatchedOurs.length; oi++) {
-          final oursPD = _sn(_f(unmatchedOurs[oi], 'pageDeduction')).toInt();
-          if ((ftthAmt - oursPD).abs() < 1) {
-            ftthToOurs[fi] = unmatchedOurs[oi];
-            usedOursIndices.add(_oursTxs.indexOf(unmatchedOurs[oi]));
-            unmatchedOurs.removeAt(oi);
-            break;
+        final dateStr = tx.occuredAt.length >= 10 ? tx.occuredAt.substring(0, 10) : tx.occuredAt;
+        final amt = tx.amount.abs().toInt();
+        final cid = tx.customerId.trim();
+        final c = oursByCid[cid];
+        if (c != null) {
+          // ربط بالـ customerId + تاريخ (±1 يوم) + مبلغ — نفس الشروط الثلاثة
+          for (final x in c) {
+            final i = _oursTxs.indexOf(x);
+            if (usedOursIndices.contains(i)) continue;
+            // التحقق من التاريخ (±1 يوم)
+            final oursDateRaw = (_f(x, 'activationDate') ?? '').toString();
+            final oursDate = oursDateRaw.length >= 10 ? oursDateRaw.substring(0, 10) : oursDateRaw;
+            // تحويل تاريخ عمليتنا من UTC إلى بغداد (+3) للمقارنة
+            final oursParsed = DateTime.tryParse(oursDateRaw);
+            final oursBaghdadDate = oursParsed != null ? oursParsed.add(const Duration(hours: 3)).toString().substring(0, 10) : oursDate;
+            final ftthParsed = DateTime.tryParse(dateStr);
+            final dayDiff = (ftthParsed != null && oursParsed != null)
+                ? (ftthParsed.difference(DateTime.parse(oursBaghdadDate)).inDays).abs()
+                : 999;
+            if (dayDiff > 1) continue; // أكثر من ±1 يوم — تجاهل
+            // التحقق من المبلغ
+            final oursPD = _sn(_f(x, 'pageDeduction')).toInt();
+            final oursPP = _sn(_f(x, 'planPrice')).toInt();
+            if ((amt - oursPD).abs() < 1 || (amt - oursPP).abs() < 1) {
+              oursTx = x; usedOursIndices.add(i); c.remove(x);
+              break;
+            }
           }
         }
       }
+
+      if (oursTx != null) ftthToOurs[fi] = oursTx;
     }
 
     for (int fi = 0; fi < widget.ftthTxs.length; fi++) {
@@ -10420,7 +10753,6 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       final oursCollType = oursTx != null ? (_f(oursTx, 'collectionType') ?? '').toString() : '';
       final oursDateStr = oursTx != null ? _utcToBaghdad(_f(oursTx, 'activationDate')?.toString()) : '';
 
-      // إعادة حساب الحالة بناءً على البيانات الحالية
       final String recalcStatus;
       if (oursTx == null) {
         recalcStatus = 'missing';

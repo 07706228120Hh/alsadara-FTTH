@@ -4553,6 +4553,134 @@ public class AccountingController : ControllerBase
     }
 
     /// <summary>
+    /// كشف حساب مدمج — يجمع كل حسابات الشخص (1110 + 1140 + 1160) في كشف واحد
+    /// </summary>
+    [HttpGet("person/{userId}/statement")]
+    public async Task<IActionResult> GetPersonStatement(
+        Guid userId,
+        [FromQuery] Guid? companyId = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null)
+    {
+        try
+        {
+            var pid = userId.ToString();
+            var personAccounts = await _unitOfWork.Accounts.AsQueryable()
+                .Where(a => a.Description == pid && a.IsActive && a.IsLeaf
+                    && (!companyId.HasValue || a.CompanyId == companyId))
+                .Select(a => new { a.Id, a.Code, a.Name })
+                .ToListAsync();
+
+            if (!personAccounts.Any())
+                return NotFound(new { success = false, message = "لا توجد حسابات لهذا الشخص" });
+
+            var accountIds = personAccounts.Select(a => a.Id).ToList();
+
+            // ═══ الرصيد الافتتاحي لكل الحسابات مجتمعة ═══
+            decimal openingBalance = 0;
+            if (fromDate.HasValue)
+            {
+                var fromUtcForOpening = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
+                var beforeLines = await _unitOfWork.JournalEntryLines.AsQueryable()
+                    .Where(l => accountIds.Contains(l.AccountId)
+                        && l.JournalEntry != null
+                        && l.JournalEntry.Status == JournalEntryStatus.Posted
+                        && l.JournalEntry.EntryDate < fromUtcForOpening)
+                    .Select(l => new { l.DebitAmount, l.CreditAmount })
+                    .ToListAsync();
+                openingBalance = beforeLines.Sum(l => l.DebitAmount) - beforeLines.Sum(l => l.CreditAmount);
+            }
+
+            // ═══ حركات الفترة ═══
+            var query = _unitOfWork.JournalEntryLines.AsQueryable()
+                .Where(l => accountIds.Contains(l.AccountId));
+
+            if (fromDate.HasValue)
+            {
+                var fromUtc = DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.JournalEntry != null && l.JournalEntry.EntryDate >= fromUtc);
+            }
+            if (toDate.HasValue)
+            {
+                var toUtc = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.JournalEntry != null && l.JournalEntry.EntryDate < toUtc);
+            }
+
+            var lines = await query
+                .Where(l => l.JournalEntry != null && l.JournalEntry.Status == JournalEntryStatus.Posted)
+                .OrderBy(l => l.JournalEntry!.EntryDate)
+                .Select(l => new
+                {
+                    l.Id,
+                    l.AccountId,
+                    JournalEntryId = l.JournalEntry != null ? l.JournalEntry.Id : Guid.Empty,
+                    EntryNumber = l.JournalEntry != null ? l.JournalEntry.EntryNumber : "",
+                    EntryDate = l.JournalEntry != null ? l.JournalEntry.EntryDate : DateTime.MinValue,
+                    EntryDescription = l.JournalEntry != null ? l.JournalEntry.Description : "",
+                    ReferenceType = l.JournalEntry != null ? l.JournalEntry.ReferenceType.ToString() : "",
+                    l.DebitAmount,
+                    l.CreditAmount,
+                    l.Description
+                }).ToListAsync();
+
+            // إضافة اسم الحساب لكل سطر
+            var accountMap = personAccounts.ToDictionary(a => a.Id, a => new { a.Code, a.Name });
+            var linesWithAccount = lines.Select(l =>
+            {
+                accountMap.TryGetValue(l.AccountId, out var acct);
+                return new
+                {
+                    l.Id, l.AccountId, l.JournalEntryId, l.EntryNumber, l.EntryDate,
+                    l.EntryDescription, l.ReferenceType, l.DebitAmount, l.CreditAmount, l.Description,
+                    AccountCode = acct?.Code ?? "",
+                    AccountName = acct?.Name ?? ""
+                };
+            }).ToList();
+
+            var totalDebit = lines.Sum(l => l.DebitAmount);
+            var totalCredit = lines.Sum(l => l.CreditAmount);
+            decimal closingBalance = openingBalance + (totalDebit - totalCredit);
+
+            // ملخص لكل حساب على حدة
+            var perAccountSummary = personAccounts.Select(a =>
+            {
+                var aLines = lines.Where(l => l.AccountId == a.Id).ToList();
+                return new
+                {
+                    a.Code, a.Name,
+                    Debit = aLines.Sum(l => l.DebitAmount),
+                    Credit = aLines.Sum(l => l.CreditAmount),
+                    Balance = aLines.Sum(l => l.DebitAmount) - aLines.Sum(l => l.CreditAmount)
+                };
+            }).Where(s => s.Debit > 0 || s.Credit > 0).ToList();
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    Account = new { Code = "مدمج", Name = personAccounts.First().Name, AccountType = "Combined" },
+                    Accounts = personAccounts,
+                    Lines = linesWithAccount,
+                    Summary = new
+                    {
+                        TotalDebit = totalDebit,
+                        TotalCredit = totalCredit,
+                        Balance = closingBalance,
+                        OpeningBalance = openingBalance
+                    },
+                    PerAccountSummary = perAccountSummary
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في كشف الحساب المدمج");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
     /// ميزان المراجعة - Trial Balance
     /// </summary>
     [HttpGet("reports/trial-balance")]
@@ -5302,7 +5430,22 @@ public class AccountingController : ControllerBase
             CompanyId = companyId
         };
 
-        await _unitOfWork.Accounts.AddAsync(subAccount);
+        try
+        {
+            await _unitOfWork.Accounts.AddAsync(subAccount);
+            await _unitOfWork.SaveChangesAsync();
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            // Race condition — حساب بنفس الكود أُنشئ بالتوازي، نعيد البحث
+            var retryExisting = await _unitOfWork.Accounts.AsQueryable()
+                .FirstOrDefaultAsync(a => a.ParentAccountId == parent.Id
+                    && a.CompanyId == companyId
+                    && a.Description == personId.ToString()
+                    && a.IsActive);
+            if (retryExisting != null) return retryExisting;
+            throw;
+        }
         return subAccount;
     }
 
