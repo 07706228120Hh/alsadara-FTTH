@@ -2418,25 +2418,12 @@ public static class ServiceRequestAccountingHelper
             DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).Date.AddHours(12 - 3),
             DateTimeKind.Utc);
         var year = now.Year;
-        // استخدام MAX بدل COUNT لتجنب تعارض الأرقام عند حذف قيود
-        var maxEntry = await unitOfWork.JournalEntries.AsQueryable()
-            .IgnoreQueryFilters()
-            .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year)
-            .Select(j => j.EntryNumber)
-            .MaxAsync();
-        int nextNum = 1;
-        if (maxEntry != null && maxEntry.StartsWith($"JE-{year}-"))
-        {
-            if (int.TryParse(maxEntry.Substring($"JE-{year}-".Length), out var maxNum))
-                nextNum = maxNum + 1;
-        }
-        var entryNumber = $"JE-{year}-{nextNum:D4}";
 
         var entryId = Guid.NewGuid();
         var entry = new JournalEntry
         {
             Id = entryId,
-            EntryNumber = entryNumber,
+            EntryNumber = "", // سيُولّد أدناه
             EntryDate = now,
             Description = description,
             TotalDebit = lines.Sum(l => l.DebitAmount),
@@ -2473,6 +2460,40 @@ public static class ServiceRequestAccountingHelper
                 account.CurrentBalance += line.CreditAmount - line.DebitAmount;
             }
             unitOfWork.Accounts.Update(account);
+        }
+
+        // حفظ مع إعادة المحاولة عند تعارض EntryNumber (طلبات متزامنة)
+        const int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            // توليد رقم القيد من MAX الحالي في قاعدة البيانات
+            var maxEntry = await unitOfWork.JournalEntries.AsQueryable()
+                .IgnoreQueryFilters()
+                .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year)
+                .Select(j => j.EntryNumber)
+                .MaxAsync();
+            int nextNum = 1;
+            if (maxEntry != null && maxEntry.StartsWith($"JE-{year}-"))
+            {
+                if (int.TryParse(maxEntry.Substring($"JE-{year}-".Length), out var maxNum))
+                    nextNum = maxNum + 1;
+            }
+            entry.EntryNumber = $"JE-{year}-{nextNum:D4}";
+
+            try
+            {
+                await unitOfWork.SaveChangesAsync();
+                return entryId;
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+                when (ex.InnerException is Npgsql.PostgresException pgEx
+                    && pgEx.SqlState == "23505"
+                    && (pgEx.ConstraintName?.Contains("EntryNumber") == true))
+            {
+                // تعارض رقم قيد بسبب طلب متزامن — إعادة المحاولة برقم جديد
+                if (attempt == maxRetries - 1) throw;
+                await Task.Delay(10 * (attempt + 1)); // تأخير قصير تصاعدي
+            }
         }
 
         return entryId;

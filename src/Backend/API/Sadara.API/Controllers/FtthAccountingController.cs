@@ -2970,6 +2970,43 @@ public class FtthAccountingController : ControllerBase
     // ==================== 9.45 تعديل أسطر القيد الموجود مباشرة ====================
 
     /// <summary>
+    /// عكس أرصدة القيد المحاسبي وحذفه نهائياً (soft delete)
+    /// تُستدعى عند حذف عملية أو دمج مكررات
+    /// </summary>
+    private async Task VoidAndDeleteJournalEntry(Guid? journalEntryId)
+    {
+        if (!journalEntryId.HasValue) return;
+
+        var je = await _unitOfWork.JournalEntries.AsQueryable()
+            .Include(j => j.Lines)
+            .FirstOrDefaultAsync(j => j.Id == journalEntryId.Value);
+        if (je == null || (je.IsDeleted && je.Status == JournalEntryStatus.Voided)) return;
+
+        // عكس أرصدة الحسابات
+        foreach (var line in je.Lines.Where(l => !l.IsDeleted))
+        {
+            var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+            if (account == null) continue;
+
+            if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                account.CurrentBalance -= line.DebitAmount - line.CreditAmount;
+            else
+                account.CurrentBalance -= line.CreditAmount - line.DebitAmount;
+            _unitOfWork.Accounts.Update(account);
+
+            line.IsDeleted = true;
+            line.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.JournalEntryLines.Update(line);
+        }
+
+        je.Status = JournalEntryStatus.Voided;
+        je.IsDeleted = true;
+        je.DeletedAt = DateTime.UtcNow;
+        je.Notes = (je.Notes ?? "") + " | ملغي — عكس أرصدة تلقائي";
+        _unitOfWork.JournalEntries.Update(je);
+    }
+
+    /// <summary>
     /// تعديل أسطر القيد المحاسبي الموجود ليطابق مبالغ العملية — بدون إلغاء أو إنشاء جديد
     /// القاعدة: المستقطع (ثابت) → دائن صفحة | إيرادات → دائن صيانة + دائن خصم | مصاريف → مدين مصاريف | الإجمالي → مدين تحصيل
     /// </summary>
@@ -3131,19 +3168,11 @@ public class FtthAccountingController : ControllerBase
 
             // حذف المكررة (soft delete)
             duplicate.IsDeleted = true;
+            duplicate.DeletedAt = DateTime.UtcNow;
             _unitOfWork.SubscriptionLogs.Update(duplicate);
 
-            // إذا المكررة لها قيد محاسبي — إلغاؤه
-            if (duplicate.JournalEntryId.HasValue)
-            {
-                var je = await _unitOfWork.JournalEntries.GetByIdAsync(duplicate.JournalEntryId.Value);
-                if (je != null && je.Status != JournalEntryStatus.Voided)
-                {
-                    je.Status = JournalEntryStatus.Voided;
-                    je.Notes = (je.Notes ?? "") + " | ملغي — دمج مكررات";
-                    _unitOfWork.JournalEntries.Update(je);
-                }
-            }
+            // حذف القيد المحاسبي وعكس الأرصدة
+            await VoidAndDeleteJournalEntry(duplicate.JournalEntryId);
 
             await _unitOfWork.SaveChangesAsync();
 
@@ -3207,18 +3236,11 @@ public class FtthAccountingController : ControllerBase
                     _unitOfWork.SubscriptionLogs.Update(original);
 
                     duplicate.IsDeleted = true;
+                    duplicate.DeletedAt = DateTime.UtcNow;
                     _unitOfWork.SubscriptionLogs.Update(duplicate);
 
-                    if (duplicate.JournalEntryId.HasValue)
-                    {
-                        var je = await _unitOfWork.JournalEntries.GetByIdAsync(duplicate.JournalEntryId.Value);
-                        if (je != null && je.Status != JournalEntryStatus.Voided)
-                        {
-                            je.Status = JournalEntryStatus.Voided;
-                            je.Notes = (je.Notes ?? "") + " | ملغي — دمج مكررات";
-                            _unitOfWork.JournalEntries.Update(je);
-                        }
-                    }
+                    // حذف القيد المحاسبي وعكس الأرصدة
+                    await VoidAndDeleteJournalEntry(duplicate.JournalEntryId);
 
                     merged++;
                 }
