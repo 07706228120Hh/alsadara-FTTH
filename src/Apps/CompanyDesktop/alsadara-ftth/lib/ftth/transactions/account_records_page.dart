@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart';
@@ -44,6 +45,11 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   bool mergeSimilarAccounts = false;
   bool isLoading = false;
   String searchQuery = '';
+
+  // ═══ بحث شامل في كل السجلات ═══
+  final _globalSearchCtrl = TextEditingController();
+  bool _isGlobalSearching = false;
+  bool _isGlobalSearchActive = false;
   String selectedOperationFilter = 'الكل'; // نوع العملية
   String selectedZoneFilter = 'الكل'; // الزون
   String selectedExecutorFilter = 'الكل'; // منفذ العملية
@@ -86,6 +92,12 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     _determineAdmin();
     _setInitialDateFilter(); // تعيين الفلتر الافتراضي بدون تطبيق (لأن البيانات لم تُحمّل بعد)
     _loadRecords();
+  }
+
+  @override
+  void dispose() {
+    _globalSearchCtrl.dispose();
+    super.dispose();
   }
 
   // تعيين فلتر التاريخ الافتراضي (بدون استدعاء _applyFilters)
@@ -227,6 +239,36 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       if (opType == 'purchase') opType = 'شراء اشتراك جديد';
       if (opType == 'change') opType = 'تغيير اشتراك';
 
+      // ═══ حساب التفاصيل المالية ═══
+      final planPrice = (m['PlanPrice'] as num?)?.toDouble() ?? 0;
+      final basePrice = (m['BasePrice'] as num?)?.toDouble() ?? 0;
+      final companyDiscount = (m['CompanyDiscount'] as num?)?.toDouble() ?? 0;
+      final manualDiscount = (m['ManualDiscount'] as num?)?.toDouble() ?? 0;
+      final maintenanceFee = (m['MaintenanceFee'] as num?)?.toDouble() ?? 0;
+      final sysDiscountEnabled = m['SystemDiscountEnabled'] == true;
+
+      final pageDeduction = basePrice > 0
+          ? basePrice - companyDiscount
+          : sysDiscountEnabled ? planPrice : planPrice - companyDiscount;
+      final revenue = maintenanceFee + (sysDiscountEnabled ? 0 : companyDiscount);
+      final expense = manualDiscount;
+
+      // ═══ تواريخ البداية والانتهاء ═══
+      String startDateStr = '';
+      String endDateStr = '';
+      if (m['StartDate'] != null) {
+        try {
+          final sd = DateTime.parse(m['StartDate'].toString()).toLocal();
+          startDateStr = '${sd.day}/${sd.month}/${sd.year}';
+        } catch (_) {}
+      }
+      if (m['EndDate'] != null) {
+        try {
+          final ed = DateTime.parse(m['EndDate'].toString()).toLocal();
+          endDateStr = '${ed.day}/${ed.month}/${ed.year}';
+        } catch (_) {}
+      }
+
       result.add({
         'معرف العميل': m['CustomerId'] ?? '',
         'اسم العميل': m['CustomerName'] ?? '',
@@ -243,7 +285,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         'تاريخ التفعيل': dateStr,
         'التاريخ': dateStr,
         'الوقت': timeStr,
-        'المنطقة': m['ZoneId'] ?? '',
+        'المنطقة': m['ZoneName']?.toString().isNotEmpty == true ? m['ZoneName'] : (m['ZoneId'] ?? ''),
         'معرف الحزمة': m['BundleId'] ?? '',
         'الحالة الحالية': m['CurrentStatus'] ?? '',
         'اسم الجهاز': m['DeviceUsername'] ?? '',
@@ -262,7 +304,28 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         'تم إرسال واتساب': (m['IsWhatsAppSent'] == true) ? 'نعم' : 'لا',
         'ملاحظات': m['SubscriptionNotes'] ?? '',
         'معرف الجلسة': m['SessionId'] ?? '',
-        '_vpsId': m['Id'], // معرف السجل في VPS للاستخدام الداخلي
+        '_vpsId': m['Id'],
+        // ═══ الحقول الجديدة ═══
+        'نوع التحصيل': m['CollectionType']?.toString() ?? '',
+        'حالة الدفع': m['PaymentStatus']?.toString() ?? '',
+        'تاريخ البداية': startDateStr,
+        'تاريخ الانتهاء': endDateStr,
+        'اسم الفني': m['TechnicianName']?.toString() ?? '',
+        'معرف الفني': m['LinkedTechnicianId']?.toString() ?? '',
+        'معرف الوكيل': m['LinkedAgentId']?.toString() ?? '',
+        'FBG': m['FbgInfo']?.toString() ?? '',
+        'FAT': m['FatInfo']?.toString() ?? '',
+        'FDT': m['FdtInfo']?.toString() ?? '',
+        'معرف المعاملة': m['FtthTransactionId']?.toString() ?? '',
+        'السعر الأساسي': basePrice > 0 ? basePrice.toString() : '',
+        'خصم الشركة': companyDiscount > 0 ? companyDiscount.toString() : '',
+        'الخصم اليدوي': manualDiscount > 0 ? manualDiscount.toString() : '',
+        'رسوم الصيانة': maintenanceFee > 0 ? maintenanceFee.toString() : '',
+        'المستقطع': pageDeduction,
+        'الإيرادات': revenue,
+        'المصاريف': expense,
+        'تمت المطابقة': m['IsReconciled'] == true,
+        'معرف القيد': m['JournalEntryId']?.toString() ?? '',
       });
     }
 
@@ -898,6 +961,183 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     });
   }
 
+  /// بحث شامل في كل السجلات عبر API (بدون فلتر تاريخ أو مشغّل)
+  Future<void> _globalSearch(String query) async {
+    if (query.trim().isEmpty) {
+      // مسح البحث الشامل — العودة للبيانات العادية
+      setState(() {
+        _isGlobalSearchActive = false;
+        _isGlobalSearching = false;
+      });
+      _loadRecords();
+      return;
+    }
+
+    setState(() {
+      _isGlobalSearching = true;
+      _isGlobalSearchActive = true;
+    });
+
+    try {
+      final params = <String, String>{
+        'pageSize': '500',
+        'search': query.trim(),
+      };
+      final uri = Uri.parse('$_vpsBaseUrl/subscriptionlogs')
+          .replace(queryParameters: params);
+
+      final client = HttpClient()
+        ..badCertificateCallback = (cert, host, port) => true;
+      final request = await client.getUrl(uri);
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Accept', 'application/json');
+      request.headers.set('X-Api-Key', _vpsApiKey);
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        throw Exception('خطأ ${response.statusCode}');
+      }
+
+      final List<dynamic> jsonList =
+          json.decode(body) is List ? json.decode(body) : [];
+      final List<Map<String, dynamic>> result = [];
+
+      for (final item in jsonList) {
+        if (item is! Map) continue;
+        final m = Map<String, dynamic>.from(item);
+
+        String dateStr = '';
+        String timeStr = '';
+        final actDate = m['ActivationDate']?.toString() ?? '';
+        if (actDate.isNotEmpty) {
+          try {
+            final parsed = DateTime.parse(actDate);
+            final localDt = parsed.toLocal();
+            dateStr = '${localDt.day}/${localDt.month}/${localDt.year}';
+            timeStr = m['ActivationTime']?.toString() ??
+                '${localDt.hour.toString().padLeft(2, '0')}:${localDt.minute.toString().padLeft(2, '0')}';
+          } catch (_) {
+            dateStr = actDate;
+            timeStr = m['ActivationTime']?.toString() ?? '';
+          }
+        }
+
+        String opType = m['OperationType']?.toString() ?? '';
+        if (opType == 'renewal') opType = 'تجديد الاشتراك';
+        if (opType == 'purchase') opType = 'شراء اشتراك جديد';
+        if (opType == 'change') opType = 'تغيير اشتراك';
+
+        // حساب التفاصيل المالية
+        final gPlanPrice = (m['PlanPrice'] as num?)?.toDouble() ?? 0;
+        final gBasePrice = (m['BasePrice'] as num?)?.toDouble() ?? 0;
+        final gCompanyDiscount = (m['CompanyDiscount'] as num?)?.toDouble() ?? 0;
+        final gManualDiscount = (m['ManualDiscount'] as num?)?.toDouble() ?? 0;
+        final gMaintenanceFee = (m['MaintenanceFee'] as num?)?.toDouble() ?? 0;
+        final gSysDiscount = m['SystemDiscountEnabled'] == true;
+
+        final gPageDeduction = gBasePrice > 0
+            ? gBasePrice - gCompanyDiscount
+            : gSysDiscount ? gPlanPrice : gPlanPrice - gCompanyDiscount;
+        final gRevenue = gMaintenanceFee + (gSysDiscount ? 0 : gCompanyDiscount);
+        final gExpense = gManualDiscount;
+
+        String gStartDate = '';
+        String gEndDate = '';
+        if (m['StartDate'] != null) {
+          try {
+            final sd = DateTime.parse(m['StartDate'].toString()).toLocal();
+            gStartDate = '${sd.day}/${sd.month}/${sd.year}';
+          } catch (_) {}
+        }
+        if (m['EndDate'] != null) {
+          try {
+            final ed = DateTime.parse(m['EndDate'].toString()).toLocal();
+            gEndDate = '${ed.day}/${ed.month}/${ed.year}';
+          } catch (_) {}
+        }
+
+        result.add({
+          'معرف العميل': m['CustomerId'] ?? '',
+          'اسم العميل': m['CustomerName'] ?? '',
+          'رقم الهاتف': m['PhoneNumber'] ?? '',
+          'معرف الاشتراك': m['SubscriptionId'] ?? '',
+          'اسم الباقة': m['PlanName'] ?? '',
+          'سعر الباقة': m['PlanPrice']?.toString() ?? '0',
+          'فترة الالتزام': m['CommitmentPeriod']?.toString() ?? '',
+          'نوع العملية': opType,
+          'منفذ العملية': m['ActivatedBy'] ?? '',
+          'المُفعِّل': m['ActivatedBy'] ?? '',
+          '_userId': m['UserId']?.toString() ?? '',
+          '_ftthUsername': m['FtthUsername']?.toString() ?? '',
+          'تاريخ التفعيل': dateStr,
+          'التاريخ': dateStr,
+          'الوقت': timeStr,
+          'المنطقة': m['ZoneName']?.toString().isNotEmpty == true ? m['ZoneName'] : (m['ZoneId'] ?? ''),
+          'معرف الحزمة': m['BundleId'] ?? '',
+          'الحالة الحالية': m['CurrentStatus'] ?? '',
+          'اسم الجهاز': m['DeviceUsername'] ?? '',
+          'الرصيد قبل': m['WalletBalanceBefore']?.toString() ?? '',
+          'الرصيد بعد': m['WalletBalanceAfter']?.toString() ?? '',
+          'رصيد محفظة الشريك قبل':
+              m['PartnerWalletBalanceBefore']?.toString() ?? '',
+          'رصيد محفظة المشترك قبل':
+              m['CustomerWalletBalanceBefore']?.toString() ?? '',
+          'العملة': m['Currency'] ?? 'IQD',
+          'طريقة الدفع': m['PaymentMethod'] ?? '',
+          'نوع الدفع': m['PaymentMethod'] ?? '',
+          'اسم الشريك': m['PartnerName'] ?? '',
+          'معرف الشريك': m['PartnerId'] ?? '',
+          'تم الطباعة': (m['IsPrinted'] == true) ? 'نعم' : 'لا',
+          'تم إرسال واتساب': (m['IsWhatsAppSent'] == true) ? 'نعم' : 'لا',
+          'ملاحظات': m['SubscriptionNotes'] ?? '',
+          'معرف الجلسة': m['SessionId'] ?? '',
+          '_vpsId': m['Id'],
+          // الحقول الجديدة
+          'نوع التحصيل': m['CollectionType']?.toString() ?? '',
+          'حالة الدفع': m['PaymentStatus']?.toString() ?? '',
+          'تاريخ البداية': gStartDate,
+          'تاريخ الانتهاء': gEndDate,
+          'اسم الفني': m['TechnicianName']?.toString() ?? '',
+          'معرف الفني': m['LinkedTechnicianId']?.toString() ?? '',
+          'معرف الوكيل': m['LinkedAgentId']?.toString() ?? '',
+          'FBG': m['FbgInfo']?.toString() ?? '',
+          'FAT': m['FatInfo']?.toString() ?? '',
+          'FDT': m['FdtInfo']?.toString() ?? '',
+          'معرف المعاملة': m['FtthTransactionId']?.toString() ?? '',
+          'السعر الأساسي': gBasePrice > 0 ? gBasePrice.toString() : '',
+          'خصم الشركة': gCompanyDiscount > 0 ? gCompanyDiscount.toString() : '',
+          'الخصم اليدوي': gManualDiscount > 0 ? gManualDiscount.toString() : '',
+          'رسوم الصيانة': gMaintenanceFee > 0 ? gMaintenanceFee.toString() : '',
+          'المستقطع': gPageDeduction,
+          'الإيرادات': gRevenue,
+          'المصاريف': gExpense,
+          'تمت المطابقة': m['IsReconciled'] == true,
+          'معرف القيد': m['JournalEntryId']?.toString() ?? '',
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          allRecords = result;
+          _isGlobalSearching = false;
+          isLoading = false;
+        });
+        _applyFilters();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isGlobalSearching = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ في البحث الشامل: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
   /// تبديل فلتر السجلات المكررة
   void _toggleDuplicatesFilter() {
     setState(() {
@@ -1062,108 +1302,380 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
 
   /// عرض تفاصيل السجل
   void _showRecordDetails(Map<String, dynamic> record) {
-    // استخدام الاستخراج المرن ذاته لضمان التطابق
-    String subscriptionNotes = _extractFlexibleValue(
+    final customerName = record['اسم العميل']?.toString() ?? 'غير محدد';
+    final phone = record['رقم الهاتف']?.toString() ?? '';
+    final customerId = record['معرف العميل']?.toString() ?? '';
+    final subscriptionId = record['معرف الاشتراك']?.toString() ?? '';
+    final planName = record['اسم الباقة']?.toString() ?? '';
+    final planPrice = record['سعر الباقة']?.toString() ?? '0';
+    final commitment = record['فترة الالتزام']?.toString() ?? '';
+    final operationType = _normalizeOperationType(record['نوع العملية']?.toString() ?? '');
+    final paymentType = _derivePaymentType(record);
+    final activatedBy = record['منفذ العملية']?.toString() ?? record['المُفعِّل']?.toString() ?? '';
+    final date = record['تاريخ التفعيل']?.toString() ?? record['التاريخ']?.toString() ?? '';
+    final time = record['الوقت']?.toString() ?? '';
+    final zone = record['المنطقة']?.toString() ?? '';
+    final deviceUsername = record['اسم الجهاز']?.toString() ?? '';
+    final currentStatus = record['الحالة الحالية']?.toString() ?? '';
+    final walletBefore = record['الرصيد قبل']?.toString() ?? '';
+    final walletAfter = record['الرصيد بعد']?.toString() ?? '';
+    final partnerWalletBefore = record['رصيد محفظة الشريك قبل']?.toString() ?? '';
+    final customerWalletBefore = record['رصيد محفظة المشترك قبل']?.toString() ?? '';
+    final partnerName = record['اسم الشريك']?.toString() ?? '';
+    final sessionId = record['معرف الجلسة']?.toString() ?? '';
+
+    final subscriptionNotes = _extractFlexibleValue(
       record,
-      specificKeys: const [
-        'ملاحظات الاشتراك',
-        'Subscription Notes',
-        'ملاحظات المشغل',
-      ],
+      specificKeys: const ['ملاحظات الاشتراك', 'Subscription Notes', 'ملاحظات المشغل'],
       containsPatterns: const ['ملاحظ', 'note'],
     );
+    final printStatus = _extractFlexibleValue(
+      record,
+      specificKeys: const ['تم الطباعة', 'Is Printed', 'حالة الطباعة'],
+      containsPatterns: const ['طباعة', 'print'],
+    );
+    final whatsappStatus = _extractFlexibleValue(
+      record,
+      specificKeys: const ['تم إرسال الواتساب', 'WhatsApp Sent', 'حالة الواتساب'],
+      containsPatterns: const ['whats', 'واتس', 'واتساب'],
+    );
+    final printCountStr = _extractFlexibleValue(
+      record,
+      specificKeys: const ['تكرار الطبع', 'Print Count', 'Reprint Count'],
+      containsPatterns: const ['تكرار', 'print count', 'reprint'],
+    );
+    final printCount = int.tryParse(printCountStr) ?? 0;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: const [
-            Icon(Icons.info_outline, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('تفاصيل السجل'),
+    final bool isPrinted = _isPrintedStatus(printStatus);
+    final bool isWhatsApp = _isWhatsAppStatus(whatsappStatus);
+    final bool isCash = paymentType.contains('نقد');
+
+    // الحقول الجديدة
+    final collectionType = record['نوع التحصيل']?.toString() ?? '';
+    final paymentStatus = record['حالة الدفع']?.toString() ?? '';
+    final startDate = record['تاريخ البداية']?.toString() ?? '';
+    final endDate = record['تاريخ الانتهاء']?.toString() ?? '';
+    final technicianName = record['اسم الفني']?.toString() ?? '';
+    final fbg = record['FBG']?.toString() ?? '';
+    final fat = record['FAT']?.toString() ?? '';
+    final fdt = record['FDT']?.toString() ?? '';
+    final ftthTxnId = record['معرف المعاملة']?.toString() ?? '';
+    final basePrice = record['السعر الأساسي']?.toString() ?? '';
+    final compDiscount = record['خصم الشركة']?.toString() ?? '';
+    final manDiscount = record['الخصم اليدوي']?.toString() ?? '';
+    final maintFee = record['رسوم الصيانة']?.toString() ?? '';
+    final deduction = record['المستقطع'];
+    final revenueVal = record['الإيرادات'];
+    final expenseVal = record['المصاريف'];
+    final isReconciled = record['تمت المطابقة'] == true;
+    final journalId = record['معرف القيد']?.toString() ?? '';
+    final ded = (deduction is num) ? deduction.toDouble() : 0.0;
+    final rev = (revenueVal is num) ? revenueVal.toDouble() : 0.0;
+    final exp = (expenseVal is num) ? expenseVal.toDouble() : 0.0;
+
+    // helper: بناء صف تفاصيل
+    Widget detailRow(IconData icon, String label, String value, {Color? valueColor, bool bold = false, bool copyable = false}) {
+      if (value.trim().isEmpty || value == 'غير محدد') return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: Colors.deepPurple.shade400),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 120,
+              child: Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+            ),
+            Expanded(
+              child: copyable
+                  ? InkWell(
+                      onTap: () {
+                        // نسخ القيمة
+                        final data = ClipboardData(text: value);
+                        Clipboard.setData(data);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('تم نسخ: $value'), duration: const Duration(seconds: 1)),
+                        );
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(value, style: TextStyle(fontSize: 13, color: valueColor ?? Colors.black87, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.copy, size: 14, color: Colors.grey.shade400),
+                        ],
+                      ),
+                    )
+                  : Text(value, style: TextStyle(fontSize: 13, color: valueColor ?? Colors.black87, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+            ),
           ],
         ),
-        content: SingleChildScrollView(
+      );
+    }
+
+    // helper: بناء عنوان قسم
+    Widget sectionHeader(String title, IconData icon, Color color) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 16, bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)]),
+          borderRadius: BorderRadius.circular(8),
+          border: Border(right: BorderSide(color: color, width: 4)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 8),
+            Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+      );
+    }
+
+    // helper: بناء شارة حالة
+    Widget statusBadge(String label, bool active, IconData icon) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? Colors.green.shade50 : Colors.red.shade50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: active ? Colors.green.shade300 : Colors.red.shade300),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: active ? Colors.green.shade700 : Colors.red.shade700),
+            const SizedBox(width: 6),
+            Text(
+              '$label: ${active ? "تم" : "لم يتم"}',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? Colors.green.shade700 : Colors.red.shade700),
+            ),
+          ],
+        ),
+      );
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              if (subscriptionNotes.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.teal.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              // ═══ المقبض + العنوان ═══
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [Colors.deepPurple.shade700, Colors.deepPurple.shade500]),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  children: [
+                    // مقبض السحب
+                    Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white54,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.receipt_long, color: Colors.white, size: 24),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(customerName, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                              if (phone.isNotEmpty)
+                                Text(phone, style: TextStyle(color: Colors.white70, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                        // شارة نوع العملية
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: operationType.contains('شراء') ? Colors.green.shade400 : Colors.orange.shade400,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(operationType, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // ═══ المحتوى ═══
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  children: [
+                    // ═══ 1. حالات المعالجة ═══
+                    sectionHeader('حالة المعالجة', Icons.check_circle_outline, Colors.blueGrey.shade700),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        statusBadge('الطباعة${printCount > 0 ? ' ($printCount)' : ''}', isPrinted, Icons.print),
+                        statusBadge('الواتساب', isWhatsApp, Icons.chat),
+                      ],
+                    ),
+
+                    // ═══ 2. معلومات الاشتراك ═══
+                    sectionHeader('معلومات الاشتراك', Icons.card_membership, Colors.blue.shade700),
+                    detailRow(Icons.badge, 'معرف الاشتراك', subscriptionId, copyable: true),
+                    detailRow(Icons.wifi, 'اسم الباقة', planName, bold: true),
+                    detailRow(Icons.attach_money, 'سعر الباقة', '$planPrice IQD', valueColor: Colors.green.shade700, bold: true),
+                    detailRow(Icons.credit_card, 'نوع الدفع', paymentType, valueColor: isCash ? Colors.teal.shade700 : Colors.red.shade700, bold: true),
+                    detailRow(Icons.shopping_bag, 'نوع التحصيل', collectionType),
+                    detailRow(Icons.payment, 'حالة الدفع', paymentStatus),
+                    detailRow(Icons.timer, 'فترة الالتزام', commitment.isNotEmpty ? '$commitment شهر' : ''),
+                    detailRow(Icons.info_outline, 'الحالة الحالية', currentStatus),
+                    detailRow(Icons.date_range, 'تاريخ البداية', startDate),
+                    detailRow(Icons.event_busy, 'تاريخ الانتهاء', endDate),
+
+                    // ═══ 3. معلومات العميل ═══
+                    sectionHeader('معلومات العميل', Icons.person, Colors.indigo.shade700),
+                    detailRow(Icons.person_outline, 'اسم العميل', customerName, bold: true),
+                    detailRow(Icons.phone, 'رقم الهاتف', phone, copyable: true),
+                    detailRow(Icons.fingerprint, 'معرف العميل', customerId, copyable: true),
+                    detailRow(Icons.router, 'اسم الجهاز', deviceUsername, copyable: true),
+                    detailRow(Icons.location_on, 'المنطقة', zone),
+
+                    // ═══ 4. معلومات العملية ═══
+                    sectionHeader('معلومات العملية', Icons.swap_horiz, Colors.orange.shade800),
+                    detailRow(Icons.person_pin, 'منفذ العملية', activatedBy),
+                    detailRow(Icons.engineering, 'الفني', technicianName),
+                    detailRow(Icons.calendar_today, 'تاريخ التفعيل', date),
+                    detailRow(Icons.access_time, 'وقت التفعيل', time),
+                    detailRow(Icons.people, 'الشريك', partnerName),
+                    detailRow(Icons.link, 'معرف المعاملة', ftthTxnId, copyable: true),
+                    detailRow(Icons.vpn_key, 'معرف الجلسة', sessionId, copyable: true),
+
+                    // ═══ 5. معلومات الشبكة ═══
+                    if (fbg.isNotEmpty || fat.isNotEmpty || fdt.isNotEmpty) ...[
+                      sectionHeader('معلومات الشبكة', Icons.lan, Colors.cyan.shade700),
+                      detailRow(Icons.hub, 'FBG', fbg, copyable: true),
+                      detailRow(Icons.device_hub, 'FAT', fat, copyable: true),
+                      detailRow(Icons.cable, 'FDT', fdt, copyable: true),
+                    ],
+
+                    // ═══ 6. التفاصيل المالية ═══
+                    if (ded > 0 || rev > 0 || exp > 0 || basePrice.isNotEmpty || compDiscount.isNotEmpty) ...[
+                      sectionHeader('التفاصيل المالية', Icons.account_balance, Colors.green.shade700),
+                      // المبالغ الرئيسية
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            Expanded(child: _financialMini('المستقطع', ded, Colors.blue.shade700)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _financialMini('الإيرادات', rev, Colors.green.shade700)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _financialMini('المصاريف', exp, Colors.red.shade700)),
+                          ],
+                        ),
+                      ),
+                      detailRow(Icons.price_change, 'السعر الأساسي', basePrice.isNotEmpty ? '$basePrice IQD' : ''),
+                      detailRow(Icons.discount, 'خصم الشركة', compDiscount.isNotEmpty ? '$compDiscount IQD' : ''),
+                      detailRow(Icons.money_off, 'الخصم اليدوي', manDiscount.isNotEmpty ? '$manDiscount IQD' : ''),
+                      detailRow(Icons.build, 'رسوم الصيانة', maintFee.isNotEmpty ? '$maintFee IQD' : ''),
+                      // حالة المطابقة والقيد
+                      const SizedBox(height: 8),
                       Row(
                         children: [
-                          Icon(Icons.note,
-                              color: Colors.teal.shade600, size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'ملاحظات الاشتراك:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.teal.shade700,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isReconciled ? Colors.green.shade50 : Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: isReconciled ? Colors.green.shade300 : Colors.orange.shade300),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(isReconciled ? Icons.check_circle : Icons.pending, size: 16, color: isReconciled ? Colors.green.shade700 : Colors.orange.shade700),
+                                const SizedBox(width: 6),
+                                Text(isReconciled ? 'تمت المطابقة' : 'غير مطابق', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isReconciled ? Colors.green.shade700 : Colors.orange.shade700)),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        subscriptionNotes,
-                        style: TextStyle(color: Colors.teal.shade800),
+                      detailRow(Icons.receipt, 'معرف القيد المحاسبي', journalId, copyable: true),
+                    ],
+
+                    // ═══ 7. معلومات الرصيد ═══
+                    if (walletBefore.isNotEmpty || walletAfter.isNotEmpty || partnerWalletBefore.isNotEmpty || customerWalletBefore.isNotEmpty) ...[
+                      sectionHeader('معلومات الرصيد', Icons.account_balance_wallet, Colors.purple.shade700),
+                      detailRow(Icons.arrow_back, 'الرصيد قبل', walletBefore),
+                      detailRow(Icons.arrow_forward, 'الرصيد بعد', walletAfter),
+                      detailRow(Icons.people_outline, 'رصيد الشريك قبل', partnerWalletBefore),
+                      detailRow(Icons.person_outline, 'رصيد المشترك قبل', customerWalletBefore),
+                    ],
+
+                    // ═══ 8. الملاحظات ═══
+                    if (subscriptionNotes.isNotEmpty) ...[
+                      sectionHeader('الملاحظات', Icons.note_alt, Colors.teal.shade700),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.teal.shade200),
+                        ),
+                        child: Text(subscriptionNotes, style: TextStyle(fontSize: 13, color: Colors.teal.shade800, height: 1.5)),
                       ),
                     ],
+                  ],
+                ),
+              ),
+
+              // ═══ زر الإغلاق ═══
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('إغلاق'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ),
-              const SizedBox(height: 8),
-              // باقي الحقول
-              ...record.entries.map((entry) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 120,
-                        child: Text(
-                          '${entry.key}:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[700],
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          entry.value?.toString() ?? 'غير متوفر',
-                          style: const TextStyle(
-                            color: Colors.black87,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إغلاق'),
-          ),
-        ],
       ),
     );
   }
@@ -1675,6 +2187,89 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               },
             ),
           ),
+          SizedBox(height: 8),
+          // ═══ حقل البحث الشامل في كل السجلات ═══
+          Container(
+            decoration: BoxDecoration(
+              color: _isGlobalSearchActive
+                  ? Colors.orange.shade50
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _isGlobalSearchActive
+                    ? Colors.orange.shade700
+                    : Colors.deepPurple.shade300,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _isGlobalSearchActive
+                      ? Colors.orange.withValues(alpha: 0.2)
+                      : Colors.purple.withValues(alpha: 0.1),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _globalSearchCtrl,
+              onSubmitted: _globalSearch,
+              decoration: InputDecoration(
+                hintText: 'بحث شامل في كل السجلات (اضغط Enter)...',
+                hintStyle: TextStyle(color: Colors.grey.shade500),
+                prefixIcon: _isGlobalSearching
+                    ? Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.orange.shade700,
+                          ),
+                        ),
+                      )
+                    : Icon(Icons.manage_search,
+                        color: _isGlobalSearchActive
+                            ? Colors.orange.shade700
+                            : Colors.deepPurple.shade400,
+                        size: 24),
+                border: InputBorder.none,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                suffixIcon: _isGlobalSearchActive
+                    ? IconButton(
+                        icon: Icon(Icons.close, color: Colors.orange.shade700),
+                        onPressed: () {
+                          _globalSearchCtrl.clear();
+                          _globalSearch('');
+                        },
+                      )
+                    : null,
+              ),
+              style: TextStyle(fontSize: _fs(15), fontWeight: FontWeight.w500),
+            ),
+          ),
+          if (_isGlobalSearchActive)
+            Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 14, color: Colors.orange.shade700),
+                  SizedBox(width: 4),
+                  Text(
+                    'البحث الشامل نشط — النتائج من جميع المشغّلين وكل التواريخ (${filteredRecords.length} نتيجة)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange.shade800,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           SizedBox(height: 12),
           // ═══ شريط الإحصائيات الأفقي ═══
           Builder(builder: (context) {
@@ -2871,39 +3466,43 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             // بطاقة المفعل في الأعلى
             Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: _isPhone ? 8 : 12, vertical: _isPhone ? 6 : 8),
+              padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 16, vertical: _isPhone ? 10 : 14),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.deepPurple.shade600,
-                    Colors.deepPurple.shade800,
+                    Colors.deepPurple.shade500,
+                    Colors.deepPurple.shade700,
+                    Colors.deepPurple.shade900,
                   ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
                 ),
+                borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.deepPurple.withValues(alpha: 0.3),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
+                    color: Colors.deepPurple.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
               child: Row(
                 children: [
+                  // أيقونة دائرية
                   Container(
-                    padding: EdgeInsets.all(6),
+                    padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(6),
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.15),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                     ),
                     child: Icon(
-                      Icons.admin_panel_settings,
+                      Icons.person,
                       color: Colors.white,
-                      size: 18,
+                      size: 22,
                     ),
                   ),
-                  SizedBox(width: 10),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2911,79 +3510,133 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                         Text(
                           'مفعل بواسطة',
                           style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: _fs(11),
-                            fontWeight: FontWeight.w500,
+                            color: Colors.white60,
+                            fontSize: _fs(10),
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 0.5,
                           ),
                         ),
+                        SizedBox(height: 2),
                         Text(
                           activatedBy,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: _fs(15),
+                            fontSize: _fs(17),
                             fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '#${index + 1}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                  // التاريخ + الرقم
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          '#${index + 1}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (activationDate != 'غير محدد' && activationDate.isNotEmpty) ...[
+                        SizedBox(height: 4),
+                        Text(
+                          '$activationDate ${activationTime.isNotEmpty ? activationTime : ''}',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: _fs(10),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
 
-            SizedBox(height: 16), // المعلومات الأساسية
+            SizedBox(height: 12), // المعلومات الأساسية
+            // اسم العميل — عرض كامل
             _buildInfoRow('👤 اسم المستخدم', customerName, FontWeight.bold, 16),
+            SizedBox(height: 10),
+            // صف 1: الباقة + نوع العملية
+            Row(
+              children: [
+                Expanded(child: _buildInfoRow('📦 الباقة', planName, FontWeight.w600, 14)),
+                SizedBox(width: 8),
+                Expanded(child: _buildInfoRow('⚙️ العملية', operationType, FontWeight.w600, 14, Colors.orange.shade700)),
+              ],
+            ),
             SizedBox(height: 8),
-            _buildInfoRow('📦 اسم الباقة', planName, FontWeight.w600, 15),
-            SizedBox(height: 8),
-            _buildInfoRow('⚙️ نوع العملية', operationType, FontWeight.w600, 15,
-                Colors.orange.shade700),
-            SizedBox(height: 8),
-            _buildInfoRow('💰 سعر الباقة', '$totalPrice $currency',
-                FontWeight.bold, 15, Colors.green.shade700),
-            SizedBox(height: 8),
-            _buildInfoRow(
-                '💳 نوع الدفع',
-                paymentType,
-                FontWeight.w600,
-                14,
-                paymentType.contains('نقد')
-                    ? Colors.teal.shade700
-                    : Colors.purple.shade700),
-            // اسم الفني أو الوكيل حسب نوع الدفع
+            // صف 2: السعر + نوع الدفع
+            Row(
+              children: [
+                Expanded(child: _buildInfoRow('💰 السعر', '$totalPrice $currency', FontWeight.bold, 14, Colors.green.shade700)),
+                SizedBox(width: 8),
+                Expanded(child: _buildInfoRow(
+                    '💳 الدفع',
+                    paymentType,
+                    FontWeight.w600,
+                    14,
+                    paymentType.contains('نقد') ? Colors.teal.shade700 : Colors.purple.shade700)),
+              ],
+            ),
+            // صف 3: الفني/الوكيل + المنطقة
             Builder(builder: (_) {
-              final collType = record['نوع التحصيل']?.toString() ?? record['CollectionType']?.toString() ?? '';
+              final collType = record['نوع التحصيل']?.toString() ?? '';
               String? personLabel;
               String? personName;
               if (collType.contains('technician') || collType.contains('فني') || paymentType.contains('فني')) {
                 personLabel = '🔧 الفني';
-                personName = record['الفني']?.toString() ?? record['TechnicianName']?.toString() ?? '';
+                personName = record['اسم الفني']?.toString() ?? '';
               } else if (collType.contains('agent') || collType.contains('وكيل') || paymentType.contains('وكيل')) {
                 personLabel = '🏪 الوكيل';
                 personName = record['الوكيل']?.toString() ?? record['AgentName']?.toString() ?? '';
               }
-              if (personLabel != null && personName != null && personName.isNotEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: _buildInfoRow(personLabel, personName, FontWeight.w600, 14, Colors.brown.shade700),
-                );
-              }
-              return const SizedBox.shrink();
+              final zone = record['المنطقة']?.toString() ?? '';
+              final hasPerson = personLabel != null && personName != null && personName.isNotEmpty;
+              final hasZone = zone.isNotEmpty;
+
+              if (!hasPerson && !hasZone) return const SizedBox.shrink();
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    if (hasZone) Expanded(child: _buildInfoRow('📍 المنطقة', zone, FontWeight.w600, 14, Colors.indigo.shade700)),
+                    if (hasZone && hasPerson) SizedBox(width: 8),
+                    if (hasPerson) Expanded(child: _buildInfoRow(personLabel.toString(), personName.toString(), FontWeight.w600, 14, Colors.brown.shade700)),
+                    if (hasZone && !hasPerson) Expanded(child: SizedBox.shrink()),
+                    if (!hasZone && hasPerson) Expanded(child: SizedBox.shrink()),
+                  ],
+                ),
+              );
+            }),
+            // صف 4: فترة الاشتراك (إن وجدت)
+            Builder(builder: (_) {
+              final startDate = record['تاريخ البداية']?.toString() ?? '';
+              final endDate = record['تاريخ الانتهاء']?.toString() ?? '';
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (startDate.isNotEmpty || endDate.isNotEmpty) ...[
+                    SizedBox(height: 8),
+                    _buildInfoRow('📅 فترة الاشتراك',
+                        '${startDate.isNotEmpty ? startDate : '؟'} → ${endDate.isNotEmpty ? endDate : '؟'}',
+                        FontWeight.w500, 14, Colors.indigo.shade600),
+                  ],
+                ],
+              );
             }),
 
             SizedBox(height: 8),
@@ -3269,6 +3922,37 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
           ),
         ),
       ],
+    );
+  }
+
+  /// شريحة معلومات شبكة (FBG/FAT/FDT)
+  Widget _networkChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text('$label: $value', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  /// مربع مالي مصغر (المستقطع/الإيرادات/المصاريف)
+  Widget _financialMini(String label, double amount, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+          SizedBox(height: 2),
+          Text(amount > 0 ? amount.toStringAsFixed(0) : '0', style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 
