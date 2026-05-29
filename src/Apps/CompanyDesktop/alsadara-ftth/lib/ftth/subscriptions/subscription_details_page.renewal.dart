@@ -20,7 +20,8 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     }
 
     // 🔒 قفل فوري لمنع الضغط المزدوج (قبل أي await)
-    safeSetState(() => _isActivating = true);
+    _isActivating = true;           // فوري — يمنع أي استدعاء ثاني حتى لو بنفس الميلي ثانية
+    safeSetState(() {});             // تحديث الواجهة (تعطيل الزر)
 
     try {
     // فاصل زمني إجباري (دقيقتان) بين كل تفعيلتين
