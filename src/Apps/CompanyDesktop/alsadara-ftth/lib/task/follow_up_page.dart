@@ -592,12 +592,12 @@ class _FollowUpPageState extends State<FollowUpPage> {
         ),
         const SizedBox(width: 6),
         // المبلغ
-        if (task.amount.isNotEmpty && task.amount != '0')
+        if (task.hasAmount)
           Expanded(
             child: _buildInfoTile(
               Icons.monetization_on_outlined,
               'المبلغ',
-              '${task.amount} د.ع',
+              '${task.amountFormatted} د.ع',
               const Color(0xFFE74C3C),
             ),
           ),

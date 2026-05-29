@@ -94,6 +94,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   List<String> _fbgOptions = [];
   Map<String, String> _userPhones = {};
   Map<String, List<String>> _departmentTasks = {};
+  Map<String, int> _slaMap = {};
   String _currentSelectedPhone = '';
 
   @override
@@ -217,10 +218,21 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             (data['fbgOptions'] as List?)?.map((f) => f.toString()).toList() ??
                 [];
 
+        // خريطة SLA: "قسم|نوع_مهمة" -> ساعات
+        final slaRaw = data['slaMap'] as Map<String, dynamic>? ?? {};
+        final parsedSlaMap = <String, int>{};
+        for (final entry in slaRaw.entries) {
+          final hours = entry.value is int
+              ? entry.value as int
+              : int.tryParse(entry.value.toString()) ?? 0;
+          if (hours > 0) parsedSlaMap[entry.key] = hours;
+        }
+
         if (mounted) {
           setState(() {
             _departments = deptNames;
             _departmentTasks = parsedDeptTasks;
+            _slaMap = parsedSlaMap;
             _fbgOptions = fbgList;
             // ضبط القسم تلقائياً عند شراء اشتراك بعد تحميل القائمة
             if (_selectedTaskType == 'شراء اشتراك') {

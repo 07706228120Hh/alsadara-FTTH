@@ -17,6 +17,7 @@ class Task {
   final String location; // موقع المهمة
   final String notes; // ملاحظات إضافية
   final DateTime createdAt; // تاريخ ووقت إنشاء المهمة (مطلوب دائمًا)
+  final DateTime? startedAt; // تاريخ بدء التنفيذ (InProgress)
   final DateTime?
       closedAt; // تاريخ ووقت إغلاق المهمة (يمكن أن يكون null في البداية)
   final String summary; // ملخص المهمة
@@ -24,8 +25,8 @@ class Task {
   final List<String> agents; // الوكلاء المرتبطين بالمهمة
   final List<StatusHistory> statusHistory; // سجل حالة المهمة
   final String createdBy; // الشخص الذي أنشأ المهمة
-  final String amount; // المبلغ المرتبط بالمهمة (تمت إضافته)
-  final String deliveryFee; // أجور التوصيل (إيرادات - تُضاف على ذمة الموظف)
+  final double? amount; // المبلغ المرتبط بالمهمة
+  final double? deliveryFee; // أجور التوصيل (إيرادات - تُضاف على ذمة الموظف)
   final String technicianPhone; // رقم هاتف الفني (العمود T)
   final String agentName; // اسم الوكيل (إن كان طلب وكيل)
   final String agentCode; // رمز الوكيل
@@ -34,6 +35,7 @@ class Task {
   final String serviceType; // نوع الخدمة (35, 50, 75, 150)
   final String subscriptionDuration; // مدة الاشتراك
   final String createdByName; // اسم من أنشأ المهمة
+  final int slaHours; // وقت SLA بالدقائق (0 = بدون SLA) — الاسم يبقى slaHours للتوافق
 
   /// **البناء الأساسي لمهمة جديدة**
   Task({
@@ -52,14 +54,15 @@ class Task {
     required this.location,
     required this.notes,
     required this.createdAt, // مطلوب دائمًا
+    this.startedAt, // وقت بدء التنفيذ
     this.closedAt, // يمكن أن يكون null في البداية
     required this.summary,
     required this.priority,
     required this.agents,
     required this.statusHistory,
     required this.createdBy,
-    this.amount = '', // تمت إضافة المبلغ مع قيمة افتراضية
-    this.deliveryFee = '', // أجور التوصيل
+    this.amount, // المبلغ (null = لا يوجد)
+    this.deliveryFee, // أجور التوصيل (null = لا يوجد)
     this.technicianPhone = '', // تمت إضافة رقم هاتف الفني مع قيمة افتراضية
     this.agentName = '', // اسم الوكيل
     this.agentCode = '', // رمز الوكيل
@@ -68,7 +71,57 @@ class Task {
     this.serviceType = '', // نوع الخدمة
     this.subscriptionDuration = '', // مدة الاشتراك
     this.createdByName = '', // اسم من أنشأ المهمة
+    this.slaHours = 0, // وقت SLA بالساعات
   });
+
+  // ═══════ تنسيق المبالغ المالية ═══════
+
+  static final _moneyFormat = NumberFormat('#,###', 'en_US');
+
+  /// تنسيق مبلغ مالي كنص (مثال: 60000 → "60,000")
+  static String formatMoney(double? val) {
+    if (val == null || val == 0) return '';
+    return _moneyFormat.format(val.toInt());
+  }
+
+  /// هل يوجد SLA محدد؟
+  bool get hasSla => slaHours > 0;
+
+  /// الموعد النهائي للـ SLA
+  DateTime? get slaDeadline => hasSla ? createdAt.add(Duration(minutes: slaHours)) : null;
+
+  /// الوقت المتبقي للـ SLA (سالب = متأخر)
+  Duration? get slaRemaining => slaDeadline?.difference(DateTime.now());
+
+  /// نسبة استهلاك الوقت (0.0 → 1.0+)
+  double get slaProgress {
+    if (!hasSla) return 0;
+    final total = slaHours;
+    final elapsed = DateTime.now().difference(createdAt).inMinutes;
+    return elapsed / total;
+  }
+
+  /// حالة SLA: 'ok' (أخضر < 70%) | 'warning' (أصفر 70-100%) | 'overdue' (أحمر > 100%)
+  String get slaStatus {
+    if (!hasSla) return 'none';
+    if (isCompleted || isCancelled) return 'done';
+    final p = slaProgress;
+    if (p >= 1.0) return 'overdue';
+    if (p >= 0.7) return 'warning';
+    return 'ok';
+  }
+
+  /// هل يوجد مبلغ؟
+  bool get hasAmount => amount != null && amount! > 0;
+
+  /// هل يوجد أجور توصيل؟
+  bool get hasDeliveryFee => deliveryFee != null && deliveryFee! > 0;
+
+  /// المبلغ منسّق للعرض
+  String get amountFormatted => formatMoney(amount);
+
+  /// أجور التوصيل منسّقة للعرض
+  String get deliveryFeeFormatted => formatMoney(deliveryFee);
 
   /// **نسخة معدلة من المهمة**: لإنشاء نسخة جديدة مع قيم محدثة
   Task copyWith({
@@ -87,15 +140,16 @@ class Task {
     String? location,
     String? notes,
     DateTime? createdAt,
+    DateTime? startedAt,
     DateTime? closedAt,
     String? summary,
     String? priority,
     List<String>? agents,
     List<StatusHistory>? statusHistory,
     String? createdBy,
-    String? amount, // تمت إضافة المبلغ هنا
-    String? deliveryFee,
-    String? technicianPhone, // تمت إضافة رقم هاتف الفني هنا
+    double? amount,
+    double? deliveryFee,
+    String? technicianPhone,
     String? agentName,
     String? agentCode,
     String? pageId,
@@ -103,6 +157,7 @@ class Task {
     String? serviceType,
     String? subscriptionDuration,
     String? createdByName,
+    int? slaHours,
   }) {
     return Task(
       id: id ?? this.id,
@@ -120,16 +175,16 @@ class Task {
       location: location ?? this.location,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
+      startedAt: startedAt ?? this.startedAt,
       closedAt: closedAt ?? this.closedAt,
       summary: summary ?? this.summary,
       priority: priority ?? this.priority,
       agents: agents ?? this.agents,
       statusHistory: statusHistory ?? this.statusHistory,
       createdBy: createdBy ?? this.createdBy,
-      amount: amount ?? this.amount, // تمت إضافة المبلغ هنا
+      amount: amount ?? this.amount,
       deliveryFee: deliveryFee ?? this.deliveryFee,
-      technicianPhone: technicianPhone ??
-          this.technicianPhone, // تمت إضافة رقم هاتف الفني هنا
+      technicianPhone: technicianPhone ?? this.technicianPhone,
       agentName: agentName ?? this.agentName,
       agentCode: agentCode ?? this.agentCode,
       pageId: pageId ?? this.pageId,
@@ -137,6 +192,7 @@ class Task {
       serviceType: serviceType ?? this.serviceType,
       subscriptionDuration: subscriptionDuration ?? this.subscriptionDuration,
       createdByName: createdByName ?? this.createdByName,
+      slaHours: slaHours ?? this.slaHours,
     );
   }
 
@@ -145,6 +201,19 @@ class Task {
 
   /// **التحقق مما إذا كانت المهمة ملغية**
   bool get isCancelled => status == 'ملغية';
+
+  // ═══════ تحويل من/إلى نص (للتوافق مع الكود القديم) ═══════
+
+  /// تحويل مبلغ نصي إلى double (للتوافق مع API والكود القديم)
+  static double? _parseAmount(dynamic raw) {
+    if (raw == null) return null;
+    final str = raw.toString().trim();
+    if (str.isEmpty) return null;
+    final parsed = num.tryParse(str);
+    if (parsed == null) return null;
+    final val = parsed.toDouble();
+    return val > 0 ? val : null;
+  }
 
   // ═══════ بناء من API ═══════
 
@@ -213,6 +282,7 @@ class Task {
           response['StatusNote']?.toString() ?? '',
         ].where((s) => s.isNotEmpty).join(' | '),
       createdAt: _parseUtcDate(response['CreatedAt']?.toString()) ?? DateTime.now(),
+      startedAt: _parseUtcDate(response['StartedAt']?.toString()),
       closedAt: response['CompletedAt'] != null
           ? _parseUtcDate(response['CompletedAt'].toString())
           : null,
@@ -226,26 +296,16 @@ class Task {
       createdByName: details['createdByName']?.toString() ?? '',
       serviceType: details['serviceType']?.toString() ?? '',
       subscriptionDuration: details['subscriptionDuration']?.toString() ?? '',
-      amount: () {
-        final raw = (details['subscriptionAmount'] ??
-                response['EstimatedCost'] ??
-                response['FinalCost'] ??
-                '')
-            .toString();
-        // إزالة الكسور العشرية (60000.0 → 60000) لمنع تحولها لـ 600000 عند التنسيق
-        final num? parsed = num.tryParse(raw);
-        return parsed != null ? parsed.toInt().toString() : raw;
-      }(),
-      deliveryFee: () {
-        final raw = (details['deliveryFee'] ?? '').toString();
-        final num? parsed = num.tryParse(raw);
-        return parsed != null ? parsed.toInt().toString() : raw;
-      }(),
+      amount: _parseAmount(details['subscriptionAmount'] ??
+          response['EstimatedCost'] ??
+          response['FinalCost']),
+      deliveryFee: _parseAmount(details['deliveryFee']),
       technicianPhone: details['technicianPhone']?.toString() ?? '',
       agentName: response['AgentName']?.toString() ?? '',
       agentCode: response['AgentCode']?.toString() ?? '',
       pageId: details['pageId']?.toString() ?? '',
       source: details['source']?.toString() ?? '',
+      slaHours: (details['slaHours'] is num) ? (details['slaHours'] as num).toInt() : (int.tryParse(details['slaHours']?.toString() ?? '') ?? 0),
     );
   }
 
@@ -349,8 +409,8 @@ FAT: $fat
 الأولوية: $priority
 الوكلاء: ${agents.join(', ')}
 أنشأها: $createdBy
-المبلغ: $amount
-أجور التوصيل: $deliveryFee
+المبلغ: $amountFormatted
+أجور التوصيل: $deliveryFeeFormatted
 رقم هاتف الفني: $technicianPhone
 سجل الحالة:
 ${statusHistory.map((history) => '  - $history').join('\n')}

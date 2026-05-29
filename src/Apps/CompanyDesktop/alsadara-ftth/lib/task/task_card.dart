@@ -68,14 +68,17 @@ class _TaskCardState extends State<TaskCard> {
 
   // هل المهمة من نوع تحصيل
   bool _isCollectionTask() =>
-      widget.task.title.contains('تحصيل مبلغ') || widget.task.title.contains('استحصال مبلغ');
+      widget.task.title.contains('تحصيل مبلغ') ||
+      widget.task.title.contains('استحصال مبلغ');
 
   bool _isPurchaseTask() => widget.task.title.contains('شراء اشتراك');
   bool _isRenewalTask() => widget.task.title.contains('تجديد اشتراك');
-  bool _isMaintenanceTask() => !_isPurchaseTask() && !_isRenewalTask() && !_isCollectionTask();
+  bool _isMaintenanceTask() =>
+      !_isPurchaseTask() && !_isRenewalTask() && !_isCollectionTask();
 
   String _getAmountLabel() {
-    if (_isPurchaseTask() || _isRenewalTask() || _isCollectionTask()) return 'سعر الاشتراك';
+    if (_isPurchaseTask() || _isRenewalTask() || _isCollectionTask())
+      return 'سعر الاشتراك';
     return 'أجور الصيانة';
   }
 
@@ -102,9 +105,11 @@ class _TaskCardState extends State<TaskCard> {
 
     final statusColor = _getStatusColor(widget.task.status);
     final isSmall = MediaQuery.of(context).size.width < 420;
-    final isCollectionTask = widget.task.title.contains('تحصيل مبلغ') || widget.task.title.contains('استحصال مبلغ');
+    final isCollectionTask = widget.task.title.contains('تحصيل مبلغ') ||
+        widget.task.title.contains('استحصال مبلغ');
     return Container(
-      margin: EdgeInsets.symmetric(vertical: isSmall ? 3 : 5, horizontal: isSmall ? 4 : 12),
+      margin: EdgeInsets.symmetric(
+          vertical: isSmall ? 3 : 5, horizontal: isSmall ? 4 : 12),
       decoration: BoxDecoration(
         color: isCollectionTask ? const Color(0xFFFFF8E1) : Colors.white,
         borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
@@ -143,7 +148,8 @@ class _TaskCardState extends State<TaskCard> {
 
               // المعلومات الأساسية
               Padding(
-                padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, isSmall ? 6 : 10, isSmall ? 8 : 14, isSmall ? 3 : 6),
+                padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, isSmall ? 6 : 10,
+                    isSmall ? 8 : 14, isSmall ? 3 : 6),
                 child: _buildCompactBasicInfo(),
               ),
 
@@ -160,20 +166,25 @@ class _TaskCardState extends State<TaskCard> {
                   ),
                 // التعليقات
                 Padding(
-                  padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
+                  padding: EdgeInsets.fromLTRB(
+                      isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
                   child: _buildCommentsSection(),
                 ),
                 // المواد المصروفة — تظهر في كل المهام ما عدا التحصيل
                 if (!_isCollectionTask())
                   Padding(
-                    padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
+                    padding: EdgeInsets.fromLTRB(
+                        isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
                     child: _buildDispensedMaterialsSection(),
                   ),
                 // المرفقات
                 Padding(
-                  padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
+                  padding: EdgeInsets.fromLTRB(
+                      isSmall ? 8 : 14, 4, isSmall ? 8 : 14, 6),
                   child: TaskAttachmentsWidget(
-                    taskId: widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id,
+                    taskId: widget.task.guid.isNotEmpty
+                        ? widget.task.guid
+                        : widget.task.id,
                   ),
                 ),
               ],
@@ -181,7 +192,8 @@ class _TaskCardState extends State<TaskCard> {
               Divider(height: 1, color: Colors.grey.shade200),
 
               Padding(
-                padding: EdgeInsets.fromLTRB(isSmall ? 4 : 8, isSmall ? 2 : 4, isSmall ? 4 : 8, isSmall ? 3 : 6),
+                padding: EdgeInsets.fromLTRB(isSmall ? 4 : 8, isSmall ? 2 : 4,
+                    isSmall ? 4 : 8, isSmall ? 3 : 6),
                 child: _buildCompactActionBar(),
               ),
             ],
@@ -195,7 +207,8 @@ class _TaskCardState extends State<TaskCard> {
   Widget _buildPremiumHeader(Color statusColor) {
     final isSmall = MediaQuery.of(context).size.width < 420;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 14, vertical: isSmall ? 6 : 10),
+      padding: EdgeInsets.symmetric(
+          horizontal: isSmall ? 8 : 14, vertical: isSmall ? 6 : 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -230,7 +243,9 @@ class _TaskCardState extends State<TaskCard> {
               ],
             ),
             child: Icon(
-              _isCollectionTask() ? Icons.attach_money : _getPriorityIcon(widget.task.priority),
+              _isCollectionTask()
+                  ? Icons.attach_money
+                  : _getPriorityIcon(widget.task.priority),
               color: Colors.white,
               size: 16,
             ),
@@ -257,31 +272,39 @@ class _TaskCardState extends State<TaskCard> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (_isCollectionTask() && widget.task.amount.isNotEmpty) ...[
+                  if (_isCollectionTask() && widget.task.hasAmount) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFF8F00),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${widget.task.amount} د.ع',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                        '${widget.task.amountFormatted} د.ع',
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
                       ),
                     ),
                   ],
-                  if (!_isMaintenanceTask() && widget.task.deliveryFee.isNotEmpty) ...[
+                  if (!_isMaintenanceTask() && widget.task.hasDeliveryFee) ...[
                     const SizedBox(width: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: const Color(0xFF00897B),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${_getFeeLabel()} ${widget.task.deliveryFee} د.ع',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                        '${_getFeeLabel()} ${widget.task.deliveryFeeFormatted} د.ع',
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
                       ),
                     ),
                   ],
@@ -299,6 +322,14 @@ class _TaskCardState extends State<TaskCard> {
             ),
           ),
 
+          // مؤشر SLA
+          if (widget.task.hasSla &&
+              !widget.task.isCompleted &&
+              !widget.task.isCancelled)
+            _buildSlaIndicator(),
+
+          const SizedBox(width: 6),
+
           // حالة المهمة
           _buildCompactStatusBadge(),
         ],
@@ -308,6 +339,70 @@ class _TaskCardState extends State<TaskCard> {
 
   Widget _buildCompactHeader() {
     return _buildPremiumHeader(_getStatusColor(widget.task.status));
+  }
+
+  /// مؤشر SLA بصري (أخضر/أصفر/أحمر)
+  Widget _buildSlaIndicator() {
+    final status = widget.task.slaStatus;
+    final remaining = widget.task.slaRemaining;
+    if (remaining == null) return const SizedBox.shrink();
+
+    final Color color;
+    final IconData icon;
+    switch (status) {
+      case 'overdue':
+        color = const Color(0xFFEF4444);
+        icon = Icons.warning_rounded;
+        break;
+      case 'warning':
+        color = const Color(0xFFF59E0B);
+        icon = Icons.schedule;
+        break;
+      default:
+        color = const Color(0xFF10B981);
+        icon = Icons.check_circle_outline;
+    }
+
+    // تنسيق الوقت المتبقي
+    final String timeText;
+    final totalMinutes = remaining.inMinutes.abs();
+    if (totalMinutes < 60) {
+      timeText = '$totalMinutesد';
+    } else if (totalMinutes < 1440) {
+      final h = totalMinutes ~/ 60;
+      final m = totalMinutes % 60;
+      timeText = m > 0 ? '$hس $mد' : '$hس';
+    } else {
+      final d = totalMinutes ~/ 1440;
+      final h = (totalMinutes % 1440) ~/ 60;
+      timeText = h > 0 ? '$dي $hس' : '$dي';
+    }
+
+    return Tooltip(
+      message: status == 'overdue'
+          ? 'متأخر بـ $timeText عن الموعد المحدد (${widget.task.slaHours} دقيقة)'
+          : 'متبقي $timeText من أصل ${widget.task.slaHours} دقيقة',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 3),
+            Text(
+              status == 'overdue' ? '-$timeText' : timeText,
+              style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w700, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// حالة مضغوطة فخمة
@@ -371,36 +466,67 @@ class _TaskCardState extends State<TaskCard> {
     final cols = isMobile ? 2 : 3; // حقلين على الهاتف، 3 على الديسكتوب
 
     final tiles = <Widget>[
-      _buildInfoTile(Icons.person_outline_rounded, 'العميل', widget.task.username, const Color(0xFF3498DB), compact: compact),
-      _buildInfoTile(Icons.engineering_outlined, 'الفني', widget.task.technician, const Color(0xFF009688), compact: compact,
-        trailing: widget.task.technician.isNotEmpty && widget.task.technician != 'غير متوفر'
-            ? _buildMiniIconButton(Icons.send_rounded, const Color(0xFF009688), () => _sendTaskToTechnician(widget.task.technician))
-            : null),
-      _buildInfoTile(Icons.hub_outlined, 'FBG', widget.task.fbg, const Color(0xFF27AE60), compact: compact),
-      _buildInfoTile(Icons.phone_outlined, 'الهاتف', widget.task.phone, const Color(0xFF8E44AD), compact: compact,
-        trailing: widget.task.phone.isNotEmpty
-            ? _buildMiniIconButton(Icons.copy_rounded, const Color(0xFF8E44AD), () => _copyPhoneNumber(widget.task.phone))
-            : null),
-      if (widget.task.agentName.isNotEmpty)
-        _buildInfoTile(Icons.storefront_outlined, 'الوكيل',
-          '${widget.task.agentName}${widget.task.pageId.isNotEmpty ? ' - ${widget.task.pageId}' : ''}',
-          const Color(0xFF6C3483), compact: compact,
-          trailing: widget.task.pageId.isNotEmpty
-              ? _buildMiniIconButton(Icons.copy_rounded, const Color(0xFF6C3483), () {
-                  Clipboard.setData(ClipboardData(text: widget.task.pageId));
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم نسخ: ${widget.task.pageId}'), duration: const Duration(seconds: 2)));
-                })
+      _buildInfoTile(Icons.person_outline_rounded, 'العميل',
+          widget.task.username, const Color(0xFF3498DB),
+          compact: compact),
+      _buildInfoTile(Icons.engineering_outlined, 'الفني',
+          widget.task.technician, const Color(0xFF009688),
+          compact: compact,
+          trailing: widget.task.technician.isNotEmpty &&
+                  widget.task.technician != 'غير متوفر'
+              ? _buildMiniIconButton(
+                  Icons.send_rounded,
+                  const Color(0xFF009688),
+                  () => _sendTaskToTechnician(widget.task.technician))
               : null),
-      if (widget.task.amount.isNotEmpty)
-        _buildInfoTile(Icons.payments_outlined, _getAmountLabel(), '${_formatAmount(widget.task.amount)} د.ع', const Color(0xFFE74C3C), compact: compact),
-      if (widget.task.deliveryFee.isNotEmpty && !_isMaintenanceTask())
-        _buildInfoTile(Icons.local_shipping, _getFeeLabel(), '${_formatAmount(widget.task.deliveryFee)} د.ع', const Color(0xFF00897B), compact: compact),
+      _buildInfoTile(
+          Icons.hub_outlined, 'FBG', widget.task.fbg, const Color(0xFF27AE60),
+          compact: compact),
+      _buildInfoTile(Icons.phone_outlined, 'الهاتف', widget.task.phone,
+          const Color(0xFF8E44AD),
+          compact: compact,
+          trailing: widget.task.phone.isNotEmpty
+              ? _buildMiniIconButton(
+                  Icons.copy_rounded,
+                  const Color(0xFF8E44AD),
+                  () => _copyPhoneNumber(widget.task.phone))
+              : null),
+      if (widget.task.agentName.isNotEmpty)
+        _buildInfoTile(
+            Icons.storefront_outlined,
+            'الوكيل',
+            '${widget.task.agentName}${widget.task.pageId.isNotEmpty ? ' - ${widget.task.pageId}' : ''}',
+            const Color(0xFF6C3483),
+            compact: compact,
+            trailing: widget.task.pageId.isNotEmpty
+                ? _buildMiniIconButton(
+                    Icons.copy_rounded, const Color(0xFF6C3483), () {
+                    Clipboard.setData(ClipboardData(text: widget.task.pageId));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('تم نسخ: ${widget.task.pageId}'),
+                        duration: const Duration(seconds: 2)));
+                  })
+                : null),
+      if (widget.task.hasAmount)
+        _buildInfoTile(Icons.payments_outlined, _getAmountLabel(),
+            '${widget.task.amountFormatted} د.ع', const Color(0xFFE74C3C),
+            compact: compact),
+      if (widget.task.hasDeliveryFee && !_isMaintenanceTask())
+        _buildInfoTile(Icons.local_shipping, _getFeeLabel(),
+            '${widget.task.deliveryFeeFormatted} د.ع', const Color(0xFF00897B),
+            compact: compact),
       if (widget.task.createdByName.isNotEmpty)
-        _buildInfoTile(Icons.person_add_outlined, 'أنشأها', widget.task.createdByName, const Color(0xFF2E86C1), compact: compact),
+        _buildInfoTile(Icons.person_add_outlined, 'أنشأها',
+            widget.task.createdByName, const Color(0xFF2E86C1),
+            compact: compact),
       if (widget.task.serviceType.isNotEmpty)
-        _buildInfoTile(Icons.speed_outlined, 'الخدمة', '${widget.task.serviceType} Mbps', const Color(0xFFE67E22), compact: compact),
+        _buildInfoTile(Icons.speed_outlined, 'الخدمة',
+            '${widget.task.serviceType} Mbps', const Color(0xFFE67E22),
+            compact: compact),
       if (widget.task.subscriptionDuration.isNotEmpty)
-        _buildInfoTile(Icons.timer_outlined, 'المدة', widget.task.subscriptionDuration, const Color(0xFF16A085), compact: compact),
+        _buildInfoTile(Icons.timer_outlined, 'المدة',
+            widget.task.subscriptionDuration, const Color(0xFF16A085),
+            compact: compact),
     ];
 
     // بناء الصفوف ديناميكياً حسب عدد الأعمدة
@@ -707,12 +833,18 @@ class _TaskCardState extends State<TaskCard> {
                   color: Colors.indigo.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: const Icon(Icons.timeline_rounded, size: 14, color: Colors.indigo),
+                child: const Icon(Icons.timeline_rounded,
+                    size: 14, color: Colors.indigo),
               ),
               const SizedBox(width: 6),
-              const Text('سجل الحالة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.indigo)),
+              const Text('سجل الحالة',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.indigo)),
               const Spacer(),
-              Text('${history.length} تغيير', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+              Text('${history.length} تغيير',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
             ],
           ),
           const SizedBox(height: 8),
@@ -726,10 +858,13 @@ class _TaskCardState extends State<TaskCard> {
                   Column(
                     children: [
                       Container(
-                        width: 10, height: 10,
-                        decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                            color: statusColor, shape: BoxShape.circle),
                       ),
-                      Container(width: 2, height: 20, color: Colors.grey.shade300),
+                      Container(
+                          width: 2, height: 20, color: Colors.grey.shade300),
                     ],
                   ),
                   const SizedBox(width: 8),
@@ -739,19 +874,34 @@ class _TaskCardState extends State<TaskCard> {
                       children: [
                         Row(
                           children: [
-                            Text(h.fromStatus, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, decoration: TextDecoration.lineThrough)),
-                            const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.arrow_forward, size: 12, color: Colors.grey)),
-                            Text(h.toStatus, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: statusColor)),
+                            Text(h.fromStatus,
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                    decoration: TextDecoration.lineThrough)),
+                            const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Icon(Icons.arrow_forward,
+                                    size: 12, color: Colors.grey)),
+                            Text(h.toStatus,
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: statusColor)),
                           ],
                         ),
                         Row(
                           children: [
                             if (h.changedBy.isNotEmpty)
-                              Text(h.changedBy, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                              Text(h.changedBy,
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade500)),
                             const SizedBox(width: 8),
                             Text(
                               DateFormat('MM/dd HH:mm').format(h.changedAt),
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.grey.shade400),
                             ),
                           ],
                         ),
@@ -764,7 +914,8 @@ class _TaskCardState extends State<TaskCard> {
           }),
           if (history.length > 5)
             Center(
-              child: Text('+ ${history.length - 5} تغييرات أخرى', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+              child: Text('+ ${history.length - 5} تغييرات أخرى',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
             ),
         ],
       ),
@@ -777,7 +928,8 @@ class _TaskCardState extends State<TaskCard> {
     if (_commentsLoaded || _isLoadingComments) return;
     setState(() => _isLoadingComments = true);
     try {
-      final taskId = widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id;
+      final taskId =
+          widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id;
       final result = await TaskApiService.instance.getComments(taskId);
       if (result['success'] == true && mounted) {
         final data = result['data'];
@@ -801,26 +953,35 @@ class _TaskCardState extends State<TaskCard> {
     if (text.isEmpty) return;
     setState(() => _isSendingComment = true);
     try {
-      final taskId = widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id;
-      final result = await TaskApiService.instance.addComment(taskId, content: text);
+      final taskId =
+          widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id;
+      final result =
+          await TaskApiService.instance.addComment(taskId, content: text);
       if (result['success'] == true && mounted) {
         _commentController.clear();
         _commentsLoaded = false;
         await _loadComments();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم إضافة التعليق'), backgroundColor: Colors.green, duration: Duration(seconds: 2)),
+            const SnackBar(
+                content: Text('تم إضافة التعليق'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2)),
           );
         }
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'فشل إضافة التعليق'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text(result['message'] ?? 'فشل إضافة التعليق'),
+              backgroundColor: Colors.red),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('خطأ في إضافة التعليق'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('خطأ في إضافة التعليق'),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -852,24 +1013,38 @@ class _TaskCardState extends State<TaskCard> {
                   color: Colors.teal.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: const Icon(Icons.comment_outlined, size: 14, color: Colors.teal),
+                child: const Icon(Icons.comment_outlined,
+                    size: 14, color: Colors.teal),
               ),
               const SizedBox(width: 6),
-              const Text('التعليقات', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.teal)),
+              const Text('التعليقات',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.teal)),
               const Spacer(),
               if (_comments.isNotEmpty)
-                Text('${_comments.length}', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                Text('${_comments.length}',
+                    style:
+                        TextStyle(fontSize: 11, color: Colors.grey.shade500)),
             ],
           ),
           const SizedBox(height: 8),
 
           // قائمة التعليقات
           if (_isLoadingComments)
-            const Center(child: Padding(padding: EdgeInsets.all(8), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
+            const Center(
+                child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))))
           else if (_comments.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text('لا توجد تعليقات بعد', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+              child: Text('لا توجد تعليقات بعد',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
             )
           else
             ..._comments.take(5).map((c) => _buildCommentItem(c)),
@@ -877,7 +1052,10 @@ class _TaskCardState extends State<TaskCard> {
           if (_comments.length > 5)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Center(child: Text('+ ${_comments.length - 5} تعليقات أخرى', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
+              child: Center(
+                  child: Text('+ ${_comments.length - 5} تعليقات أخرى',
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.grey.shade500))),
             ),
 
           const SizedBox(height: 8),
@@ -892,13 +1070,22 @@ class _TaskCardState extends State<TaskCard> {
                   style: const TextStyle(fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'أضف تعليقاً...',
-                    hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                    hintStyle:
+                        TextStyle(fontSize: 12, color: Colors.grey.shade400),
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey.shade300)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: Colors.grey.shade300)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: Colors.teal, width: 1.5)),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(color: Colors.grey.shade300)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide(color: Colors.grey.shade300)),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide:
+                            const BorderSide(color: Colors.teal, width: 1.5)),
                   ),
                 ),
               ),
@@ -908,12 +1095,18 @@ class _TaskCardState extends State<TaskCard> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _isSendingComment ? Colors.grey.shade300 : Colors.teal,
+                    color:
+                        _isSendingComment ? Colors.grey.shade300 : Colors.teal,
                     shape: BoxShape.circle,
                   ),
                   child: _isSendingComment
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.send_rounded,
+                          size: 16, color: Colors.white),
                 ),
               ),
             ],
@@ -924,9 +1117,16 @@ class _TaskCardState extends State<TaskCard> {
   }
 
   Widget _buildCommentItem(Map<String, dynamic> comment) {
-    final content = comment['Content']?.toString() ?? comment['content']?.toString() ?? '';
-    final author = comment['UserName']?.toString() ?? comment['userName']?.toString() ?? comment['CreatedByName']?.toString() ?? comment['createdBy']?.toString() ?? '';
-    final dateStr = comment['CreatedAt']?.toString() ?? comment['createdAt']?.toString() ?? '';
+    final content =
+        comment['Content']?.toString() ?? comment['content']?.toString() ?? '';
+    final author = comment['UserName']?.toString() ??
+        comment['userName']?.toString() ??
+        comment['CreatedByName']?.toString() ??
+        comment['createdBy']?.toString() ??
+        '';
+    final dateStr = comment['CreatedAt']?.toString() ??
+        comment['createdAt']?.toString() ??
+        '';
     final date = DateTime.tryParse(dateStr);
 
     return Container(
@@ -947,7 +1147,10 @@ class _TaskCardState extends State<TaskCard> {
               Expanded(
                 child: Text(
                   author.isNotEmpty ? author : 'مجهول',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700),
                 ),
               ),
               if (date != null)
@@ -958,7 +1161,9 @@ class _TaskCardState extends State<TaskCard> {
             ],
           ),
           const SizedBox(height: 4),
-          Text(content, style: const TextStyle(fontSize: 12, color: Color(0xFF1A1A2E), height: 1.4)),
+          Text(content,
+              style: const TextStyle(
+                  fontSize: 12, color: Color(0xFF1A1A2E), height: 1.4)),
         ],
       ),
     );
@@ -983,7 +1188,8 @@ class _TaskCardState extends State<TaskCard> {
       }
       // نجلب الشركة من VpsAuthService
       final companyId = VpsAuthService.instance.currentCompanyId ?? '';
-      final result = await InventoryApiService.instance.getDispensingsByServiceRequest(
+      final result =
+          await InventoryApiService.instance.getDispensingsByServiceRequest(
         taskGuid,
         companyId: companyId,
       );
@@ -1046,27 +1252,38 @@ class _TaskCardState extends State<TaskCard> {
                   color: Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: const Icon(Icons.inventory_2_outlined, size: 14, color: Colors.orange),
+                child: const Icon(Icons.inventory_2_outlined,
+                    size: 14, color: Colors.orange),
               ),
               const SizedBox(width: 6),
-              const Text('المواد المصروفة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange)),
+              const Text('المواد المصروفة',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.orange)),
               const Spacer(),
               if (_dispensedMaterials.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.orange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text('${_dispensedMaterials.length}', style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.w600)),
+                    child: Text('${_dispensedMaterials.length}',
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.orange,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ),
               GestureDetector(
                 onTap: _showAddMaterialsDialog,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.orange,
                     borderRadius: BorderRadius.circular(12),
@@ -1076,7 +1293,11 @@ class _TaskCardState extends State<TaskCard> {
                     children: [
                       Icon(Icons.add, size: 13, color: Colors.white),
                       SizedBox(width: 2),
-                      Text('إضافة', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
+                      Text('إضافة',
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
@@ -1087,11 +1308,19 @@ class _TaskCardState extends State<TaskCard> {
 
           // القائمة
           if (_isLoadingMaterials)
-            const Center(child: Padding(padding: EdgeInsets.all(8), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))))
+            const Center(
+                child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.orange))))
           else if (_dispensedMaterials.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text('لا توجد مواد مصروفة', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+              child: Text('لا توجد مواد مصروفة',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
             )
           else
             ..._dispensedMaterials.map((m) => _buildMaterialItem(m)),
@@ -1124,14 +1353,19 @@ class _TaskCardState extends State<TaskCard> {
               color: Colors.orange.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(Icons.build_circle_outlined, size: 16, color: Colors.orange),
+            child: const Icon(Icons.build_circle_outlined,
+                size: 16, color: Colors.orange),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E))),
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A2E))),
               ],
             ),
           ),
@@ -1144,19 +1378,26 @@ class _TaskCardState extends State<TaskCard> {
                   color: Colors.orange.shade50,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text('$net', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange.shade800)),
+                child: Text('$net',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.orange.shade800)),
               ),
               if (returned > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
-                  child: Text('مرجع: $returned', style: TextStyle(fontSize: 10, color: Colors.green.shade600)),
+                  child: Text('مرجع: $returned',
+                      style: TextStyle(
+                          fontSize: 10, color: Colors.green.shade600)),
                 ),
             ],
           ),
           if (voucher.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Text(voucher, style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+              child: Text(voucher,
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
             ),
         ],
       ),
@@ -1188,12 +1429,18 @@ class _TaskCardState extends State<TaskCard> {
               try {
                 // جلب عُهدة الفني
                 if (techId.isNotEmpty) {
-                  final res = await InventoryApiService.instance.getTechnicianHoldings(techId);
-                  holdings = ((res['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+                  final res = await InventoryApiService.instance
+                      .getTechnicianHoldings(techId);
+                  holdings = ((res['data'] as List?) ?? [])
+                      .map((e) => Map<String, dynamic>.from(e as Map))
+                      .toList();
                 }
                 // جلب كل المواد المتاحة بالنظام
-                final itemsRes = await InventoryApiService.instance.getItems(companyId: companyId);
-                allItems = ((itemsRes['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+                final itemsRes = await InventoryApiService.instance
+                    .getItems(companyId: companyId);
+                allItems = ((itemsRes['data'] as List?) ?? [])
+                    .map((e) => Map<String, dynamic>.from(e as Map))
+                    .toList();
               } catch (_) {}
               if (ctx.mounted) setD(() => loading = false);
             });
@@ -1208,26 +1455,44 @@ class _TaskCardState extends State<TaskCard> {
                 Text('صرف مواد للعميل', style: TextStyle(fontSize: 16)),
               ]),
               content: SizedBox(
-                width: context.responsive.isMobile ? context.responsive.availableWidth * 0.9 : 550,
+                width: context.responsive.isMobile
+                    ? context.responsive.availableWidth * 0.9
+                    : 550,
                 child: loading
-                    ? const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()))
+                    ? const SizedBox(
+                        height: 100,
+                        child: Center(child: CircularProgressIndicator()))
                     : allItems.isEmpty && holdings.isEmpty && rows.isEmpty
                         ? const Padding(
                             padding: EdgeInsets.all(20),
-                            child: Center(child: Text('لا توجد مواد في النظام.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey))),
+                            child: Center(
+                                child: Text('لا توجد مواد في النظام.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 14, color: Colors.grey))),
                           )
-                        : SingleChildScrollView(child: Column(
+                        : SingleChildScrollView(
+                            child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // عرض المواد المتوفرة بعُهدة الفني
                               Container(
                                 padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
+                                decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    borderRadius: BorderRadius.circular(8)),
                                 child: Row(children: [
-                                  Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                                  Icon(Icons.info_outline,
+                                      size: 16, color: Colors.blue.shade700),
                                   const SizedBox(width: 6),
-                                  Expanded(child: Text('اختر المواد المستخدمة (يمكن الصرف حتى بدون رصيد بالعُهدة)', style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600))),
+                                  Expanded(
+                                      child: Text(
+                                          'اختر المواد المستخدمة (يمكن الصرف حتى بدون رصيد بالعُهدة)',
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.blue.shade700,
+                                              fontWeight: FontWeight.w600))),
                                 ]),
                               ),
                               const SizedBox(height: 12),
@@ -1236,42 +1501,88 @@ class _TaskCardState extends State<TaskCard> {
                                 final idx = entry.key;
                                 final row = entry.value;
                                 // حساب المتوفر
-                                final selected = holdings.where((h) => (h['InventoryItemId'] ?? h['inventoryItemId'])?.toString() == row.itemId);
-                                final available = selected.isNotEmpty ? (selected.first['RemainingQuantity'] ?? selected.first['remainingQuantity'] ?? 0) : 0;
+                                final selected = holdings.where((h) =>
+                                    (h['InventoryItemId'] ??
+                                            h['inventoryItemId'])
+                                        ?.toString() ==
+                                    row.itemId);
+                                final available = selected.isNotEmpty
+                                    ? (selected.first['RemainingQuantity'] ??
+                                        selected.first['remainingQuantity'] ??
+                                        0)
+                                    : 0;
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: Row(children: [
                                     Expanded(
                                       flex: 3,
                                       child: DropdownButtonFormField<String>(
-                                        value: row.itemId.isEmpty ? null : row.itemId,
+                                        value: row.itemId.isEmpty
+                                            ? null
+                                            : row.itemId,
                                         isExpanded: true,
-                                        decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
-                                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                        decoration: const InputDecoration(
+                                            labelText: 'المادة',
+                                            border: OutlineInputBorder(),
+                                            isDense: true),
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black87),
                                         items: () {
                                           // دمج كل المواد مع رصيد العُهدة
-                                          final Map<String, Map<String, dynamic>> merged = {};
+                                          final Map<String,
+                                              Map<String, dynamic>> merged = {};
                                           for (final item in allItems) {
-                                            final id = (item['Id'] ?? item['id'])?.toString() ?? '';
+                                            final id =
+                                                (item['Id'] ?? item['id'])
+                                                        ?.toString() ??
+                                                    '';
                                             if (id.isEmpty) continue;
-                                            merged[id] = {'id': id, 'name': (item['Name'] ?? item['name'])?.toString() ?? '', 'holding': 0};
+                                            merged[id] = {
+                                              'id': id,
+                                              'name':
+                                                  (item['Name'] ?? item['name'])
+                                                          ?.toString() ??
+                                                      '',
+                                              'holding': 0
+                                            };
                                           }
                                           for (final h in holdings) {
-                                            final id = (h['InventoryItemId'] ?? h['inventoryItemId'])?.toString() ?? '';
-                                            final rem = (h['RemainingQuantity'] ?? h['remainingQuantity'] ?? 0) as num;
+                                            final id = (h['InventoryItemId'] ??
+                                                        h['inventoryItemId'])
+                                                    ?.toString() ??
+                                                '';
+                                            final rem =
+                                                (h['RemainingQuantity'] ??
+                                                    h['remainingQuantity'] ??
+                                                    0) as num;
                                             if (merged.containsKey(id)) {
                                               merged[id]!['holding'] = rem;
                                             } else {
-                                              merged[id] = {'id': id, 'name': (h['ItemName'] ?? h['itemName'])?.toString() ?? '', 'holding': rem};
+                                              merged[id] = {
+                                                'id': id,
+                                                'name': (h['ItemName'] ??
+                                                            h['itemName'])
+                                                        ?.toString() ??
+                                                    '',
+                                                'holding': rem
+                                              };
                                             }
                                           }
                                           return merged.values.map((m) {
                                             final hld = m['holding'] as num;
-                                            final suffix = hld > 0 ? ' (عُهدة: $hld)' : '';
-                                            return DropdownMenuItem<String>(value: m['id'] as String, child: Text('${m['name']}$suffix', overflow: TextOverflow.ellipsis));
+                                            final suffix =
+                                                hld > 0 ? ' (عُهدة: $hld)' : '';
+                                            return DropdownMenuItem<String>(
+                                                value: m['id'] as String,
+                                                child: Text(
+                                                    '${m['name']}$suffix',
+                                                    overflow:
+                                                        TextOverflow.ellipsis));
                                           }).toList();
                                         }(),
-                                        onChanged: (v) => setD(() => row.itemId = v ?? ''),
+                                        onChanged: (v) =>
+                                            setD(() => row.itemId = v ?? ''),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -1281,58 +1592,100 @@ class _TaskCardState extends State<TaskCard> {
                                         initialValue: '${row.quantity}',
                                         keyboardType: TextInputType.number,
                                         textAlign: TextAlign.center,
-                                        decoration: InputDecoration(labelText: 'العدد', border: const OutlineInputBorder(), isDense: true,
-                                          helperText: available > 0 ? 'عُهدة: $available' : 'بدون عُهدة', helperStyle: TextStyle(fontSize: 9, color: available > 0 ? Colors.green.shade700 : Colors.orange.shade700)),
+                                        decoration: InputDecoration(
+                                            labelText: 'العدد',
+                                            border: const OutlineInputBorder(),
+                                            isDense: true,
+                                            helperText: available > 0
+                                                ? 'عُهدة: $available'
+                                                : 'بدون عُهدة',
+                                            helperStyle: TextStyle(
+                                                fontSize: 9,
+                                                color: available > 0
+                                                    ? Colors.green.shade700
+                                                    : Colors.orange.shade700)),
                                         style: const TextStyle(fontSize: 13),
-                                        onChanged: (v) => row.quantity = int.tryParse(v) ?? 1,
+                                        onChanged: (v) =>
+                                            row.quantity = int.tryParse(v) ?? 1,
                                       ),
                                     ),
                                     const SizedBox(width: 4),
-                                    InkWell(onTap: () => setD(() => rows.removeAt(idx)), child: const Icon(Icons.remove_circle, size: 22, color: Colors.red)),
+                                    InkWell(
+                                        onTap: () =>
+                                            setD(() => rows.removeAt(idx)),
+                                        child: const Icon(Icons.remove_circle,
+                                            size: 22, color: Colors.red)),
                                   ]),
                                 );
                               }),
 
-                              Center(child: TextButton.icon(
-                                onPressed: () => setD(() => rows.add(_MaterialRow())),
+                              Center(
+                                  child: TextButton.icon(
+                                onPressed: () =>
+                                    setD(() => rows.add(_MaterialRow())),
                                 icon: const Icon(Icons.add, size: 16),
                                 label: const Text('إضافة مادة'),
                               )),
 
                               if (rows.isEmpty)
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: Center(child: Text('اضغط "إضافة مادة" لتحديد المواد المستخدمة', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  child: Center(
+                                      child: Text(
+                                          'اضغط "إضافة مادة" لتحديد المواد المستخدمة',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey.shade500))),
                                 ),
                             ],
                           )),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('إلغاء')),
                 FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-                  onPressed: rows.isEmpty ? null : () async {
-                    final validItems = rows.where((r) => r.itemId.isNotEmpty && r.quantity > 0).toList();
-                    if (validItems.isEmpty) return;
-                    try {
-                      await InventoryApiService.instance.useFromTechnicianHoldings(data: {
-                        'technicianId': techId,
-                        'serviceRequestId': taskGuid,
-                        'companyId': companyId,
-                        'items': validItems.map((r) => {'inventoryItemId': r.itemId, 'quantity': r.quantity}).toList(),
-                      });
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      _materialsLoaded = false;
-                      _loadDispensedMaterials();
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم صرف المواد من عُهدة الفني'), backgroundColor: Colors.green));
-                      }
-                    } catch (e) {
-                      if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
-                      }
-                    }
-                  },
+                  onPressed: rows.isEmpty
+                      ? null
+                      : () async {
+                          final validItems = rows
+                              .where(
+                                  (r) => r.itemId.isNotEmpty && r.quantity > 0)
+                              .toList();
+                          if (validItems.isEmpty) return;
+                          try {
+                            await InventoryApiService.instance
+                                .useFromTechnicianHoldings(data: {
+                              'technicianId': techId,
+                              'serviceRequestId': taskGuid,
+                              'companyId': companyId,
+                              'items': validItems
+                                  .map((r) => {
+                                        'inventoryItemId': r.itemId,
+                                        'quantity': r.quantity
+                                      })
+                                  .toList(),
+                            });
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            _materialsLoaded = false;
+                            _loadDispensedMaterials();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('تم صرف المواد من عُهدة الفني'),
+                                      backgroundColor: Colors.green));
+                            }
+                          } catch (e) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                  content: Text('خطأ: $e'),
+                                  backgroundColor: Colors.red));
+                            }
+                          }
+                        },
                   child: const Text('حفظ'),
                 ),
               ],
@@ -1351,19 +1704,25 @@ class _TaskCardState extends State<TaskCard> {
     final primaryButtons = <Widget>[];
     if (widget.task.phone.isNotEmpty || widget.task.username.isNotEmpty) {
       primaryButtons.add(_buildCompactActionButton(
-        Icons.open_in_new_rounded, 'تفاصيل', const Color(0xFF1565C0),
+        Icons.open_in_new_rounded,
+        'تفاصيل',
+        const Color(0xFF1565C0),
         _openSubscriptionDetails,
       ));
     }
     if (widget.task.phone.isNotEmpty) {
       primaryButtons.add(_buildCompactActionButton(
-        Icons.message_rounded, 'واتساب', const Color(0xFF25D366),
+        Icons.message_rounded,
+        'واتساب',
+        const Color(0xFF25D366),
         () => _launchWhatsApp(widget.task.phone),
       ));
     }
     if (widget.task.fbg.isNotEmpty || widget.task.fat.isNotEmpty) {
       primaryButtons.add(_buildCompactActionButton(
-        Icons.map_rounded, 'خريطة', const Color(0xFF0097A7),
+        Icons.map_rounded,
+        'خريطة',
+        const Color(0xFF0097A7),
         _openZonesMap,
       ));
     }
@@ -1371,34 +1730,49 @@ class _TaskCardState extends State<TaskCard> {
     // الأزرار الثانوية (popup menu على الموبايل)
     final menuItems = <PopupMenuEntry<String>>[];
     if (widget.currentUserRole == 'ليدر' || widget.currentUserRole == 'مدير') {
-      menuItems.add(const PopupMenuItem(value: 'agent', child: Row(children: [
-        Icon(Icons.group_rounded, size: 18, color: Color(0xFF8E44AD)),
-        SizedBox(width: 8), Text('وكيل'),
-      ])));
+      menuItems.add(const PopupMenuItem(
+          value: 'agent',
+          child: Row(children: [
+            Icon(Icons.group_rounded, size: 18, color: Color(0xFF8E44AD)),
+            SizedBox(width: 8),
+            Text('وكيل'),
+          ])));
     }
     if (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر') {
-      menuItems.add(const PopupMenuItem(value: 'edit', child: Row(children: [
-        Icon(Icons.edit_rounded, size: 18, color: Color(0xFF3498DB)),
-        SizedBox(width: 8), Text('تعديل'),
-      ])));
+      menuItems.add(const PopupMenuItem(
+          value: 'edit',
+          child: Row(children: [
+            Icon(Icons.edit_rounded, size: 18, color: Color(0xFF3498DB)),
+            SizedBox(width: 8),
+            Text('تعديل'),
+          ])));
     }
     if (widget.currentUserRole == 'مدير') {
-      menuItems.add(const PopupMenuItem(value: 'delete', child: Row(children: [
-        Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFE74C3C)),
-        SizedBox(width: 8), Text('حذف'),
-      ])));
+      menuItems.add(const PopupMenuItem(
+          value: 'delete',
+          child: Row(children: [
+            Icon(Icons.delete_outline_rounded,
+                size: 18, color: Color(0xFFE74C3C)),
+            SizedBox(width: 8),
+            Text('حذف'),
+          ])));
     }
     // زر التفعيل في القائمة المنبثقة (موبايل)
     if (widget.task.isCompleted &&
         !widget.task.notes.contains('[مفعّل]') &&
-        (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر')) {
-      menuItems.add(const PopupMenuItem(value: 'activate', child: Row(children: [
-        Icon(Icons.verified_rounded, size: 18, color: Color(0xFF27AE60)),
-        SizedBox(width: 8), Text('تفعيل'),
-      ])));
+        (widget.currentUserRole == 'مدير' ||
+            widget.currentUserRole == 'ليدر')) {
+      menuItems.add(const PopupMenuItem(
+          value: 'activate',
+          child: Row(children: [
+            Icon(Icons.verified_rounded, size: 18, color: Color(0xFF27AE60)),
+            SizedBox(width: 8),
+            Text('تفعيل'),
+          ])));
     }
 
-    if (primaryButtons.isEmpty && menuItems.isEmpty) return const SizedBox.shrink();
+    if (primaryButtons.isEmpty && menuItems.isEmpty)
+      return const SizedBox.shrink();
 
     // على الموبايل: أزرار رئيسية + قائمة منبثقة
     if (isMobile && menuItems.isNotEmpty) {
@@ -1412,10 +1786,18 @@ class _TaskCardState extends State<TaskCard> {
                 child: PopupMenuButton<String>(
                   onSelected: (value) {
                     switch (value) {
-                      case 'agent': _showAgentsDialog(); break;
-                      case 'edit': _showEditTaskDialog(); break;
-                      case 'delete': _confirmDeleteTask(); break;
-                      case 'activate': _markAsActivated(); break;
+                      case 'agent':
+                        _showAgentsDialog();
+                        break;
+                      case 'edit':
+                        _showEditTaskDialog();
+                        break;
+                      case 'delete':
+                        _confirmDeleteTask();
+                        break;
+                      case 'activate':
+                        _markAsActivated();
+                        break;
                     }
                   },
                   itemBuilder: (_) => menuItems,
@@ -1428,9 +1810,14 @@ class _TaskCardState extends State<TaskCard> {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.more_horiz, size: 18, color: Color(0xFF6B7280)),
+                        Icon(Icons.more_horiz,
+                            size: 18, color: Color(0xFF6B7280)),
                         SizedBox(width: 4),
-                        Text('المزيد', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+                        Text('المزيد',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF6B7280),
+                                fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -1444,20 +1831,27 @@ class _TaskCardState extends State<TaskCard> {
     // على الديسكتوب: كل الأزرار في صف واحد
     final allButtons = [...primaryButtons];
     if (widget.currentUserRole == 'ليدر' || widget.currentUserRole == 'مدير') {
-      allButtons.add(_buildCompactActionButton(Icons.group_rounded, 'وكيل', const Color(0xFF8E44AD), _showAgentsDialog));
+      allButtons.add(_buildCompactActionButton(Icons.group_rounded, 'وكيل',
+          const Color(0xFF8E44AD), _showAgentsDialog));
     }
     if (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر') {
-      allButtons.add(_buildCompactActionButton(Icons.edit_rounded, 'تعديل', const Color(0xFF3498DB), _showEditTaskDialog));
+      allButtons.add(_buildCompactActionButton(Icons.edit_rounded, 'تعديل',
+          const Color(0xFF3498DB), _showEditTaskDialog));
     }
     if (widget.currentUserRole == 'مدير') {
-      allButtons.add(_buildCompactActionButton(Icons.delete_outline_rounded, 'حذف', const Color(0xFFE74C3C), _confirmDeleteTask));
+      allButtons.add(_buildCompactActionButton(Icons.delete_outline_rounded,
+          'حذف', const Color(0xFFE74C3C), _confirmDeleteTask));
     }
     // زر تفعيل — يظهر فقط للمهام المكتملة غير المفعّلة (ليدر أو مدير)
     if (widget.task.isCompleted &&
         !widget.task.notes.contains('[مفعّل]') &&
-        (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر')) {
+        (widget.currentUserRole == 'مدير' ||
+            widget.currentUserRole == 'ليدر')) {
       allButtons.add(_buildCompactActionButton(
-        Icons.verified_rounded, 'تفعيل', const Color(0xFF27AE60), _markAsActivated,
+        Icons.verified_rounded,
+        'تفعيل',
+        const Color(0xFF27AE60),
+        _markAsActivated,
       ));
     }
     return Row(children: allButtons);
@@ -1575,7 +1969,7 @@ class _TaskCardState extends State<TaskCard> {
 
     String selectedStatus = widget.task.status;
     // تنسيق المبلغ المبدئي بفواصل المراتب
-    String initialAmount = widget.task.amount.replaceAll(',', '');
+    String initialAmount = widget.task.amount?.toInt().toString() ?? '';
     if (initialAmount.isNotEmpty) {
       final digits = initialAmount.replaceAll(RegExp(r'[^\d]'), '');
       if (digits.isNotEmpty) {
@@ -1588,7 +1982,8 @@ class _TaskCardState extends State<TaskCard> {
       }
     }
     // تنسيق أجور التوصيل المبدئية بفواصل المراتب
-    String initialDeliveryFee = widget.task.deliveryFee.replaceAll(',', '');
+    String initialDeliveryFee =
+        widget.task.deliveryFee?.toInt().toString() ?? '';
     if (initialDeliveryFee.isEmpty) {
       initialDeliveryFee = '1,000';
     } else {
@@ -1626,13 +2021,16 @@ class _TaskCardState extends State<TaskCard> {
             final statusColor = _getStatusColor(selectedStatus);
             final dialogWidth = MediaQuery.of(context).size.width;
             return Dialog(
-              insetPadding: EdgeInsets.symmetric(horizontal: context.responsive.isMobile ? 12 : 40, vertical: 24),
+              insetPadding: EdgeInsets.symmetric(
+                  horizontal: context.responsive.isMobile ? 12 : 40,
+                  vertical: 24),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
               elevation: 8,
               child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: context.responsive.dialogMaxWidth),
+                constraints:
+                    BoxConstraints(maxWidth: context.responsive.dialogMaxWidth),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1760,15 +2158,20 @@ class _TaskCardState extends State<TaskCard> {
                                       .replaceAll('٨', '8')
                                       .replaceAll('٩', '9');
                                   // إزالة كل شيء ماعدا الأرقام
-                                  final digits = converted.replaceAll(RegExp(r'[^\d]'), '');
+                                  final digits = converted.replaceAll(
+                                      RegExp(r'[^\d]'), '');
                                   if (digits.isEmpty) {
-                                    return const TextEditingValue(text: '', selection: TextSelection.collapsed(offset: 0));
+                                    return const TextEditingValue(
+                                        text: '',
+                                        selection:
+                                            TextSelection.collapsed(offset: 0));
                                   }
                                   // إضافة فواصل المراتب
                                   final buffer = StringBuffer();
                                   final len = digits.length;
                                   for (int i = 0; i < len; i++) {
-                                    if (i > 0 && (len - i) % 3 == 0) buffer.write(',');
+                                    if (i > 0 && (len - i) % 3 == 0)
+                                      buffer.write(',');
                                     buffer.write(digits[i]);
                                   }
                                   final formatted = buffer.toString();
@@ -1815,87 +2218,92 @@ class _TaskCardState extends State<TaskCard> {
 
                             // 2.5 حقل الأجور الثاني — يتغير حسب نوع المهمة (يختفي في الصيانة)
                             if (!_isMaintenanceTask()) ...[
-                            Text(_getFeeLabel(),
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade700)),
-                            const SizedBox(height: 6),
-                            TextField(
-                              controller: deliveryFeeController,
-                              keyboardType: TextInputType.number,
-                              textAlign: TextAlign.left,
-                              textDirection: TextDirection.ltr,
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w600),
-                              inputFormatters: [
-                                TextInputFormatter.withFunction(
-                                    (oldValue, newValue) {
-                                  String converted = newValue.text
-                                      .replaceAll('٠', '0')
-                                      .replaceAll('١', '1')
-                                      .replaceAll('٢', '2')
-                                      .replaceAll('٣', '3')
-                                      .replaceAll('٤', '4')
-                                      .replaceAll('٥', '5')
-                                      .replaceAll('٦', '6')
-                                      .replaceAll('٧', '7')
-                                      .replaceAll('٨', '8')
-                                      .replaceAll('٩', '9');
-                                  final digits = converted.replaceAll(RegExp(r'[^\d]'), '');
-                                  if (digits.isEmpty) {
-                                    return const TextEditingValue(text: '', selection: TextSelection.collapsed(offset: 0));
-                                  }
-                                  final buffer = StringBuffer();
-                                  final len = digits.length;
-                                  for (int i = 0; i < len; i++) {
-                                    if (i > 0 && (len - i) % 3 == 0) buffer.write(',');
-                                    buffer.write(digits[i]);
-                                  }
-                                  final formatted = buffer.toString();
-                                  return TextEditingValue(
-                                      text: formatted,
-                                      selection: TextSelection.collapsed(
-                                          offset: formatted.length));
-                                }),
-                              ],
-                              decoration: InputDecoration(
-                                hintText: '0',
-                                hintStyle:
-                                    TextStyle(color: Colors.grey.shade400),
-                                filled: true,
-                                fillColor: Colors.grey.shade50,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 12),
-                                prefixIcon: Container(
-                                  width: 36,
-                                  alignment: Alignment.center,
-                                  child: Icon(Icons.local_shipping,
-                                      size: 18, color: Colors.teal.shade600),
+                              Text(_getFeeLabel(),
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade700)),
+                              const SizedBox(height: 6),
+                              TextField(
+                                controller: deliveryFeeController,
+                                keyboardType: TextInputType.number,
+                                textAlign: TextAlign.left,
+                                textDirection: TextDirection.ltr,
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w600),
+                                inputFormatters: [
+                                  TextInputFormatter.withFunction(
+                                      (oldValue, newValue) {
+                                    String converted = newValue.text
+                                        .replaceAll('٠', '0')
+                                        .replaceAll('١', '1')
+                                        .replaceAll('٢', '2')
+                                        .replaceAll('٣', '3')
+                                        .replaceAll('٤', '4')
+                                        .replaceAll('٥', '5')
+                                        .replaceAll('٦', '6')
+                                        .replaceAll('٧', '7')
+                                        .replaceAll('٨', '8')
+                                        .replaceAll('٩', '9');
+                                    final digits = converted.replaceAll(
+                                        RegExp(r'[^\d]'), '');
+                                    if (digits.isEmpty) {
+                                      return const TextEditingValue(
+                                          text: '',
+                                          selection: TextSelection.collapsed(
+                                              offset: 0));
+                                    }
+                                    final buffer = StringBuffer();
+                                    final len = digits.length;
+                                    for (int i = 0; i < len; i++) {
+                                      if (i > 0 && (len - i) % 3 == 0)
+                                        buffer.write(',');
+                                      buffer.write(digits[i]);
+                                    }
+                                    final formatted = buffer.toString();
+                                    return TextEditingValue(
+                                        text: formatted,
+                                        selection: TextSelection.collapsed(
+                                            offset: formatted.length));
+                                  }),
+                                ],
+                                decoration: InputDecoration(
+                                  hintText: '0',
+                                  hintStyle:
+                                      TextStyle(color: Colors.grey.shade400),
+                                  filled: true,
+                                  fillColor: Colors.grey.shade50,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 12),
+                                  prefixIcon: Container(
+                                    width: 36,
+                                    alignment: Alignment.center,
+                                    child: Icon(Icons.local_shipping,
+                                        size: 18, color: Colors.teal.shade600),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(Icons.close_rounded,
+                                        size: 18, color: Colors.red.shade400),
+                                    tooltip: 'بدون أجور توصيل',
+                                    onPressed: () {
+                                      deliveryFeeController.clear();
+                                    },
+                                  ),
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: Colors.grey.shade300)),
+                                  enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: Colors.grey.shade300)),
+                                  focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                          color: Colors.teal.shade400,
+                                          width: 1.5)),
                                 ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(Icons.close_rounded,
-                                      size: 18, color: Colors.red.shade400),
-                                  tooltip: 'بدون أجور توصيل',
-                                  onPressed: () {
-                                    deliveryFeeController.clear();
-                                  },
-                                ),
-                                border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                        color: Colors.grey.shade300)),
-                                enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                        color: Colors.grey.shade300)),
-                                focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                        color: Colors.teal.shade400,
-                                        width: 1.5)),
                               ),
-                            ),
                             ],
 
                             const SizedBox(height: 16),
@@ -2013,11 +2421,13 @@ class _TaskCardState extends State<TaskCard> {
                                   }
 
                                   // التحقق: المبلغ إذا أُدخل يجب أن يكون 1000 على الأقل
-                                  final digits = amount.replaceAll(RegExp(r'[^\d]'), '');
+                                  final digits =
+                                      amount.replaceAll(RegExp(r'[^\d]'), '');
                                   if (digits.isNotEmpty && digits.length < 4) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('المبلغ يجب أن يكون 1,000 على الأقل'),
+                                        content: Text(
+                                            'المبلغ يجب أن يكون 1,000 على الأقل'),
                                         backgroundColor: Colors.orange,
                                       ),
                                     );
@@ -2031,7 +2441,11 @@ class _TaskCardState extends State<TaskCard> {
                                   Navigator.of(dialogContext).pop();
 
                                   _updateTaskStatus(newStatus,
-                                      amount: amount, notes: notes, deliveryFee: deliveryFee);
+                                      amount: double.tryParse(
+                                          amount.replaceAll(',', '')),
+                                      notes: notes,
+                                      deliveryFee: double.tryParse(
+                                          deliveryFee.replaceAll(',', '')));
                                 },
                                 icon: const Icon(Icons.check_rounded, size: 20),
                                 label: const Text('تحديث المهمة',
@@ -2069,7 +2483,7 @@ class _TaskCardState extends State<TaskCard> {
   }
 
   void _updateTaskStatus(String newStatus,
-      {String amount = '', String notes = '', String deliveryFee = ''}) async {
+      {double? amount, String notes = '', double? deliveryFee}) async {
     // ── التحقق من المواد المصروفة عند إكمال مهمة صيانة/تنصيب ──
     if (newStatus == 'مكتملة' && _requiresMaterials()) {
       // تحميل المواد إن لم تُحمل
@@ -2084,9 +2498,12 @@ class _TaskCardState extends State<TaskCard> {
             textDirection: TextDirection.rtl,
             child: AlertDialog(
               title: Row(children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+                Icon(Icons.warning_amber_rounded,
+                    color: Colors.orange.shade700),
                 const SizedBox(width: 8),
-                const Expanded(child: Text('المواد المصروفة', style: TextStyle(fontSize: 16))),
+                const Expanded(
+                    child: Text('المواد المصروفة',
+                        style: TextStyle(fontSize: 16))),
               ]),
               content: const Text(
                 'لم يتم تسجيل أي مواد مصروفة لهذه المهمة.\nهل تريد إضافة مواد أم تأكيد عدم الصرف؟',
@@ -2171,7 +2588,8 @@ class _TaskCardState extends State<TaskCard> {
       widget.onStatusChanged(oldTask);
       debugPrint('🔴 [ERROR] خطأ في تحديث حالة المهمة');
 
-      _showErrorDialog('خطأ في تحديث المهمة', 'فشل تحديث حالة المهمة، يرجى المحاولة مرة أخرى');
+      _showErrorDialog('خطأ في تحديث المهمة',
+          'فشل تحديث حالة المهمة، يرجى المحاولة مرة أخرى');
     }
   }
 
@@ -2190,8 +2608,8 @@ class _TaskCardState extends State<TaskCard> {
       final result = await TaskApiService.instance.updateStatus(
         taskId,
         status: apiStatus,
-        amount: task.amount.isNotEmpty ? double.tryParse(task.amount.replaceAll(',', '')) : null,
-        deliveryFee: task.deliveryFee.isNotEmpty ? double.tryParse(task.deliveryFee.replaceAll(',', '')) : null,
+        amount: task.amount,
+        deliveryFee: task.deliveryFee,
       );
 
       debugPrint('🌐 [API] النتيجة الكاملة: $result');
@@ -2302,11 +2720,15 @@ class _TaskCardState extends State<TaskCard> {
         title: const Text('تأكيد التفعيل'),
         content: const Text('هل تم تفعيل الاشتراك لهذا المشترك؟'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF27AE60)),
-            child: const Text('نعم، تم التفعيل', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF27AE60)),
+            child: const Text('نعم، تم التفعيل',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -2314,7 +2736,8 @@ class _TaskCardState extends State<TaskCard> {
     if (confirmed != true) return;
 
     try {
-      final taskId = widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id;
+      final taskId =
+          widget.task.guid.isNotEmpty ? widget.task.guid : widget.task.id;
       await TaskApiService.instance.updateStatus(
         taskId,
         status: 'Completed',
@@ -2322,7 +2745,9 @@ class _TaskCardState extends State<TaskCard> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم تحويل المهمة إلى مكتملة مفعّل'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('تم تحويل المهمة إلى مكتملة مفعّل'),
+              backgroundColor: Colors.green),
         );
         widget.onStatusChanged(widget.task);
       }
@@ -2354,7 +2779,8 @@ class _TaskCardState extends State<TaskCard> {
     String searchQuery = '';
     if (widget.task.phone.isNotEmpty) {
       searchQuery = widget.task.phone.replaceAll(RegExp(r'[^\d]'), '');
-      if (searchQuery.startsWith('964')) searchQuery = '0${searchQuery.substring(3)}';
+      if (searchQuery.startsWith('964'))
+        searchQuery = '0${searchQuery.substring(3)}';
     } else {
       searchQuery = widget.task.username;
     }
@@ -2362,21 +2788,31 @@ class _TaskCardState extends State<TaskCard> {
     final token = await AuthService.instance.getAccessToken() ?? '';
     if (token.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يجب تسجيل الدخول لنظام FTTH أولاً'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('يجب تسجيل الدخول لنظام FTTH أولاً'),
+            backgroundColor: Colors.red),
       );
       return;
     }
 
     // بناء ملاحظات المهمة لتمريرها تلقائياً لشاشة التجديد
     final taskInfo = StringBuffer();
-    if (widget.task.createdByName.isNotEmpty) taskInfo.writeln('أنشأها: ${widget.task.createdByName}');
-    if (widget.task.technician.isNotEmpty) taskInfo.writeln('الفني: ${widget.task.technician}');
-    if (widget.task.serviceType.isNotEmpty) taskInfo.writeln('الخدمة: ${widget.task.serviceType} Mbps');
-    if (widget.task.subscriptionDuration.isNotEmpty) taskInfo.writeln('المدة: ${widget.task.subscriptionDuration}');
-    if (widget.task.amount.isNotEmpty) taskInfo.writeln('المبلغ: ${widget.task.amount}');
-    if (widget.task.agentName.isNotEmpty) taskInfo.writeln('الوكيل: ${widget.task.agentName}');
-    if (widget.task.pageId.isNotEmpty) taskInfo.writeln('كود الوكيل: ${widget.task.pageId}');
-    if (widget.task.notes.isNotEmpty) taskInfo.writeln('ملاحظات: ${widget.task.notes}');
+    if (widget.task.createdByName.isNotEmpty)
+      taskInfo.writeln('أنشأها: ${widget.task.createdByName}');
+    if (widget.task.technician.isNotEmpty)
+      taskInfo.writeln('الفني: ${widget.task.technician}');
+    if (widget.task.serviceType.isNotEmpty)
+      taskInfo.writeln('الخدمة: ${widget.task.serviceType} Mbps');
+    if (widget.task.subscriptionDuration.isNotEmpty)
+      taskInfo.writeln('المدة: ${widget.task.subscriptionDuration}');
+    if (widget.task.hasAmount)
+      taskInfo.writeln('المبلغ: ${widget.task.amountFormatted}');
+    if (widget.task.agentName.isNotEmpty)
+      taskInfo.writeln('الوكيل: ${widget.task.agentName}');
+    if (widget.task.pageId.isNotEmpty)
+      taskInfo.writeln('كود الوكيل: ${widget.task.pageId}');
+    if (widget.task.notes.isNotEmpty)
+      taskInfo.writeln('ملاحظات: ${widget.task.notes}');
 
     final taskNotesStr = taskInfo.toString().trim();
 
@@ -2387,19 +2823,28 @@ class _TaskCardState extends State<TaskCard> {
           authToken: token,
           activatedBy: widget.currentUserName,
           initialSearchQuery: searchQuery,
-          hasServerSavePermission: PermissionManager.instance.canView('google_sheets'),
+          hasServerSavePermission:
+              PermissionManager.instance.canView('google_sheets'),
           hasWhatsAppPermission: PermissionManager.instance.canView('whatsapp'),
           isAdminFlag: DualAuthService.instance.ftthIsAdmin,
-          importantFtthApiPermissions: DualAuthService.instance.ftthImportantPermissions.isNotEmpty
-              ? DualAuthService.instance.ftthImportantPermissions
-              : null,
-          taskAgentName: widget.task.agentName.isNotEmpty ? widget.task.agentName : null,
-          taskAgentCode: widget.task.pageId.isNotEmpty ? widget.task.pageId : null,
+          importantFtthApiPermissions:
+              DualAuthService.instance.ftthImportantPermissions.isNotEmpty
+                  ? DualAuthService.instance.ftthImportantPermissions
+                  : null,
+          taskAgentName:
+              widget.task.agentName.isNotEmpty ? widget.task.agentName : null,
+          taskAgentCode:
+              widget.task.pageId.isNotEmpty ? widget.task.pageId : null,
           taskNotes: taskNotesStr.isNotEmpty ? taskNotesStr : null,
           taskId: widget.task.guid.isNotEmpty ? widget.task.guid : null,
-          taskServiceType: widget.task.serviceType.isNotEmpty ? widget.task.serviceType : null,
-          taskDuration: widget.task.subscriptionDuration.isNotEmpty ? widget.task.subscriptionDuration : null,
-          taskAmount: widget.task.amount.isNotEmpty ? widget.task.amount : null,
+          taskServiceType: widget.task.serviceType.isNotEmpty
+              ? widget.task.serviceType
+              : null,
+          taskDuration: widget.task.subscriptionDuration.isNotEmpty
+              ? widget.task.subscriptionDuration
+              : null,
+          taskAmount:
+              widget.task.hasAmount ? widget.task.amountFormatted : null,
         ),
       ),
     );
@@ -2638,7 +3083,7 @@ class _TaskCardState extends State<TaskCard> {
           .replaceAll('{fbg}', widget.task.fbg)
           .replaceAll('{fat}', widget.task.fat)
           .replaceAll('{location}', widget.task.location)
-          .replaceAll('{amount}', widget.task.amount)
+          .replaceAll('{amount}', widget.task.amountFormatted)
           .replaceAll('{created_at}',
               DateFormat('yyyy-MM-dd HH:mm').format(widget.task.createdAt))
           .replaceAll('{created_by}', widget.task.createdBy)
@@ -2662,7 +3107,7 @@ class _TaskCardState extends State<TaskCard> {
           .replaceAll('{fbg}', widget.task.fbg)
           .replaceAll('{fat}', widget.task.fat)
           .replaceAll('{location}', widget.task.location)
-          .replaceAll('{amount}', widget.task.amount)
+          .replaceAll('{amount}', widget.task.amountFormatted)
           .replaceAll('{created_at}',
               DateFormat('yyyy-MM-dd HH:mm').format(widget.task.createdAt))
           .replaceAll('{created_by}', widget.task.createdBy)
@@ -3428,7 +3873,7 @@ class _TaskCardState extends State<TaskCard> {
 
 🔧 FBG: ${widget.task.fbg}
 ${widget.task.fat.isNotEmpty ? '🔌 FAT: ${widget.task.fat}' : ''}
-${widget.task.amount.isNotEmpty ? '💰 ${widget.task.amount} دينار' : ''}
+${widget.task.hasAmount ? '💰 ${widget.task.amountFormatted} دينار' : ''}
 
 👨‍🔧 الفني: ${widget.task.technician}
 🎯 ${widget.task.priority}
@@ -3860,7 +4305,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
 🔧 التفاصيل الفنية:
 📡 FBG: ${widget.task.fbg}
 ${widget.task.fat.isNotEmpty ? '🔌 FAT: ${widget.task.fat}' : ''}
-${widget.task.amount.isNotEmpty ? '💰 المبلغ المطلوب: ${widget.task.amount} دينار' : ''}
+${widget.task.hasAmount ? '💰 المبلغ المطلوب: ${widget.task.amountFormatted} دينار' : ''}
 
 ${widget.task.notes.isNotEmpty ? '📝 ملاحظات إضافية:\n${widget.task.notes}' : ''}
 
@@ -3918,7 +4363,6 @@ ${widget.task.notes.isNotEmpty ? '📝 ملاحظات إضافية:\n${widget.ta
     );
   }
 }
-
 
 class _MaterialRow {
   String itemId = '';

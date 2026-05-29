@@ -255,7 +255,7 @@ class TaskManagementService {
       'notes': task.notes,
       'summary': task.summary,
       'priority': task.priority,
-      'amount': task.amount,
+      'amount': task.amount ?? 0,
       'createdAt': task.createdAt.toIso8601String(),
       'closedAt': task.closedAt?.toIso8601String(),
       'agents': task.agents,

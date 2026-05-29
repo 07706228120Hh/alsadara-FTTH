@@ -46,6 +46,9 @@ public class DepartmentTask : BaseEntity<int>
     /// <summary>هل المهمة نشطة؟</summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>وقت SLA بالدقائق — الوقت المستهدف لإنجاز هذا النوع من المهام (0 = بدون SLA)</summary>
+    public int SlaHours { get; set; } = 0; // الاسم يبقى SlaHours للتوافق، لكن القيمة بالدقائق
+
     // Navigation
     public Department Department { get; set; } = null!;
 }

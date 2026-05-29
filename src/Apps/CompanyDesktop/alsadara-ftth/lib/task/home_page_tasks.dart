@@ -10,6 +10,7 @@ import 'technician_performance_page.dart';
 import '../services/whatsapp_template_storage.dart';
 import '../ftth/tasks/customer_search_connect_page.dart';
 import '../services/task_api_service.dart';
+import '../widgets/sla_settings_dialog.dart';
 
 class HomePageTasks extends StatefulWidget {
   final String username;
@@ -24,6 +25,8 @@ class HomePageTasks extends StatefulWidget {
   final VoidCallback? onRefresh;
   final VoidCallback? onLoadMore;
   final bool hasMorePages;
+  final VoidCallback? onLoadAll;
+  final bool isLoadAll;
 
   const HomePageTasks({
     super.key,
@@ -39,6 +42,8 @@ class HomePageTasks extends StatefulWidget {
     this.onRefresh,
     this.onLoadMore,
     this.hasMorePages = true,
+    this.onLoadAll,
+    this.isLoadAll = false,
   });
 
   @override
@@ -364,11 +369,7 @@ class HomePageTasksState extends State<HomePageTasks> {
 
   double _calculateTotalAmount(List<Task> tasks) {
     return tasks.fold(0, (sum, task) {
-      // إزالة رمز $ وأي رموز أخرى غير مرغوب فيها من المبلغ
-      String cleanAmount =
-          task.amount.replaceAll('\$', '').replaceAll(',', '').trim();
-      final amount = double.tryParse(cleanAmount) ?? 0;
-      return sum + amount;
+      return sum + (task.amount ?? 0);
     });
   }
 
@@ -512,12 +513,12 @@ class HomePageTasksState extends State<HomePageTasks> {
     // حساب المبالغ
     double totalPending = 0;
     for (final t in pending) {
-      final amt = double.tryParse(t.amount.replaceAll(RegExp(r'[^\d]'), ''));
+      final amt = t.amount;
       if (amt != null) totalPending += amt;
     }
     double totalCompletedToday = 0;
     for (final t in completedToday) {
-      final amt = double.tryParse(t.amount.replaceAll(RegExp(r'[^\d]'), ''));
+      final amt = t.amount;
       if (amt != null) totalCompletedToday += amt;
     }
 
@@ -531,7 +532,7 @@ class HomePageTasksState extends State<HomePageTasks> {
       if (tech.isEmpty) continue;
       techReport.putIfAbsent(tech, () => {'pending': 0, 'done': 0, 'total': 0, 'amount': 0.0, 'amountDone': 0.0});
       techReport[tech]!['total'] = (techReport[tech]!['total'] as int) + 1;
-      final amt = double.tryParse(t.amount.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+      final amt = t.amount ?? 0;
       if (t.status == 'مكتملة') {
         techReport[tech]!['done'] = (techReport[tech]!['done'] as int) + 1;
         techReport[tech]!['amountDone'] = (techReport[tech]!['amountDone'] as double) + amt;
@@ -2241,6 +2242,37 @@ class HomePageTasksState extends State<HomePageTasks> {
                     const SizedBox(width: 6),
                     _buildDateFilterChip('الكل', 'all'),
 
+                    // زر "تحميل الكل من السيرفر" — يظهر فقط عندما لم يتم تحميل الكل بعد
+                    if (!widget.isLoadAll && widget.onLoadAll != null) ...[
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: widget.onLoadAll,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.5), width: 1),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.cloud_download_outlined, color: Colors.tealAccent, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                'الكل',
+                                style: TextStyle(
+                                  color: Colors.tealAccent,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
                     // زر "مهامي" — يظهر للمدير والليدر فقط
                     if (_normalizeRole(widget.currentUserRole) == 'مدير' ||
                         _normalizeRole(widget.currentUserRole) == 'ليدر') ...[
@@ -3017,6 +3049,18 @@ class HomePageTasksState extends State<HomePageTasks> {
                               ));
                         },
                         color: Colors.deepPurple,
+                      ),
+                    // إعدادات SLA (للمدير فقط)
+                    if (_normalizeRole(widget.currentUserRole) == 'مدير')
+                      _buildDrawerItem(
+                        icon: Icons.timer_outlined,
+                        title: 'إعدادات SLA',
+                        subtitle: 'تعيين الحد الزمني لإنجاز المهام',
+                        onTap: () {
+                          Navigator.pop(context);
+                          SlaSettingsDialog.show(context);
+                        },
+                        color: Colors.indigo,
                       ),
                   ],
                 ),

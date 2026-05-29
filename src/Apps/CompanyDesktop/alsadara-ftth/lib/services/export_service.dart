@@ -77,7 +77,7 @@ class ExportService {
         task.closedAt?.toString().split('.')[0] ?? '',
         task.summary,
         task.priority,
-        task.amount,
+        task.amountFormatted,
         '${duration.inHours}:${duration.inMinutes.remainder(60).toString().padLeft(2, '0')}'
       ];
 
@@ -263,7 +263,7 @@ class ExportService {
                           ? '${task.title.substring(0, 20)}...'
                           : task.title,
                       task.technician,
-                      task.amount,
+                      task.amountFormatted,
                       task.createdAt.toString().split(' ')[0],
                     ]),
               ],
@@ -348,7 +348,7 @@ class ExportService {
   static double _calculateAverageAmount(List<Task> tasks) {
     if (tasks.isEmpty) return 0;
     var totalAmount = tasks.fold(
-        0.0, (sum, task) => sum + (double.tryParse(task.amount) ?? 0));
+        0.0, (sum, task) => sum + (task.amount ?? 0));
     return totalAmount / tasks.length;
   }
 

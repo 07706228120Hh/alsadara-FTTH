@@ -67,6 +67,9 @@ builder.Services.AddHttpClient();
 // FCM Push Notification Service
 builder.Services.AddSingleton<IFcmNotificationService, FcmNotificationService>();
 
+// Task Hub Notifier — إشعارات المهام عبر SignalR
+builder.Services.AddSingleton<Sadara.API.Hubs.TaskHubNotifier>();
+
 // VPS Control Service
 builder.Services.AddScoped<IVpsControlService, VpsControlService>();
 
@@ -299,6 +302,7 @@ app.UseSerilogRequestLogging();
 app.MapControllers();
 app.MapHub<Sadara.API.Hubs.LocationHub>("/hubs/location");
 app.MapHub<Sadara.API.Hubs.ChatHub>("/hubs/chat");
+app.MapHub<Sadara.API.Hubs.TaskHub>("/hubs/tasks");
 app.MapHealthChecks("/health");
 
 // Apply migrations and seed data

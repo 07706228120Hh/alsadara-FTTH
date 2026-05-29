@@ -93,8 +93,8 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     _locationController = TextEditingController(text: widget.task.location);
     _notesController = TextEditingController(text: widget.task.notes);
     _summaryController = TextEditingController(text: widget.task.summary);
-    _amountController = TextEditingController(text: _ThousandsSeparatorFormatter.format(widget.task.amount));
-    _deliveryFeeController = TextEditingController(text: _ThousandsSeparatorFormatter.format(widget.task.deliveryFee));
+    _amountController = TextEditingController(text: widget.task.hasAmount ? widget.task.amount!.toInt().toString() : '');
+    _deliveryFeeController = TextEditingController(text: widget.task.hasDeliveryFee ? widget.task.deliveryFee!.toInt().toString() : '');
 
     _selectedStatus = widget.task.status;
     _selectedPriority = widget.task.priority;
@@ -1096,8 +1096,8 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         notes: _notesController.text.trim(),
         summary: _summaryController.text.trim(),
         priority: _selectedPriority,
-        amount: _amountController.text.replaceAll(',', '').trim(),
-        deliveryFee: _deliveryFeeController.text.replaceAll(',', '').trim(),
+        amount: double.tryParse(_amountController.text.replaceAll(',', '').trim()),
+        deliveryFee: double.tryParse(_deliveryFeeController.text.replaceAll(',', '').trim()),
         closedAt: (_selectedStatus == 'مكتملة' || _selectedStatus == 'ملغية')
             ? DateTime.now()
             : null,

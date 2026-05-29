@@ -19,6 +19,10 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       return;
     }
 
+    // 🔒 قفل فوري لمنع الضغط المزدوج (قبل أي await)
+    safeSetState(() => _isActivating = true);
+
+    try {
     // فاصل زمني إجباري (دقيقتان) بين كل تفعيلتين
     if (_lastActivationTime != null) {
       final elapsed = DateTime.now().difference(_lastActivationTime!);
@@ -436,7 +440,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     if (!confirmed) return;
 
     // ========== بدء التنفيذ المتسلسل ==========
-    safeSetState(() => _isActivating = true);
+    // (القفل _isActivating تم تفعيله مسبقاً في بداية الدالة)
 
     // حفظ القيم المختارة قبل تحديث الصفحة (لأن fetchSubscriptionDetails تُعيد تعيينها)
     final activatedPlan = selectedPlan;
@@ -448,7 +452,6 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
     final activatedAgent = _selectedLinkedAgent;
     final activatedTechnician = _selectedLinkedTechnician;
 
-    try {
       // 1️⃣ حفظ البيانات الأولي في VPS (قبل التفعيل — لضمان تسجيل العملية)
       debugPrint('📊 [1/6] حفظ البيانات الأولي في VPS...');
       try {

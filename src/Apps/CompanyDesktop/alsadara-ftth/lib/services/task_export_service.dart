@@ -96,7 +96,7 @@ class TaskExportService {
         t.fat,
         t.location,
         t.priority,
-        t.amount.isNotEmpty ? t.amount : '0',
+        t.hasAmount ? t.amountFormatted : '0',
         _dateTimeFmt.format(t.createdAt),
         t.closedAt != null ? _dateTimeFmt.format(t.closedAt!) : '-',
         duration,
@@ -106,7 +106,7 @@ class TaskExportService {
 
     // صف الإجمالي
     final totalAmount = tasks.fold<double>(0, (sum, t) {
-      return sum + (double.tryParse(t.amount.replaceAll('\$', '').replaceAll(',', '')) ?? 0);
+      return sum + (t.amount ?? 0);
     });
     final totalRow = tasks.length + 1;
     _addRow(sheet, totalRow, [
@@ -226,7 +226,7 @@ class TaskExportService {
     final open = tasks.where((t) => t.status == 'مفتوحة').length;
     final progress = tasks.where((t) => t.status == 'قيد التنفيذ').length;
     final totalAmount = tasks.fold<double>(0, (sum, t) {
-      return sum + (double.tryParse(t.amount.replaceAll('\$', '').replaceAll(',', '')) ?? 0);
+      return sum + (t.amount ?? 0);
     });
 
     // تقسيم المهام إلى صفحات (15 مهمة لكل صفحة)
@@ -304,7 +304,7 @@ class TaskExportService {
                     t.technician,
                     t.username,
                     t.phone,
-                    t.amount.isNotEmpty ? t.amount : '-',
+                    t.hasAmount ? t.amountFormatted : '-',
                     DateFormat('MM/dd').format(t.createdAt),
                   ];
                 }).toList(),

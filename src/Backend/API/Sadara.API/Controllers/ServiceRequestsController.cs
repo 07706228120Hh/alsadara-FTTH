@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Hubs;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
@@ -20,12 +21,14 @@ public class ServiceRequestsController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ServiceRequestsController> _logger;
     private readonly IFcmNotificationService _fcmService;
+    private readonly TaskHubNotifier _taskHubNotifier;
 
-    public ServiceRequestsController(IUnitOfWork unitOfWork, ILogger<ServiceRequestsController> logger, IFcmNotificationService fcmService)
+    public ServiceRequestsController(IUnitOfWork unitOfWork, ILogger<ServiceRequestsController> logger, IFcmNotificationService fcmService, TaskHubNotifier taskHubNotifier)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _fcmService = fcmService;
+        _taskHubNotifier = taskHubNotifier;
     }
 
     #region Service Requests CRUD
@@ -321,9 +324,6 @@ public class ServiceRequestsController : ControllerBase
         }
 
         var oldStatus = request.Status;
-        request.Status = newStatus;
-        request.StatusNote = dto.Note;
-        request.UpdatedAt = DateTime.UtcNow;
 
         // تحديث التكلفة النهائية إذا أُرسلت
         if (dto.Amount.HasValue && dto.Amount.Value > 0)
@@ -344,36 +344,8 @@ public class ServiceRequestsController : ControllerBase
             request.Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
         }
 
-        // تحديث التواريخ حسب الحالة
-        switch (newStatus)
-        {
-            case ServiceRequestStatus.Reviewing:
-                request.ReviewedAt = DateTime.UtcNow;
-                break;
-            case ServiceRequestStatus.InProgress:
-                request.StartedAt = DateTime.UtcNow;
-                break;
-            case ServiceRequestStatus.Completed:
-                request.CompletedAt = DateTime.UtcNow;
-                break;
-            case ServiceRequestStatus.Cancelled:
-                request.CancelledAt = DateTime.UtcNow;
-                break;
-        }
-
-        // سجل التغيير
-        var history = new ServiceRequestStatusHistory
-        {
-            ServiceRequestId = id,
-            FromStatus = oldStatus,
-            ToStatus = newStatus,
-            Note = dto.Note,
-            ChangedById = GetCurrentUserId(),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _unitOfWork.ServiceRequests.Update(request);
-        await _unitOfWork.ServiceRequestStatusHistories.AddAsync(history);
+        // تحديث الحالة + التواريخ + سجل التغيير (منطق موحّد)
+        await ApplyStatusChange(request, newStatus, dto.Note);
 
         // ═══════ إشعارات تلقائية ═══════
         await CreateStatusChangeNotifications(request, oldStatus, newStatus);
@@ -382,6 +354,19 @@ public class ServiceRequestsController : ControllerBase
         await _unitOfWork.SaveChangesAsync();
 
         _logger.LogInformation("تم تحديث حالة الطلب {Id} من {OldStatus} إلى {NewStatus}", id, oldStatus, newStatus);
+
+        // إشعار فوري عبر SignalR
+        var companyIdStr2 = User.FindFirst("company_id")?.Value;
+        if (!string.IsNullOrEmpty(companyIdStr2))
+        {
+            _ = _taskHubNotifier.NotifyTaskUpdated(companyIdStr2, new
+            {
+                request.Id,
+                request.RequestNumber,
+                Status = request.Status.ToString(),
+                OldStatus = oldStatus.ToString(),
+            });
+        }
 
         // ═══════ المعالجة المالية (حفظ منفصل - لا يؤثر على تغيير الحالة) ═══════
         try
@@ -1260,6 +1245,16 @@ public class ServiceRequestsController : ControllerBase
                 ["priorityLabel"] = dto.Priority
             };
 
+            // جلب SLA من DepartmentTask (إن وجد)
+            if (!string.IsNullOrEmpty(dto.Department) && !string.IsNullOrEmpty(dto.TaskType))
+            {
+                var deptTask = await _unitOfWork.DepartmentTasks.AsQueryable()
+                    .FirstOrDefaultAsync(t => t.Department.NameAr == dto.Department
+                        && t.NameAr == dto.TaskType && !t.IsDeleted);
+                if (deptTask != null && deptTask.SlaHours > 0)
+                    details["slaHours"] = deptTask.SlaHours;
+            }
+
             // إضافة بيانات الاشتراك إن وجدت
             if (!string.IsNullOrEmpty(dto.ServiceType))
                 details["serviceType"] = dto.ServiceType;
@@ -1323,6 +1318,20 @@ public class ServiceRequestsController : ControllerBase
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("تم إنشاء مهمة جديدة: {RequestNumber} - {TaskType}", request.RequestNumber, dto.TaskType);
+
+            // إشعار فوري عبر SignalR
+            var companyIdStr = User.FindFirst("company_id")?.Value;
+            if (!string.IsNullOrEmpty(companyIdStr))
+            {
+                _ = _taskHubNotifier.NotifyTaskCreated(companyIdStr, new
+                {
+                    request.Id,
+                    request.RequestNumber,
+                    Status = request.Status.ToString(),
+                    TaskType = dto.TaskType,
+                    request.CreatedAt
+                });
+            }
 
             return CreatedAtAction(nameof(GetById), new { id = request.Id }, new
             {
@@ -1482,7 +1491,7 @@ public class ServiceRequestsController : ControllerBase
         if (dto.Amount.HasValue) request.FinalCost = dto.Amount.Value;
         if (dto.DeliveryFee.HasValue) details["deliveryFee"] = dto.DeliveryFee.Value;
 
-        // تحديث الحالة إن أُرسلت
+        // تحديث الحالة إن أُرسلت (منطق موحّد)
         var oldStatus = request.Status;
         if (!string.IsNullOrEmpty(dto.Status) && Enum.TryParse<ServiceRequestStatus>(dto.Status, true, out var newStatus) && newStatus != oldStatus)
         {
@@ -1490,27 +1499,7 @@ public class ServiceRequestsController : ControllerBase
             {
                 return BadRequest(new { success = false, message = $"لا يمكن الانتقال من '{oldStatus}' إلى '{newStatus}'" });
             }
-            request.Status = newStatus;
-            request.StatusNote = dto.Notes;
-
-            switch (newStatus)
-            {
-                case ServiceRequestStatus.Reviewing: request.ReviewedAt = DateTime.UtcNow; break;
-                case ServiceRequestStatus.InProgress: request.StartedAt = DateTime.UtcNow; break;
-                case ServiceRequestStatus.Completed: request.CompletedAt = DateTime.UtcNow; break;
-                case ServiceRequestStatus.Cancelled: request.CancelledAt = DateTime.UtcNow; break;
-            }
-
-            var history = new ServiceRequestStatusHistory
-            {
-                ServiceRequestId = id,
-                FromStatus = oldStatus,
-                ToStatus = newStatus,
-                Note = dto.Notes ?? "تعديل المهمة",
-                ChangedById = GetCurrentUserId(),
-                CreatedAt = DateTime.UtcNow
-            };
-            await _unitOfWork.ServiceRequestStatusHistories.AddAsync(history);
+            await ApplyStatusChange(request, newStatus, dto.Notes ?? "تعديل المهمة");
         }
 
         // تحديث الفني
@@ -1557,6 +1546,7 @@ public class ServiceRequestsController : ControllerBase
         object departments;
         object departmentTasks;
         object taskTypes;
+        object slaMap = new Dictionary<string, int>();
 
         if (dbDepartments.Count > 0)
         {
@@ -1565,19 +1555,27 @@ public class ServiceRequestsController : ControllerBase
 
             var deptTasksDict = new Dictionary<string, string[]>();
             var allTaskTypes = new HashSet<string>();
+            // خريطة SLA: "قسم|نوع_مهمة" → ساعات
+            var slaMapDict = new Dictionary<string, int>();
             foreach (var dept in dbDepartments)
             {
                 var tasks = dept.Tasks
-                    .OrderBy(t => t.SortOrder).ThenBy(t => t.NameAr)
-                    .Select(t => t.NameAr).ToArray();
-                if (tasks.Length > 0)
+                    .OrderBy(t => t.SortOrder).ThenBy(t => t.NameAr).ToList();
+                var taskNames = tasks.Select(t => t.NameAr).ToArray();
+                if (taskNames.Length > 0)
                 {
-                    deptTasksDict[dept.NameAr] = tasks;
-                    foreach (var t in tasks) allTaskTypes.Add(t);
+                    deptTasksDict[dept.NameAr] = taskNames;
+                    foreach (var t in tasks)
+                    {
+                        allTaskTypes.Add(t.NameAr);
+                        if (t.SlaHours > 0)
+                            slaMapDict[$"{dept.NameAr}|{t.NameAr}"] = t.SlaHours;
+                    }
                 }
             }
             departmentTasks = deptTasksDict;
             taskTypes = allTaskTypes.ToArray();
+            slaMap = slaMapDict;
         }
         else
         {
@@ -1611,6 +1609,7 @@ public class ServiceRequestsController : ControllerBase
         var data = new
         {
             departments,
+            slaMap,
             priorities = new[]
             {
                 new { value = 1, label = "عاجل", color = "#EF4444" },
@@ -1770,6 +1769,54 @@ public class ServiceRequestsController : ControllerBase
         [ServiceRequestStatus.Cancelled] = new[] { ServiceRequestStatus.Pending, ServiceRequestStatus.Reviewing, ServiceRequestStatus.Assigned, ServiceRequestStatus.InProgress, ServiceRequestStatus.OnHold, ServiceRequestStatus.Completed },
         [ServiceRequestStatus.Rejected] = new[] { ServiceRequestStatus.Pending, ServiceRequestStatus.Reviewing, ServiceRequestStatus.Assigned, ServiceRequestStatus.InProgress, ServiceRequestStatus.OnHold },
     };
+
+    /// <summary>
+    /// تحديث حالة الطلب مع التواريخ وسجل التغيير — منطق موحّد
+    /// </summary>
+    private async Task<ServiceRequestStatusHistory> ApplyStatusChange(
+        ServiceRequest request,
+        ServiceRequestStatus newStatus,
+        string? note,
+        Guid? changedById = null)
+    {
+        var oldStatus = request.Status;
+        request.Status = newStatus;
+        request.StatusNote = note;
+        request.UpdatedAt = DateTime.UtcNow;
+
+        // تحديث التواريخ حسب الحالة
+        switch (newStatus)
+        {
+            case ServiceRequestStatus.Reviewing:
+                request.ReviewedAt ??= DateTime.UtcNow;
+                break;
+            case ServiceRequestStatus.InProgress:
+                request.StartedAt ??= DateTime.UtcNow;
+                break;
+            case ServiceRequestStatus.Completed:
+                request.CompletedAt = DateTime.UtcNow;
+                break;
+            case ServiceRequestStatus.Cancelled:
+                request.CancelledAt = DateTime.UtcNow;
+                break;
+        }
+
+        // سجل التغيير
+        var history = new ServiceRequestStatusHistory
+        {
+            ServiceRequestId = request.Id,
+            FromStatus = oldStatus,
+            ToStatus = newStatus,
+            Note = note,
+            ChangedById = changedById ?? GetCurrentUserId(),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _unitOfWork.ServiceRequests.Update(request);
+        await _unitOfWork.ServiceRequestStatusHistories.AddAsync(history);
+
+        return history;
+    }
 
     private static bool IsValidStatusTransition(ServiceRequestStatus from, ServiceRequestStatus to)
     {

@@ -159,7 +159,7 @@ class FirestoreTasksService {
         'metadata': {
           'leader': task.leader,
           'summary': task.summary,
-          'amount': task.amount,
+          'amount': task.amount ?? 0,
           'agents': task.agents,
           'createdBy': currentUserId ?? task.createdBy,
         },
@@ -203,7 +203,7 @@ class FirestoreTasksService {
         'metadata': {
           'leader': task.leader,
           'summary': task.summary,
-          'amount': task.amount,
+          'amount': task.amount ?? 0,
           'agents': task.agents,
         },
       };

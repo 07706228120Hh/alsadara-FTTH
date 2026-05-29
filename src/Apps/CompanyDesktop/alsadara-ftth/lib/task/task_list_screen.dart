@@ -7,6 +7,7 @@ import '../services/task_api_service.dart';
 import '../services/api/api_client.dart';
 import '../services/notification_service.dart';
 import '../services/in_app_notification_service.dart';
+import '../services/task_signalr_service.dart';
 import '../widgets/maintenance_messages_dialog.dart';
 
 class TaskListScreen extends StatefulWidget {
@@ -33,6 +34,7 @@ class _TaskListScreenState extends State<TaskListScreen>
   bool _isLoading = true; // حالة التحميل
   bool _isRefreshing = false; // حالة التحديث
   Timer? _refreshTimer; // مؤقت التحديث التلقائي
+  StreamSubscription? _signalRSubscription; // اشتراك SignalR
   DateTime? _lastRefresh; // آخر وقت تحديث
   final GlobalKey<HomePageTasksState> _homePageTasksKey =
       GlobalKey<HomePageTasksState>();
@@ -43,13 +45,14 @@ class _TaskListScreenState extends State<TaskListScreen>
 
   // Pagination
   int _currentPage = 1;
-  static const int _pageSize = 500;
+  static const int _pageSize = 50;
+  bool _loadAll = false; // تحميل الكل
   bool _hasMorePages = true;
   bool _isLoadingMore = false;
 
   // إعدادات التحديث
   static const Duration _refreshInterval =
-      Duration(seconds: 20); // تحديث كل 20 ثانية
+      Duration(seconds: 60); // fallback — SignalR يتكفل بالتحديث الفوري
   static const Duration _minimumRefreshGap =
       Duration(seconds: 5); // حد أدنى بين التحديثات
   @override
@@ -58,12 +61,18 @@ class _TaskListScreenState extends State<TaskListScreen>
     WidgetsBinding.instance.addObserver(this);
     _fetchTasks();
     _startAutoRefresh();
+    // SignalR — تحديث فوري عند أي تغيير
+    TaskSignalRService.instance.connect();
+    _signalRSubscription = TaskSignalRService.instance.onAnyChange.listen((_) {
+      if (mounted) _fetchTasks(showLoadingIndicator: false);
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this); // إزالة المراقب
     _refreshTimer?.cancel(); // إلغاء المؤقت عند إغلاق الشاشة
+    _signalRSubscription?.cancel();
     super.dispose();
   }
 
@@ -148,7 +157,7 @@ class _TaskListScreenState extends State<TaskListScreen>
       debugPrint('📡 جلب المهام: tech=$_techFilter, created=$_createdByFilter, dept=$_deptFilter, token=${ApiClient.instance.authToken != null ? "موجود" : "❌ غير موجود"}');
       final response = await TaskApiService.instance.getRequests(
         page: 1,
-        pageSize: _pageSize,
+        pageSize: _loadAll ? 10000 : _pageSize,
         technician: _techFilter,
         department: _deptFilter,
         createdByName: _createdByFilter,
@@ -266,6 +275,12 @@ class _TaskListScreenState extends State<TaskListScreen>
     await _fetchTasks(showLoadingIndicator: false);
   }
 
+  /// تحميل جميع المهام من السيرفر
+  void _loadAllTasksFromServer() {
+    setState(() => _loadAll = true);
+    _fetchTasks(showLoadingIndicator: true);
+  }
+
   // دالة لتحديث المهمة عند تغيير الحالة
   // ملاحظة: التحديث في API يتم من task_card._updateStatusViaApi
   // هنا فقط نحدث الحالة المحلية
@@ -310,6 +325,8 @@ class _TaskListScreenState extends State<TaskListScreen>
                 onRefresh: () => _fetchTasks(showLoadingIndicator: false),
                 onLoadMore: loadMoreTasks,
                 hasMorePages: _hasMorePages,
+                onLoadAll: _loadAllTasksFromServer,
+                isLoadAll: _loadAll,
               ),
             ),
     );

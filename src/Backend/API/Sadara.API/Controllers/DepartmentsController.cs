@@ -48,6 +48,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
                         Name = t.Name,
                         SortOrder = t.SortOrder,
                         IsActive = t.IsActive,
+                        SlaHours = t.SlaHours,
                         CreatedAt = t.CreatedAt
                     }).ToList()
             })
@@ -203,7 +204,8 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
             Name = request.Name?.Trim(),
             DepartmentId = departmentId,
             SortOrder = request.SortOrder ?? maxSort + 1,
-            IsActive = true
+            IsActive = true,
+            SlaHours = request.SlaHours ?? 0
         };
 
         await _unitOfWork.DepartmentTasks.AddAsync(task);
@@ -220,6 +222,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
                 Name = task.Name,
                 SortOrder = task.SortOrder,
                 IsActive = task.IsActive,
+                SlaHours = task.SlaHours,
                 CreatedAt = task.CreatedAt
             }
         });
@@ -254,6 +257,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
         if (request.Name != null) task.Name = request.Name.Trim();
         if (request.SortOrder.HasValue) task.SortOrder = request.SortOrder.Value;
         if (request.IsActive.HasValue) task.IsActive = request.IsActive.Value;
+        if (request.SlaHours.HasValue) task.SlaHours = request.SlaHours.Value;
         task.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.DepartmentTasks.Update(task);
@@ -459,6 +463,7 @@ public class DepartmentTaskResponse
     public string? Name { get; set; }
     public int SortOrder { get; set; }
     public bool IsActive { get; set; }
+    public int SlaHours { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -482,6 +487,7 @@ public class CreateDepartmentTaskRequest
     public string NameAr { get; set; } = string.Empty;
     public string? Name { get; set; }
     public int? SortOrder { get; set; }
+    public int? SlaHours { get; set; }
 }
 
 public class UpdateDepartmentTaskRequest
@@ -490,6 +496,7 @@ public class UpdateDepartmentTaskRequest
     public string? Name { get; set; }
     public int? SortOrder { get; set; }
     public bool? IsActive { get; set; }
+    public int? SlaHours { get; set; }
 }
 
 public class UserDepartmentResponse

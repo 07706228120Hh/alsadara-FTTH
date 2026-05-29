@@ -1,12 +1,12 @@
 [Setup]
 AppName=الصدارة - Alsadara
-AppVersion=2.2.20
+AppVersion=2.2.21
 AppPublisher=Alsadara Platform
 AppPublisherURL=https://github.com/07706228120Hh/alsadara-FTTH
 DefaultDirName={autopf}\Alsadara
 DefaultGroupName=الصدارة
 OutputDir=build\installer
-OutputBaseFilename=Alsadara-Setup-v2.2.20
+OutputBaseFilename=Alsadara-Setup-v2.2.21
 SetupIconFile=windows\runner\resources\app_icon.ico
 Compression=lzma2
 SolidCompression=yes

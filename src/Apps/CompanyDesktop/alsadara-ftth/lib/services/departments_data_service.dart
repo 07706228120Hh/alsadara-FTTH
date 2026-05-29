@@ -17,6 +17,7 @@ class DepartmentsDataService {
   List<String> _departmentNames = [];
   List<Map<String, dynamic>> _departments = [];
   Map<String, List<String>> _departmentTasks = {};
+  Map<String, int> _slaMap = {};
   DateTime? _lastFetch;
 
   /// مدة صلاحية الكاش (5 دقائق)
@@ -31,6 +32,14 @@ class DepartmentsDataService {
   /// مهام كل قسم
   Map<String, List<String>> get departmentTasks =>
       Map.unmodifiable(_departmentTasks);
+
+  /// خريطة SLA: "قسم|نوع_مهمة" -> ساعات
+  Map<String, int> get slaMap => Map.unmodifiable(_slaMap);
+
+  /// جلب SLA لمهمة معينة بالقسم واسم المهمة
+  int getSlaHours(String departmentName, String taskName) {
+    return _slaMap['$departmentName|$taskName'] ?? 0;
+  }
 
   /// هل البيانات محملة؟
   bool get isLoaded => _departmentNames.isNotEmpty;
@@ -76,15 +85,24 @@ class DepartmentsDataService {
             .where((n) => n.isNotEmpty)
             .toList();
 
-        // استخراج مهام كل قسم
+        // استخراج مهام كل قسم + خريطة SLA
         _departmentTasks = {};
+        _slaMap = {};
         for (final dept in _departments) {
           final deptName = dept['nameAr']?.toString() ?? '';
           final tasks = dept['tasks'] as List? ?? [];
-          final taskNames = tasks
-              .map((t) => (t as Map)['nameAr']?.toString() ?? '')
-              .where((n) => n.isNotEmpty)
-              .toList();
+          final taskNames = <String>[];
+          for (final t in tasks) {
+            final taskMap = t as Map;
+            final taskName = taskMap['nameAr']?.toString() ?? '';
+            if (taskName.isNotEmpty) {
+              taskNames.add(taskName);
+              final slaHours = taskMap['slaHours'] as int? ?? 0;
+              if (slaHours > 0 && deptName.isNotEmpty) {
+                _slaMap['$deptName|$taskName'] = slaHours;
+              }
+            }
+          }
           if (deptName.isNotEmpty && taskNames.isNotEmpty) {
             _departmentTasks[deptName] = taskNames;
           }
@@ -114,6 +132,7 @@ class DepartmentsDataService {
     _departmentNames = [];
     _departments = [];
     _departmentTasks = {};
+    _slaMap = {};
     _lastFetch = null;
   }
 }

@@ -23,7 +23,7 @@ class SmartSearchService {
         task.status,
         task.fbg,
         task.fat,
-        task.amount,
+        task.amountFormatted,
       ].join(' ').toLowerCase();
 
       // البحث بالكلمات المفتاحية
@@ -74,7 +74,7 @@ class SmartSearchService {
       }
 
       // فلترة حسب المبلغ
-      var taskAmount = double.tryParse(task.amount) ?? 0;
+      var taskAmount = task.amount ?? 0;
       if (criteria.minAmount != null && taskAmount < criteria.minAmount!) {
         return false;
       }

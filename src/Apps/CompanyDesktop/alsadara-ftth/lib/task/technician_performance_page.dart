@@ -71,7 +71,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
       }
       if (t.status == 'ملغية') s.cancelled++;
       final amt =
-          double.tryParse(t.amount.replaceAll('\$', '').replaceAll(',', '')) ??
+          t.amount ??
               0;
       s.totalAmount += amt;
     }
