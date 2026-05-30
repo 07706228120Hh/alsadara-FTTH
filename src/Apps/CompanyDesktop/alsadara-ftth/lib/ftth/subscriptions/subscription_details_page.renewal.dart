@@ -1120,10 +1120,14 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       debugPrint('📤 إرسال طلب التفعيل: $apiUrl');
       debugPrint('📤 Body: ${jsonEncode(body)}');
 
-      final resp = await AuthService.instance.authenticatedRequest(
-          'POST',
-          apiUrl,
+      // ⚠️ نستخدم http.post مباشرة بدلاً من authenticatedRequest
+      // لأن authenticatedRequest يعيد الطلب تلقائياً عند 401/403
+      // وهذا خطير لطلبات التفعيل — قد يسبب تجديد مرتين
+      final authHeaders = await AuthService.instance.getAuthHeaders();
+      final resp = await http.post(
+          Uri.parse(apiUrl),
           headers: {
+            ...authHeaders,
             'Accept': 'application/json, text/plain, */*',
             'x-client-app': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
             'x-user-role': '0',
@@ -1625,7 +1629,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: ElevatedButton.icon(
-        onPressed: canExecute ? executeRenewalOrPurchase : null,
+        onPressed: canExecute && !_isActivating ? executeRenewalOrPurchase : null,
         icon: Icon(
           isNewSubscription ? Icons.shopping_cart : Icons.refresh,
           size: btnSmall ? 18 : 22,

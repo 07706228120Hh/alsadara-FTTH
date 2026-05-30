@@ -6272,7 +6272,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                           Expanded(
                             flex: 2,
                             child: ElevatedButton.icon(
-                              onPressed: canExecute
+                              onPressed: canExecute && !_isActivating
                                   ? () {
                                       Navigator.of(ctx).pop();
                                       executeRenewalOrPurchase();
