@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(ls C:UsersMsi-x88.claude/*.json)",
+      "Bash(ls C:UsersMsi-x88.mcp*)",
+      "Bash(ls C:UsersMsi-x88AppDataRoamingClaude/*.json)",
+      "Bash(ls /c/Users/Msi-x88/.claude/*.json)",
+      "Bash(ls /c/Users/Msi-x88/.claude/mcp*)",
+      "Bash(ls /c/Users/Msi-x88/.mcp*)"
     ]
   }
 }

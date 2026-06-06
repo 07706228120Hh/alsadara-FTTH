@@ -85,7 +85,8 @@ class _ReportsPageState extends State<ReportsPage> {
             .map((item) => Task.fromApiResponse(item as Map<String, dynamic>))
             .toList();
         allFetched.addAll(batch);
-        debugPrint('📊 التقارير: صفحة $page — جلب ${batch.length} مهمة (المجموع: ${allFetched.length})');
+        debugPrint(
+            '📊 التقارير: صفحة $page — جلب ${batch.length} مهمة (المجموع: ${allFetched.length})');
         hasMore = batch.length >= batchSize;
         page++;
       }
@@ -170,7 +171,8 @@ class _ReportsPageState extends State<ReportsPage> {
 
       setState(() {
         _serverSearchResults = tasks;
-        _serverSearchTotal = total is int ? total : int.tryParse('$total') ?? tasks.length;
+        _serverSearchTotal =
+            total is int ? total : int.tryParse('$total') ?? tasks.length;
         _isSearching = false;
         // تطبيق الفلاتر المحلية على نتائج السيرفر
         _applyLocalFiltersOnList(tasks);
@@ -209,7 +211,8 @@ class _ReportsPageState extends State<ReportsPage> {
 
       setState(() {
         _serverSearchResults = tasks;
-        _serverSearchTotal = total is int ? total : int.tryParse('$total') ?? tasks.length;
+        _serverSearchTotal =
+            total is int ? total : int.tryParse('$total') ?? tasks.length;
         _isSearching = false;
         _applyLocalFiltersOnList(tasks);
       });
@@ -225,15 +228,18 @@ class _ReportsPageState extends State<ReportsPage> {
   // ══════════════════════════════════════
 
   void _applyLocalFilters() {
-    final source = _serverSearchResults ?? (_allTasks.isNotEmpty ? _allTasks : widget.tasks);
+    final source = _serverSearchResults ??
+        (_allTasks.isNotEmpty ? _allTasks : widget.tasks);
     _applyLocalFiltersOnList(source);
   }
 
   void _applyLocalFiltersOnList(List<Task> source) {
     setState(() {
       currentFilteredTasks = source.where((task) {
-        if (selectedDepartment != null && task.department != selectedDepartment) return false;
-        if (selectedTechnician != null && task.technician != selectedTechnician) return false;
+        if (selectedDepartment != null && task.department != selectedDepartment)
+          return false;
+        if (selectedTechnician != null && task.technician != selectedTechnician)
+          return false;
         if (selectedFBG != null && task.fbg != selectedFBG) return false;
         return true;
       }).toList();
@@ -287,10 +293,11 @@ class _ReportsPageState extends State<ReportsPage> {
       context: context,
       firstDate: DateTime(2024),
       lastDate: now,
-      initialDateRange: _dateRange ?? DateTimeRange(
-        start: now.subtract(const Duration(days: 30)),
-        end: now,
-      ),
+      initialDateRange: _dateRange ??
+          DateTimeRange(
+            start: now.subtract(const Duration(days: 30)),
+            end: now,
+          ),
       locale: const Locale('ar'),
       helpText: 'اختر نطاق التاريخ',
       cancelText: 'إلغاء',
@@ -312,7 +319,8 @@ class _ReportsPageState extends State<ReportsPage> {
   // ══════════════════════════════════════
 
   void _showCustomFilterPopup() {
-    final source = _serverSearchResults ?? (_allTasks.isNotEmpty ? _allTasks : widget.tasks);
+    final source = _serverSearchResults ??
+        (_allTasks.isNotEmpty ? _allTasks : widget.tasks);
     Set<String> departments = source
         .map((task) => task.department)
         .where((dept) => dept.isNotEmpty)
@@ -321,10 +329,8 @@ class _ReportsPageState extends State<ReportsPage> {
         .map((task) => task.technician)
         .where((tech) => tech.isNotEmpty)
         .toSet();
-    Set<String> fbgs = source
-        .map((task) => task.fbg)
-        .where((fbg) => fbg.isNotEmpty)
-        .toSet();
+    Set<String> fbgs =
+        source.map((task) => task.fbg).where((fbg) => fbg.isNotEmpty).toSet();
 
     setState(() => showFilterDetails = true);
 
@@ -536,23 +542,42 @@ class _ReportsPageState extends State<ReportsPage> {
             onSelected: (value) async {
               try {
                 if (value == 'excel') {
-                  await TaskExportService.exportToExcel(tasks: currentFilteredTasks);
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تصدير Excel'), backgroundColor: Colors.green));
+                  await TaskExportService.exportToExcel(
+                      tasks: currentFilteredTasks);
+                  if (mounted)
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('تم تصدير Excel'),
+                        backgroundColor: Colors.green));
                 } else {
-                  await TaskExportService.exportToPdf(tasks: currentFilteredTasks);
-                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تصدير PDF'), backgroundColor: Colors.green));
+                  await TaskExportService.exportToPdf(
+                      tasks: currentFilteredTasks);
+                  if (mounted)
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('تم تصدير PDF'),
+                        backgroundColor: Colors.green));
                 }
               } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('خطأ في التصدير'), backgroundColor: Colors.red));
+                if (mounted)
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('خطأ في التصدير'),
+                      backgroundColor: Colors.red));
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'excel', child: Row(children: [
-                Icon(Icons.table_chart, color: Colors.green, size: 20), SizedBox(width: 8), Text('تصدير Excel'),
-              ])),
-              PopupMenuItem(value: 'pdf', child: Row(children: [
-                Icon(Icons.picture_as_pdf, color: Colors.red, size: 20), SizedBox(width: 8), Text('تصدير PDF'),
-              ])),
+              PopupMenuItem(
+                  value: 'excel',
+                  child: Row(children: [
+                    Icon(Icons.table_chart, color: Colors.green, size: 20),
+                    SizedBox(width: 8),
+                    Text('تصدير Excel'),
+                  ])),
+              PopupMenuItem(
+                  value: 'pdf',
+                  child: Row(children: [
+                    Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
+                    SizedBox(width: 8),
+                    Text('تصدير PDF'),
+                  ])),
             ],
           ),
           IconButton(
@@ -591,12 +616,14 @@ class _ReportsPageState extends State<ReportsPage> {
             if (_showDashboard)
               Expanded(
                 child: (_isSearching || _isLoadingAll)
-                    ? const Center(child: Column(
+                    ? const Center(
+                        child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircularProgressIndicator(),
                           SizedBox(height: 12),
-                          Text('جاري تحميل البيانات...', style: TextStyle(color: Colors.grey)),
+                          Text('جاري تحميل البيانات...',
+                              style: TextStyle(color: Colors.grey)),
                         ],
                       ))
                     : currentFilteredTasks.isEmpty
@@ -614,7 +641,8 @@ class _ReportsPageState extends State<ReportsPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, size: 14, color: Colors.grey[500]),
+                      Icon(Icons.info_outline,
+                          size: 14, color: Colors.grey[500]),
                       const SizedBox(width: 4),
                       Text(
                         'نتائج السيرفر: $_serverSearchTotal مهمة (معروض: ${currentFilteredTasks.length})',
@@ -632,10 +660,12 @@ class _ReportsPageState extends State<ReportsPage> {
                     : currentFilteredTasks.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16.0),
                             itemCount: currentFilteredTasks.length,
                             itemBuilder: (context, index) {
-                              return _buildTaskCard(currentFilteredTasks[index]);
+                              return _buildTaskCard(
+                                  currentFilteredTasks[index]);
                             },
                           ),
               ),
@@ -729,7 +759,9 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget _dateChip(String label, DateTimeRange? range) {
     final isSelected = _dateLabel == label;
     return ChoiceChip(
-      label: Text(label, style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : null)),
+      label: Text(label,
+          style:
+              TextStyle(fontSize: 12, color: isSelected ? Colors.white : null)),
       selected: isSelected,
       selectedColor: Colors.blue[700],
       onSelected: (_) => _setQuickDate(label, range),
@@ -836,28 +868,88 @@ class _ReportsPageState extends State<ReportsPage> {
                 ? Column(
                     children: [
                       Row(children: [
-                        Expanded(child: _buildStatCard('المجموع الكلي', currentFilteredTasks.length.toString(), Icons.assignment, Colors.blue, true)),
+                        Expanded(
+                            child: _buildStatCard(
+                                'المجموع الكلي',
+                                currentFilteredTasks.length.toString(),
+                                Icons.assignment,
+                                Colors.blue,
+                                true)),
                         const SizedBox(width: 8),
-                        Expanded(child: _buildStatCard('المكتملة', currentFilteredTasks.where((t) => t.status == 'مكتملة').length.toString(), Icons.check_circle, Colors.green, true)),
+                        Expanded(
+                            child: _buildStatCard(
+                                'المكتملة',
+                                currentFilteredTasks
+                                    .where((t) => t.status == 'مكتملة')
+                                    .length
+                                    .toString(),
+                                Icons.check_circle,
+                                Colors.green,
+                                true)),
                       ]),
                       const SizedBox(height: 12),
                       Row(children: [
-                        Expanded(child: _buildStatCard('الملغية', currentFilteredTasks.where((t) => t.status == 'ملغية').length.toString(), Icons.cancel, Colors.red, true)),
+                        Expanded(
+                            child: _buildStatCard(
+                                'الملغية',
+                                currentFilteredTasks
+                                    .where((t) => t.status == 'ملغية')
+                                    .length
+                                    .toString(),
+                                Icons.cancel,
+                                Colors.red,
+                                true)),
                         const SizedBox(width: 8),
-                        Expanded(child: _buildStatCard('المبلغ الإجمالي', '${widget.calculateTotalAmount(currentFilteredTasks).toStringAsFixed(0)} د.ع', Icons.account_balance_wallet, Colors.orange, true)),
+                        Expanded(
+                            child: _buildStatCard(
+                                'المبلغ الإجمالي',
+                                '${widget.calculateTotalAmount(currentFilteredTasks).toStringAsFixed(0)} د.ع',
+                                Icons.account_balance_wallet,
+                                Colors.orange,
+                                true)),
                       ]),
                     ],
                   )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Expanded(child: _buildStatCard('المجموع الكلي', currentFilteredTasks.length.toString(), Icons.assignment, Colors.blue, false)),
+                      Expanded(
+                          child: _buildStatCard(
+                              'المجموع الكلي',
+                              currentFilteredTasks.length.toString(),
+                              Icons.assignment,
+                              Colors.blue,
+                              false)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildStatCard('المكتملة', currentFilteredTasks.where((t) => t.status == 'مكتملة').length.toString(), Icons.check_circle, Colors.green, false)),
+                      Expanded(
+                          child: _buildStatCard(
+                              'المكتملة',
+                              currentFilteredTasks
+                                  .where((t) => t.status == 'مكتملة')
+                                  .length
+                                  .toString(),
+                              Icons.check_circle,
+                              Colors.green,
+                              false)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildStatCard('الملغية', currentFilteredTasks.where((t) => t.status == 'ملغية').length.toString(), Icons.cancel, Colors.red, false)),
+                      Expanded(
+                          child: _buildStatCard(
+                              'الملغية',
+                              currentFilteredTasks
+                                  .where((t) => t.status == 'ملغية')
+                                  .length
+                                  .toString(),
+                              Icons.cancel,
+                              Colors.red,
+                              false)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildStatCard('المبلغ الإجمالي', '${widget.calculateTotalAmount(currentFilteredTasks).toStringAsFixed(0)} د.ع', Icons.account_balance_wallet, Colors.orange, false)),
+                      Expanded(
+                          child: _buildStatCard(
+                              'المبلغ الإجمالي',
+                              '${widget.calculateTotalAmount(currentFilteredTasks).toStringAsFixed(0)} د.ع',
+                              Icons.account_balance_wallet,
+                              Colors.orange,
+                              false)),
                     ],
                   ),
           );
@@ -877,12 +969,16 @@ class _ReportsPageState extends State<ReportsPage> {
         controller: _searchController,
         textAlign: TextAlign.right,
         decoration: InputDecoration(
-          hintText: 'بحث في كل المهام (اسم العميل، الهاتف، الفني، رقم المهمة...)',
+          hintText:
+              'بحث في كل المهام (اسم العميل، الهاتف، الفني، رقم المهمة...)',
           hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
           prefixIcon: _isSearching
               ? const Padding(
                   padding: EdgeInsets.all(12),
-                  child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2)),
                 )
               : const Icon(Icons.search, size: 20),
           suffixIcon: _searchQuery.isNotEmpty
@@ -897,7 +993,8 @@ class _ReportsPageState extends State<ReportsPage> {
           filled: true,
           fillColor: Colors.white,
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: Colors.grey.shade300),
@@ -929,7 +1026,10 @@ class _ReportsPageState extends State<ReportsPage> {
           const SizedBox(height: 16),
           Text(
             'لا توجد مهام تطابق الفلاتر المحددة',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[600]),
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1039,31 +1139,48 @@ class _ReportsPageState extends State<ReportsPage> {
                     Expanded(
                       child: Text(
                         task.title,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueAccent),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(task.status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11)),
+                      child: Text(task.status,
+                          style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
 
                 // ── البيانات الظاهرة دائماً ──
-                _buildCompactRow(Icons.business, 'القسم', task.department, Icons.person, 'الفني', task.technician),
+                _buildCompactRow(Icons.business, 'القسم', task.department,
+                    Icons.person, 'الفني', task.technician),
                 const SizedBox(height: 6),
-                _buildCompactRow(Icons.router, 'FBG', task.fbg, Icons.phone, 'الهاتف', task.phone),
+                _buildCompactRow(Icons.router, 'FBG', task.fbg, Icons.phone,
+                    'الهاتف', task.phone),
                 const SizedBox(height: 6),
-                _buildCompactRow(Icons.attach_money, 'المبلغ', '${task.amountFormatted} د.ع', Icons.calendar_today, 'الإنشاء', fmt.format(task.createdAt)),
+                _buildCompactRow(
+                    Icons.attach_money,
+                    'المبلغ',
+                    '${task.amountFormatted} د.ع',
+                    Icons.calendar_today,
+                    'الإنشاء',
+                    fmt.format(task.createdAt)),
                 const SizedBox(height: 6),
-                _buildDetailRow(Icons.access_time, 'وقت التنفيذ', widget.calculateTaskDuration(task)),
+                _buildDetailRow(Icons.access_time, 'وقت التنفيذ',
+                    widget.calculateTaskDuration(task)),
 
                 // ── سهم التوسيع ──
                 if (hasHiddenDetails)
@@ -1073,13 +1190,16 @@ class _ReportsPageState extends State<ReportsPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                          isExpanded
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
                           size: 20,
                           color: Colors.grey[400],
                         ),
                         Text(
                           isExpanded ? 'إخفاء التفاصيل' : 'عرض التفاصيل',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                          style:
+                              TextStyle(fontSize: 11, color: Colors.grey[400]),
                         ),
                       ],
                     ),
@@ -1093,7 +1213,8 @@ class _ReportsPageState extends State<ReportsPage> {
                   if (task.username.isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(8),
@@ -1101,18 +1222,28 @@ class _ReportsPageState extends State<ReportsPage> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.person_pin, size: 18, color: Colors.blue[700]),
+                          Icon(Icons.person_pin,
+                              size: 18, color: Colors.blue[700]),
                           const SizedBox(width: 8),
-                          Text('العميل: ', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.blue[700], fontSize: 14)),
+                          Text('العميل: ',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blue[700],
+                                  fontSize: 14)),
                           Expanded(
-                            child: Text(task.username, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[900], fontSize: 14)),
+                            child: Text(task.username,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue[900],
+                                    fontSize: 14)),
                           ),
                         ],
                       ),
                     ),
 
                   if (task.leader.isNotEmpty)
-                    _buildDetailRow(Icons.supervisor_account, 'الليدر', task.leader),
+                    _buildDetailRow(
+                        Icons.supervisor_account, 'الليدر', task.leader),
                   if (task.location.isNotEmpty)
                     _buildDetailRow(Icons.location_on, 'الموقع', task.location),
                   if (task.priority.isNotEmpty)
@@ -1130,8 +1261,12 @@ class _ReportsPageState extends State<ReportsPage> {
 
   /// صف مضغوط: حقلين بجانب بعض
   Widget _buildCompactRow(
-    IconData icon1, String label1, String value1,
-    IconData icon2, String label2, String value2,
+    IconData icon1,
+    String label1,
+    String value1,
+    IconData icon2,
+    String label2,
+    String value2,
   ) {
     return Row(
       children: [
@@ -1148,9 +1283,15 @@ class _ReportsPageState extends State<ReportsPage> {
       children: [
         Icon(icon, size: 14, color: Colors.grey[500]),
         const SizedBox(width: 4),
-        Text('$label: ', style: TextStyle(fontWeight: FontWeight.w500, color: Colors.grey[600], fontSize: 12)),
+        Text('$label: ',
+            style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+                fontSize: 12)),
         Expanded(
-          child: Text(value, style: const TextStyle(fontSize: 12, color: Colors.black87), overflow: TextOverflow.ellipsis),
+          child: Text(value,
+              style: const TextStyle(fontSize: 12, color: Colors.black87),
+              overflow: TextOverflow.ellipsis),
         ),
       ],
     );
@@ -1166,7 +1307,10 @@ class _ReportsPageState extends State<ReportsPage> {
           const SizedBox(width: 8),
           Text(
             '$label: ',
-            style: TextStyle(fontWeight: FontWeight.w500, color: Colors.grey[700], fontSize: 14),
+            style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+                fontSize: 14),
           ),
           Expanded(
             child: Text(
@@ -1210,7 +1354,9 @@ class _ReportsPageState extends State<ReportsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white.withValues(alpha: 0.3) : Colors.transparent,
+          color: isSelected
+              ? Colors.white.withValues(alpha: 0.3)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -1519,14 +1665,17 @@ class _ReportsPageState extends State<ReportsPage> {
                   reservedSize: 42,
                   getTitlesWidget: (value, meta) {
                     final idx = value.toInt();
-                    if (idx < 0 || idx >= entries.length) return const SizedBox();
+                    if (idx < 0 || idx >= entries.length)
+                      return const SizedBox();
                     final name = entries[idx].key;
                     return SideTitleWidget(
                       meta: meta,
                       child: SizedBox(
                         width: 60,
                         child: Text(
-                          name.length > 10 ? '${name.substring(0, 10)}..' : name,
+                          name.length > 10
+                              ? '${name.substring(0, 10)}..'
+                              : name,
                           style: const TextStyle(fontSize: 9),
                           textAlign: TextAlign.center,
                           maxLines: 2,
@@ -1542,7 +1691,8 @@ class _ReportsPageState extends State<ReportsPage> {
                   showTitles: true,
                   reservedSize: 36,
                   getTitlesWidget: (value, meta) {
-                    if (value == 0 || value % math.max(1, (maxVal / 5).ceil()) != 0) {
+                    if (value == 0 ||
+                        value % math.max(1, (maxVal / 5).ceil()) != 0) {
                       if (value != maxVal.roundToDouble() && value != 0) {
                         return const SizedBox();
                       }
@@ -1554,8 +1704,10 @@ class _ReportsPageState extends State<ReportsPage> {
                   },
                 ),
               ),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles:
+                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
             gridData: FlGridData(
               show: true,
@@ -1575,7 +1727,8 @@ class _ReportsPageState extends State<ReportsPage> {
                     toY: entries[i].value.toDouble(),
                     color: barColors[i % barColors.length],
                     width: math.min(28, 200.0 / entries.length),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(6)),
                   ),
                 ],
               );
@@ -1593,14 +1746,16 @@ class _ReportsPageState extends State<ReportsPage> {
   Widget _buildDailyTasksLineChart() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final days = List.generate(14, (i) => today.subtract(Duration(days: 13 - i)));
+    final days =
+        List.generate(14, (i) => today.subtract(Duration(days: 13 - i)));
 
     final dayCounts = <DateTime, int>{};
     for (final d in days) {
       dayCounts[d] = 0;
     }
     for (final task in currentFilteredTasks) {
-      final taskDay = DateTime(task.createdAt.year, task.createdAt.month, task.createdAt.day);
+      final taskDay = DateTime(
+          task.createdAt.year, task.createdAt.month, task.createdAt.day);
       if (dayCounts.containsKey(taskDay)) {
         dayCounts[taskDay] = dayCounts[taskDay]! + 1;
       }
@@ -1658,9 +1813,11 @@ class _ReportsPageState extends State<ReportsPage> {
                 interval: 1,
                 getTitlesWidget: (value, meta) {
                   final idx = value.toInt();
-                  if (idx < 0 || idx >= daysList.length) return const SizedBox();
+                  if (idx < 0 || idx >= daysList.length)
+                    return const SizedBox();
                   // Show every other label to avoid crowding
-                  if (idx % 2 != 0 && daysList.length > 7) return const SizedBox();
+                  if (idx % 2 != 0 && daysList.length > 7)
+                    return const SizedBox();
                   return SideTitleWidget(
                     meta: meta,
                     child: Text(
@@ -1684,8 +1841,10 @@ class _ReportsPageState extends State<ReportsPage> {
                 },
               ),
             ),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           borderData: FlBorderData(
             show: true,
@@ -1817,8 +1976,10 @@ class _ReportsPageState extends State<ReportsPage> {
                 },
               ),
             ),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
           gridData: FlGridData(
             show: true,
@@ -1838,7 +1999,8 @@ class _ReportsPageState extends State<ReportsPage> {
                   toY: top5[i].value.toDouble(),
                   color: techColors[i % techColors.length],
                   width: 24,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(6)),
                 ),
               ],
             );
@@ -1869,8 +2031,11 @@ class _ReportsPageState extends State<ReportsPage> {
     // مكتملة أو ملغية بنجاح: slaStatus == 'done' وأُغلقت قبل الموعد
     int compliant = 0;
     for (final task in tasksWithSla) {
-      if ((task.isCompleted || task.isCancelled) && task.closedAt != null && task.slaDeadline != null) {
-        if (task.closedAt!.isBefore(task.slaDeadline!) || task.closedAt!.isAtSameMomentAs(task.slaDeadline!)) {
+      if ((task.isCompleted || task.isCancelled) &&
+          task.closedAt != null &&
+          task.slaDeadline != null) {
+        if (task.closedAt!.isBefore(task.slaDeadline!) ||
+            task.closedAt!.isAtSameMomentAs(task.slaDeadline!)) {
           compliant++;
         }
       }
@@ -1994,11 +2159,11 @@ class _ReportsPageState extends State<ReportsPage> {
     if (totalMinutes < 1440) {
       final h = totalMinutes ~/ 60;
       final m = totalMinutes % 60;
-      return m > 0 ? '${h}س ${m}د' : '${h}س';
+      return m > 0 ? '$hس $mد' : '$hس';
     }
     final d = totalMinutes ~/ 1440;
     final h = (totalMinutes % 1440) ~/ 60;
-    return h > 0 ? '${d}ي ${h}س' : '${d}ي';
+    return h > 0 ? '$dي $hس' : '$dي';
   }
 
   Widget _buildDelayedTasksCard() {
@@ -2046,20 +2211,28 @@ class _ReportsPageState extends State<ReportsPage> {
       ..sort((a, b) => b.minutes.compareTo(a.minutes)); // ترتيب تنازلي للعرض
 
     // تصنيف ديناميكي
-    final completedDelayed = allCompleted.where((e) => e.minutes > delayedThreshold).toList();
-    final completedSlow = allCompleted.where((e) => e.minutes > slowThreshold && e.minutes <= delayedThreshold).toList();
-    final completedFast = allCompleted.where((e) => e.minutes <= slowThreshold).toList();
+    final completedDelayed =
+        allCompleted.where((e) => e.minutes > delayedThreshold).toList();
+    final completedSlow = allCompleted
+        .where(
+            (e) => e.minutes > slowThreshold && e.minutes <= delayedThreshold)
+        .toList();
+    final completedFast =
+        allCompleted.where((e) => e.minutes <= slowThreshold).toList();
 
     // مهام مستبعدة (> 7 أيام)
-    final excludedCount = allCompletedRaw.where((e) => e.minutes > 10080).length;
+    final excludedCount =
+        allCompletedRaw.where((e) => e.minutes > 10080).length;
 
     // تحليل حسب القسم/الفني/النوع — كل المكتملة الواقعية (لعرض المتوسط الحقيقي)
     final perfByDept = <String, List<int>>{};
     final perfByTech = <String, List<int>>{};
     final perfByType = <String, List<int>>{};
     for (final e in allCompleted) {
-      final dept = e.task.department.isNotEmpty ? e.task.department : 'غير محدد';
-      final tech = e.task.technician.isNotEmpty ? e.task.technician : 'غير معيّن';
+      final dept =
+          e.task.department.isNotEmpty ? e.task.department : 'غير محدد';
+      final tech =
+          e.task.technician.isNotEmpty ? e.task.technician : 'غير معيّن';
       final type = e.task.title.isNotEmpty ? e.task.title : 'غير محدد';
       perfByDept.putIfAbsent(dept, () => []).add(e.minutes);
       perfByTech.putIfAbsent(tech, () => []).add(e.minutes);
@@ -2070,9 +2243,13 @@ class _ReportsPageState extends State<ReportsPage> {
       final sorted = List<int>.from(list)..sort();
       return sorted[sorted.length ~/ 2];
     }
-    final deptSorted = perfByDept.entries.toList()..sort((a, b) => calcMedian(b.value).compareTo(calcMedian(a.value)));
-    final techSorted = perfByTech.entries.toList()..sort((a, b) => calcMedian(b.value).compareTo(calcMedian(a.value)));
-    final typeSorted = perfByType.entries.toList()..sort((a, b) => calcMedian(b.value).compareTo(calcMedian(a.value)));
+
+    final deptSorted = perfByDept.entries.toList()
+      ..sort((a, b) => calcMedian(b.value).compareTo(calcMedian(a.value)));
+    final techSorted = perfByTech.entries.toList()
+      ..sort((a, b) => calcMedian(b.value).compareTo(calcMedian(a.value)));
+    final typeSorted = perfByType.entries.toList()
+      ..sort((a, b) => calcMedian(b.value).compareTo(calcMedian(a.value)));
 
     return _buildChartCard(
       title: 'تحليل التأخير والأداء',
@@ -2087,23 +2264,37 @@ class _ReportsPageState extends State<ReportsPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: openDelayed.isEmpty ? Colors.green.shade50 : Colors.red.shade50,
+              color: openDelayed.isEmpty
+                  ? Colors.green.shade50
+                  : Colors.red.shade50,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: openDelayed.isEmpty ? Colors.green.shade300 : Colors.red.shade300),
+              border: Border.all(
+                  color: openDelayed.isEmpty
+                      ? Colors.green.shade300
+                      : Colors.red.shade300),
             ),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(openDelayed.isEmpty ? Icons.check_circle : Icons.access_alarm,
-                        size: 20, color: openDelayed.isEmpty ? Colors.green : Colors.red),
+                    Icon(
+                        openDelayed.isEmpty
+                            ? Icons.check_circle
+                            : Icons.access_alarm,
+                        size: 20,
+                        color: openDelayed.isEmpty ? Colors.green : Colors.red),
                     const SizedBox(width: 6),
                     Text(
-                      openDelayed.isEmpty ? 'لا توجد مهام مفتوحة متأخرة' : '${openDelayed.length} مهمة مفتوحة متأخرة الآن',
+                      openDelayed.isEmpty
+                          ? 'لا توجد مهام مفتوحة متأخرة'
+                          : '${openDelayed.length} مهمة مفتوحة متأخرة الآن',
                       style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.bold,
-                        color: openDelayed.isEmpty ? Colors.green.shade700 : Colors.red.shade700,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: openDelayed.isEmpty
+                            ? Colors.green.shade700
+                            : Colors.red.shade700,
                       ),
                     ),
                   ],
@@ -2111,34 +2302,48 @@ class _ReportsPageState extends State<ReportsPage> {
                 if (openDelayed.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   ...openDelayed.take(5).map((e) => Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Text('#${e.task.id}', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            '${e.task.title} — ${e.task.technician.isNotEmpty ? e.task.technician : "غير معيّن"}',
-                            style: const TextStyle(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis,
-                          ),
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.red.shade700, borderRadius: BorderRadius.circular(6)),
-                          child: Text(_formatDuration(e.minutes), style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Row(
+                          children: [
+                            Text('#${e.task.id}',
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.grey[500])),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '${e.task.title} — ${e.task.technician.isNotEmpty ? e.task.technician : "غير معيّن"}',
+                                style: const TextStyle(fontSize: 12),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                  color: Colors.red.shade700,
+                                  borderRadius: BorderRadius.circular(6)),
+                              child: Text(_formatDuration(e.minutes),
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )),
+                      )),
                   if (openDelayed.length > 5)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text('و ${openDelayed.length - 5} مهمة أخرى...', style: TextStyle(fontSize: 11, color: Colors.red[400])),
+                      child: Text('و ${openDelayed.length - 5} مهمة أخرى...',
+                          style:
+                              TextStyle(fontSize: 11, color: Colors.red[400])),
                     ),
                 ],
               ],
@@ -2150,11 +2355,23 @@ class _ReportsPageState extends State<ReportsPage> {
           // ══ تصنيف سرعة المكتملة ══
           Row(
             children: [
-              Expanded(child: _buildDelayStatChip('${completedDelayed.length}', 'متأخرة (> ${_formatDuration(delayedThreshold)})', Colors.red)),
+              Expanded(
+                  child: _buildDelayStatChip(
+                      '${completedDelayed.length}',
+                      'متأخرة (> ${_formatDuration(delayedThreshold)})',
+                      Colors.red)),
               const SizedBox(width: 8),
-              Expanded(child: _buildDelayStatChip('${completedSlow.length}', 'بطيئة (${_formatDuration(slowThreshold)}-${_formatDuration(delayedThreshold)})', Colors.orange)),
+              Expanded(
+                  child: _buildDelayStatChip(
+                      '${completedSlow.length}',
+                      'بطيئة (${_formatDuration(slowThreshold)}-${_formatDuration(delayedThreshold)})',
+                      Colors.orange)),
               const SizedBox(width: 8),
-              Expanded(child: _buildDelayStatChip('${completedFast.length}', 'سريعة (< ${_formatDuration(slowThreshold)})', Colors.green)),
+              Expanded(
+                  child: _buildDelayStatChip(
+                      '${completedFast.length}',
+                      'سريعة (< ${_formatDuration(slowThreshold)})',
+                      Colors.green)),
             ],
           ),
 
@@ -2163,7 +2380,10 @@ class _ReportsPageState extends State<ReportsPage> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 '* $excludedCount مهمة مستبعدة (أكثر من 7 أيام — غالباً مهام منسية)',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500], fontStyle: FontStyle.italic),
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[500],
+                    fontStyle: FontStyle.italic),
               ),
             ),
 
@@ -2171,44 +2391,67 @@ class _ReportsPageState extends State<ReportsPage> {
             const SizedBox(height: 16),
 
             // ══ الأقسام ══
-            _buildPerfSection('متوسط الإنجاز حسب القسم:', deptSorted, Colors.blue, medianMin),
+            _buildPerfSection(
+                'متوسط الإنجاز حسب القسم:', deptSorted, Colors.blue, medianMin),
             const SizedBox(height: 12),
 
-            _buildPerfSection('متوسط الإنجاز حسب الفني:', techSorted, Colors.orange, medianMin),
+            _buildPerfSection('متوسط الإنجاز حسب الفني:', techSorted,
+                Colors.orange, medianMin),
             const SizedBox(height: 12),
 
-            _buildPerfSection('متوسط الإنجاز حسب نوع المهمة:', typeSorted, Colors.purple, medianMin),
+            _buildPerfSection('متوسط الإنجاز حسب نوع المهمة:', typeSorted,
+                Colors.purple, medianMin),
             const SizedBox(height: 16),
 
             // ══ أبطأ 5 مهام مكتملة ══
-            const Text('أبطأ 5 مهام مكتملة:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            const Text('أبطأ 5 مهام مكتملة:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 8),
             ...allCompleted.take(5).map((e) => Container(
-              margin: const EdgeInsets.only(bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50, borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Row(
-                children: [
-                  Text('#${e.task.id}', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-                  const SizedBox(width: 6),
-                  Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(e.task.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      Text('${e.task.department} — ${e.task.technician.isNotEmpty ? e.task.technician : "غير معيّن"}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                    ],
-                  )),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.red.shade700, borderRadius: BorderRadius.circular(8)),
-                    child: Text(_formatDuration(e.minutes), style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
+                  margin: const EdgeInsets.only(bottom: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
                   ),
-                ],
-              ),
-            )),
+                  child: Row(
+                    children: [
+                      Text('#${e.task.id}',
+                          style:
+                              TextStyle(fontSize: 10, color: Colors.grey[500])),
+                      const SizedBox(width: 6),
+                      Expanded(
+                          child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(e.task.title,
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                          Text(
+                              '${e.task.department} — ${e.task.technician.isNotEmpty ? e.task.technician : "غير معيّن"}',
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.grey[600])),
+                        ],
+                      )),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                            color: Colors.red.shade700,
+                            borderRadius: BorderRadius.circular(8)),
+                        child: Text(_formatDuration(e.minutes),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                )),
           ],
         ],
       ),
@@ -2216,12 +2459,14 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   /// قسم أداء (قسم/فني/نوع) — يعرض الوسيط لكل فئة مع لون حسب المقارنة بالوسيط العام
-  Widget _buildPerfSection(String title, List<MapEntry<String, List<int>>> data, Color baseColor, int globalMedian) {
+  Widget _buildPerfSection(String title, List<MapEntry<String, List<int>>> data,
+      Color baseColor, int globalMedian) {
     if (data.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         const SizedBox(height: 6),
         ...data.take(5).map((e) {
           final sorted = List<int>.from(e.value)..sort();
@@ -2239,15 +2484,31 @@ class _ReportsPageState extends State<ReportsPage> {
             padding: const EdgeInsets.only(bottom: 5),
             child: Row(
               children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: baseColor.withValues(alpha: 0.7), shape: BoxShape.circle)),
+                Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                        color: baseColor.withValues(alpha: 0.7),
+                        shape: BoxShape.circle)),
                 const SizedBox(width: 8),
-                Expanded(child: Text(e.key, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-                Text('${e.value.length} مهمة', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Expanded(
+                    child: Text(e.key,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600))),
+                Text('${e.value.length} مهمة',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                 const SizedBox(width: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: chipColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                  child: Text('وسيط ${_formatDuration(med)}', style: TextStyle(fontSize: 11, color: chipColor, fontWeight: FontWeight.w600)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: chipColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Text('وسيط ${_formatDuration(med)}',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: chipColor,
+                          fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
@@ -2267,9 +2528,14 @@ class _ReportsPageState extends State<ReportsPage> {
       ),
       child: Column(
         children: [
-          Text(count, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+          Text(count,
+              style: TextStyle(
+                  fontSize: 22, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500), textAlign: TextAlign.center),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10, color: color, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center),
         ],
       ),
     );
