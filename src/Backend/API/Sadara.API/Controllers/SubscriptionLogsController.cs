@@ -448,6 +448,170 @@ public class SubscriptionLogsController : ControllerBase
     }
 
     /// <summary>
+    /// إصلاح السجلات التي حُفظت بدون قيود محاسبية بسبب خطأ توليد رقم القيد
+    /// </summary>
+    [HttpPost("repair-accounting")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> RepairAccounting()
+    {
+        var cutoff = new DateTime(2026, 6, 8, 0, 0, 0, DateTimeKind.Utc);
+        var logs = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => !l.IsDeleted
+                && l.JournalEntryId == null
+                && l.PlanPrice > 0
+                && l.CollectionType != null
+                && l.CompanyId.HasValue
+                && l.UserId.HasValue
+                && l.CreatedAt >= cutoff)
+            .OrderBy(l => l.CreatedAt)
+            .ToListAsync();
+
+        int repaired = 0, skipped = 0;
+        var errors = new List<string>();
+
+        foreach (var log in logs)
+        {
+            try
+            {
+                var userId = log.UserId!.Value;
+                var companyId = log.CompanyId!.Value;
+                var amount = log.PlanPrice!.Value;
+                var operatorName = log.ActivatedBy ?? "مشغل";
+                var planName = log.PlanName ?? "اشتراك";
+                var customerName = log.CustomerName ?? "عميل";
+                var isPurchase = log.OperationType?.ToLower() == "purchase";
+                var opType = isPurchase ? "شراء" : "تجديد";
+
+                var revenueCode = isPurchase ? AccountCodes.CompanyDiscountRevenue : AccountCodes.MaintenanceRevenue;
+                var revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, companyId)
+                    ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4100", companyId);
+                if (revenueAccount == null) { skipped++; continue; }
+
+                Account? debitAccount = null;
+                string description = "";
+
+                switch (log.CollectionType!.ToLower())
+                {
+                    case "cash":
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.Cash, userId, $"صندوق {operatorName}", companyId);
+                        await _unitOfWork.SaveChangesAsync();
+                        description = $"{opType} {planName} - {customerName} - نقد عبر {operatorName}";
+                        break;
+
+                    case "credit":
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.OperatorReceivables, userId, $"ذمة {operatorName}", companyId);
+                        await _unitOfWork.SaveChangesAsync();
+                        description = $"{opType} {planName} - {customerName} - آجل على {operatorName}";
+                        break;
+
+                    case "master":
+                        debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.ElectronicPayment, companyId);
+                        if (debitAccount == null) { skipped++; continue; }
+                        description = $"{opType} {planName} - {customerName} - ماستر";
+                        break;
+
+                    case "agent":
+                        if (!log.LinkedAgentId.HasValue) { skipped++; continue; }
+                        var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
+                        if (agent == null) { skipped++; continue; }
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.AgentReceivables, agent.Id, agent.Name, companyId);
+                        await _unitOfWork.SaveChangesAsync();
+                        agent.TotalCharges += amount;
+                        agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
+                        _unitOfWork.Agents.Update(agent);
+                        description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
+                        break;
+
+                    case "technician":
+                        if (!log.LinkedTechnicianId.HasValue) { skipped++; continue; }
+                        var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+                        if (tech == null) { skipped++; continue; }
+                        if (string.IsNullOrEmpty(log.TechnicianName))
+                            log.TechnicianName = tech.FullName;
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.TechnicianReceivables, tech.Id, tech.FullName, companyId);
+                        await _unitOfWork.SaveChangesAsync();
+                        tech.TechTotalCharges += amount;
+                        tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
+                        _unitOfWork.Users.Update(tech);
+                        // فحص عدم وجود TechnicianTransaction مكرر
+                        var existsTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                            .AnyAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
+                        if (!existsTx)
+                        {
+                            await _unitOfWork.TechnicianTransactions.AddAsync(new TechnicianTransaction
+                            {
+                                TechnicianId = tech.Id,
+                                Type = TechnicianTransactionType.Charge,
+                                Category = TechnicianTransactionCategory.Subscription,
+                                Amount = amount,
+                                BalanceAfter = tech.TechNetBalance,
+                                Description = $"{opType} {planName} - {customerName}",
+                                ReferenceNumber = log.Id.ToString(),
+                                CreatedById = userId,
+                                CompanyId = companyId,
+                                CreatedAt = log.CreatedAt
+                            });
+                        }
+                        description = $"{opType} {planName} - {customerName} - على فني {tech.FullName} عبر {operatorName}";
+                        break;
+
+                    default:
+                        skipped++;
+                        continue;
+                }
+
+                if (debitAccount != null)
+                {
+                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                    {
+                        (debitAccount.Id, amount, 0, $"{debitAccount.Name} - {opType} {planName}"),
+                        (revenueAccount.Id, 0, amount, $"إيراد {opType} - {customerName}")
+                    };
+
+                    await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                        _unitOfWork, companyId, userId, description,
+                        JournalReferenceType.FtthSubscription, log.Id.ToString(), lines);
+
+                    await _unitOfWork.SaveChangesAsync();
+
+                    var entry = await _unitOfWork.JournalEntries.AsQueryable()
+                        .Where(j => j.ReferenceType == JournalReferenceType.FtthSubscription
+                            && j.ReferenceId == log.Id.ToString())
+                        .OrderByDescending(j => j.CreatedAt)
+                        .FirstOrDefaultAsync();
+                    if (entry != null)
+                    {
+                        log.JournalEntryId = entry.Id;
+                        _unitOfWork.SubscriptionLogs.Update(log);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+
+                    repaired++;
+                }
+                else
+                {
+                    skipped++;
+                }
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Log {log.Id}: {ex.Message}");
+                _logger.LogError(ex, "خطأ في إصلاح القيد للسجل {LogId}", log.Id);
+            }
+        }
+
+        return Ok(new
+        {
+            success = true,
+            total = logs.Count,
+            repaired,
+            skipped,
+            errors = errors.Count > 0 ? errors : null,
+            message = $"تم إصلاح {repaired} سجل من أصل {logs.Count}"
+        });
+    }
+
+    /// <summary>
     /// البحث عن سجلات باستخدام رقم الاشتراك
     /// </summary>
     [HttpGet("subscription/{subscriptionId}")]

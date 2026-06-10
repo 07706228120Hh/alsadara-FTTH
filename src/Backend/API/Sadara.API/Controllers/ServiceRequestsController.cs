@@ -2513,19 +2513,23 @@ public static class ServiceRequestAccountingHelper
         const int maxRetries = 3;
         for (int attempt = 0; attempt < maxRetries; attempt++)
         {
-            // توليد رقم القيد من MAX الحالي في قاعدة البيانات
+            // توليد رقم القيد — ترتيب بالطول ثم أبجدياً لتجنب مشكلة 9999 > 10000 نصياً
+            var prefix = $"JE-{year}-";
             var maxEntry = await unitOfWork.JournalEntries.AsQueryable()
                 .IgnoreQueryFilters()
-                .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year)
+                .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year
+                    && j.EntryNumber.StartsWith(prefix))
+                .OrderByDescending(j => j.EntryNumber.Length)
+                .ThenByDescending(j => j.EntryNumber)
                 .Select(j => j.EntryNumber)
-                .MaxAsync();
+                .FirstOrDefaultAsync();
             int nextNum = 1;
-            if (maxEntry != null && maxEntry.StartsWith($"JE-{year}-"))
+            if (maxEntry != null && maxEntry.StartsWith(prefix))
             {
-                if (int.TryParse(maxEntry.Substring($"JE-{year}-".Length), out var maxNum))
+                if (int.TryParse(maxEntry.Substring(prefix.Length), out var maxNum))
                     nextNum = maxNum + 1;
             }
-            entry.EntryNumber = $"JE-{year}-{nextNum:D4}";
+            entry.EntryNumber = $"{prefix}{nextNum:D5}";
 
             try
             {

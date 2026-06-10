@@ -5165,18 +5165,22 @@ public class AccountingController : ControllerBase
     {
         var year = DateTime.UtcNow.Year;
         var prefix = $"JE-{year}-";
+        // ترتيب بالطول ثم أبجدياً لتجنب مشكلة المقارنة النصية (9999 > 10000 نصياً)
         var maxEntry = await _unitOfWork.JournalEntries.AsQueryable()
             .IgnoreQueryFilters()
-            .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year)
+            .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year
+                && j.EntryNumber.StartsWith(prefix))
+            .OrderByDescending(j => j.EntryNumber.Length)
+            .ThenByDescending(j => j.EntryNumber)
             .Select(j => j.EntryNumber)
-            .MaxAsync();
+            .FirstOrDefaultAsync();
         int nextNum = 1;
         if (maxEntry != null && maxEntry.StartsWith(prefix))
         {
             if (int.TryParse(maxEntry.Substring(prefix.Length), out var maxNum))
                 nextNum = maxNum + 1;
         }
-        return $"{prefix}{nextNum:D4}";
+        return $"{prefix}{nextNum:D5}";
     }
 
     /// <summary>

@@ -3420,21 +3420,24 @@ public class InventoryController : ControllerBase
     {
         if (lines.Count == 0) return null;
 
-        // رقم القيد التسلسلي
+        // رقم القيد التسلسلي — ترتيب بالطول ثم أبجدياً لتجنب مشكلة 9999 > 10000 نصياً
         var year = DateTime.UtcNow.Year;
         var prefix = $"JE-{year}-";
         var maxEntry = await _unitOfWork.JournalEntries.AsQueryable()
             .IgnoreQueryFilters()
-            .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year)
+            .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year
+                && j.EntryNumber.StartsWith(prefix))
+            .OrderByDescending(j => j.EntryNumber.Length)
+            .ThenByDescending(j => j.EntryNumber)
             .Select(j => j.EntryNumber)
-            .MaxAsync();
+            .FirstOrDefaultAsync();
         int nextNum = 1;
         if (maxEntry != null && maxEntry.StartsWith(prefix))
         {
             if (int.TryParse(maxEntry.Substring(prefix.Length), out var maxNum))
                 nextNum = maxNum + 1;
         }
-        var entryNumber = $"{prefix}{nextNum:D4}";
+        var entryNumber = $"{prefix}{nextNum:D5}";
 
         var entryId = Guid.NewGuid();
         var entry = new JournalEntry
