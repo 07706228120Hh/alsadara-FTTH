@@ -188,22 +188,54 @@ public class SubscriptionLogsController : ControllerBase
             {
                 var userId = log.UserId.Value;
                 var companyId = log.CompanyId.Value;
-                var amount = log.PlanPrice.Value;
                 var operatorName = log.ActivatedBy ?? "مشغل";
                 var planName = log.PlanName ?? "اشتراك";
                 var customerName = log.CustomerName ?? "عميل";
                 var isPurchase = log.OperationType?.ToLower() == "purchase";
                 var opType = isPurchase ? "شراء" : "تجديد";
 
-                var revenueCode = isPurchase ? AccountCodes.CompanyDiscountRevenue : AccountCodes.MaintenanceRevenue;
-                var revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, companyId)
-                    ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4100", companyId);
-                if (revenueAccount == null)
+                // ═══ حساب المبالغ (نفس منطق FtthAccountingController) ═══
+                var basePrice = log.BasePrice ?? log.PlanPrice ?? 0;
+                var companyDiscount = log.CompanyDiscount ?? 0;
+                var manualDiscount = log.ManualDiscount ?? 0;
+                var maintenanceFee = log.MaintenanceFee ?? 0;
+                var systemDiscountEnabled = log.SystemDiscountEnabled;
+
+                // المستقطع من رصيد الصفحة (ثابت!)
+                decimal netFromCompany;
+                if (basePrice > 0)
+                    netFromCompany = basePrice - companyDiscount;
+                else if (systemDiscountEnabled)
+                    netFromCompany = log.PlanPrice ?? 0;
+                else
+                    netFromCompany = (log.PlanPrice ?? 0) - companyDiscount;
+                if (netFromCompany <= 0) netFromCompany = log.PlanPrice ?? 0;
+
+                // ربح خصم الشركة = خصم الشركة عند عدم تفعيله
+                var companyDiscountProfit = systemDiscountEnabled ? 0 : companyDiscount;
+
+                // الإيرادات = أجور صيانة + خصم شركة (إذا لم يُمرر)
+                var revenue = maintenanceFee + companyDiscountProfit;
+
+                // حماية: الخصم اليدوي لا يتجاوز الإجمالي
+                var maxDiscount = netFromCompany + revenue;
+                if (manualDiscount > maxDiscount) manualDiscount = maxDiscount;
+
+                // الإجمالي = المستقطع + الإيرادات - المصاريف
+                var collectedAmount = netFromCompany + revenue - manualDiscount;
+
+                // ═══ جلب الحسابات ═══
+                var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
+                if (pageBalanceAccount == null)
                 {
-                    _logger.LogWarning("⚠️ حساب الإيراد {Code} غير موجود للشركة {CompanyId} — السجل {LogId} بدون قيد", revenueCode, companyId, log.Id);
+                    _logger.LogWarning("⚠️ حساب رصيد الصفحة 11102 غير موجود للشركة {CompanyId} — السجل {LogId} بدون قيد", companyId, log.Id);
                     goto noAccounting;
                 }
+                var maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.MaintenanceRevenue, companyId);
+                var discountRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CompanyDiscountRevenue, companyId);
+                var promotionExpenseAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PromotionExpense, companyId);
 
+                // ═══ تحديد حساب التحصيل ═══
                 Account? debitAccount = null;
                 string description = "";
 
@@ -233,7 +265,7 @@ public class SubscriptionLogsController : ControllerBase
                         if (agent == null) goto noAccounting;
                         debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.AgentReceivables, agent.Id, agent.Name, companyId);
                         await _unitOfWork.SaveChangesAsync();
-                        agent.TotalCharges += amount;
+                        agent.TotalCharges += collectedAmount;
                         agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
                         _unitOfWork.Agents.Update(agent);
                         description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
@@ -243,12 +275,11 @@ public class SubscriptionLogsController : ControllerBase
                         if (!log.LinkedTechnicianId.HasValue) goto noAccounting;
                         var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
                         if (tech == null) goto noAccounting;
-                        // حفظ اسم الفني في سجل العملية للعرض لاحقاً
                         if (string.IsNullOrEmpty(log.TechnicianName))
                             log.TechnicianName = tech.FullName;
                         debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.TechnicianReceivables, tech.Id, tech.FullName, companyId);
                         await _unitOfWork.SaveChangesAsync();
-                        tech.TechTotalCharges += amount;
+                        tech.TechTotalCharges += collectedAmount;
                         tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
                         _unitOfWork.Users.Update(tech);
                         var techTx = new TechnicianTransaction
@@ -256,7 +287,7 @@ public class SubscriptionLogsController : ControllerBase
                             TechnicianId = tech.Id,
                             Type = TechnicianTransactionType.Charge,
                             Category = TechnicianTransactionCategory.Subscription,
-                            Amount = amount,
+                            Amount = collectedAmount,
                             BalanceAfter = tech.TechNetBalance,
                             Description = $"{opType} {planName} - {customerName}",
                             ReferenceNumber = log.Id.ToString(),
@@ -274,11 +305,26 @@ public class SubscriptionLogsController : ControllerBase
 
                 if (debitAccount != null)
                 {
-                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
-                    {
-                        (debitAccount.Id, amount, 0, $"{debitAccount.Name} - {opType} {planName}"),
-                        (revenueAccount.Id, 0, amount, $"إيراد {opType} - {customerName}")
-                    };
+                    // ═══ بناء سطور القيد (نفس بنية FtthAccountingController) ═══
+                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>();
+
+                    // مدين: حساب التحصيل
+                    lines.Add((debitAccount.Id, Math.Max(collectedAmount, 0), 0, $"{debitAccount.Name} - {opType} {planName}"));
+
+                    // مدين: مصاريف عروض (خصم يدوي)
+                    if (promotionExpenseAccount != null)
+                        lines.Add((promotionExpenseAccount.Id, manualDiscount, 0, $"خصم اختياري - {customerName}"));
+
+                    // دائن: رصيد الصفحة (المستقطع)
+                    lines.Add((pageBalanceAccount.Id, 0, Math.Max(netFromCompany, 0), $"خصم من رصيد الصفحة - {opType} {planName}"));
+
+                    // دائن: إيراد صيانة
+                    if (maintenanceRevenueAccount != null)
+                        lines.Add((maintenanceRevenueAccount.Id, 0, maintenanceFee, $"إيراد صيانة - {customerName}"));
+
+                    // دائن: إيراد خصم الشركة
+                    if (discountRevenueAccount != null)
+                        lines.Add((discountRevenueAccount.Id, 0, companyDiscountProfit, $"إيراد خصم الشركة - {customerName}"));
 
                     await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
                         _unitOfWork, companyId, userId, description,
@@ -448,7 +494,8 @@ public class SubscriptionLogsController : ControllerBase
     }
 
     /// <summary>
-    /// إصلاح السجلات التي حُفظت بدون قيود محاسبية بسبب خطأ توليد رقم القيد
+    /// إصلاح القيود الخاطئة: عكس القيود القديمة (مدين/دائن خطأ) وإعادة إنشائها بالمنطق الصحيح
+    /// مع تصحيح أرصدة الفنيين والوكلاء
     /// </summary>
     [HttpPost("repair-accounting")]
     [Authorize(Policy = "SuperAdmin")]
@@ -457,7 +504,7 @@ public class SubscriptionLogsController : ControllerBase
         var cutoff = new DateTime(2026, 6, 8, 0, 0, 0, DateTimeKind.Utc);
         var logs = await _unitOfWork.SubscriptionLogs.AsQueryable()
             .Where(l => !l.IsDeleted
-                && l.JournalEntryId == null
+                && l.JournalEntryId != null
                 && l.PlanPrice > 0
                 && l.CollectionType != null
                 && l.CompanyId.HasValue
@@ -475,18 +522,105 @@ public class SubscriptionLogsController : ControllerBase
             {
                 var userId = log.UserId!.Value;
                 var companyId = log.CompanyId!.Value;
-                var amount = log.PlanPrice!.Value;
                 var operatorName = log.ActivatedBy ?? "مشغل";
                 var planName = log.PlanName ?? "اشتراك";
                 var customerName = log.CustomerName ?? "عميل";
                 var isPurchase = log.OperationType?.ToLower() == "purchase";
                 var opType = isPurchase ? "شراء" : "تجديد";
 
-                var revenueCode = isPurchase ? AccountCodes.CompanyDiscountRevenue : AccountCodes.MaintenanceRevenue;
-                var revenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, companyId)
-                    ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4100", companyId);
-                if (revenueAccount == null) { skipped++; continue; }
+                // ═══ 1. عكس القيد القديم وأرصدة حساباته ═══
+                if (log.JournalEntryId.HasValue)
+                {
+                    var oldJe = await _unitOfWork.JournalEntries.AsQueryable()
+                        .Include(j => j.Lines)
+                        .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId.Value);
+                    if (oldJe != null && oldJe.Status != JournalEntryStatus.Voided)
+                    {
+                        foreach (var line in oldJe.Lines.Where(l => !l.IsDeleted))
+                        {
+                            var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                            if (account != null)
+                            {
+                                if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                                    account.CurrentBalance -= line.DebitAmount - line.CreditAmount;
+                                else
+                                    account.CurrentBalance -= line.CreditAmount - line.DebitAmount;
+                                _unitOfWork.Accounts.Update(account);
+                            }
+                            line.IsDeleted = true;
+                            line.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.JournalEntryLines.Update(line);
+                        }
+                        oldJe.Status = JournalEntryStatus.Voided;
+                        oldJe.IsDeleted = true;
+                        oldJe.DeletedAt = DateTime.UtcNow;
+                        _unitOfWork.JournalEntries.Update(oldJe);
+                    }
+                    log.JournalEntryId = null;
+                }
 
+                // ═══ 2. عكس رصيد الفني/الوكيل القديم (كان يستخدم PlanPrice) ═══
+                var oldAmount = log.PlanPrice!.Value;
+                if (log.CollectionType!.ToLower() == "technician" && log.LinkedTechnicianId.HasValue)
+                {
+                    var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+                    if (tech != null)
+                    {
+                        tech.TechTotalCharges -= oldAmount; // عكس القديم
+                        // حذف TechnicianTransaction القديم
+                        var oldTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                            .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
+                        if (oldTx != null)
+                        {
+                            oldTx.IsDeleted = true;
+                            oldTx.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.TechnicianTransactions.Update(oldTx);
+                        }
+                        _unitOfWork.Users.Update(tech);
+                    }
+                }
+                else if (log.CollectionType!.ToLower() == "agent" && log.LinkedAgentId.HasValue)
+                {
+                    var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
+                    if (agent != null)
+                    {
+                        agent.TotalCharges -= oldAmount;
+                        agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
+                        _unitOfWork.Agents.Update(agent);
+                    }
+                }
+                await _unitOfWork.SaveChangesAsync();
+
+                // ═══ 3. حساب المبالغ الصحيحة ═══
+                var basePrice = log.BasePrice ?? log.PlanPrice ?? 0;
+                var companyDiscount = log.CompanyDiscount ?? 0;
+                var manualDiscount = log.ManualDiscount ?? 0;
+                var maintenanceFee = log.MaintenanceFee ?? 0;
+                var systemDiscountEnabled = log.SystemDiscountEnabled;
+
+                decimal netFromCompany;
+                if (basePrice > 0)
+                    netFromCompany = basePrice - companyDiscount;
+                else if (systemDiscountEnabled)
+                    netFromCompany = log.PlanPrice ?? 0;
+                else
+                    netFromCompany = (log.PlanPrice ?? 0) - companyDiscount;
+                if (netFromCompany <= 0) netFromCompany = log.PlanPrice ?? 0;
+
+                var companyDiscountProfit = systemDiscountEnabled ? 0 : companyDiscount;
+                var revenue = maintenanceFee + companyDiscountProfit;
+                var maxDisc = netFromCompany + revenue;
+                if (manualDiscount > maxDisc) manualDiscount = maxDisc;
+                var collectedAmount = netFromCompany + revenue - manualDiscount;
+
+                // ═══ 4. جلب الحسابات ═══
+                var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
+                if (pageBalanceAccount == null) { skipped++; continue; }
+                var maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.MaintenanceRevenue, companyId);
+                var discountRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CompanyDiscountRevenue, companyId);
+                var promotionExpenseAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PromotionExpense, companyId);
+
+                // ═══ 5. تحديد حساب التحصيل + تحديث أرصدة الفني/الوكيل بالمبلغ الصحيح ═══
                 Account? debitAccount = null;
                 string description = "";
 
@@ -516,7 +650,7 @@ public class SubscriptionLogsController : ControllerBase
                         if (agent == null) { skipped++; continue; }
                         debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.AgentReceivables, agent.Id, agent.Name, companyId);
                         await _unitOfWork.SaveChangesAsync();
-                        agent.TotalCharges += amount;
+                        agent.TotalCharges += collectedAmount;
                         agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
                         _unitOfWork.Agents.Update(agent);
                         description = $"{opType} {planName} - {customerName} - على وكيل {agent.Name} عبر {operatorName}";
@@ -524,35 +658,27 @@ public class SubscriptionLogsController : ControllerBase
 
                     case "technician":
                         if (!log.LinkedTechnicianId.HasValue) { skipped++; continue; }
-                        var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
-                        if (tech == null) { skipped++; continue; }
-                        if (string.IsNullOrEmpty(log.TechnicianName))
-                            log.TechnicianName = tech.FullName;
-                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.TechnicianReceivables, tech.Id, tech.FullName, companyId);
+                        var tech2 = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+                        if (tech2 == null) { skipped++; continue; }
+                        debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.TechnicianReceivables, tech2.Id, tech2.FullName, companyId);
                         await _unitOfWork.SaveChangesAsync();
-                        tech.TechTotalCharges += amount;
-                        tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
-                        _unitOfWork.Users.Update(tech);
-                        // فحص عدم وجود TechnicianTransaction مكرر
-                        var existsTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                            .AnyAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
-                        if (!existsTx)
+                        tech2.TechTotalCharges += collectedAmount;
+                        tech2.TechNetBalance = tech2.TechTotalPayments - tech2.TechTotalCharges;
+                        _unitOfWork.Users.Update(tech2);
+                        await _unitOfWork.TechnicianTransactions.AddAsync(new TechnicianTransaction
                         {
-                            await _unitOfWork.TechnicianTransactions.AddAsync(new TechnicianTransaction
-                            {
-                                TechnicianId = tech.Id,
-                                Type = TechnicianTransactionType.Charge,
-                                Category = TechnicianTransactionCategory.Subscription,
-                                Amount = amount,
-                                BalanceAfter = tech.TechNetBalance,
-                                Description = $"{opType} {planName} - {customerName}",
-                                ReferenceNumber = log.Id.ToString(),
-                                CreatedById = userId,
-                                CompanyId = companyId,
-                                CreatedAt = log.CreatedAt
-                            });
-                        }
-                        description = $"{opType} {planName} - {customerName} - على فني {tech.FullName} عبر {operatorName}";
+                            TechnicianId = tech2.Id,
+                            Type = TechnicianTransactionType.Charge,
+                            Category = TechnicianTransactionCategory.Subscription,
+                            Amount = collectedAmount,
+                            BalanceAfter = tech2.TechNetBalance,
+                            Description = $"{opType} {planName} - {customerName}",
+                            ReferenceNumber = log.Id.ToString(),
+                            CreatedById = userId,
+                            CompanyId = companyId,
+                            CreatedAt = log.CreatedAt
+                        });
+                        description = $"{opType} {planName} - {customerName} - على فني {tech2.FullName} عبر {operatorName}";
                         break;
 
                     default:
@@ -562,21 +688,26 @@ public class SubscriptionLogsController : ControllerBase
 
                 if (debitAccount != null)
                 {
-                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
-                    {
-                        (debitAccount.Id, amount, 0, $"{debitAccount.Name} - {opType} {planName}"),
-                        (revenueAccount.Id, 0, amount, $"إيراد {opType} - {customerName}")
-                    };
+                    // ═══ 6. بناء القيد الصحيح ═══
+                    var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>();
+                    lines.Add((debitAccount.Id, Math.Max(collectedAmount, 0), 0, $"{debitAccount.Name} - {opType} {planName}"));
+                    if (promotionExpenseAccount != null)
+                        lines.Add((promotionExpenseAccount.Id, manualDiscount, 0, $"خصم اختياري - {customerName}"));
+                    lines.Add((pageBalanceAccount.Id, 0, Math.Max(netFromCompany, 0), $"خصم من رصيد الصفحة - {opType} {planName}"));
+                    if (maintenanceRevenueAccount != null)
+                        lines.Add((maintenanceRevenueAccount.Id, 0, maintenanceFee, $"إيراد صيانة - {customerName}"));
+                    if (discountRevenueAccount != null)
+                        lines.Add((discountRevenueAccount.Id, 0, companyDiscountProfit, $"إيراد خصم الشركة - {customerName}"));
 
                     await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
                         _unitOfWork, companyId, userId, description,
                         JournalReferenceType.FtthSubscription, log.Id.ToString(), lines);
-
                     await _unitOfWork.SaveChangesAsync();
 
                     var entry = await _unitOfWork.JournalEntries.AsQueryable()
                         .Where(j => j.ReferenceType == JournalReferenceType.FtthSubscription
-                            && j.ReferenceId == log.Id.ToString())
+                            && j.ReferenceId == log.Id.ToString()
+                            && !j.IsDeleted)
                         .OrderByDescending(j => j.CreatedAt)
                         .FirstOrDefaultAsync();
                     if (entry != null)
