@@ -13,7 +13,8 @@
       "Bash(scp Sadara.API.dll Sadara.Infrastructure.dll root@72.61.183.61:/var/www/sadara-api/)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImEwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJyZXBhaXIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9tb2JpbGVwaG9uZSI6Iis5NjQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdXBlckFkbWluIiwiTWVyY2hhbnRJZCI6IiIsImlzcyI6IlNhZGFyYVBsYXRmb3JtIiwiYXVkIjoiU2FkYXJhQ2xpZW50cyIsImV4cCI6MTc0OTU3MTIwMH0.VT_nO_F6h3uqo629mE87nVt9YoMiQgAPQ_ZiQ62f6Jc\")",
       "Bash(find /c/SadaraPlatform -maxdepth 2 -type f \\\\\\(-name tحديثات* -o -name *update* \\\\\\))",
-      "Bash(\"D:/flutter/flutter/bin/flutter.bat\" build:*)"
+      "Bash(\"D:/flutter/flutter/bin/flutter.bat\" build:*)",
+      "Bash(gh release:*)"
     ]
   }
 }
