@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/auth_service.dart';
+import '../../services/ftth_cf_clearance.dart';
 
 class UsersDashboardWebView extends StatefulWidget {
   final String authToken;
@@ -56,6 +57,8 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
       await controller.initialize();
 
       // إعدادات WebView
+      // نفس UA الذي حُلّ به تحدّي Cloudflare لإعادة استخدام cf_clearance المشترك
+      await controller.setUserAgent(FtthCfClearance.userAgentString);
       await controller.setBackgroundColor(Colors.white);
       await controller
           .setPopupWindowPolicy(wvwin.WebviewPopupWindowPolicy.deny);

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'ftth_cloudflare_gateway.dart';
 
 class AuthService {
   static const String _baseUrl = 'https://admin.ftth.iq/api/auth/Contractor';
@@ -46,6 +47,69 @@ class AuthService {
     }
   }
 
+  /// مُوجِّه HTTP موحّد: يمرّر طلبات admin.ftth.iq عبر بوابة Cloudflare على
+  /// Windows (fetch داخل المتصفح لتجاوز التحدّي)، وإلا يستخدم http مباشرة.
+  /// يعيد دائماً http.Response حتى لا يتغيّر أي مستدعٍ.
+  Future<http.Response> _send(
+    String method,
+    String url, {
+    Map<String, String>? headers,
+    Object? body,
+  }) async {
+    final gw = FtthCloudflareGateway.instance;
+    if (FtthCloudflareGateway.enabled &&
+        gw.isSupported &&
+        url.contains('admin.ftth.iq')) {
+      String? bodyStr;
+      if (body is String) {
+        bodyStr = body;
+      } else if (body != null) {
+        bodyStr = body.toString();
+      }
+      final r = await gw.request(method, url, headers: headers, body: bodyStr);
+      return http.Response(
+        r.body,
+        r.statusCode,
+        headers: const {'content-type': 'application/json; charset=utf-8'},
+      );
+    }
+
+    final uri = Uri.parse(url);
+    final isFtth = uri.host.endsWith('ftth.iq');
+    http.Response resp;
+    try {
+      switch (method.toUpperCase()) {
+        case 'GET':
+          resp = await http.get(uri, headers: headers);
+          break;
+        case 'POST':
+          resp = await http.post(uri, headers: headers, body: body);
+          break;
+        case 'PUT':
+          resp = await http.put(uri, headers: headers, body: body);
+          break;
+        case 'DELETE':
+          resp = await http.delete(uri, headers: headers, body: body);
+          break;
+        case 'PATCH':
+          resp = await http.patch(uri, headers: headers, body: body);
+          break;
+        default:
+          throw Exception('طريقة HTTP غير مدعومة: $method');
+      }
+    } catch (e) {
+      if (isFtth) {
+        print('🌐 [FTTH-HTTP] $method ${uri.host}${uri.path} → THREW: $e');
+      }
+      rethrow;
+    }
+    if (isFtth) {
+      final cf = resp.statusCode == 403 ? ' ⚠️CF-BLOCK' : '';
+      print('🌐 [FTTH-HTTP] $method ${uri.host}${uri.path} → ${resp.statusCode}$cf');
+    }
+    return resp;
+  }
+
   // تسجيل الدخول
   Future<Map<String, dynamic>> login(String username, String password) async {
     // حراسة: منع استدعاء بخانات فارغة
@@ -77,8 +141,9 @@ class AuthService {
     while (attempt < 3) {
       attempt++;
       try {
-        response = await http.post(
-          Uri.parse('$_baseUrl/token'),
+        response = await _send(
+          'POST',
+          '$_baseUrl/token',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
             'Accept': 'application/json, text/plain, */*',
@@ -224,8 +289,9 @@ class AuthService {
       while (attempts < 2) {
         // محاولة + إعادة محاولة واحدة
         attempts++;
-        final response = await http.post(
-          Uri.parse('$_baseUrl/refresh'),
+        final response = await _send(
+          'POST',
+          '$_baseUrl/refresh',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             'Accept': 'application/json, text/plain, */*',
@@ -414,37 +480,10 @@ class AuthService {
       final authHeaders = await getAuthHeaders();
       final allHeaders = {...authHeaders, ...?headers};
 
-      const requestTimeout = Duration(seconds: 30);
-      http.Response response;
-      switch (method.toUpperCase()) {
-        case 'GET':
-          response = await http
-              .get(Uri.parse(url), headers: allHeaders)
-              .timeout(requestTimeout);
-          break;
-        case 'POST':
-          response = await http
-              .post(Uri.parse(url), headers: allHeaders, body: body)
-              .timeout(requestTimeout);
-          break;
-        case 'PUT':
-          response = await http
-              .put(Uri.parse(url), headers: allHeaders, body: body)
-              .timeout(requestTimeout);
-          break;
-        case 'DELETE':
-          response = await http
-              .delete(Uri.parse(url), headers: allHeaders)
-              .timeout(requestTimeout);
-          break;
-        case 'PATCH':
-          response = await http
-              .patch(Uri.parse(url), headers: allHeaders, body: body)
-              .timeout(requestTimeout);
-          break;
-        default:
-          throw Exception('طريقة HTTP غير مدعومة: $method');
-      }
+      const requestTimeout = Duration(seconds: 45);
+      http.Response response = await _send(method, url,
+              headers: allHeaders, body: body)
+          .timeout(requestTimeout);
 
       // 403: نحاول تجديد التوكن مرة واحدة فقط (بعض سيرفرات FTTH ترسل 403 بدل 401)
       // لكن إذا بقي 403 بعد التجديد = مشكلة صلاحيات حقيقية → نُعيده بدون logout
@@ -453,26 +492,9 @@ class AuthService {
         if (refreshed) {
           final newAuthHeaders = await getAuthHeaders();
           final newAllHeaders = {...newAuthHeaders, ...?headers};
-          http.Response retryResp;
-          switch (method.toUpperCase()) {
-            case 'GET':
-              retryResp = await http.get(Uri.parse(url), headers: newAllHeaders).timeout(requestTimeout);
-              break;
-            case 'POST':
-              retryResp = await http.post(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
-              break;
-            case 'PUT':
-              retryResp = await http.put(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
-              break;
-            case 'DELETE':
-              retryResp = await http.delete(Uri.parse(url), headers: newAllHeaders).timeout(requestTimeout);
-              break;
-            case 'PATCH':
-              retryResp = await http.patch(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
-              break;
-            default:
-              retryResp = response;
-          }
+          final retryResp = await _send(method, url,
+                  headers: newAllHeaders, body: body)
+              .timeout(requestTimeout);
           // إذا نجح بعد تجديد التوكن — كان فعلاً توكن منتهي
           // إذا بقي 403 — صلاحيات حقيقية، نُعيده كما هو بدون logout
           return retryResp;
@@ -488,34 +510,9 @@ class AuthService {
           // أعد المحاولة مع التوكن الجديد
           final newAuthHeaders = await getAuthHeaders();
           final newAllHeaders = {...newAuthHeaders, ...?headers};
-
-          switch (method.toUpperCase()) {
-            case 'GET':
-              response = await http
-                  .get(Uri.parse(url), headers: newAllHeaders)
-                  .timeout(requestTimeout);
-              break;
-            case 'POST':
-              response = await http
-                  .post(Uri.parse(url), headers: newAllHeaders, body: body)
-                  .timeout(requestTimeout);
-              break;
-            case 'PUT':
-              response = await http
-                  .put(Uri.parse(url), headers: newAllHeaders, body: body)
-                  .timeout(requestTimeout);
-              break;
-            case 'DELETE':
-              response = await http
-                  .delete(Uri.parse(url), headers: newAllHeaders)
-                  .timeout(requestTimeout);
-              break;
-            case 'PATCH':
-              response = await http
-                  .patch(Uri.parse(url), headers: newAllHeaders, body: body)
-                  .timeout(requestTimeout);
-              break;
-          }
+          response = await _send(method, url,
+                  headers: newAllHeaders, body: body)
+              .timeout(requestTimeout);
         } else {
           // فشل التجديد — محاولة إعادة تسجيل الدخول تلقائياً
           final reloginOk = await _tryAutoRelogin();
@@ -523,23 +520,9 @@ class AuthService {
             _handled401++;
             final newAuthHeaders = await getAuthHeaders();
             final newAllHeaders = {...newAuthHeaders, ...?headers};
-            switch (method.toUpperCase()) {
-              case 'GET':
-                response = await http.get(Uri.parse(url), headers: newAllHeaders).timeout(requestTimeout);
-                break;
-              case 'POST':
-                response = await http.post(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
-                break;
-              case 'PUT':
-                response = await http.put(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
-                break;
-              case 'DELETE':
-                response = await http.delete(Uri.parse(url), headers: newAllHeaders).timeout(requestTimeout);
-                break;
-              case 'PATCH':
-                response = await http.patch(Uri.parse(url), headers: newAllHeaders, body: body).timeout(requestTimeout);
-                break;
-            }
+            response = await _send(method, url,
+                    headers: newAllHeaders, body: body)
+                .timeout(requestTimeout);
           } else {
             _unexpected401++;
             await logout();

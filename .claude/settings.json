@@ -14,7 +14,26 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImEwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDAwMDAwMDAwMSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJyZXBhaXIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9tb2JpbGVwaG9uZSI6Iis5NjQiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJTdXBlckFkbWluIiwiTWVyY2hhbnRJZCI6IiIsImlzcyI6IlNhZGFyYVBsYXRmb3JtIiwiYXVkIjoiU2FkYXJhQ2xpZW50cyIsImV4cCI6MTc0OTU3MTIwMH0.VT_nO_F6h3uqo629mE87nVt9YoMiQgAPQ_ZiQ62f6Jc\")",
       "Bash(find /c/SadaraPlatform -maxdepth 2 -type f \\\\\\(-name tحديثات* -o -name *update* \\\\\\))",
       "Bash(\"D:/flutter/flutter/bin/flutter.bat\" build:*)",
-      "Bash(gh release:*)"
+      "Bash(gh release:*)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" -X POST 'https://admin.ftth.iq/api/auth/Contractor/token' -H 'Content-Type: application/x-www-form-urlencoded' -H 'Origin: https://admin.ftth.iq' -H 'Referer: https://admin.ftth.iq/auth/login' -H 'x-client-app: 53d57a7f-3f89-4e9d-873b-3d071bc6dd9f' --data 'username=test&password=test&grant_type=password&scope=openid%20profile' --max-time 25)",
+      "Bash(curl -s -D - -o /dev/null -X POST 'https://admin.ftth.iq/api/auth/Contractor/token' -H 'Content-Type: application/x-www-form-urlencoded' -H 'Origin: https://admin.ftth.iq' --data 'username=test&password=test&grant_type=password' --max-time 25)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" 'https://admin.ftth.iq/auth/login' --max-time 25)",
+      "Bash(\"D:/flutter/flutter/bin/dart.bat\" analyze *)",
+      "PowerShell(& \"D:\\\\flutter\\\\flutter\\\\bin\\\\flutter.bat\" build windows --release 2>&1)",
+      "PowerShell(Set-Location \"c:\\\\SadaraPlatform\\\\src\\\\Apps\\\\CompanyDesktop\\\\alsadara-ftth\"; Start-Process \".\\\\build\\\\windows\\\\x64\\\\runner\\\\Release\\\\Alsadara.exe\"; Start-Sleep -Seconds 3; Get-Process Alsadara -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, @{N='RAM\\(MB\\)';E={[math]::Round\\($_.WorkingSet64/1MB\\)}})",
+      "PowerShell(Stop-Process -Name Alsadara -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(\"stopped\")",
+      "PowerShell(Get-Process dart,flutter_windows -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(\"cleaned\")",
+      "PowerShell(Set-Location \"c:\\\\SadaraPlatform\\\\src\\\\Apps\\\\CompanyDesktop\\\\alsadara-ftth\"; Start-Process \".\\\\build\\\\windows\\\\x64\\\\runner\\\\Release\\\\Alsadara.exe\"; Start-Sleep -Seconds 3; Get-Process Alsadara -ErrorAction SilentlyContinue | Select-Object Id,@{N='RAM\\(MB\\)';E={[math]::Round\\($_.WorkingSet64/1MB\\)}})",
+      "Bash(awk '/void Webview::ExecuteScript/,/^}/' /c/Users/Msi-x88/AppData/Local/Pub/Cache/hosted/pub.dev/webview_windows-0.4.0/windows/webview.cc)",
+      "Bash(sed -n 140,160p /c/Users/Msi-x88/AppData/Local/Pub/Cache/hosted/pub.dev/webview_windows-0.4.0/windows/webview.cc)",
+      "Bash(sed -n 1,20p /c/Users/Msi-x88/AppData/Local/Pub/Cache/hosted/pub.dev/webview_windows-0.4.0/windows/webview.cc)",
+      "Bash(grep -rnoE \"https://api\\\\.ftth\\\\.iq[a-zA-Z0-9/_{}\\\\$.?=&-]*\" lib)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Msi-x88\\.claude\\projects\\c--SadaraPlatform\\memory"
     ]
   }
 }

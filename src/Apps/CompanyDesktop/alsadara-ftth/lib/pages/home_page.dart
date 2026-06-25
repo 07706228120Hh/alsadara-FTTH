@@ -20,6 +20,7 @@ import 'users_page_firebase.dart';
 import 'users_page_vps.dart';
 import '../ftth/core/home_page.dart' as ftth_home;
 import '../services/dual_auth_service.dart';
+import '../ftth/auth/cloudflare_gate_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math' as math; // NEW: for rotations
@@ -1942,6 +1943,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   // التنقل إلى صفحة FTTH - مباشرة إذا كان مسجل دخول، أو عبر تسجيل دخول صامت
   Future<void> _navigateToFtth() async {
     final dual = DualAuthService.instance;
+
+    // 0) تحقق Cloudflare قبل أي دخول تلقائي — يظهر نافذة التحقق إن لزم،
+    //    ويلتقط cf_clearance ويحقنه في كل طلبات admin.ftth.iq.
+    if (!mounted) return;
+    final cleared = await CloudflareGateDialog.ensure(context);
+    if (!cleared) {
+      print('⚠️ [FTTH] لم يكتمل التحقق الأمني — إلغاء الدخول');
+      return;
+    }
+    // مهلة استقرار بعد التحقق قبل الدخول التلقائي وجلب البيانات
+    await Future.delayed(const Duration(milliseconds: 1500));
 
     // 1) فحص الجلسة الحالية
     final hasSession = await dual.checkFtthSession();

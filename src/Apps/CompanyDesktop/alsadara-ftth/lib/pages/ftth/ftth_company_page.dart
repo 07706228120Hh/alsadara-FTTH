@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart';
 import '../../services/company_settings_service.dart';
+import '../../services/ftth_cf_clearance.dart';
 import '../../services/custom_auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../task/add_task_api_dialog.dart';
@@ -46,6 +47,7 @@ class _FtthCompanyPageState extends State<FtthCompanyPage> {
 
     try {
       await _controller.initialize();
+      await _controller.setUserAgent(FtthCfClearance.userAgentString);
       await _controller.setBackgroundColor(Colors.white);
       await _controller.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
 

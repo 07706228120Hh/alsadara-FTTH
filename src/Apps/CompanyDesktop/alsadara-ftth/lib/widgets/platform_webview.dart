@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart' as mobile_webview;
 import 'package:webview_windows/webview_windows.dart' as windows_webview;
 import 'package:url_launcher/url_launcher.dart';
+import '../services/ftth_cf_clearance.dart';
 
 class PlatformWebView extends StatefulWidget {
   final String url;
@@ -55,6 +56,12 @@ class _PlatformWebViewState extends State<PlatformWebView> {
 
       await _windowsController!.initialize();
       debugPrint('Windows WebView initialized successfully');
+
+      // لروابط ftth.iq: نفس UA الذي حُلّ به تحدّي Cloudflare لإعادة استخدام cf_clearance
+      if (widget.url.contains('ftth.iq')) {
+        await _windowsController!
+            .setUserAgent(FtthCfClearance.userAgentString);
+      }
 
       await _windowsController!.loadUrl(widget.url);
       debugPrint('Windows WebView loaded URL: ${widget.url}');
