@@ -1,9 +1,11 @@
-/// واجهة حلّ تحدّي Cloudflare (إنسان-في-الحلقة)
+/// واجهة حلّ تحدّي Cloudflare (إنسان-في-الحلقة) — Windows + Android/iOS
 ///
-/// تظهر عند فتح صفحة الوكيل قبل الدخول التلقائي. تعرض WebView واحداً (يُتلف بعد
-/// الحل، فلا يبقى أي متحكم حيّ → لا تعارض مع WebViews الأخرى). يضغط المشغّل على
-/// مربع «التحقق من أنك إنسان»؛ بعدها نقرأ كوكي cf_clearance عبر getCookies ونثبّت
-/// الحقن في كل طلبات admin.ftth.iq، ثم تُغلق النافذة ويُكمل الدخول التلقائي.
+/// تظهر عند فتح صفحة الوكيل قبل الدخول التلقائي. يضغط المشغّل على مربع «التحقق
+/// من أنك إنسان»؛ بعدها نقرأ كوكي cf_clearance (HttpOnly) ونثبّت الحقن في كل
+/// طلبات admin.ftth.iq، ثم تُغلق النافذة ويُكمل الدخول التلقائي.
+///
+/// - Windows: webview_windows + getCookies (DevTools).
+/// - Android/iOS: webview_flutter + webview_cookie_manager (CookieManager الأصلي).
 library;
 
 import 'dart:async';
@@ -11,16 +13,20 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:webview_windows/webview_windows.dart';
+import 'package:webview_windows/webview_windows.dart' as wvwin;
+import 'package:webview_flutter/webview_flutter.dart' as wvm;
+import 'package:webview_cookie_manager/webview_cookie_manager.dart';
 import '../../services/ftth_cf_clearance.dart';
 
 class CloudflareGateDialog extends StatefulWidget {
   const CloudflareGateDialog({super.key});
 
+  static bool get supported =>
+      Platform.isWindows || Platform.isAndroid || Platform.isIOS;
+
   /// يضمن وجود cf_clearance صالح. يعيد true عند الجاهزية.
-  /// إن كانت الجلسة مُجازة مسبقاً يعود فوراً دون إظهار نافذة.
   static Future<bool> ensure(BuildContext context) async {
-    if (!Platform.isWindows) return true; // البوابة لـ Windows فقط حالياً
+    if (!supported) return true;
     if (await _probeOk()) return true;
     if (!context.mounted) return false;
     final result = await showDialog<bool>(
@@ -35,9 +41,9 @@ class CloudflareGateDialog extends StatefulWidget {
   static Future<bool> _probeOk() async {
     try {
       final r = await http
-          .get(Uri.parse('${FtthCfClearance.origin}/api/auth/Contractor/refresh'))
+          .get(Uri.parse(
+              '${FtthCfClearance.origin}/api/auth/Contractor/refresh'))
           .timeout(const Duration(seconds: 12));
-      // 403 = تحدّي Cloudflare؛ أي شيء آخر (400/401/405...) = وصلنا للخادم
       return r.statusCode != 403;
     } catch (_) {
       return false;
@@ -49,70 +55,114 @@ class CloudflareGateDialog extends StatefulWidget {
 }
 
 class _CloudflareGateDialogState extends State<CloudflareGateDialog> {
-  WebviewController? _controller;
+  wvwin.WebviewController? _winController;
+  wvm.WebViewController? _mobileController;
   bool _initialized = false;
   Timer? _poll;
   bool _checking = false;
   bool _done = false;
   String _status = 'جاري تحميل صفحة التحقق...';
 
+  bool get _isWindows => Platform.isWindows;
+
   @override
   void initState() {
     super.initState();
-    _initWebView();
+    if (_isWindows) {
+      _initWindows();
+    } else {
+      _initMobile();
+    }
   }
 
-  Future<void> _initWebView() async {
-    if (!Platform.isWindows) return;
+  // ============ Windows ============
+  Future<void> _initWindows() async {
     try {
-      final c = WebviewController();
+      final c = wvwin.WebviewController();
       await c.initialize();
       await c.setUserAgent(FtthCfClearance.userAgentString);
       await c.setBackgroundColor(Colors.white);
-      await c.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
+      await c.setPopupWindowPolicy(wvwin.WebviewPopupWindowPolicy.deny);
       await c.loadUrl('${FtthCfClearance.origin}/auth/login');
       if (!mounted) {
         await c.dispose();
         return;
       }
       setState(() {
-        _controller = c;
+        _winController = c;
         _initialized = true;
         _status = 'اضغط على مربع «التحقق من أنك إنسان» وانتظر';
       });
-      _poll = Timer.periodic(const Duration(seconds: 2), (_) => _check());
+      _poll = Timer.periodic(const Duration(seconds: 2), (_) => _checkWindows());
     } catch (e) {
       if (mounted) setState(() => _status = 'تعذّر تحميل صفحة التحقق: $e');
     }
   }
 
-  Future<void> _check() async {
-    if (_checking || _done || !mounted || _controller == null) return;
+  Future<void> _checkWindows() async {
+    if (_checking || _done || !mounted || _winController == null) return;
     _checking = true;
     try {
-      final raw = await _controller!.getCookies();
-      final cookieHeader = _extractCfCookies(raw);
-      if (cookieHeader != null) {
-        // ثبّت الحقن ثم تأكد عبر مسبار حقيقي
-        FtthCfClearance.instance.update(cookieHeader);
-        final ok = await CloudflareGateDialog._probeOk();
-        debugPrint(
-            '🍪 [CF] cf_clearance captured (${cookieHeader.length} chars), probe=$ok');
-        if (ok && mounted) {
-          _done = true;
-          _poll?.cancel();
-          Navigator.of(context).pop(true);
-        }
-      }
+      final raw = await _winController!.getCookies();
+      await _applyIfCleared(_extractFromDevtoolsJson(raw));
     } catch (_) {
-      // تجاهل — أعد المحاولة
     } finally {
       _checking = false;
     }
   }
 
-  /// يستخرج كوكيز Cloudflare (cf_clearance وما شابه) لنطاق ftth.iq كترويسة Cookie
-  String? _extractCfCookies(String rawJson) {
+  // ============ Android / iOS ============
+  Future<void> _initMobile() async {
+    try {
+      final c = wvm.WebViewController()
+        ..setJavaScriptMode(wvm.JavaScriptMode.unrestricted)
+        ..setUserAgent(FtthCfClearance.userAgentString)
+        ..setBackgroundColor(Colors.white);
+      await c.loadRequest(Uri.parse('${FtthCfClearance.origin}/auth/login'));
+      if (!mounted) return;
+      setState(() {
+        _mobileController = c;
+        _initialized = true;
+        _status = 'اضغط على مربع «التحقق من أنك إنسان» وانتظر';
+      });
+      _poll = Timer.periodic(const Duration(seconds: 2), (_) => _checkMobile());
+    } catch (e) {
+      if (mounted) setState(() => _status = 'تعذّر تحميل صفحة التحقق: $e');
+    }
+  }
+
+  Future<void> _checkMobile() async {
+    if (_checking || _done || !mounted) return;
+    _checking = true;
+    try {
+      final cookies =
+          await WebviewCookieManager().getCookies(FtthCfClearance.origin);
+      await _applyIfCleared(_extractFromIoCookies(cookies));
+    } catch (_) {
+    } finally {
+      _checking = false;
+    }
+  }
+
+  // ============ مشترك ============
+  Future<void> _applyIfCleared(String? cookieHeader) async {
+    if (cookieHeader == null) return;
+    FtthCfClearance.instance.update(cookieHeader);
+    final ok = await CloudflareGateDialog._probeOk();
+    debugPrint(
+        '🍪 [CF] cf_clearance captured (${cookieHeader.length} chars), probe=$ok');
+    if (ok && mounted) {
+      _done = true;
+      _poll?.cancel();
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  bool _isCfCookie(String name) =>
+      name == 'cf_clearance' || name.startsWith('cf_') || name.startsWith('__cf');
+
+  /// من DevTools Network.getAllCookies (Windows)
+  String? _extractFromDevtoolsJson(String rawJson) {
     if (rawJson.isEmpty) return null;
     try {
       final decoded = jsonDecode(rawJson);
@@ -125,26 +175,58 @@ class _CloudflareGateDialogState extends State<CloudflareGateDialog> {
         final name = (c['name'] ?? '').toString();
         final value = (c['value'] ?? '').toString();
         final domain = (c['domain'] ?? '').toString().toLowerCase();
-        if (!domain.contains('ftth.iq')) continue;
-        final isCf = name == 'cf_clearance' ||
-            name.startsWith('cf_') ||
-            name.startsWith('__cf');
-        if (!isCf) continue;
+        if (!domain.contains('ftth.iq') || !_isCfCookie(name)) continue;
         if (name == 'cf_clearance' && value.isNotEmpty) hasClearance = true;
         parts.add('$name=$value');
       }
-      if (!hasClearance) return null; // لم يُحلّ التحدّي بعد
-      return parts.join('; ');
+      return hasClearance ? parts.join('; ') : null;
     } catch (_) {
       return null;
     }
   }
 
+  /// من webview_cookie_manager (Android/iOS) — List<Cookie>
+  String? _extractFromIoCookies(List<Cookie> cookies) {
+    final parts = <String>[];
+    bool hasClearance = false;
+    for (final c in cookies) {
+      final domain = (c.domain ?? '').toLowerCase();
+      if (!domain.contains('ftth.iq') || !_isCfCookie(c.name)) continue;
+      if (c.name == 'cf_clearance' && c.value.isNotEmpty) hasClearance = true;
+      parts.add('${c.name}=${c.value}');
+    }
+    return hasClearance ? parts.join('; ') : null;
+  }
+
   @override
   void dispose() {
     _poll?.cancel();
-    _controller?.dispose();
+    _winController?.dispose();
     super.dispose();
+  }
+
+  Widget _buildWebView() {
+    if (_isWindows) {
+      if (_winController != null && _winController!.value.isInitialized) {
+        return wvwin.Webview(
+          _winController!,
+          permissionRequested: (url, kind, isUserInitiated) =>
+              wvwin.WebviewPermissionDecision.allow,
+        );
+      }
+    } else if (_mobileController != null) {
+      return wvm.WebViewWidget(controller: _mobileController!);
+    }
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(_status, textAlign: TextAlign.center),
+        ],
+      ),
+    );
   }
 
   @override
@@ -188,26 +270,7 @@ class _CloudflareGateDialogState extends State<CloudflareGateDialog> {
                 textAlign: TextAlign.center,
               ),
             ),
-            Expanded(
-              child: (_initialized &&
-                      _controller != null &&
-                      _controller!.value.isInitialized)
-                  ? Webview(
-                      _controller!,
-                      permissionRequested: (url, kind, isUserInitiated) =>
-                          WebviewPermissionDecision.allow,
-                    )
-                  : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const CircularProgressIndicator(),
-                          const SizedBox(height: 16),
-                          Text(_status, textAlign: TextAlign.center),
-                        ],
-                      ),
-                    ),
-            ),
+            Expanded(child: _buildWebView()),
             const Padding(
               padding: EdgeInsets.all(8),
               child: Row(

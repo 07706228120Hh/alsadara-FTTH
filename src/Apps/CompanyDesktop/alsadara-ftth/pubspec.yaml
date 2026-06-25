@@ -2,7 +2,7 @@ name: alsadara
 description: "Alsadara Flutter application - تطبيق الصدارة لإدارة شبكات FTTH"
 publish_to: 'none'
 
-version: 2.2.24+303
+version: 2.2.25+304
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -57,6 +57,8 @@ dependencies:
   # مكتبات النظام والأجهزة
   webview_flutter: ^4.10.0
   webview_windows: ^0.4.0
+  # قراءة كوكيز WebView (بما فيها HttpOnly) على Android/iOS — لتجاوز Cloudflare
+  webview_cookie_manager: ^2.0.6
   window_manager: ^0.5.1
   permission_handler: ^11.3.1
   connectivity_plus: ^6.1.1

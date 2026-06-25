@@ -30,7 +30,19 @@
       "Bash(awk '/void Webview::ExecuteScript/,/^}/' /c/Users/Msi-x88/AppData/Local/Pub/Cache/hosted/pub.dev/webview_windows-0.4.0/windows/webview.cc)",
       "Bash(sed -n 140,160p /c/Users/Msi-x88/AppData/Local/Pub/Cache/hosted/pub.dev/webview_windows-0.4.0/windows/webview.cc)",
       "Bash(sed -n 1,20p /c/Users/Msi-x88/AppData/Local/Pub/Cache/hosted/pub.dev/webview_windows-0.4.0/windows/webview.cc)",
-      "Bash(grep -rnoE \"https://api\\\\.ftth\\\\.iq[a-zA-Z0-9/_{}\\\\$.?=&-]*\" lib)"
+      "Bash(grep -rnoE \"https://api\\\\.ftth\\\\.iq[a-zA-Z0-9/_{}\\\\$.?=&-]*\" lib)",
+      "PowerShell(Set-Location \"c:\\\\SadaraPlatform\"; git push origin master 2>&1 | Select-Object -Last 5; \"=== exit: $LASTEXITCODE ===\")",
+      "PowerShell(gh release view v2.2.24 --repo 07706228120Hh/alsadara-FTTH --json tagName,isLatest,assets --jq '{tag: .tagName, latest: .isLatest, assets: [.assets[] | {name: .name, sizeMB: \\(.size/1048576|floor\\)}]}' 2>&1)",
+      "PowerShell(gh release view v2.2.24 --repo 07706228120Hh/alsadara-FTTH --json tagName,isDraft,isPrerelease,assets --jq '{tag: .tagName, draft: .isDraft, pre: .isPrerelease, assets: [.assets[] | {name, sizeMB: \\(.size/1048576|floor\\)}]}' 2>&1)",
+      "PowerShell(gh release view --repo 07706228120Hh/alsadara-FTTH --json tagName --jq .tagName 2>&1)",
+      "PowerShell(\"=== latest release ===\")",
+      "Bash(sed -n '178,200p' lib/pages/home_page.dart)",
+      "Bash(sed -n '343,365p' lib/ftth/widgets/floating_toolbar.dart)",
+      "Bash(grep -nA20 \"_handleResponse\" lib/services/api_service.dart)",
+      "Bash(awk '/Map<String, dynamic> _handleResponse/,/^  }/' lib/services/api_service.dart)",
+      "Bash(sed -n '3520,3545p' lib/pages/home_page.dart)",
+      "Bash(sed -n '1043,1068p' lib/ftth/widgets/floating_toolbar.dart)",
+      "PowerShell(Set-Location \"c:\\\\SadaraPlatform\\\\src\\\\Apps\\\\CompanyDesktop\\\\alsadara-ftth\"; & \"C:\\\\Program Files \\(x86\\)\\\\Inno Setup 6\\\\ISCC.exe\" installer.iss 2>&1 | Select-Object -Last 3; Get-ChildItem \"build\\\\installer\\\\Alsadara-Setup-v2.2.25.exe\" | Select-Object Name,@{N='MB';E={[math]::Round\\($_.Length/1MB,1\\)}})"
     ],
     "additionalDirectories": [
       "c:\\Users\\Msi-x88\\.claude\\projects\\c--SadaraPlatform\\memory"
