@@ -1635,26 +1635,37 @@ public class SadaraDbContext : DbContext
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        // ═══ عزل المستأجر المركزي (Global Query Filter) ═══
-        // يُطبّق في النهاية ليتجاوز فلاتر !IsDeleted السابقة (آخر فلتر يفوز).
-        // لكل كيان ITenantScoped: !IsDeleted && (تجاوز SuperAdmin/نظام || CompanyId == شركة المستخدم).
+        // ═══ عزل المستأجر المركزي (Global Query Filter) — قائم على اصطلاح CompanyId ═══
+        // يُطبّق في النهاية (آخر فلتر يفوز) تلقائياً على كل كيان يحمل خاصية CompanyId
+        // من نوع Guid/Guid?، عدا قائمة الاستثناءات (كيانات null فيها = "عام لكل الشركات").
+        // النتيجة: !IsDeleted && (تجاوز SuperAdmin/نظام || CompanyId == شركة المستخدم).
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            if (typeof(ITenantScoped).IsAssignableFrom(entityType.ClrType))
+            var clrType = entityType.ClrType;
+            if (!typeof(BaseEntity).IsAssignableFrom(clrType)) continue;
+            if (TenantFilterExclusions.Contains(clrType.Name)) continue;
+
+            var companyProp = entityType.FindProperty("CompanyId");
+            if (companyProp != null &&
+                (companyProp.ClrType == typeof(Guid) || companyProp.ClrType == typeof(Guid?)))
             {
                 SetTenantFilterMethod
-                    .MakeGenericMethod(entityType.ClrType)
+                    .MakeGenericMethod(clrType)
                     .Invoke(this, new object[] { modelBuilder });
             }
         }
     }
+
+    // كيانات لها CompanyId لكن null فيها = "عام لكل الشركات" — تُستثنى من فلتر العزل
+    // (مثل قوالب الصلاحيات: قالب بلا شركة = قالب افتراضي مشترك).
+    private static readonly HashSet<string> TenantFilterExclusions = new() { "PermissionTemplate" };
 
     // مرجع دالة تطبيق فلتر العزل (تُستدعى عبر Reflection لكل كيان مستأجر).
     private static readonly MethodInfo SetTenantFilterMethod =
         typeof(SadaraDbContext).GetMethod(nameof(SetTenantFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
 
     // الفلتر العام: يعمل مع CompanyId من نوع Guid أو Guid? (يُقرأ بالاسم عبر EF.Property).
-    private void SetTenantFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : BaseEntity, ITenantScoped
+    private void SetTenantFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : BaseEntity
     {
         modelBuilder.Entity<TEntity>().HasQueryFilter(e =>
             !e.IsDeleted &&
@@ -1683,7 +1694,10 @@ public class SadaraDbContext : DbContext
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAt = DateTime.UtcNow;
-                    if (entry.Entity is ITenantScoped && !_tenant.BypassTenantFilter && _tenant.CompanyId.HasValue)
+                    if (!_tenant.BypassTenantFilter && _tenant.CompanyId.HasValue
+                        && !TenantFilterExclusions.Contains(entry.Metadata.ClrType.Name)
+                        && entry.Metadata.FindProperty("CompanyId") is { } cp
+                        && (cp.ClrType == typeof(Guid) || cp.ClrType == typeof(Guid?)))
                     {
                         var companyProp = entry.Property("CompanyId");
                         if (companyProp.CurrentValue == null ||
