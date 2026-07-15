@@ -37,6 +37,7 @@ public class SadaraDbContextFactory : IDesignTimeDbContextFactory<SadaraDbContex
             optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=SadaraDb;Username=postgres;Password=postgres");
         }
 
-        return new SadaraDbContext(optionsBuilder.Options);
+        // توليد/تشغيل الهجرات يستخدم مستأجر النظام (يتجاوز فلتر العزل).
+        return new SadaraDbContext(optionsBuilder.Options, new SystemTenant());
     }
 }

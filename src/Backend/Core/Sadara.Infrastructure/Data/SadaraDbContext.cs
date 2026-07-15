@@ -1,11 +1,18 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Reflection;
+using Microsoft.EntityFrameworkCore;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 
 namespace Sadara.Infrastructure.Data;
 
 public class SadaraDbContext : DbContext
 {
-    public SadaraDbContext(DbContextOptions<SadaraDbContext> options) : base(options) { }
+    private readonly ICurrentTenant _tenant;
+
+    public SadaraDbContext(DbContextOptions<SadaraDbContext> options, ICurrentTenant tenant) : base(options)
+    {
+        _tenant = tenant ?? new SystemTenant();
+    }
 
     // Core entities
     public DbSet<User> Users => Set<User>();
@@ -1627,9 +1634,48 @@ public class SadaraDbContext : DbContext
             entity.HasOne(e => e.Account).WithMany().HasForeignKey(e => e.AccountId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
         });
+
+        // ═══ عزل المستأجر المركزي (Global Query Filter) ═══
+        // يُطبّق في النهاية ليتجاوز فلاتر !IsDeleted السابقة (آخر فلتر يفوز).
+        // لكل كيان ITenantScoped: !IsDeleted && (تجاوز SuperAdmin/نظام || CompanyId == شركة المستخدم).
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(ITenantScoped).IsAssignableFrom(entityType.ClrType))
+            {
+                SetTenantFilterMethod
+                    .MakeGenericMethod(entityType.ClrType)
+                    .Invoke(this, new object[] { modelBuilder });
+            }
+        }
+    }
+
+    // مرجع دالة تطبيق فلتر العزل (تُستدعى عبر Reflection لكل كيان مستأجر).
+    private static readonly MethodInfo SetTenantFilterMethod =
+        typeof(SadaraDbContext).GetMethod(nameof(SetTenantFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    // الفلتر العام: يعمل مع CompanyId من نوع Guid أو Guid? (يُقرأ بالاسم عبر EF.Property).
+    private void SetTenantFilter<TEntity>(ModelBuilder modelBuilder) where TEntity : BaseEntity, ITenantScoped
+    {
+        modelBuilder.Entity<TEntity>().HasQueryFilter(e =>
+            !e.IsDeleted &&
+            (_tenant.BypassTenantFilter || EF.Property<Guid?>(e, "CompanyId") == _tenant.CompanyId));
+    }
+
+    public override int SaveChanges()
+    {
+        ApplyTenantAndAudit();
+        return base.SaveChanges();
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyTenantAndAudit();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    // تعيين الطوابع الزمنية + عزل المستأجر عند الإدراج: أي كيان ITenantScoped جديد
+    // يأخذ شركة المستخدم الحالي تلقائياً إن لم تُحدّد (يمنع حقن سجل في شركة أخرى).
+    private void ApplyTenantAndAudit()
     {
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
@@ -1637,12 +1683,20 @@ public class SadaraDbContext : DbContext
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAt = DateTime.UtcNow;
+                    if (entry.Entity is ITenantScoped && !_tenant.BypassTenantFilter && _tenant.CompanyId.HasValue)
+                    {
+                        var companyProp = entry.Property("CompanyId");
+                        if (companyProp.CurrentValue == null ||
+                            (companyProp.CurrentValue is Guid g && g == Guid.Empty))
+                        {
+                            companyProp.CurrentValue = _tenant.CompanyId.Value;
+                        }
+                    }
                     break;
                 case EntityState.Modified:
                     entry.Entity.UpdatedAt = DateTime.UtcNow;
                     break;
             }
         }
-        return base.SaveChangesAsync(cancellationToken);
     }
 }
