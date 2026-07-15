@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.Application.Interfaces;
 using Sadara.API.Authorization;
 using Sadara.API.Constants;
 
@@ -21,11 +22,22 @@ public class AccountingController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<AccountingController> _logger;
+    private readonly ICurrentTenant _tenant;
 
-    public AccountingController(IUnitOfWork unitOfWork, ILogger<AccountingController> logger)
+    public AccountingController(IUnitOfWork unitOfWork, ILogger<AccountingController> logger, ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _tenant = tenant;
+    }
+
+    /// <summary>عزل الشركة: يمنع عملية على شركة غير شركة المستخدم (SuperAdmin يتجاوز). null = مسموح.</summary>
+    private IActionResult? GuardCompanyAccess(Guid? companyId)
+    {
+        if (_tenant.IsSuperAdmin) return null;
+        if (companyId == null || _tenant.CompanyId == null || _tenant.CompanyId.Value != companyId.Value)
+            return StatusCode(403, new { success = false, message = "لا تملك صلاحية إجراء عملية على شركة أخرى" });
+        return null;
     }
 
     // ==================== شجرة الحسابات - Chart of Accounts ====================
@@ -1306,6 +1318,9 @@ public class AccountingController : ControllerBase
     [HttpPost("salaries/generate")]
     public async Task<IActionResult> GenerateMonthlySalaries([FromBody] GenerateSalariesDto dto)
     {
+        var guard = GuardCompanyAccess(dto.CompanyId);
+        if (guard != null) return guard;
+
         try
         {
             // التحقق من وجود رواتب مدفوعة (لا يمكن إعادة توليدها)
