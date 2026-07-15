@@ -49,7 +49,9 @@ public class JwtService : IJwtService
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(ClaimTypes.MobilePhone, user.PhoneNumber),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
-            new Claim("MerchantId", user.Merchant?.Id.ToString() ?? "")
+            new Claim("MerchantId", user.Merchant?.Id.ToString() ?? ""),
+            // عزل المستأجر: هوية شركة المستخدم في التوكن (أساس الفلتر المركزي). فارغ لمن لا شركة له (مثل SuperAdmin).
+            new Claim("company_id", user.CompanyId?.ToString() ?? "")
         };
 
         var token = new JwtSecurityToken(
