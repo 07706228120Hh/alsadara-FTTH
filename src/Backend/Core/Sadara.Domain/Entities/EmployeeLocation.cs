@@ -39,6 +39,8 @@ public class EmployeeLocation : BaseEntity<long>
 public class EmployeeLocationLog : BaseEntity<long>
 {
     public string UserId { get; set; } = string.Empty;
+    /// <summary>عزل المستأجر: الشركة المالكة للسجل (تُملأ من شركة الموظف عند الإدراج).</summary>
+    public Guid? CompanyId { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }
     public DateTime RecordedAt { get; set; } = DateTime.UtcNow;

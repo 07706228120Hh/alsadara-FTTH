@@ -5,6 +5,9 @@ namespace Sadara.Domain.Entities;
 /// </summary>
 public class WhatsAppBatchReport : BaseEntity<long>
 {
+    /// <summary>عزل المستأجر: الشركة المالكة للتقرير.</summary>
+    public Guid? CompanyId { get; set; }
+
     /// <summary>معرف الدُفعة</summary>
     public string BatchId { get; set; } = string.Empty;
 

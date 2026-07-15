@@ -44,6 +44,8 @@ public class Setting : BaseEntity<int>
 public class AuditLog : BaseEntity<long>
 {
     public Guid? UserId { get; set; }
+    /// <summary>عزل المستأجر: الشركة المالكة للسجل.</summary>
+    public Guid? CompanyId { get; set; }
     public string Action { get; set; } = string.Empty;
     public string EntityName { get; set; } = string.Empty;
     public string? EntityId { get; set; }

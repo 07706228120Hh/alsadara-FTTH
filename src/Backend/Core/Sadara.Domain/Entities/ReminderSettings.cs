@@ -6,6 +6,8 @@ namespace Sadara.Domain.Entities;
 public class ReminderSettings : BaseEntity<long>
 {
     public string TenantId { get; set; } = string.Empty;
+    /// <summary>عزل المستأجر: الشركة المالكة (تحلّ تدريجياً محل TenantId).</summary>
+    public Guid? CompanyId { get; set; }
     public bool IsEnabled { get; set; } = false;
 
     /// <summary>وجبات الإرسال بصيغة JSON</summary>
@@ -18,6 +20,8 @@ public class ReminderSettings : BaseEntity<long>
 public class ReminderExecutionLog : BaseEntity<long>
 {
     public string TenantId { get; set; } = string.Empty;
+    /// <summary>عزل المستأجر: الشركة المالكة.</summary>
+    public Guid? CompanyId { get; set; }
     public string? BatchId { get; set; }
     public int Days { get; set; }
     public int Total { get; set; }
