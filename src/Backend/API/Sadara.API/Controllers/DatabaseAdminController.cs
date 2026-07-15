@@ -21,12 +21,12 @@ public class ApiKeyOrJwtAuthAttribute : Attribute, IAuthorizationFilter
     {
         // قراءة API Key من الإعدادات أو Environment Variable
         var configuration = context.HttpContext.RequestServices.GetService<IConfiguration>();
-        var validApiKey = configuration?["Security:InternalApiKey"] 
-            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? "sadara-internal-2024-secure-key"; // fallback للتطوير فقط
+        var validApiKey = configuration?["Security:InternalApiKey"]
+            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY");
 
-        // تحقق من API Key أولاً
-        if (context.HttpContext.Request.Headers.TryGetValue(ApiKeyHeader, out var apiKey))
+        // تحقق من API Key أولاً — fail-closed: لا يُصرّح إطلاقاً إن لم يُضبط المفتاح
+        if (!string.IsNullOrWhiteSpace(validApiKey)
+            && context.HttpContext.Request.Headers.TryGetValue(ApiKeyHeader, out var apiKey))
         {
             if (apiKey == validApiKey)
             {

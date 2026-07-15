@@ -224,7 +224,8 @@ public class SuperAdminController : ControllerBase
 
     private string GenerateJwtToken(Domain.Entities.User user)
     {
-        var jwtKey = _configuration["Jwt:Secret"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
+        var jwtKey = _configuration["Jwt:Secret"]
+            ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — لا يمكن توليد توكن JWT (fail-closed).");
         var jwtIssuer = _configuration["Jwt:Issuer"] ?? "SadaraPlatform";
         var jwtAudience = _configuration["Jwt:Audience"] ?? "SadaraClients";
 
