@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.Application.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -22,15 +23,27 @@ public class CompaniesController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly ILogger<CompaniesController> _logger;
+    private readonly ICurrentTenant _tenant;
 
     public CompaniesController(
         IUnitOfWork unitOfWork,
         IConfiguration configuration,
-        ILogger<CompaniesController> logger)
+        ILogger<CompaniesController> logger,
+        ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _logger = logger;
+        _tenant = tenant;
+    }
+
+    /// <summary>عزل الشركة: يمنع الوصول لشركة غير شركة المستخدم (SuperAdmin يتجاوز). null = مسموح.</summary>
+    private IActionResult? GuardCompanyAccess(Guid companyId)
+    {
+        if (_tenant.IsSuperAdmin) return null;
+        if (_tenant.CompanyId == null || _tenant.CompanyId.Value != companyId)
+            return StatusCode(403, new { success = false, message = "لا تملك صلاحية الوصول لبيانات شركة أخرى" });
+        return null;
     }
 
     #region Authentication
@@ -359,6 +372,9 @@ public class CompaniesController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> GetById(Guid id)
     {
+        var guard = GuardCompanyAccess(id);
+        if (guard != null) return guard;
+
         var company = await _unitOfWork.Companies.AsQueryable()
             .Include(c => c.AdminUser)
             .Include(c => c.CompanyServices)
@@ -584,6 +600,9 @@ public class CompaniesController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> GetEmployees(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
+        var guard = GuardCompanyAccess(id);
+        if (guard != null) return guard;
+
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
             return NotFound(new { success = false, message = "الشركة غير موجودة" });
@@ -624,6 +643,9 @@ public class CompaniesController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> AddEmployee(Guid id, [FromBody] CreateEmployeeRequest request)
     {
+        var guard = GuardCompanyAccess(id);
+        if (guard != null) return guard;
+
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
             return NotFound(new { success = false, message = "الشركة غير موجودة" });
@@ -685,6 +707,9 @@ public class CompaniesController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> GetEmployeeById(Guid id, Guid employeeId)
     {
+        var guard = GuardCompanyAccess(id);
+        if (guard != null) return guard;
+
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
 
@@ -701,6 +726,9 @@ public class CompaniesController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> UpdateEmployee(Guid id, Guid employeeId, [FromBody] UpdateEmployeeRequest request)
     {
+        var guard = GuardCompanyAccess(id);
+        if (guard != null) return guard;
+
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
 
@@ -746,6 +774,9 @@ public class CompaniesController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> UpdateEmployeePermissions(Guid id, Guid employeeId, [FromBody] UpdatePermissionsRequest request)
     {
+        var guard = GuardCompanyAccess(id);
+        if (guard != null) return guard;
+
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
 
@@ -772,6 +803,9 @@ public class CompaniesController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> UpdateEmployeePermissionsV2(Guid id, Guid employeeId, [FromBody] UpdatePermissionsV2Request request)
     {
+        var guard = GuardCompanyAccess(id);
+        if (guard != null) return guard;
+
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
 
@@ -798,6 +832,9 @@ public class CompaniesController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> DeleteEmployee(Guid id, Guid employeeId)
     {
+        var guard = GuardCompanyAccess(id);
+        if (guard != null) return guard;
+
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
 
