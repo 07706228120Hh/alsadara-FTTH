@@ -48,6 +48,10 @@ else
 // Repositories
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+// عزل المستأجر: مزوّد الشركة الحالية (يقرأ company_id من التوكن؛ SuperAdmin يتجاوز)
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentTenant, Sadara.API.Services.CurrentTenant>();
+
 // Identity Services
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtService>(sp => new JwtService(
@@ -124,6 +128,33 @@ builder.Services.AddAuthentication(options =>
                 context.Token = accessToken;
             }
             return Task.CompletedTask;
+        },
+
+        // إثراء انتقالي: التوكنات القديمة قد لا تحمل company_id. إن غاب، نشتقّه من قاعدة البيانات
+        // مرة واحدة (بتجاوز فلتر العزل) حتى لا تنكسر جلسات المستخدمين الحاليين عند تفعيل عزل الشركات.
+        OnTokenValidated = async context =>
+        {
+            var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
+            if (identity == null) return;
+
+            if (identity.FindFirst("company_id") != null || identity.FindFirst("companyId") != null)
+                return;
+
+            var userIdStr = identity.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                         ?? identity.FindFirst("sub")?.Value;
+            if (!Guid.TryParse(userIdStr, out var userId)) return;
+
+            var db = context.HttpContext.RequestServices.GetService<SadaraDbContext>();
+            if (db == null) return;
+
+            var companyId = await db.Users
+                .IgnoreQueryFilters()
+                .Where(u => u.Id == userId && !u.IsDeleted)
+                .Select(u => u.CompanyId)
+                .FirstOrDefaultAsync();
+
+            if (companyId.HasValue && companyId.Value != Guid.Empty)
+                identity.AddClaim(new System.Security.Claims.Claim("company_id", companyId.Value.ToString()));
         }
     };
 });
