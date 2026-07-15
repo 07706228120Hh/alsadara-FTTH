@@ -2643,7 +2643,7 @@ public class FtthAccountingController : ControllerBase
     /// تصحيح تواريخ القيود المحاسبية لتطابق تاريخ المعاملة (ActivationDate) بدلاً من تاريخ الإنشاء
     /// </summary>
     [HttpPost("fix-journal-entry-dates")]
-    [AllowAnonymous]
+    [Authorize(Policy = "SuperAdmin")]
     public async Task<IActionResult> FixJournalEntryDates(
         [FromQuery] Guid? companyId = null,
         [FromQuery] DateTime? from = null,
