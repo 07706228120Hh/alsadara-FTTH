@@ -21,11 +21,13 @@ public class FtthAccountingController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<FtthAccountingController> _logger;
+    private readonly IConfiguration _configuration;
 
-    public FtthAccountingController(IUnitOfWork unitOfWork, ILogger<FtthAccountingController> logger)
+    public FtthAccountingController(IUnitOfWork unitOfWork, ILogger<FtthAccountingController> logger, IConfiguration configuration)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _configuration = configuration;
     }
 
     /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم الكامل — للعمليات الفردية
@@ -2765,7 +2767,9 @@ public class FtthAccountingController : ControllerBase
     {
         {
             var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-            if (apiKey != "sadara-internal-2024-secure-key")
+            var configKey = _configuration["Security:InternalApiKey"]
+                ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY") ?? "";
+            if (string.IsNullOrEmpty(configKey) || apiKey != configKey)
                 return Unauthorized(new { success = false, message = "Invalid API Key" });
         }
         try

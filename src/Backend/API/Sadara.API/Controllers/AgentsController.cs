@@ -1777,7 +1777,8 @@ public class AgentsController : ControllerBase
 
     private string GenerateAgentToken(Agent agent)
     {
-        var jwtSecret = _configuration["Jwt:Secret"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
+        var jwtSecret = _configuration["Jwt:Secret"]
+            ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

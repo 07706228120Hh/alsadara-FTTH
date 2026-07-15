@@ -720,7 +720,7 @@ public class CitizenAuthController : ControllerBase
 
     private string GenerateJwtToken(Citizen citizen)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!"));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.")));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>

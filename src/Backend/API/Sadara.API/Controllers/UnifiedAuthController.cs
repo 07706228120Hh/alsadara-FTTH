@@ -1066,7 +1066,7 @@ public class UnifiedAuthController : ControllerBase
     private string GenerateJwtToken(User user, Company? company)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-            _configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!"));
+            _configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.")));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>

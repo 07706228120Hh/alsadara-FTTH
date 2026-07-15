@@ -55,7 +55,7 @@ builder.Services.AddScoped<ICurrentTenant, Sadara.API.Services.CurrentTenant>();
 // Identity Services
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtService>(sp => new JwtService(
-    builder.Configuration["Jwt:Secret"] ?? "DEV_ONLY_NOT_FOR_PRODUCTION_ChangeThisInProductionEnvironment2024!",
+    builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed."),
     builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
     builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
     int.Parse(builder.Configuration["Jwt:ExpiryMinutes"] ?? "60")
@@ -92,7 +92,7 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 
 // JWT Authentication
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "DEV_ONLY_NOT_FOR_PRODUCTION_ChangeThisInProductionEnvironment2024!";
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.");
 var key = Encoding.ASCII.GetBytes(jwtSecret);
 
 builder.Services.AddAuthentication(options =>

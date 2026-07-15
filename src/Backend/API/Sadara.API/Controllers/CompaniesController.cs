@@ -246,7 +246,8 @@ public class CompaniesController : ControllerBase
 
     private string GenerateJwtToken(User user, Company company)
     {
-        var jwtKey = _configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
+        var jwtKey = _configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"]
+            ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.");
         var jwtIssuer = _configuration["Jwt:Issuer"] ?? "SadaraPlatform";
         var jwtAudience = _configuration["Jwt:Audience"] ?? "SadaraClients";
 

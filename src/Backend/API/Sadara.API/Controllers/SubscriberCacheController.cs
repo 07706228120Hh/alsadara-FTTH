@@ -37,7 +37,7 @@ public class SubscriberCacheController : ControllerBase
         var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
         var configKey = _configuration["Security:InternalApiKey"]
             ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? "sadara-internal-2024-secure-key";
+            ?? ""; // fail-closed: لا fallback مضمّن — يُقرأ من الإعدادات فقط
         return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
     }
 

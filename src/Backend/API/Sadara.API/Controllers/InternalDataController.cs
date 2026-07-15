@@ -52,7 +52,7 @@ public class InternalDataController : ControllerBase
         // قراءة من الإعدادات أولاً، ثم Environment Variable
         var configKey = _configuration["Security:InternalApiKey"] 
             ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? "sadara-internal-2024-secure-key"; // fallback للتطوير فقط - يجب إزالته في الإنتاج
+            ?? ""; // fail-closed: أُزيل الـ fallback المضمّن — يُقرأ من الإعدادات فقط
         
         return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
     }
