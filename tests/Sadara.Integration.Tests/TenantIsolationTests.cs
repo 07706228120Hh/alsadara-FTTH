@@ -155,4 +155,108 @@ public class TenantIsolationTests
         using var ctxB = NewContext(dbName, new TestTenant { CompanyId = CompanyB });
         Assert.Empty(ctxB.Set<Account>().ToList());
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // إعادة إنتاج حادثة الإنتاج (2026-07-15):
+    // الطلبات بمفتاح API الداخلي وطلبات ما-قبل-الدخول لا تحمل توكناً => CompanyId=null.
+    // في السلوك المكسور (BypassTenantFilter=false) كان الفلتر يُخفي كل الصفوف الحقيقية،
+    // فيفشل upsert (لا يجد الصف => يُدرج => ينتهك قيد UserId الفريد => 500)،
+    // ويفشل تسجيل الدخول (لا يجد المستخدم). الإصلاح: CurrentTenant يعيد BypassTenantFilter=true
+    // للطلبات غير المُصادَقة وطلبات المفتاح الداخلي، فتعود الرؤية وينجح upsert/الدخول.
+    // ══════════════════════════════════════════════════════════════════════
+
+    private const string SeededUserId = "emp-1001";
+
+    private static void SeedOneEmployeeLocation(string dbName)
+    {
+        using var seed = NewContext(dbName, SystemTenant);
+        seed.Set<EmployeeLocation>().Add(new EmployeeLocation
+        {
+            UserId = SeededUserId,
+            CompanyId = CompanyA,
+            Latitude = 33.3,
+            Longitude = 44.4,
+            IsActive = true,
+        });
+        seed.SaveChanges();
+    }
+
+    [Fact]
+    public void Repro_Preauth_NullTenant_NonBypass_Is_Blind_To_Existing_Row()
+    {
+        // يوثّق السبب الجذري: سياق بلا شركة وبلا تجاوز = عمى تام عن الصفوف الحقيقية.
+        var dbName = Guid.NewGuid().ToString();
+        SeedOneEmployeeLocation(dbName);
+
+        using var brokenCtx = NewContext(dbName,
+            new TestTenant { CompanyId = null, BypassTenantFilter = false });
+
+        var found = brokenCtx.Set<EmployeeLocation>()
+            .FirstOrDefault(e => e.UserId == SeededUserId);
+
+        // هذا هو الخطأ الذي كان يقود إلى إعادة الإدراج ثم خطأ 500 على قيد UserId الفريد.
+        Assert.Null(found);
+    }
+
+    [Fact]
+    public void Fix_Upsert_Under_ApiKey_Bypass_Finds_Existing_Row()
+    {
+        // الإصلاح: طلب المفتاح الداخلي => BypassTenantFilter=true => يجد الصف الموجود فيُحدّثه بدل إدراجه.
+        var dbName = Guid.NewGuid().ToString();
+        SeedOneEmployeeLocation(dbName);
+
+        using var apiKeyCtx = NewContext(dbName,
+            new TestTenant { CompanyId = null, BypassTenantFilter = true });
+
+        var existing = apiKeyCtx.Set<EmployeeLocation>()
+            .FirstOrDefault(e => e.UserId == SeededUserId);
+
+        Assert.NotNull(existing);
+        Assert.Equal(SeededUserId, existing!.UserId);
+
+        // مسار التحديث (بدل الإدراج) ينجح — لا انتهاك لقيد فريد.
+        existing.Latitude = 30.0;
+        apiKeyCtx.Set<EmployeeLocation>().Update(existing);
+        apiKeyCtx.SaveChanges();
+
+        using var check = NewContext(dbName, SystemTenant);
+        var single = Assert.Single(check.Set<EmployeeLocation>()
+            .Where(e => e.UserId == SeededUserId).ToList());
+        Assert.Equal(30.0, single.Latitude);
+        Assert.Equal(CompanyA, single.CompanyId); // لم تُفقد هوية الشركة الأصلية.
+    }
+
+    [Fact]
+    public void Fix_Login_Lookup_Under_Bypass_Finds_Tenant_Scoped_User()
+    {
+        // نظير تسجيل الدخول: المستخدم يحمل CompanyId، والاستعلام يجري قبل المصادقة (بلا توكن).
+        var dbName = Guid.NewGuid().ToString();
+        var userId = Guid.NewGuid();
+        using (var seed = NewContext(dbName, SystemTenant))
+        {
+            seed.Set<User>().Add(new User
+            {
+                Id = userId,
+                Username = "login.user",
+                CompanyId = CompanyA,
+            });
+            seed.SaveChanges();
+        }
+
+        // السلوك المكسور: بلا شركة وبلا تجاوز => لا يجد المستخدم => فشل الدخول.
+        using (var broken = NewContext(dbName,
+            new TestTenant { CompanyId = null, BypassTenantFilter = false }))
+        {
+            Assert.Null(broken.Set<User>().FirstOrDefault(u => u.Username == "login.user"));
+        }
+
+        // الإصلاح: طلب غير مُصادَق => BypassTenantFilter=true => يجد المستخدم فينجح الدخول.
+        using (var fixedCtx = NewContext(dbName,
+            new TestTenant { CompanyId = null, BypassTenantFilter = true }))
+        {
+            var user = fixedCtx.Set<User>().FirstOrDefault(u => u.Username == "login.user");
+            Assert.NotNull(user);
+            Assert.Equal(CompanyA, user!.CompanyId);
+        }
+    }
 }
