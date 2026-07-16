@@ -134,4 +134,25 @@ public class TenantIsolationTests
         using var ctxB = NewContext(dbName, new TestTenant { CompanyId = CompanyB });
         Assert.Empty(ctxB.Set<Account>().ToList());
     }
+
+    [Fact]
+    public void Insert_With_Foreign_CompanyId_Is_Forced_To_Current_Company()
+    {
+        var dbName = Guid.NewGuid().ToString();
+
+        // محاولة حقن: مستخدم الشركة أ يُدرج سجلاً بـ CompanyId = ب صراحةً
+        using (var ctxA = NewContext(dbName, new TestTenant { CompanyId = CompanyA }))
+        {
+            ctxA.Set<Account>().Add(new Account { Id = Guid.NewGuid(), CompanyId = CompanyB });
+            ctxA.SaveChanges();
+        }
+
+        // النتيجة: فُرضت شركة أ (لا حقن في ب) — ولا تراه ب
+        using var check = NewContext(dbName, SystemTenant);
+        var account = Assert.Single(check.Set<Account>());
+        Assert.Equal(CompanyA, account.CompanyId);
+
+        using var ctxB = NewContext(dbName, new TestTenant { CompanyId = CompanyB });
+        Assert.Empty(ctxB.Set<Account>().ToList());
+    }
 }

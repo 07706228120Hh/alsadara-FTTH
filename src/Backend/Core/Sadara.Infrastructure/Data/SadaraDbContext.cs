@@ -1699,12 +1699,9 @@ public class SadaraDbContext : DbContext
                         && entry.Metadata.FindProperty("CompanyId") is { } cp
                         && (cp.ClrType == typeof(Guid) || cp.ClrType == typeof(Guid?)))
                     {
-                        var companyProp = entry.Property("CompanyId");
-                        if (companyProp.CurrentValue == null ||
-                            (companyProp.CurrentValue is Guid g && g == Guid.Empty))
-                        {
-                            companyProp.CurrentValue = _tenant.CompanyId.Value;
-                        }
+                        // فرض شركة المستخدم الحالي على كل إدراج لغير SuperAdmin — يمنع مركزياً
+                        // حقن سجل في شركة أخرى حتى لو حدّد الكود/الطلب CompanyId مختلفاً.
+                        entry.Property("CompanyId").CurrentValue = _tenant.CompanyId.Value;
                     }
                     break;
                 case EntityState.Modified:
