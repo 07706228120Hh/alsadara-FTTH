@@ -253,7 +253,9 @@ public class InternalDataController : ControllerBase
                 IsActive = true,
                 MaxUsers = request.MaxUsers ?? 10,
                 SubscriptionStartDate = DateTime.UtcNow,
-                SubscriptionEndDate = request.SubscriptionEndDate ?? DateTime.UtcNow.AddMonths(12),
+                SubscriptionEndDate = request.SubscriptionEndDate.HasValue
+                    ? DateTime.SpecifyKind(request.SubscriptionEndDate.Value, DateTimeKind.Utc)
+                    : DateTime.UtcNow.AddMonths(12),
                 CreatedAt = DateTime.UtcNow
             };
             await _unitOfWork.Companies.AddAsync(company);
