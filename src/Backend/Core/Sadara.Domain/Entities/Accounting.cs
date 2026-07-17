@@ -121,6 +121,9 @@ public class JournalEntryLine : BaseEntity<long>
     public Guid JournalEntryId { get; set; }
     public JournalEntry? JournalEntry { get; set; }
 
+    /// <summary>الشركة (منسوخة من القيد الأب لتفعيل العزل المركزي على مستوى السطر أيضاً).</summary>
+    public Guid? CompanyId { get; set; }
+
     /// <summary>الحساب</summary>
     public Guid AccountId { get; set; }
     public Account? Account { get; set; }
@@ -187,6 +190,9 @@ public class CashTransaction : BaseEntity<long>
     /// <summary>الصندوق</summary>
     public Guid CashBoxId { get; set; }
     public CashBox? CashBox { get; set; }
+
+    /// <summary>الشركة (منسوخة من الصندوق الأب لتفعيل العزل المركزي على مستوى الحركة أيضاً).</summary>
+    public Guid? CompanyId { get; set; }
 
     /// <summary>نوع الحركة (إدخال / إخراج)</summary>
     public CashTransactionType TransactionType { get; set; }

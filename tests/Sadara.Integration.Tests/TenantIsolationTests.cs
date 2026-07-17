@@ -328,4 +328,62 @@ public class TenantIsolationTests
         var n = Assert.Single(check.Set<Notification>());
         Assert.Null(n.CompanyId); // بقي فارغاً (لا ضمان مُهيّأ) — سلوك محايد كما كان.
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // الطبقة ٢ — أبناء المحاسبة المُستعلَمة مباشرة (JournalEntryLine/CashTransaction)
+    // بعد إضافة CompanyId لها: يجب أن يشملها الفلتر المركزي تلقائياً.
+    // ══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void JournalEntryLine_Is_Isolated_By_CompanyId()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using (var seed = NewContext(dbName, SystemTenant))
+        {
+            seed.Set<JournalEntryLine>().AddRange(
+                new JournalEntryLine { JournalEntryId = Guid.NewGuid(), AccountId = Guid.NewGuid(), CompanyId = CompanyA },
+                new JournalEntryLine { JournalEntryId = Guid.NewGuid(), AccountId = Guid.NewGuid(), CompanyId = CompanyB });
+            seed.SaveChanges();
+        }
+
+        using var ctxA = NewContext(dbName, new TestTenant { CompanyId = CompanyA });
+        var lines = ctxA.Set<JournalEntryLine>().ToList();
+        Assert.NotEmpty(lines);
+        Assert.All(lines, l => Assert.Equal(CompanyA, l.CompanyId));
+        Assert.DoesNotContain(lines, l => l.CompanyId == CompanyB);
+    }
+
+    [Fact]
+    public void CashTransaction_Is_Isolated_By_CompanyId()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using (var seed = NewContext(dbName, SystemTenant))
+        {
+            seed.Set<CashTransaction>().AddRange(
+                new CashTransaction { CashBoxId = Guid.NewGuid(), CompanyId = CompanyA },
+                new CashTransaction { CashBoxId = Guid.NewGuid(), CompanyId = CompanyB });
+            seed.SaveChanges();
+        }
+
+        using var ctxB = NewContext(dbName, new TestTenant { CompanyId = CompanyB });
+        var txs = ctxB.Set<CashTransaction>().ToList();
+        Assert.NotEmpty(txs);
+        Assert.All(txs, t => Assert.Equal(CompanyB, t.CompanyId));
+        Assert.DoesNotContain(txs, t => t.CompanyId == CompanyA);
+    }
+
+    [Fact]
+    public void JournalEntryLine_Insert_By_CompanyA_AutoAssigns_CompanyA()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using (var ctxA = NewContext(dbName, new TestTenant { CompanyId = CompanyA }))
+        {
+            // إدراج بلا تحديد CompanyId — الختم المركزي يفرض شركة المستخدم.
+            ctxA.Set<JournalEntryLine>().Add(new JournalEntryLine { JournalEntryId = Guid.NewGuid(), AccountId = Guid.NewGuid() });
+            ctxA.SaveChanges();
+        }
+        using var check = NewContext(dbName, SystemTenant);
+        var line = Assert.Single(check.Set<JournalEntryLine>());
+        Assert.Equal(CompanyA, line.CompanyId);
+    }
 }
