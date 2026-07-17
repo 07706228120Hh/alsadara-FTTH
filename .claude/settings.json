@@ -42,10 +42,18 @@
       "Bash(awk '/Map<String, dynamic> _handleResponse/,/^  }/' lib/services/api_service.dart)",
       "Bash(sed -n '3520,3545p' lib/pages/home_page.dart)",
       "Bash(sed -n '1043,1068p' lib/ftth/widgets/floating_toolbar.dart)",
-      "PowerShell(Set-Location \"c:\\\\SadaraPlatform\\\\src\\\\Apps\\\\CompanyDesktop\\\\alsadara-ftth\"; & \"C:\\\\Program Files \\(x86\\)\\\\Inno Setup 6\\\\ISCC.exe\" installer.iss 2>&1 | Select-Object -Last 3; Get-ChildItem \"build\\\\installer\\\\Alsadara-Setup-v2.2.25.exe\" | Select-Object Name,@{N='MB';E={[math]::Round\\($_.Length/1MB,1\\)}})"
+      "PowerShell(Set-Location \"c:\\\\SadaraPlatform\\\\src\\\\Apps\\\\CompanyDesktop\\\\alsadara-ftth\"; & \"C:\\\\Program Files \\(x86\\)\\\\Inno Setup 6\\\\ISCC.exe\" installer.iss 2>&1 | Select-Object -Last 3; Get-ChildItem \"build\\\\installer\\\\Alsadara-Setup-v2.2.25.exe\" | Select-Object Name,@{N='MB';E={[math]::Round\\($_.Length/1MB,1\\)}})",
+      "PowerShell(gh release view --repo 07706228120Hh/alsadara-FTTH --json tagName,assets --jq '{latest: .tagName, assets: [.assets[].name]}' 2>&1)",
+      "Bash(mkdir -p .claude/agents .claude/memory .claude/workflows .claude/templates .claude/reports && echo \"dirs ready\" && ls .claude)",
+      "Bash(xargs -n1 basename)",
+      "Bash(grep -iE '\\(^|/\\)\\\\.env\\($|\\\\.\\)|\\(^|/\\)secrets/|\\(^|/\\)\\\\.secrets/|\\\\.pem$|\\\\.key$|\\\\.pfx$|service-account|serviceAccount|credentials')",
+      "Bash(git check-ignore *)",
+      "Bash(awk -F'طول القيمة: ' '{ if \\(NF>1\\){ v=$2; gsub\\(/].*/,\"\",v\\); print $1 \"طول=\" length\\(v\\) } else print $0 }')",
+      "Bash(netstat -ano -p tcp)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\Msi-x88\\.claude\\projects\\c--SadaraPlatform\\memory"
+      "c:\\Users\\Msi-x88\\.claude\\projects\\c--SadaraPlatform\\memory",
+      "C:\\SadaraPlatform\\.claude"
     ]
   }
 }

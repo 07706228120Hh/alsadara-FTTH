@@ -52,6 +52,7 @@ out/
 publish/
 publish-output/
 publish-temp/
+publish_*/
 deploy-temp/
 
 # IDE
