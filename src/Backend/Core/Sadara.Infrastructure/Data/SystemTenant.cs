@@ -11,4 +11,7 @@ public sealed class SystemTenant : ICurrentTenant
     public Guid? CompanyId => null;
     public bool IsSuperAdmin => true;
     public bool BypassTenantFilter => true;
+
+    // سياق النظام/design-time لا يختم شركة افتراضية: الـ seeds والهجرات تضبط CompanyId بنفسها.
+    public Guid? DefaultCompanyId => null;
 }

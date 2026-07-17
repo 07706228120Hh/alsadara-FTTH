@@ -24,4 +24,12 @@ public interface ICurrentTenant
     /// (خدمات الخلفية، الهجرات، seed). عند true تُرجع الاستعلامات بيانات كل الشركات.
     /// </summary>
     bool BypassTenantFilter { get; }
+
+    /// <summary>
+    /// الشركة الافتراضية للمنصّة (المرتبطة بشركة واحدة: رمز الصدارة)، تُقرأ من الإعداد
+    /// <c>Tenancy:DefaultCompanyId</c>. تُستخدم كضمان مركزي: أي إدراج كيان تينانت يصل بـ
+    /// <c>CompanyId</c> فارغ في سياق تجاوز (مفتاح API/مجهول) يُختَم بها كي لا يبقى صفّ بلا شركة
+    /// (فيُخفى عن قراءات JWT). null = غير مُهيّأة ⇒ لا خَتم (سلوك محايد).
+    /// </summary>
+    Guid? DefaultCompanyId { get; }
 }

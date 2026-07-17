@@ -94,4 +94,17 @@ public class CurrentTenant : ICurrentTenant
             return Guid.TryParse(raw, out var id) ? id : (Guid?)null;
         }
     }
+
+    /// <summary>
+    /// الشركة الافتراضية للمنصّة من الإعداد <c>Tenancy:DefaultCompanyId</c>.
+    /// إذا لم تُضبط (أو قيمة غير صالحة) تُرجع null ⇒ لا يجري أي خَتم (سلوك محايد).
+    /// </summary>
+    public Guid? DefaultCompanyId
+    {
+        get
+        {
+            var raw = _configuration["Tenancy:DefaultCompanyId"];
+            return Guid.TryParse(raw, out var id) ? id : (Guid?)null;
+        }
+    }
 }

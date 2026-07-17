@@ -28,6 +28,7 @@ public class TenantIsolationTests
         public Guid? CompanyId { get; init; }
         public bool IsSuperAdmin { get; init; }
         public bool BypassTenantFilter { get; init; }
+        public Guid? DefaultCompanyId { get; init; }
     }
 
     // سياق نظام يتجاوز الفلتر — يُستخدم للزرع والتحقّق المحايد.
@@ -258,5 +259,73 @@ public class TenantIsolationTests
             Assert.NotNull(user);
             Assert.Equal(CompanyA, user!.CompanyId);
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // الضمان المركزي: إدراج كيان تينانت بـ CompanyId فارغ في سياق تجاوز (مفتاح API/مجهول)
+    // يُختَم بالشركة الافتراضية (DefaultCompanyId) — كي لا يبقى صفّ بلا شركة يُخفى عن قراءات JWT.
+    // ══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public void Bypass_Insert_With_Empty_CompanyId_Is_Stamped_With_DefaultCompany()
+    {
+        var dbName = Guid.NewGuid().ToString();
+
+        // سياق تجاوز (كمفتاح API) بلا CompanyId، لكن الشركة الافتراضية مُهيّأة = CompanyA.
+        using (var apiKeyCtx = NewContext(dbName,
+            new TestTenant { CompanyId = null, BypassTenantFilter = true, DefaultCompanyId = CompanyA }))
+        {
+            // إدراج بلا تحديد CompanyId إطلاقاً (يحاكي إدراجاً من عميل لم يرسل الشركة).
+            apiKeyCtx.Set<Account>().Add(new Account { Id = Guid.NewGuid() });
+            apiKeyCtx.SaveChanges();
+        }
+
+        // النتيجة: خُتم بالشركة الافتراضية — فيراه مستخدم CompanyA المُصادَق تحت الفلتر (لا يُخفى).
+        using (var check = NewContext(dbName, SystemTenant))
+        {
+            var account = Assert.Single(check.Set<Account>());
+            Assert.Equal(CompanyA, account.CompanyId);
+        }
+        using (var ctxA = NewContext(dbName, new TestTenant { CompanyId = CompanyA }))
+        {
+            Assert.Single(ctxA.Set<Account>().ToList()); // مرئيّ لقراءة JWT المُقيَّدة بالشركة.
+        }
+    }
+
+    [Fact]
+    public void Bypass_Insert_Does_Not_Overwrite_Explicit_CompanyId()
+    {
+        var dbName = Guid.NewGuid().ToString();
+
+        // سياق تجاوز مع شركة افتراضية = CompanyA، لكن الإدراج يحدّد CompanyB صراحةً (مثل tenantId من route).
+        using (var apiKeyCtx = NewContext(dbName,
+            new TestTenant { CompanyId = null, BypassTenantFilter = true, DefaultCompanyId = CompanyA }))
+        {
+            apiKeyCtx.Set<Account>().Add(new Account { Id = Guid.NewGuid(), CompanyId = CompanyB });
+            apiKeyCtx.SaveChanges();
+        }
+
+        // القيمة الصريحة CompanyB لا تُطمَس بالشركة الافتراضية.
+        using var check = NewContext(dbName, SystemTenant);
+        var account = Assert.Single(check.Set<Account>());
+        Assert.Equal(CompanyB, account.CompanyId);
+    }
+
+    [Fact]
+    public void Bypass_Insert_Without_Default_Stays_Null_Neutral()
+    {
+        var dbName = Guid.NewGuid().ToString();
+
+        // سياق تجاوز بلا شركة افتراضية (DefaultCompanyId=null) — سلوك محايد: لا خَتم.
+        using (var apiKeyCtx = NewContext(dbName,
+            new TestTenant { CompanyId = null, BypassTenantFilter = true, DefaultCompanyId = null }))
+        {
+            apiKeyCtx.Set<Notification>().Add(new Notification { Id = 777 });
+            apiKeyCtx.SaveChanges();
+        }
+
+        using var check = NewContext(dbName, SystemTenant);
+        var n = Assert.Single(check.Set<Notification>());
+        Assert.Null(n.CompanyId); // بقي فارغاً (لا ضمان مُهيّأ) — سلوك محايد كما كان.
     }
 }

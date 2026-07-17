@@ -1684,6 +1684,10 @@ public class SadaraDbContext : DbContext
         return base.SaveChangesAsync(cancellationToken);
     }
 
+    // هل قيمة CompanyId «فارغة»؟ يغطّي Guid? = null و Guid = Guid.Empty.
+    private static bool IsCompanyIdEmpty(object? value)
+        => value is null || (value is Guid g && g == Guid.Empty);
+
     // تعيين الطوابع الزمنية + عزل المستأجر عند الإدراج: أي كيان ITenantScoped جديد
     // يأخذ شركة المستخدم الحالي تلقائياً إن لم تُحدّد (يمنع حقن سجل في شركة أخرى).
     private void ApplyTenantAndAudit()
@@ -1694,14 +1698,24 @@ public class SadaraDbContext : DbContext
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAt = DateTime.UtcNow;
-                    if (!_tenant.BypassTenantFilter && _tenant.CompanyId.HasValue
-                        && !TenantFilterExclusions.Contains(entry.Metadata.ClrType.Name)
+                    if (!TenantFilterExclusions.Contains(entry.Metadata.ClrType.Name)
                         && entry.Metadata.FindProperty("CompanyId") is { } cp
                         && (cp.ClrType == typeof(Guid) || cp.ClrType == typeof(Guid?)))
                     {
-                        // فرض شركة المستخدم الحالي على كل إدراج لغير SuperAdmin — يمنع مركزياً
-                        // حقن سجل في شركة أخرى حتى لو حدّد الكود/الطلب CompanyId مختلفاً.
-                        entry.Property("CompanyId").CurrentValue = _tenant.CompanyId.Value;
+                        var prop = entry.Property("CompanyId");
+                        if (!_tenant.BypassTenantFilter && _tenant.CompanyId.HasValue)
+                        {
+                            // مستخدم مُصادَق غير-متجاوز: افرض شركته دائماً — يمنع مركزياً حقن سجل
+                            // في شركة أخرى حتّى لو حدّد الكود/الطلب CompanyId مختلفاً.
+                            prop.CurrentValue = _tenant.CompanyId.Value;
+                        }
+                        else if (IsCompanyIdEmpty(prop.CurrentValue) && _tenant.DefaultCompanyId.HasValue)
+                        {
+                            // ضمان مركزي: سياق تجاوز (مفتاح API/مجهول/نظام) وصل بـ CompanyId فارغ —
+                            // اختم الشركة الافتراضية كي لا يبقى صفّ تينانت بلا شركة (يُخفى عن قراءات JWT).
+                            // لا نطمس قيمة صريحة قائمة (مثل tenantId من الـ route).
+                            prop.CurrentValue = _tenant.DefaultCompanyId.Value;
+                        }
                     }
                     break;
                 case EntityState.Modified:
