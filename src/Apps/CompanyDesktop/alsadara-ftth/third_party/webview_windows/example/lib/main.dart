@@ -3,14 +3,12 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 
 import 'package:webview_windows/webview_windows.dart';
-import 'package:window_manager/window_manager.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   // For full-screen example
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
 
   runApp(MyApp());
 }
@@ -56,7 +54,7 @@ class _ExampleBrowser extends State<ExampleBrowser> {
       _subscriptions
           .add(_controller.containsFullScreenElementChanged.listen((flag) {
         debugPrint('Contains fullscreen element: $flag');
-        windowManager.setFullScreen(flag);
+        // windowManager.setFullScreen(flag); // أُزيل: window_manager غير مُعتمَد في المشروع (ملف مثال طرف-ثالث)
       }));
 
       await _controller.setBackgroundColor(Colors.transparent);

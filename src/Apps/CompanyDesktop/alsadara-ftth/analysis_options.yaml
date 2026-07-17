@@ -34,6 +34,8 @@ analyzer:
   # استثناء مجلد المحذوفات من التحليل
   exclude:
     - lib/_deleted/**
+    - third_party/**
+    - build/**
     
   errors:
     unused_element: ignore

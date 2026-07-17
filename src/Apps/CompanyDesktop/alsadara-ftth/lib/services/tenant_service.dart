@@ -7,6 +7,7 @@ import '../models/tenant.dart';
 import '../models/tenant_user.dart';
 import 'custom_auth_service.dart';
 import 'firebase_availability.dart';
+import 'api/api_client.dart';
 
 class TenantService {
   /// تحميل كسول لتجنب خطأ [core/no-app]
@@ -28,59 +29,38 @@ class TenantService {
     String? adminEmail,
     String? adminPhone,
   }) async {
-    if (!FirebaseAvailability.isAvailable)
-      return TenantCreationResult.failure('Firebase غير متاح');
+    // كل شيء في PostgreSQL عبر الخادم — لا Firestore (المرحلة 1: الشركات).
     try {
-      final existingTenant = await _firestore
-          .collection('tenants')
-          .where('code', isEqualTo: tenantCode)
-          .get();
+      final response = await ApiClient.instance.post(
+        '/internal/companies',
+        {
+          'name': tenantName,
+          'code': tenantCode,
+          'email': tenantEmail,
+          'phone': tenantPhone,
+          'address': tenantAddress,
+          'maxUsers': maxUsers,
+          'subscriptionEndDate': subscriptionEnd.toIso8601String(),
+          'adminUsername': adminUsername,
+          'adminPassword': adminPassword,
+          'adminFullName': adminFullName,
+          'adminEmail': adminEmail,
+          'adminPhone': adminPhone,
+        },
+        (json) => json,
+        useInternalKey: true,
+      );
 
-      if (existingTenant.docs.isNotEmpty) {
-        return TenantCreationResult.failure('كود الشركة مستخدم بالفعل');
+      if (response.isSuccess && response.data != null) {
+        final data = response.data;
+        final companyId = (data is Map)
+            ? (data['Id']?.toString() ?? data['id']?.toString() ?? '')
+            : '';
+        return TenantCreationResult.success(companyId);
       }
-
-      // إنشاء الشركة
-      final tenantRef = await _firestore.collection('tenants').add({
-        'name': tenantName,
-        'code': tenantCode,
-        'email': tenantEmail,
-        'phone': tenantPhone,
-        'address': tenantAddress,
-        'isActive': true,
-        'subscriptionStart': FieldValue.serverTimestamp(),
-        'subscriptionEnd': Timestamp.fromDate(subscriptionEnd),
-        'subscriptionPlan': subscriptionPlan,
-        'maxUsers': maxUsers,
-        'createdAt': FieldValue.serverTimestamp(),
-        'createdBy': CustomAuthService.currentSuperAdmin?.id ?? 'system',
-      });
-
-      // إنشاء المدير الأول للشركة
-      final hashedPassword = CustomAuthService.hashPassword(adminPassword);
-
-      await _firestore
-          .collection('tenants')
-          .doc(tenantRef.id)
-          .collection('users')
-          .add({
-        'username': adminUsername,
-        'passwordHash': hashedPassword,
-        'plainPassword': adminPassword, // حفظ كلمة المرور للعرض لاحقاً
-        'fullName': adminFullName,
-        'email': adminEmail,
-        'phone': adminPhone,
-        'role': UserRole.admin.value,
-        'isActive': true,
-        'firstSystemPermissions': buildAdminFirstSystemPermissionsV2(),
-        'secondSystemPermissions': buildAdminSecondSystemPermissionsV2(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'createdBy': 'system',
-      });
-
-      return TenantCreationResult.success(tenantRef.id);
+      return TenantCreationResult.failure(response.message ?? 'فشل إنشاء الشركة');
     } catch (e) {
-      return TenantCreationResult.failure('حدث خطأ');
+      return TenantCreationResult.failure('حدث خطأ في الاتصال بالخادم');
     }
   }
 
