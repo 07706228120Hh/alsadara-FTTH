@@ -211,6 +211,87 @@ public class InternalDataController : ControllerBase
     }
 
     /// <summary>
+    /// إنشاء شركة جديدة + مديرها الأول — يكتب في PostgreSQL (بديل Firestore).
+    /// </summary>
+    [HttpPost("companies")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CreateCompany([FromBody] InternalCreateCompanyRequest request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Code))
+            return BadRequest(new { success = false, message = "اسم الشركة والكود مطلوبان" });
+        if (string.IsNullOrWhiteSpace(request.AdminUsername) || string.IsNullOrWhiteSpace(request.AdminPassword))
+            return BadRequest(new { success = false, message = "اسم المستخدم وكلمة المرور للمدير مطلوبان" });
+
+        // كود الشركة فريد
+        var dupCode = await _unitOfWork.Companies.AsQueryable()
+            .FirstOrDefaultAsync(c => c.Code == request.Code.Trim() && !c.IsDeleted);
+        if (dupCode != null)
+            return BadRequest(new { success = false, message = "كود الشركة مستخدم بالفعل" });
+
+        // رقم هاتف المدير فريد على القاعدة — placeholder فريد إن كان فارغاً
+        var adminPhone = string.IsNullOrWhiteSpace(request.AdminPhone)
+            ? $"pending-{request.Code.Trim()}"
+            : request.AdminPhone.Trim();
+        var dupPhone = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.PhoneNumber == adminPhone && !u.IsDeleted);
+        if (dupPhone != null)
+            return BadRequest(new { success = false, message = "رقم هاتف المدير مستخدم بالفعل" });
+
+        try
+        {
+            var company = new Sadara.Domain.Entities.Company
+            {
+                Id = Guid.NewGuid(),
+                Name = request.Name.Trim(),
+                Code = request.Code.Trim(),
+                Email = request.Email,
+                Phone = request.Phone,
+                Address = request.Address,
+                City = request.City,
+                IsActive = true,
+                MaxUsers = request.MaxUsers ?? 10,
+                SubscriptionStartDate = DateTime.UtcNow,
+                SubscriptionEndDate = request.SubscriptionEndDate ?? DateTime.UtcNow.AddMonths(12),
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Companies.AddAsync(company);
+
+            var admin = new Sadara.Domain.Entities.User
+            {
+                Id = Guid.NewGuid(),
+                FullName = string.IsNullOrWhiteSpace(request.AdminFullName) ? request.AdminUsername.Trim() : request.AdminFullName.Trim(),
+                Username = request.AdminUsername.Trim(),
+                PhoneNumber = adminPhone,
+                Email = request.AdminEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.AdminPassword),
+                Role = Sadara.Domain.Enums.UserRole.CompanyAdmin,
+                CompanyId = company.Id,
+                IsActive = true,
+                IsPhoneVerified = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Users.AddAsync(admin);
+
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("إنشاء شركة {Code} ({Id}) + مدير عبر الـ API الداخلي", company.Code, company.Id);
+            return Ok(new
+            {
+                success = true,
+                message = "تم إنشاء الشركة والمدير بنجاح",
+                data = new { company.Id, company.Name, company.Code, adminId = admin.Id, adminUsername = admin.Username }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إنشاء الشركة عبر الـ API الداخلي");
+            return StatusCode(500, new { success = false, message = "حدث خطأ في إنشاء الشركة" });
+        }
+    }
+
+    /// <summary>
     /// تحديث بيانات شركة
     /// </summary>
     [HttpPut("companies/{id}")]
@@ -3829,6 +3910,26 @@ public class InternalUpdateCompanyRequest
     public bool? IsActive { get; set; }
     public Dictionary<string, bool>? EnabledFirstSystemFeatures { get; set; }
     public Dictionary<string, bool>? EnabledSecondSystemFeatures { get; set; }
+}
+
+/// <summary>
+/// طلب إنشاء شركة جديدة + مديرها الأول (Internal API) — كل شيء في PostgreSQL (بديل Firestore)
+/// </summary>
+public class InternalCreateCompanyRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Address { get; set; }
+    public string? City { get; set; }
+    public int? MaxUsers { get; set; }
+    public DateTime? SubscriptionEndDate { get; set; }
+    public string AdminUsername { get; set; } = string.Empty;
+    public string AdminPassword { get; set; } = string.Empty;
+    public string AdminFullName { get; set; } = string.Empty;
+    public string? AdminEmail { get; set; }
+    public string? AdminPhone { get; set; }
 }
 
 /// <summary>
