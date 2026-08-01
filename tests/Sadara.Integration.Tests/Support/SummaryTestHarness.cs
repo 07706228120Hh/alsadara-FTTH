@@ -105,6 +105,15 @@ public static class SummaryTestHarness
     }
 
     /// <summary>يزرع مجموعة طلبات خدمة عبر سياق النظام (يحترم CompanyId الصريح).</summary>
+    /// <remarks>
+    /// (المرحلة 2) الأعمدة المطبّعة <c>Department</c>/<c>TechnicianName</c> تُملأ هنا محاكاةً
+    /// لسلوك dual-write في الإنتاج: عند إنشاء/تعيين طلب يكتب التطبيق القيمة في <c>Details</c> JSON
+    /// وفي العمود المطبّع معاً. بعد أن أصبح <c>GetSummary</c> (وQ1/Q2/Q3) يقرأ القسم/الفني من
+    /// العمودين بدل <c>Details::json->></c>، لا بد أن يعكس الزرع نفس المصدر بنفس التطبيع
+    /// (Trim + فراغ/مسافات => null) وإلا فشلت اختبارات فلترة department/assignee زوراً.
+    /// المصدر الوحيد للحقيقة يبقى قاموس <see cref="RequestSpec.Details"/> — تُستخرج منه القيم
+    /// عبر <see cref="NormalizeDetailValue"/> المطابقة لـ ExtractDetailValue في الكونترولر.
+    /// </remarks>
     public static void SeedRequests(
         PostgresFixture fx, int serviceId, int operationTypeId, IEnumerable<RequestSpec> specs)
     {
@@ -120,6 +129,12 @@ public static class SummaryTestHarness
                         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
                     });
 
+            // dual-write: نُشتق العمودين المطبّعين من نفس مصدر Details (department/technician)
+            // بنفس تطبيع الإنتاج. RawDetails (نص حر ليس JSON) لا يحمل مفاتيح => العمودان يبقيان null،
+            // وهو ما يجعل صفوف النص الحر تُقصى من فلاتر assignee/department كما هو متوقّع.
+            var department = NormalizeDetailValue(s.Details, "department");
+            var technicianName = NormalizeDetailValue(s.Details, "technician");
+
             ctx.Set<ServiceRequest>().Add(new ServiceRequest
             {
                 Id = Guid.NewGuid(),
@@ -133,10 +148,26 @@ public static class SummaryTestHarness
                 FinalCost = s.FinalCost,
                 IsDeleted = s.IsDeleted,
                 Details = details,
+                Department = department,
+                TechnicianName = technicianName,
                 RequestedAt = DateTime.UtcNow,
             });
         }
         ctx.SaveChanges();
+    }
+
+    /// <summary>
+    /// يستخرج قيمة نصية من قاموس <see cref="RequestSpec.Details"/> بنفس تطبيع الإنتاج
+    /// (<c>ServiceRequestsController.ExtractDetailValue</c>): مفتاح مفقود/قيمة null/فراغ => null،
+    /// وإلا القيمة بعد Trim. يبقي محاكاة dual-write أمينة دون نسخ منطق الكونترولر.
+    /// </summary>
+    private static string? NormalizeDetailValue(Dictionary<string, object?>? details, string key)
+    {
+        if (details is null || !details.TryGetValue(key, out var raw) || raw is null)
+            return null;
+
+        var value = raw as string ?? raw.ToString();
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     /// <summary>يزرع مستخدماً بصلاحيات V2 محدّدة (لبوابة التحصيلات).</summary>
