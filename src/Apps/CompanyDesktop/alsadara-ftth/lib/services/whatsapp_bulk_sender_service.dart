@@ -129,11 +129,11 @@ class WhatsAppBulkSenderService {
         };
       }
     } catch (e) {
-      debugPrint('❌ خطأ في الاتصال');
+      debugPrint('❌ خطأ في الاتصال بـ n8n: $e');
       return {
         'success': false,
         'error': 'Connection error',
-        'message': 'حدث خطأ',
+        'message': 'تعذّر الاتصال: $e',
       };
     }
   }
@@ -279,11 +279,11 @@ class WhatsAppBulkSenderService {
         };
       }
     } catch (e) {
-      debugPrint('❌ خطأ في الاتصال');
+      debugPrint('❌ خطأ في الاتصال بـ n8n: $e');
       return {
         'success': false,
         'error': 'Connection error',
-        'message': 'حدث خطأ',
+        'message': 'تعذّر الاتصال: $e',
       };
     }
   }

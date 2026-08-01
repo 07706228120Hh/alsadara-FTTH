@@ -28,6 +28,8 @@ Name: "desktopicon"; Description: "Create desktop shortcut"; GroupDescription: "
 
 [Files]
 Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.lib,*.exp,*.pdb"
+; شهادة جذر Let's Encrypt (ISRG Root X1) — تُثبّت في مخزن الجذر الموثوق ليثق الجهاز بخادم n8n
+Source: "certs\isrgrootx1.der"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\الصدارة"; Filename: "{app}\Alsadara.exe"
@@ -38,6 +40,8 @@ Name: "{autodesktop}\الصدارة - Alsadara"; Filename: "{app}\Alsadara.exe";
 Type: files; Name: "{app}\*.old"
 
 [Run]
+; تثبيت جذر ISRG Root X1 في مخزن الشهادات الموثوقة (يعمل لأن المُثبِّت يشتغل بصلاحيات admin)
+Filename: "{sys}\certutil.exe"; Parameters: "-addstore -f Root ""{app}\isrgrootx1.der"""; Flags: runhidden waituntilterminated; StatusMsg: "تثبيت شهادة أمان Let's Encrypt..."
 Filename: "{app}\Alsadara.exe"; Description: "تشغيل الصدارة"; Flags: nowait postinstall skipifsilent
 
 [Code]
