@@ -46,7 +46,6 @@ class _TaskListScreenState extends State<TaskListScreen>
   // Pagination
   int _currentPage = 1;
   static const int _pageSize = 50;
-  bool _loadAll = false; // تحميل الكل
   bool _hasMorePages = true;
   bool _isLoadingMore = false;
 
@@ -155,9 +154,11 @@ class _TaskListScreenState extends State<TaskListScreen>
       _lastRefresh = DateTime.now();
 
       debugPrint('📡 جلب المهام: tech=$_techFilter, created=$_createdByFilter, dept=$_deptFilter, token=${ApiClient.instance.authToken != null ? "موجود" : "❌ غير موجود"}');
+      // اللوحة تأخذ أرقامها من الخادم (getSummary) → لا داعي لتحميل كل المهام دفعة.
+      // القوائم تعمل عبر الترقيم + التحميل الكسول (loadMoreTasks عند 80% تمرير).
       final response = await TaskApiService.instance.getRequests(
         page: 1,
-        pageSize: _loadAll ? 10000 : _pageSize,
+        pageSize: _pageSize,
         technician: _techFilter,
         department: _deptFilter,
         createdByName: _createdByFilter,
@@ -275,12 +276,6 @@ class _TaskListScreenState extends State<TaskListScreen>
     await _fetchTasks(showLoadingIndicator: false);
   }
 
-  /// تحميل جميع المهام من السيرفر
-  void _loadAllTasksFromServer() {
-    setState(() => _loadAll = true);
-    _fetchTasks(showLoadingIndicator: true);
-  }
-
   // دالة لتحديث المهمة عند تغيير الحالة
   // ملاحظة: التحديث في API يتم من task_card._updateStatusViaApi
   // هنا فقط نحدث الحالة المحلية
@@ -325,8 +320,6 @@ class _TaskListScreenState extends State<TaskListScreen>
                 onRefresh: () => _fetchTasks(showLoadingIndicator: false),
                 onLoadMore: loadMoreTasks,
                 hasMorePages: _hasMorePages,
-                onLoadAll: _loadAllTasksFromServer,
-                isLoadAll: _loadAll,
               ),
             ),
     );

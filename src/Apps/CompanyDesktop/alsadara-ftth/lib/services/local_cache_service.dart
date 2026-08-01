@@ -348,6 +348,45 @@ class LocalCacheService {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // تخزين ملخّص لوحة المهام (Task summary) — منخفض الخطر
+  // نخزّن فقط استجابة /summary (أعداد مجمّعة)، لا قائمة المهام القابلة للتغيّر.
+  // المفتاح يتضمن سياق المستخدم/الدور/التاريخ لمنع تسريب ملخّص بين المستخدمين.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// حفظ ملخّص لوحة المهام محلياً تحت مفتاح [contextKey] (سياق المستخدم/الدور/التاريخ).
+  Future<bool> saveTaskSummary(
+      String contextKey, Map<String, dynamic> summary) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'task_summary_$contextKey',
+        json.encode({
+          'timestamp': DateTime.now().toIso8601String(),
+          'data': summary,
+        }),
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// جلب ملخّص لوحة المهام المخزّن لسياق [contextKey]، أو null إن لم يوجد/فشل.
+  Future<Map<String, dynamic>?> getTaskSummary(String contextKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('task_summary_$contextKey');
+      if (raw == null) return null;
+      final decoded = json.decode(raw);
+      final data = decoded['data'];
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// معلومات الكاش
   Future<Map<String, dynamic>> getCacheInfo() async {
     final lastUpdate = await getSubscribersLastUpdate();

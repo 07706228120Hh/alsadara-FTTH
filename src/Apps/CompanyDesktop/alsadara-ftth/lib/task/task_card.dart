@@ -95,8 +95,8 @@ class _TaskCardState extends State<TaskCard> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUserName = widget.currentUserName.trim();
-    final taskTechnician = widget.task.technician.trim();
+    final currentUserName = normalizeName(widget.currentUserName);
+    final taskTechnician = normalizeName(widget.task.technician);
 
     final isTech = widget.currentUserRole == 'فني' ||
         widget.currentUserRole.toLowerCase() == 'technician';

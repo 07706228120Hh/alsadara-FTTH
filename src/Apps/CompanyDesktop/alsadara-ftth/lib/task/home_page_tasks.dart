@@ -10,6 +10,7 @@ import 'technician_performance_page.dart';
 import '../services/whatsapp_template_storage.dart';
 import '../ftth/tasks/customer_search_connect_page.dart';
 import '../services/task_api_service.dart';
+import '../services/local_cache_service.dart';
 import '../widgets/sla_settings_dialog.dart';
 import 'task_status_colors.dart';
 
@@ -26,8 +27,6 @@ class HomePageTasks extends StatefulWidget {
   final VoidCallback? onRefresh;
   final VoidCallback? onLoadMore;
   final bool hasMorePages;
-  final VoidCallback? onLoadAll;
-  final bool isLoadAll;
 
   const HomePageTasks({
     super.key,
@@ -43,8 +42,6 @@ class HomePageTasks extends StatefulWidget {
     this.onRefresh,
     this.onLoadMore,
     this.hasMorePages = true,
-    this.onLoadAll,
-    this.isLoadAll = false,
   });
 
   @override
@@ -101,6 +98,8 @@ class HomePageTasksState extends State<HomePageTasks> {
     _currentTasks = widget.tasks;
     _applyPermissionFilter();
     _filterTasksByStatus(_getStatusByIndex(currentIndex));
+    // اعرض آخر ملخّص مخزّن فوراً (إن وُجد) ثم حدّث من الخادم في الخلفية.
+    _loadCachedSummary();
     // تجميع اللوحة من الخادم (لا يعطّل بناء الواجهة)
     _fetchSummary();
   }
@@ -164,6 +163,8 @@ class HomePageTasksState extends State<HomePageTasks> {
   List<Task> _applyRoleFilter(List<Task> tasks, {bool forceMyOnly = false}) {
     final role = _normalizeRole(widget.currentUserRole);
     final myOnly = forceMyOnly || _myTasksOnly;
+    // تطبيع موحّد للاسم لمنع سقوط مهام بسبب اختلاف المسافات.
+    final me = normalizeName(widget.username);
 
     debugPrint('🔍 [RoleFilter] role=$role, username="${widget.username}", dept="${widget.department}", myOnly=$myOnly, tasksCount=${tasks.length}');
 
@@ -171,8 +172,8 @@ class HomePageTasksState extends State<HomePageTasks> {
     if (myOnly && (role == 'مدير' || role == 'ليدر')) {
       return tasks
           .where((task) =>
-              task.technician == widget.username ||
-              task.createdBy == widget.username)
+              normalizeName(task.technician) == me ||
+              normalizeName(task.createdBy) == me)
           .toList();
     }
 
@@ -186,8 +187,8 @@ class HomePageTasksState extends State<HomePageTasks> {
           : <String>{};
       final result = tasks
           .where((task) {
-              final match = task.technician == widget.username ||
-                  task.createdBy == widget.username ||
+              final match = normalizeName(task.technician) == me ||
+                  normalizeName(task.createdBy) == me ||
                   (departments.isNotEmpty && departments.contains(_normalizeDept(task.department)));
               return match;
           })
@@ -198,8 +199,8 @@ class HomePageTasksState extends State<HomePageTasks> {
       // فني أو موظف عادي: المعيّنة له + التي أنشأها
       return tasks
           .where((task) =>
-              task.technician == widget.username ||
-              task.createdBy == widget.username)
+              normalizeName(task.technician) == me ||
+              normalizeName(task.createdBy) == me)
           .toList();
     }
   }
@@ -249,7 +250,8 @@ class HomePageTasksState extends State<HomePageTasks> {
 
         // فلتر الفني
         if (_collectionTechFilter != null && _collectionTechFilter!.isNotEmpty) {
-          collectionTasks = collectionTasks.where((t) => t.technician.trim() == _collectionTechFilter).toList();
+          final wanted = normalizeName(_collectionTechFilter!);
+          collectionTasks = collectionTasks.where((t) => normalizeName(t.technician) == wanted).toList();
         }
 
         // تبويب التحصيل يتأثر بفلتر الدور — الليدر يرى مهام قسمه فقط
@@ -380,10 +382,13 @@ class HomePageTasksState extends State<HomePageTasks> {
   (String?, String?) _summaryRoleContext() {
     final role = _normalizeRole(widget.currentUserRole);
 
+    // اسم المستخدم مطبّع (trim + دمج المسافات) ليطابق تطبيع _applyRoleFilter.
+    final me = normalizeName(widget.username);
+
     // "مهامي فقط" — يطابق فرع _applyRoleFilter الذي يفلتر بـ (technician|createdBy == username)
     // لمدير/ليدر → على الخادم نمرّر assignee باسم المستخدم.
     if (_myTasksOnly && (role == 'مدير' || role == 'ليدر')) {
-      return (null, widget.username);
+      return (null, me);
     }
 
     if (role == 'مدير') {
@@ -398,7 +403,34 @@ class HomePageTasksState extends State<HomePageTasks> {
       return (firstDept.isNotEmpty ? firstDept : null, null);
     } else {
       // فني/موظف عادي — يطابق فرع _applyRoleFilter (technician|createdBy == username).
-      return (null, widget.username);
+      return (null, me);
+    }
+  }
+
+  /// مفتاح كاش الملخّص — يتضمّن سياق المستخدم/الدور/التاريخ حتى لا يُعرض ملخّص
+  /// مستخدم لمستخدم آخر (عزل الجلسات) ولا فترة تاريخ لأخرى.
+  String _summaryCacheKey() {
+    final (from, to) = _summaryDateRange();
+    final (department, assignee) = _summaryRoleContext();
+    final role = _normalizeRole(widget.currentUserRole);
+    final user = normalizeName(widget.username);
+    final f = from?.toIso8601String() ?? 'null';
+    final t = to?.toIso8601String() ?? 'null';
+    return '${user}_${role}_${department ?? ''}_${assignee ?? ''}_${f}_$t';
+  }
+
+  /// تحميل الملخّص المخزّن (إن وُجد) لعرضه فوراً عند فتح اللوحة، قبل تحديث الخادم.
+  /// لا يمسّ [_summary] إن كان الخادم قد حدّثه بالفعل (سباق شبكة سريع).
+  Future<void> _loadCachedSummary() async {
+    try {
+      final key = _summaryCacheKey();
+      final cached = await LocalCacheService.instance.getTaskSummary(key);
+      if (!mounted || cached == null) return;
+      // لا نطمس تحديث خادمي وصل قبلنا.
+      if (_summary != null) return;
+      setState(() => _summary = cached);
+    } catch (_) {
+      // تجاهل — الكاش رفاهية فقط.
     }
   }
 
@@ -419,9 +451,12 @@ class HomePageTasksState extends State<HomePageTasks> {
       );
       if (!mounted) return;
       if (res['success'] == true && res['data'] is Map) {
+        final data = Map<String, dynamic>.from(res['data'] as Map);
         setState(() {
-          _summary = Map<String, dynamic>.from(res['data'] as Map);
+          _summary = data;
         });
+        // خزّن الملخّص فقط (لا قائمة المهام) تحت مفتاح سياق المستخدم.
+        LocalCacheService.instance.saveTaskSummary(_summaryCacheKey(), data);
       } else {
         // فشل → ارجع للحساب العميلي
         setState(() => _summary = null);
@@ -650,7 +685,7 @@ class HomePageTasksState extends State<HomePageTasks> {
     // تقرير الفنيين
     final Map<String, Map<String, dynamic>> techReport = {};
     for (final t in collectionTasks) {
-      final tech = t.technician.trim();
+      final tech = normalizeName(t.technician);
       if (tech.isEmpty) continue;
       techReport.putIfAbsent(tech, () => {'pending': 0, 'done': 0, 'total': 0, 'amount': 0.0, 'amountDone': 0.0});
       techReport[tech]!['total'] = (techReport[tech]!['total'] as int) + 1;
@@ -824,7 +859,7 @@ class HomePageTasksState extends State<HomePageTasks> {
     } else {
       // fallback: حساب عميلي من _filteredTasks
       for (final task in _filteredTasks) {
-        final name = task.technician.trim();
+        final name = normalizeName(task.technician);
         if (name.isEmpty) continue;
         techStats.putIfAbsent(
             name,
@@ -1560,7 +1595,7 @@ class HomePageTasksState extends State<HomePageTasks> {
     // جمع أسماء الفنيين من مهام التحصيل
     final techNames = _currentTasks
         .where((t) => t.title.contains('تحصيل مبلغ') || t.title.contains('استحصال مبلغ'))
-        .map((t) => t.technician.trim())
+        .map((t) => normalizeName(t.technician))
         .where((n) => n.isNotEmpty)
         .toSet()
         .toList()
@@ -2413,36 +2448,8 @@ class HomePageTasksState extends State<HomePageTasks> {
                     const SizedBox(width: 6),
                     _buildDateFilterChip('الكل', 'all'),
 
-                    // زر "تحميل الكل من السيرفر" — يظهر فقط عندما لم يتم تحميل الكل بعد
-                    if (!widget.isLoadAll && widget.onLoadAll != null) ...[
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: widget.onLoadAll,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.5), width: 1),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.cloud_download_outlined, color: Colors.tealAccent, size: 16),
-                              SizedBox(width: 4),
-                              Text(
-                                'الكل',
-                                style: TextStyle(
-                                  color: Colors.tealAccent,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                    // ملاحظة: أُزيل زر ☁️ "تحميل الكل" — اللوحة تأخذ أرقامها من الخادم
+                    // (getSummary)، والقوائم تعمل عبر الترقيم + التحميل الكسول (80% تمرير).
 
                     // زر "مهامي" — يظهر للمدير والليدر فقط
                     if (_normalizeRole(widget.currentUserRole) == 'مدير' ||
