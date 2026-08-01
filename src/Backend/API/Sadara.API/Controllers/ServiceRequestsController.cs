@@ -94,31 +94,35 @@ public class ServiceRequestsController : ControllerBase
         }
 
         // فلتر القسم: يدعم قسم واحد أو أقسام متعددة مفصولة بفاصلة
+        // (مرحلة ب) يقرأ من العمود المطبّع Department بدل استخراج Details JSON.
         if (!string.IsNullOrEmpty(department))
         {
             var depts = department.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (depts.Length == 1)
             {
-                query = query.Where(r => r.Details != null && r.Details.Contains(depts[0]));
+                var singleDept = depts[0];
+                query = query.Where(r => r.Department == singleDept);
             }
             else
             {
-                query = query.Where(r => r.Details != null && depts.Any(d => r.Details.Contains(d)));
+                query = query.Where(r => r.Department != null && depts.Contains(r.Department));
             }
         }
 
         // فلتر الفني أو المنشئ: إذا وُجد كلاهما يُستخدم OR بينهما
+        // (مرحلة ب) الفني يُقرأ من العمود المطبّع TechnicianName مع إبقاء fallback (Technician.FullName)؛
+        // createdByName يبقى على Details JSON (لا عمود مطبّع له).
         if (!string.IsNullOrEmpty(technician) && !string.IsNullOrEmpty(createdByName))
         {
             query = query.Where(r =>
-                (r.Details != null && r.Details.Contains(technician)) ||
+                r.TechnicianName == technician ||
                 (r.Technician != null && r.Technician.FullName == technician) ||
                 (r.Details != null && r.Details.Contains(createdByName)));
         }
         else if (!string.IsNullOrEmpty(technician))
         {
             query = query.Where(r =>
-                (r.Details != null && r.Details.Contains(technician)) ||
+                r.TechnicianName == technician ||
                 (r.Technician != null && r.Technician.FullName == technician));
         }
         else if (!string.IsNullOrEmpty(createdByName))
@@ -273,8 +277,8 @@ WHERE ""IsDeleted"" = false
   AND (@from IS NULL OR ""CreatedAt"" >= @from)
   AND (@to   IS NULL OR ""CreatedAt"" <  @to)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND (""Details""::json->>'department') = @department))
-  AND (@assignee IS NULL OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
+  AND (@department IS NULL OR ""Department"" = @department)
+  AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND (""Details""::json->>'createdByName') = @assignee))
 GROUP BY ""Status"";";
 
         var statusRows = await _db.Database
@@ -320,8 +324,8 @@ GROUP BY ""Status"";";
 
         // ═══════ Q2 — per-technician (+department في نفس المسح) ═══════
         const string q2 = @"
-SELECT (""Details""::json->>'technician') AS ""Technician"",
-       (""Details""::json->>'department') AS ""Department"",
+SELECT ""TechnicianName"" AS ""Technician"",
+       ""Department"" AS ""Department"",
        count(*) AS ""Total"",
        count(*) FILTER (WHERE ""Status"" IN (0,1,2,3,8)) AS ""Open"",
        count(*) FILTER (WHERE ""Status"" = 4)            AS ""InProgress"",
@@ -330,12 +334,11 @@ SELECT (""Details""::json->>'technician') AS ""Technician"",
 FROM ""ServiceRequests""
 WHERE ""IsDeleted"" = false
   AND (@companyId IS NULL OR ""CompanyId"" = @companyId)
-  AND ""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]')
   AND (@from IS NULL OR ""CreatedAt"" >= @from)
   AND (@to   IS NULL OR ""CreatedAt"" <  @to)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR (""Details""::json->>'department') = @department)
-  AND (@assignee IS NULL OR (""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)
+  AND (@department IS NULL OR ""Department"" = @department)
+  AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND (""Details""::json->>'createdByName') = @assignee))
 GROUP BY 1, 2
 ORDER BY ""Total"" DESC;";
 
@@ -398,7 +401,7 @@ ORDER BY ""Total"" DESC;";
         {
             // ═══════ Q3 — collections (المبلغ من FinalCost) ═══════
             const string q3 = @"
-SELECT (""Details""::json->>'technician') AS ""Technician"",
+SELECT ""TechnicianName"" AS ""Technician"",
        count(*) AS ""CollectionsCount"",
        count(*) FILTER (WHERE ""FinalCost"" IS NOT NULL) AS ""PricedCount"",
        COALESCE(sum(""FinalCost""), 0) AS ""TotalCollected""
@@ -410,8 +413,8 @@ WHERE ""IsDeleted"" = false
   AND (@from IS NULL OR ""CreatedAt"" >= @from)
   AND (@to   IS NULL OR ""CreatedAt"" <  @to)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR (""Details""::json->>'department') = @department)
-  AND (@assignee IS NULL OR (""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)
+  AND (@department IS NULL OR ""Department"" = @department)
+  AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details""::json->>'createdByName') = @assignee)
 GROUP BY 1
 ORDER BY ""TotalCollected"" DESC;";
 
@@ -452,6 +455,27 @@ ORDER BY ""TotalCollected"" DESC;";
         };
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// يستخرج قيمة نصية من قاموس تفاصيل الطلب (Details) بأمان — تُستخدم في dual-write لتعبئة
+    /// الأعمدة المطبّعة (Department/TechnicianName). يعيد null إذا كان المفتاح مفقوداً أو فارغاً.
+    /// يدعم قيم string وقيم JsonElement (عند وصولها deserialized من الـbody).
+    /// </summary>
+    private static string? ExtractDetailValue(Dictionary<string, object>? details, string key)
+    {
+        if (details == null || !details.TryGetValue(key, out var raw) || raw == null)
+            return null;
+
+        string? value = raw switch
+        {
+            string s => s,
+            JsonElement { ValueKind: JsonValueKind.String } je => je.GetString(),
+            JsonElement { ValueKind: JsonValueKind.Null or JsonValueKind.Undefined } => null,
+            _ => raw.ToString()
+        };
+
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     /// <summary>
@@ -573,6 +597,9 @@ ORDER BY ""TotalCollected"" DESC;";
             CitizenId = dto.CitizenId,
             CompanyId = dto.CompanyId,
             Details = dto.Details != null ? JsonSerializer.Serialize(dto.Details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) : null,
+            // dual-write (مرحلة ب): تعبئة العمودين المطبّعين بالتوازي مع Details JSON (توافق خلفي — لا حذف من JSON)
+            Department = ExtractDetailValue(dto.Details, "department"),
+            TechnicianName = ExtractDetailValue(dto.Details, "technician"),
             Address = dto.Address,
             City = dto.City,
             Area = dto.Area,
@@ -1256,13 +1283,16 @@ ORDER BY ""TotalCollected"" DESC;";
         var query = _unitOfWork.ServiceRequests.AsQueryable();
         if (companyId.HasValue)
             query = query.Where(r => r.CompanyId == companyId);
+        // (مرحلة ب) الفلترة من الأعمدة المطبّعة بدل استخراج Details JSON.
         if (!string.IsNullOrEmpty(department))
         {
             var depts = department.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            query = query.Where(r => r.Details != null && depts.Any(d => r.Details.Contains(d)));
+            query = query.Where(r => r.Department != null && depts.Contains(r.Department));
         }
         if (!string.IsNullOrEmpty(technician))
-            query = query.Where(r => r.Details != null && r.Details.Contains(technician));
+            query = query.Where(r =>
+                r.TechnicianName == technician ||
+                (r.Technician != null && r.Technician.FullName == technician));
 
         var stats = new
         {
@@ -1296,11 +1326,13 @@ ORDER BY ""TotalCollected"" DESC;";
         var userId = GetCurrentUserId();
         var query = _unitOfWork.ServiceRequests.AsQueryable();
 
-        // فلترة حسب الفني - باسم الفني في Details JSON أو بالـ TechnicianId/AssignedToId
+        // فلترة حسب الفني - (مرحلة ب) بالعمود المطبّع TechnicianName أو بالـ TechnicianId/AssignedToId
+        // مع إبقاء fallback على Technician.FullName للسجلات القديمة قبل الـbackfill.
         if (!string.IsNullOrEmpty(technicianName))
         {
-            query = query.Where(r => 
-                (r.Details != null && r.Details.Contains(technicianName)) ||
+            query = query.Where(r =>
+                r.TechnicianName == technicianName ||
+                (r.Technician != null && r.Technician.FullName == technicianName) ||
                 r.AssignedToId == userId ||
                 r.TechnicianId == userId);
         }
@@ -1586,6 +1618,9 @@ ORDER BY ""TotalCollected"" DESC;";
                 ServiceId = dto.ServiceId,
                 OperationTypeId = operationTypeId,
                 Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }),
+                // dual-write (مرحلة ب): تعبئة العمودين المطبّعين بالتوازي مع Details JSON (توافق خلفي)
+                Department = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim(),
+                TechnicianName = string.IsNullOrWhiteSpace(dto.Technician) ? null : dto.Technician.Trim(),
                 Address = dto.Location,
                 ContactPhone = dto.CustomerPhone,
                 Status = ServiceRequestStatus.Pending,
@@ -1689,9 +1724,9 @@ ORDER BY ""TotalCollected"" DESC;";
             catch { details = new(); }
         }
 
-        if (!string.IsNullOrEmpty(dto.Department)) details["department"] = dto.Department;
+        if (!string.IsNullOrEmpty(dto.Department)) { details["department"] = dto.Department; request.Department = dto.Department.Trim(); }
         if (!string.IsNullOrEmpty(dto.Leader)) details["leader"] = dto.Leader;
-        if (!string.IsNullOrEmpty(dto.Technician)) details["technician"] = dto.Technician;
+        if (!string.IsNullOrEmpty(dto.Technician)) { details["technician"] = dto.Technician; request.TechnicianName = dto.Technician.Trim(); }
         if (!string.IsNullOrEmpty(dto.TechnicianPhone)) details["technicianPhone"] = dto.TechnicianPhone;
         if (!string.IsNullOrEmpty(dto.FBG)) details["fbg"] = dto.FBG;
         if (!string.IsNullOrEmpty(dto.FAT)) details["fat"] = dto.FAT;
@@ -1788,9 +1823,11 @@ ORDER BY ""TotalCollected"" DESC;";
             catch { details = new(); }
         }
 
-        if (dto.Department != null) details["department"] = dto.Department;
+        // dual-write (مرحلة ب): نُبقي دلالة "!= null" للـJSON كما هي (يسمح بالتفريغ عبر سلسلة فارغة)،
+        // ونعكس نفس التغيير على العمود المطبّع مع تطبيع الفارغ إلى null (لاتساق الفلترة/التجميع).
+        if (dto.Department != null) { details["department"] = dto.Department; request.Department = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim(); }
         if (dto.Leader != null) details["leader"] = dto.Leader;
-        if (dto.Technician != null) details["technician"] = dto.Technician;
+        if (dto.Technician != null) { details["technician"] = dto.Technician; request.TechnicianName = string.IsNullOrWhiteSpace(dto.Technician) ? null : dto.Technician.Trim(); }
         if (dto.TechnicianPhone != null) details["technicianPhone"] = dto.TechnicianPhone;
         if (dto.FBG != null) details["fbg"] = dto.FBG;
         if (dto.FAT != null) details["fat"] = dto.FAT;

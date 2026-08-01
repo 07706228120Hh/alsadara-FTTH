@@ -808,6 +808,9 @@ public class SadaraDbContext : DbContext
             entity.HasIndex(e => e.CreatedAt);
             entity.Property(e => e.RequestNumber).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Details).HasColumnType("text"); // JSON
+            // أعمدة مطبّعة (مرحلة ب) — الفهارس تُنشأ يدوياً CONCURRENTLY على الإنتاج (لا HasIndex هنا)
+            entity.Property(e => e.Department).HasMaxLength(100);
+            entity.Property(e => e.TechnicianName).HasMaxLength(150);
             entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.City).HasMaxLength(100);
             entity.Property(e => e.Area).HasMaxLength(100);

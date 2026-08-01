@@ -298,7 +298,13 @@ public class ServiceRequest : BaseEntity<Guid>
     
     /// <summary>تفاصيل إضافية (JSON) - حقول مرنة حسب نوع الطلب</summary>
     public string? Details { get; set; }
-    
+
+    /// <summary>القسم — عمود مطبّع مستخرج من Details.department (للفلترة/التجميع بكفاءة)</summary>
+    public string? Department { get; set; }
+
+    /// <summary>اسم الفني — عمود مطبّع مستخرج من Details.technician (للفلترة/التجميع بكفاءة)</summary>
+    public string? TechnicianName { get; set; }
+
     /// <summary>عنوان التنفيذ</summary>
     public string? Address { get; set; }
     
