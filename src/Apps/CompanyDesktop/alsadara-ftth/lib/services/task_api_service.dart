@@ -320,6 +320,69 @@ class TaskApiService {
     return _toMap(response);
   }
 
+  // ═══════ التجميع (Dashboard) ═══════
+
+  /// تجميع لوحة "إدارة المهام" من الخادم (بدل التجميع في العميل).
+  ///
+  /// يستدعي `GET /servicerequests/summary?from&to&source`.
+  ///
+  /// ملاحظة: هذا الـ endpoint — خلافاً لبقية الـ endpoints — يُعيد كائن JSON
+  /// مباشراً بلا غلاف `{success, data}` (مثل: `{total, byStatus, buckets, ...}`).
+  /// لذلك نُرجع الكائن كما هو داخل `data` للتوافق مع الكود الحالي:
+  /// `{success:true, data:<الكائن>}`. عند الفشل نُرجع `{success:false, ...}`.
+  ///
+  /// [from]/[to]: نطاق التاريخ (يُرسل بصيغة ISO 8601). null = بلا حد (الكل).
+  /// [source]: `agent` | `company` | null/فارغ (الكل).
+  /// [department]: قصر التجميع على قسم واحد (لليدر المقيّد بقسمه). null/فارغ = بلا قصر.
+  /// [assignee]: قصر التجميع على مُعيّن/منشئ واحد (فني أو "مهامي فقط"). null/فارغ = بلا قصر.
+  /// تمرير [department]/[assignee] يُطابق فلتر الدور العميلي فلا تقفز الأرقام بين
+  /// الخادم والـ fallback العميلي.
+  Future<Map<String, dynamic>> getSummary({
+    DateTime? from,
+    DateTime? to,
+    String? source,
+    String? department,
+    String? assignee,
+  }) async {
+    final params = <String>[];
+    if (from != null) {
+      params.add('from=${Uri.encodeComponent(from.toIso8601String())}');
+    }
+    if (to != null) {
+      params.add('to=${Uri.encodeComponent(to.toIso8601String())}');
+    }
+    if (source != null && source.isNotEmpty) {
+      params.add('source=${Uri.encodeComponent(source)}');
+    }
+    if (department != null && department.isNotEmpty) {
+      params.add('department=${Uri.encodeComponent(department)}');
+    }
+    if (assignee != null && assignee.isNotEmpty) {
+      params.add('assignee=${Uri.encodeComponent(assignee)}');
+    }
+    var url = '/servicerequests/summary';
+    if (params.isNotEmpty) url += '?${params.join('&')}';
+
+    // parser تمريري: الاستجابة كائن مباشر بلا wrapper.
+    // ApiClient._handleResponse يمرّ هذا الكائن (لا يحوي success ولا data)
+    // عبر المسار "استجابة مباشرة بدون أي wrapper" فيصل كما هو إلى response.data.
+    final response = await _client.get(url, (json) => json);
+
+    if (response.success) {
+      return {
+        'success': true,
+        'data': response.data,
+        'statusCode': response.statusCode,
+      };
+    }
+    return {
+      'success': false,
+      'message': response.message ?? 'خطأ غير معروف',
+      'error': response.message ?? 'خطأ غير معروف',
+      'statusCode': response.statusCode,
+    };
+  }
+
   // ═══════ الإحصائيات ═══════
 
   /// إحصائيات الطلبات

@@ -311,29 +311,57 @@ class Task {
 
   // ═══════ تحويل الحالات ═══════
 
-  /// تحويل حالة API إلى عربي
+  /// تحويل حالة API إلى دلاء العرض الأربعة (مفتوحة / قيد التنفيذ / مكتملة / ملغية)
+  ///
+  /// الخادم يرسل الحالة كاسم enum إنجليزي (Status.ToString()).
+  /// التعيين صريح للحالات التسع كلها، ويقبل القيمة العربية كما هي (passthrough)
+  /// إن وردت مطبَّعة مسبقاً — لضمان اتساق المقارنات (isCompleted/isCancelled)
+  /// وثبات الفلاتر عبر كل الشاشات.
   static String mapApiStatusToArabic(String status) {
-    switch (status) {
+    switch (status.trim()) {
+      // ── مفتوحة: كل ما قبل بدء التنفيذ الفعلي ──
       case 'Pending':
-        return 'مفتوحة';
       case 'Reviewing':
-        return 'قيد المراجعة';
       case 'Approved':
-        return 'موافق عليه';
       case 'Assigned':
+      case 'OnHold':
         return 'مفتوحة';
+
+      // ── قيد التنفيذ ──
       case 'InProgress':
         return 'قيد التنفيذ';
+
+      // ── مكتملة ──
       case 'Completed':
         return 'مكتملة';
+
+      // ── ملغية: يشمل الإلغاء والرفض (Rejected كان يُصنَّف خطأً "مفتوحة") ──
       case 'Cancelled':
-        return 'ملغية';
       case 'Rejected':
-        return 'مرفوضة';
-      case 'OnHold':
-        return 'معلقة';
+        return 'ملغية';
+
+      // ── passthrough للقيم العربية إن وردت مطبَّعة مسبقاً ──
+      case 'مفتوحة':
+        return 'مفتوحة';
+      case 'قيد التنفيذ':
+        return 'قيد التنفيذ';
+      case 'مكتملة':
+        return 'مكتملة';
+      case 'ملغية':
+        return 'ملغية';
+      // قيم عربية قديمة كانت تخرج من نسخ سابقة — نطبّعها للدلاء الأربعة
+      case 'قيد المراجعة':
+      case 'موافق عليه':
+      case 'معلقة':
+        return 'مفتوحة';
+      case 'معينة':
+        return 'مفتوحة';
+      case 'مرفوضة':
+        return 'ملغية';
+
+      // ── احتياطي: حالة مجهولة تُعامل كـ "مفتوحة" بأمان (لا تُخفى من القوائم) ──
       default:
-        return status;
+        return 'مفتوحة';
     }
   }
 

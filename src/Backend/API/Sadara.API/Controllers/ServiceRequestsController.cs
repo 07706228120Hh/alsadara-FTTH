@@ -1,12 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Sadara.API.Authorization;
 using Sadara.API.Hubs;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.Infrastructure.Data;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Sadara.API.Controllers;
 
@@ -22,13 +26,23 @@ public class ServiceRequestsController : ControllerBase
     private readonly ILogger<ServiceRequestsController> _logger;
     private readonly IFcmNotificationService _fcmService;
     private readonly TaskHubNotifier _taskHubNotifier;
+    private readonly SadaraDbContext _db;
+    private readonly ICurrentTenant _tenant;
 
-    public ServiceRequestsController(IUnitOfWork unitOfWork, ILogger<ServiceRequestsController> logger, IFcmNotificationService fcmService, TaskHubNotifier taskHubNotifier)
+    public ServiceRequestsController(
+        IUnitOfWork unitOfWork,
+        ILogger<ServiceRequestsController> logger,
+        IFcmNotificationService fcmService,
+        TaskHubNotifier taskHubNotifier,
+        SadaraDbContext db,
+        ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _fcmService = fcmService;
         _taskHubNotifier = taskHubNotifier;
+        _db = db;
+        _tenant = tenant;
     }
 
     #region Service Requests CRUD
@@ -188,6 +202,306 @@ public class ServiceRequestsController : ControllerBase
             .ToListAsync();
 
         return Ok(new { success = true, data = requests, total, page, pageSize });
+    }
+
+    /// <summary>
+    /// ملخّص تجميعي لطلبات الخدمة — يُحسب على الخادم بثلاثة استعلامات SQL معامَلة
+    /// بدل جلب آلاف الصفوف وتجميعها في العميل. يحترم عزل المستأجر (CompanyId) تلقائياً:
+    ///  - مستخدم شركة → مقيّد بشركته (@companyId = شركته).
+    ///  - SuperAdmin → @companyId = null (يرى كل الشركات).
+    /// لا يُعيد أي حقل Details خام؛ مجاميع فقط.
+    ///
+    /// العقد (query params — كلها اختيارية):
+    ///  - from, to: نطاق CreatedAt (from شامل، to حصري).
+    ///  - source: "agent" | "company" | null — يُطبَّق على الاستعلامات الثلاثة.
+    ///  - department: يطابق Details.department (استخراج JSON) — يُطبَّق على الاستعلامات الثلاثة.
+    ///  - assignee: يطابق Details.technician أو Details.createdByName (استخراج JSON) — يُطبَّق على الاستعلامات الثلاثة.
+    /// </summary>
+    /// <param name="from">تاريخ البداية (شامل) على CreatedAt — اختياري</param>
+    /// <param name="to">تاريخ النهاية (حصري) على CreatedAt — اختياري</param>
+    /// <param name="source">"agent" = طلبات الوكلاء فقط، "company" = طلبات الشركة فقط، null = الكل</param>
+    /// <param name="department">فلتر القسم — يطابق Details.department عبر استخراج JSON — اختياري</param>
+    /// <param name="assignee">فلتر المُسنَد إليه — يطابق Details.technician أو Details.createdByName عبر استخراج JSON — اختياري</param>
+    [HttpGet("summary")]
+    public async Task<IActionResult> GetSummary(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] string? source = null,
+        [FromQuery] string? department = null,
+        [FromQuery] string? assignee = null)
+    {
+        // ═══════ عزل المستأجر ═══════
+        // SuperAdmin (أو سياق تجاوز) => null (كل الشركات)؛ غيره => شركته من التوكن.
+        // إن لم يكن SuperAdmin ولا يحمل شركة في التوكن => رفض بدل تسريب بيانات كل الشركات.
+        Guid? companyId;
+        if (_tenant.IsSuperAdmin)
+        {
+            companyId = null;
+        }
+        else
+        {
+            companyId = _tenant.CompanyId;
+            if (companyId == null)
+                return Forbid();
+        }
+
+        // تطبيع source إلى القيم المسموحة فقط ("agent"/"company")، وإلا null.
+        string? normalizedSource = null;
+        if (!string.IsNullOrWhiteSpace(source))
+        {
+            if (source.Equals("agent", StringComparison.OrdinalIgnoreCase)) normalizedSource = "agent";
+            else if (source.Equals("company", StringComparison.OrdinalIgnoreCase)) normalizedSource = "company";
+        }
+
+        // تطبيع فلتري القسم والمُسنَد إليه: قيمة فارغة/مسافات => null (بلا فلترة).
+        string? normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+        string? normalizedAssignee = string.IsNullOrWhiteSpace(assignee) ? null : assignee.Trim();
+
+        // تطبيع التواريخ إلى UTC (Npgsql timestamptz يتطلب UTC).
+        var fromUtc = NormalizeToUtc(from);
+        var toUtc = NormalizeToUtc(to);
+
+        // بارامترات مشتركة — تُنشأ نسخة لكل استعلام لأن NpgsqlParameter لا يُعاد استخدامه عبر أوامر متعددة.
+        NpgsqlParameter P(string name, object? value) => new(name, value ?? DBNull.Value);
+
+        // ═══════ Q1 — byStatus ═══════
+        const string q1 = @"
+SELECT ""Status"" AS ""Status"", count(*) AS ""Count""
+FROM ""ServiceRequests""
+WHERE ""IsDeleted"" = false
+  AND (@companyId IS NULL OR ""CompanyId"" = @companyId)
+  AND (@from IS NULL OR ""CreatedAt"" >= @from)
+  AND (@to   IS NULL OR ""CreatedAt"" <  @to)
+  AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
+  AND (@department IS NULL OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND (""Details""::json->>'department') = @department))
+  AND (@assignee IS NULL OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
+GROUP BY ""Status"";";
+
+        var statusRows = await _db.Database
+            .SqlQueryRaw<StatusCountRow>(q1,
+                P("@companyId", companyId),
+                P("@from", fromUtc),
+                P("@to", toUtc),
+                P("@source", normalizedSource),
+                P("@department", normalizedDepartment),
+                P("@assignee", normalizedAssignee))
+            .ToListAsync();
+
+        // بناء byStatus: كل التسع دائماً، صفر افتراضي.
+        var byStatus = new SummaryByStatus();
+        foreach (var row in statusRows)
+        {
+            switch ((ServiceRequestStatus)row.Status)
+            {
+                case ServiceRequestStatus.Pending: byStatus.Pending = (int)row.Count; break;
+                case ServiceRequestStatus.Reviewing: byStatus.Reviewing = (int)row.Count; break;
+                case ServiceRequestStatus.Approved: byStatus.Approved = (int)row.Count; break;
+                case ServiceRequestStatus.Assigned: byStatus.Assigned = (int)row.Count; break;
+                case ServiceRequestStatus.InProgress: byStatus.InProgress = (int)row.Count; break;
+                case ServiceRequestStatus.Completed: byStatus.Completed = (int)row.Count; break;
+                case ServiceRequestStatus.Cancelled: byStatus.Cancelled = (int)row.Count; break;
+                case ServiceRequestStatus.Rejected: byStatus.Rejected = (int)row.Count; break;
+                case ServiceRequestStatus.OnHold: byStatus.OnHold = (int)row.Count; break;
+            }
+        }
+
+        var total = byStatus.Pending + byStatus.Reviewing + byStatus.Approved + byStatus.Assigned
+                  + byStatus.InProgress + byStatus.Completed + byStatus.Cancelled + byStatus.Rejected
+                  + byStatus.OnHold;
+
+        // خريطة الدلاء (buckets) — تُحسب في C# من byStatus.
+        var buckets = new SummaryBuckets
+        {
+            Open = byStatus.Pending + byStatus.Reviewing + byStatus.Approved + byStatus.Assigned + byStatus.OnHold,
+            InProgress = byStatus.InProgress,
+            Completed = byStatus.Completed,
+            Cancelled = byStatus.Cancelled + byStatus.Rejected
+        };
+
+        // ═══════ Q2 — per-technician (+department في نفس المسح) ═══════
+        const string q2 = @"
+SELECT (""Details""::json->>'technician') AS ""Technician"",
+       (""Details""::json->>'department') AS ""Department"",
+       count(*) AS ""Total"",
+       count(*) FILTER (WHERE ""Status"" IN (0,1,2,3,8)) AS ""Open"",
+       count(*) FILTER (WHERE ""Status"" = 4)            AS ""InProgress"",
+       count(*) FILTER (WHERE ""Status"" = 5)            AS ""Completed"",
+       count(*) FILTER (WHERE ""Status"" IN (6,7))       AS ""Cancelled""
+FROM ""ServiceRequests""
+WHERE ""IsDeleted"" = false
+  AND (@companyId IS NULL OR ""CompanyId"" = @companyId)
+  AND ""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]')
+  AND (@from IS NULL OR ""CreatedAt"" >= @from)
+  AND (@to   IS NULL OR ""CreatedAt"" <  @to)
+  AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
+  AND (@department IS NULL OR (""Details""::json->>'department') = @department)
+  AND (@assignee IS NULL OR (""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)
+GROUP BY 1, 2
+ORDER BY ""Total"" DESC;";
+
+        var techRows = await _db.Database
+            .SqlQueryRaw<TechnicianAggRow>(q2,
+                P("@companyId", companyId),
+                P("@from", fromUtc),
+                P("@to", toUtc),
+                P("@source", normalizedSource),
+                P("@department", normalizedDepartment),
+                P("@assignee", normalizedAssignee))
+            .ToListAsync();
+
+        var byTechnician = techRows.Select(r => new SummaryTechnician
+        {
+            Technician = r.Technician,
+            Department = r.Department,
+            Total = (int)r.Total,
+            Open = (int)r.Open,
+            InProgress = (int)r.InProgress,
+            Completed = (int)r.Completed,
+            Cancelled = (int)r.Cancelled
+        }).ToList();
+
+        // byDepartment — يُحسب في C# بتجميع صفوف byTechnician حسب department (لا استعلام إضافي).
+        var byDepartment = byTechnician
+            .GroupBy(t => t.Department)
+            .Select(g => new SummaryDepartment
+            {
+                Department = g.Key,
+                Total = g.Sum(x => x.Total),
+                Open = g.Sum(x => x.Open),
+                InProgress = g.Sum(x => x.InProgress),
+                Completed = g.Sum(x => x.Completed),
+                Cancelled = g.Sum(x => x.Cancelled)
+            })
+            .OrderByDescending(d => d.Total)
+            .ToList();
+
+        // ═══════ بوابة صلاحية التحصيلات ═══════
+        // قسم collections يكشف مجاميع مالية (sum(FinalCost)) لكل الشركة — يُقيَّد بصلاحية عرض
+        // التحصيلات "accounting.collections/view" دون حجب باقي الملخّص العددي.
+        //  - SuperAdmin أو CompanyAdmin => مسموح دائماً.
+        //  - غيره => يُحمَّل المستخدم من قاعدة البيانات ويُفحص FirstSystemPermissionsV2 عبر
+        //    RequirePermissionAttribute.HasPermission (نفس آلية الصلاحيات V2 المستخدمة في بقية النظام).
+        var canViewCollections = await CanViewCollectionsAsync();
+
+        SummaryCollections collections;
+        if (!canViewCollections)
+        {
+            // بلا صلاحية => لا نُنفّذ Q3، ونُعيد collections فارغة (لا تسريب لمجاميع مالية).
+            collections = new SummaryCollections
+            {
+                TotalCollected = 0,
+                Count = 0,
+                ByTechnician = new List<SummaryCollectionTechnician>()
+            };
+        }
+        else
+        {
+            // ═══════ Q3 — collections (المبلغ من FinalCost) ═══════
+            const string q3 = @"
+SELECT (""Details""::json->>'technician') AS ""Technician"",
+       count(*) AS ""CollectionsCount"",
+       count(*) FILTER (WHERE ""FinalCost"" IS NOT NULL) AS ""PricedCount"",
+       COALESCE(sum(""FinalCost""), 0) AS ""TotalCollected""
+FROM ""ServiceRequests""
+WHERE ""IsDeleted"" = false
+  AND (@companyId IS NULL OR ""CompanyId"" = @companyId)
+  AND ""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]')
+  AND ( (""Details""::json->>'taskType') LIKE '%استحصال مبلغ%' OR (""Details""::json->>'taskType') LIKE '%تحصيل مبلغ%' )
+  AND (@from IS NULL OR ""CreatedAt"" >= @from)
+  AND (@to   IS NULL OR ""CreatedAt"" <  @to)
+  AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
+  AND (@department IS NULL OR (""Details""::json->>'department') = @department)
+  AND (@assignee IS NULL OR (""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)
+GROUP BY 1
+ORDER BY ""TotalCollected"" DESC;";
+
+            var collectionRows = await _db.Database
+                .SqlQueryRaw<CollectionAggRow>(q3,
+                    P("@companyId", companyId),
+                    P("@from", fromUtc),
+                    P("@to", toUtc),
+                    P("@source", normalizedSource),
+                    P("@department", normalizedDepartment),
+                    P("@assignee", normalizedAssignee))
+                .ToListAsync();
+
+            var collectionsByTechnician = collectionRows.Select(r => new SummaryCollectionTechnician
+            {
+                Technician = r.Technician,
+                CollectionsCount = (int)r.CollectionsCount,
+                PricedCount = (int)r.PricedCount,
+                TotalCollected = r.TotalCollected
+            }).ToList();
+
+            collections = new SummaryCollections
+            {
+                TotalCollected = collectionsByTechnician.Sum(c => c.TotalCollected),
+                Count = collectionsByTechnician.Sum(c => c.CollectionsCount),
+                ByTechnician = collectionsByTechnician
+            };
+        }
+
+        var result = new ServiceRequestSummaryResponse
+        {
+            Total = total,
+            ByStatus = byStatus,
+            Buckets = buckets,
+            ByTechnician = byTechnician,
+            ByDepartment = byDepartment,
+            Collections = collections
+        };
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// يحوّل تاريخاً (قد يكون Local/Unspecified) إلى UTC صريح لأن Npgsql timestamptz يتطلب UTC.
+    /// </summary>
+    private static DateTime? NormalizeToUtc(DateTime? value)
+    {
+        if (value == null) return null;
+        var v = value.Value;
+        return v.Kind switch
+        {
+            DateTimeKind.Utc => v,
+            DateTimeKind.Local => v.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(v, DateTimeKind.Utc)
+        };
+    }
+
+    /// <summary>
+    /// هل يملك المستخدم الحالي صلاحية عرض التحصيلات (قسم collections في الملخّص)؟
+    ///  - SuperAdmin أو CompanyAdmin => مسموح دائماً (نفس آلية الأدوار في بقية الـController والنظام).
+    ///  - غيرهما => يُحمَّل المستخدم من قاعدة البيانات ويُفحص FirstSystemPermissionsV2 على
+    ///    المفتاح "accounting.collections" / "view" عبر نفس منطق RequirePermissionAttribute.
+    /// ملاحظة: HasPermission سلوكه fail-open عند صلاحيات V2 فارغة (سلوك النظام القائم — لا يُغيَّر هنا).
+    /// </summary>
+    private async Task<bool> CanViewCollectionsAsync()
+    {
+        // SuperAdmin يتجاوز كل الفحوص.
+        if (_tenant.IsSuperAdmin)
+            return true;
+
+        // فحص الدور من الـclaims (نفس مصدر RequirePermissionAttribute: ClaimTypes.Role أو "role").
+        // القيمة قد تكون اسم الدور ("SuperAdmin"/"CompanyAdmin") أو رقمه (CompanyAdmin=20، SuperAdmin=99).
+        var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                     ?? User.FindFirst("role")?.Value;
+        if (roleClaim == "SuperAdmin" || roleClaim == "CompanyAdmin")
+            return true;
+        if (int.TryParse(roleClaim, out var roleInt) && roleInt >= (int)UserRole.CompanyAdmin)
+            return true;
+
+        // غير مدير => فحص صلاحيات V2 للمستخدم من قاعدة البيانات.
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty)
+            return false;
+
+        var perms = await _db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.FirstSystemPermissionsV2)
+            .FirstOrDefaultAsync();
+
+        return RequirePermissionAttribute.HasPermission(perms, "accounting.collections", "view");
     }
 
     /// <summary>
@@ -2347,6 +2661,117 @@ public class AssignTaskDto
     
     /// <summary>ملاحظة التعيين</summary>
     public string? Note { get; set; }
+}
+
+#endregion
+
+#region Summary DTOs
+
+// ═══════ أنواع record صغيرة تطابق أعمدة استعلامات SQL الخام (SqlQueryRaw) ═══════
+// أسماء الخصائص يجب أن تطابق أسماء الأعمدة المُعادة (AS "...") في SQL.
+
+/// <summary>صف Q1 — byStatus (count(*) في Postgres يعيد bigint ⇒ long)</summary>
+public sealed record StatusCountRow(int Status, long Count);
+
+/// <summary>صف Q2 — تجميع لكل فني (count(*) في Postgres يعيد bigint ⇒ long)</summary>
+public sealed record TechnicianAggRow(
+    string? Technician,
+    string? Department,
+    long Total,
+    long Open,
+    long InProgress,
+    long Completed,
+    long Cancelled);
+
+/// <summary>صف Q3 — التحصيلات لكل فني</summary>
+public sealed record CollectionAggRow(
+    string? Technician,
+    long CollectionsCount,
+    long PricedCount,
+    decimal TotalCollected);
+
+// ═══════ عقد الاستجابة ═══════
+// السياسة العامة للتسمية = PascalCase (PropertyNamingPolicy = null في Program.cs)،
+// لذلك نُثبّت العقد camelCase صراحةً عبر [JsonPropertyName] لكل حقل خارجي.
+// ملاحظة: مفاتيح byStatus (Pending..OnHold) تبقى PascalCase حسب العقد المطلوب.
+
+public class ServiceRequestSummaryResponse
+{
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
+
+    [JsonPropertyName("byStatus")]
+    public SummaryByStatus ByStatus { get; set; } = new();
+
+    [JsonPropertyName("buckets")]
+    public SummaryBuckets Buckets { get; set; } = new();
+
+    [JsonPropertyName("byTechnician")]
+    public List<SummaryTechnician> ByTechnician { get; set; } = new();
+
+    [JsonPropertyName("byDepartment")]
+    public List<SummaryDepartment> ByDepartment { get; set; } = new();
+
+    [JsonPropertyName("collections")]
+    public SummaryCollections Collections { get; set; } = new();
+}
+
+/// <summary>كل الحالات التسع دائماً، صفر افتراضي. المفاتيح PascalCase حسب العقد.</summary>
+public class SummaryByStatus
+{
+    [JsonPropertyName("Pending")] public int Pending { get; set; }
+    [JsonPropertyName("Reviewing")] public int Reviewing { get; set; }
+    [JsonPropertyName("Approved")] public int Approved { get; set; }
+    [JsonPropertyName("Assigned")] public int Assigned { get; set; }
+    [JsonPropertyName("InProgress")] public int InProgress { get; set; }
+    [JsonPropertyName("Completed")] public int Completed { get; set; }
+    [JsonPropertyName("Cancelled")] public int Cancelled { get; set; }
+    [JsonPropertyName("Rejected")] public int Rejected { get; set; }
+    [JsonPropertyName("OnHold")] public int OnHold { get; set; }
+}
+
+public class SummaryBuckets
+{
+    [JsonPropertyName("open")] public int Open { get; set; }
+    [JsonPropertyName("inProgress")] public int InProgress { get; set; }
+    [JsonPropertyName("completed")] public int Completed { get; set; }
+    [JsonPropertyName("cancelled")] public int Cancelled { get; set; }
+}
+
+public class SummaryTechnician
+{
+    [JsonPropertyName("technician")] public string? Technician { get; set; }
+    [JsonPropertyName("department")] public string? Department { get; set; }
+    [JsonPropertyName("total")] public int Total { get; set; }
+    [JsonPropertyName("open")] public int Open { get; set; }
+    [JsonPropertyName("inProgress")] public int InProgress { get; set; }
+    [JsonPropertyName("completed")] public int Completed { get; set; }
+    [JsonPropertyName("cancelled")] public int Cancelled { get; set; }
+}
+
+public class SummaryDepartment
+{
+    [JsonPropertyName("department")] public string? Department { get; set; }
+    [JsonPropertyName("total")] public int Total { get; set; }
+    [JsonPropertyName("open")] public int Open { get; set; }
+    [JsonPropertyName("inProgress")] public int InProgress { get; set; }
+    [JsonPropertyName("completed")] public int Completed { get; set; }
+    [JsonPropertyName("cancelled")] public int Cancelled { get; set; }
+}
+
+public class SummaryCollections
+{
+    [JsonPropertyName("totalCollected")] public decimal TotalCollected { get; set; }
+    [JsonPropertyName("count")] public int Count { get; set; }
+    [JsonPropertyName("byTechnician")] public List<SummaryCollectionTechnician> ByTechnician { get; set; } = new();
+}
+
+public class SummaryCollectionTechnician
+{
+    [JsonPropertyName("technician")] public string? Technician { get; set; }
+    [JsonPropertyName("collectionsCount")] public int CollectionsCount { get; set; }
+    [JsonPropertyName("pricedCount")] public int PricedCount { get; set; }
+    [JsonPropertyName("totalCollected")] public decimal TotalCollected { get; set; }
 }
 
 #endregion

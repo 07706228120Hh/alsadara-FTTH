@@ -79,6 +79,10 @@ class HomePageTasksState extends State<HomePageTasks> {
   // فلتر التاريخ: 'today' | 'yesterday' | 'all'
   String _dateFilter = 'today';
 
+  // ── تجميع اللوحة من الخادم (بدل التجميع العميلي) ──
+  // null = لا يوجد تجميع خادمي (أو فشل الجلب) → نرجع للحساب العميلي كـ fallback.
+  Map<String, dynamic>? _summary;
+
   // عرض مهام اليوم فقط في صفحة المكتملة
   bool _completedTodayOnly = false;
   // عرض مهام اليوم فقط في صفحة الملغية
@@ -96,6 +100,8 @@ class HomePageTasksState extends State<HomePageTasks> {
     _currentTasks = widget.tasks;
     _applyPermissionFilter();
     _filterTasksByStatus(_getStatusByIndex(currentIndex));
+    // تجميع اللوحة من الخادم (لا يعطّل بناء الواجهة)
+    _fetchSummary();
   }
 
   @override
@@ -108,6 +114,8 @@ class HomePageTasksState extends State<HomePageTasks> {
         _applyPermissionFilter();
         _filterTasksByStatus(_getStatusByIndex(currentIndex));
       });
+      // الأب حدّث القائمة (تحديث تلقائي / SignalR / يدوي) → أعد تجميع اللوحة
+      _fetchSummary();
     }
   }
 
@@ -339,6 +347,108 @@ class HomePageTasksState extends State<HomePageTasks> {
     return result;
   }
 
+  /// حساب نطاق التاريخ (from/to) للّوحة الخادمية مطابقةً لفلتر التاريخ الحالي.
+  /// اليوم = بداية اليوم → بداية الغد؛ أمس = بداية أمس → بداية اليوم؛ الكل = null/null.
+  /// نُرجع (from, to) — كلاهما null عند 'all'.
+  ///
+  /// الحدود تُحسب على أساس **الوقت المحلي** (بداية اليوم المحلي، بداية الغد المحلي)
+  /// ثم تُحوَّل إلى UTC عبر `.toUtc()` قبل الإرسال، بحيث يحمل `toIso8601String()`
+  /// لاحقة `Z` فيفسّرها الخادم كـUTC بلا إزاحة. (كان يفترضها UTC رغم كونها محلية →
+  /// إزاحة 3 ساعات لبغداد تُخطئ مهام الساعات الأولى/الأخيرة في اليوم.)
+  /// ملاحظة: "اليوم" يبقى [بداية اليوم المحلي، بداية الغد المحلي) — لا يُحسب بـUTC من الأصل.
+  (DateTime?, DateTime?) _summaryDateRange() {
+    if (_dateFilter == 'all') return (null, null);
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    if (_dateFilter == 'yesterday') {
+      final startOfYesterday = startOfToday.subtract(const Duration(days: 1));
+      return (startOfYesterday.toUtc(), startOfToday.toUtc());
+    }
+    // today
+    final startOfTomorrow = startOfToday.add(const Duration(days: 1));
+    return (startOfToday.toUtc(), startOfTomorrow.toUtc());
+  }
+
+  /// حساب سياق الدور (department/assignee) للتجميع الخادمي — **مطابقةً لفلتر الدور
+  /// العميلي** (`_applyRoleFilter`) بحيث تُطابق أرقام الخادم فلتر العميل فلا تقفز
+  /// البطاقات بين الخادم والـ fallback:
+  /// - ليدر مقيّد بقسم (وليس "مهامي فقط") → `department = <قسمه>`.
+  /// - فني، أو "مهامي فقط" مفعّل (لمدير/ليدر) → `assignee = <اسم المستخدم الحالي>`.
+  /// - مدير/أدمن يرى الكل → لا شيء (null/null).
+  /// نُرجع (department, assignee).
+  (String?, String?) _summaryRoleContext() {
+    final role = _normalizeRole(widget.currentUserRole);
+
+    // "مهامي فقط" — يطابق فرع _applyRoleFilter الذي يفلتر بـ (technician|createdBy == username)
+    // لمدير/ليدر → على الخادم نمرّر assignee باسم المستخدم.
+    if (_myTasksOnly && (role == 'مدير' || role == 'ليدر')) {
+      return (null, widget.username);
+    }
+
+    if (role == 'مدير') {
+      // يرى الكل → بلا قصر.
+      return (null, null);
+    } else if (role == 'ليدر') {
+      // ليدر مقيّد بقسمه — الخادم يقبل قسماً واحداً؛ نمرّر أول قسم غير فارغ.
+      final firstDept = widget.department
+          .split(',')
+          .map((d) => d.trim())
+          .firstWhere((d) => d.isNotEmpty, orElse: () => '');
+      return (firstDept.isNotEmpty ? firstDept : null, null);
+    } else {
+      // فني/موظف عادي — يطابق فرع _applyRoleFilter (technician|createdBy == username).
+      return (null, widget.username);
+    }
+  }
+
+  /// جلب تجميع اللوحة من الخادم وتحديث [_summary].
+  /// عند الفشل/غياب الاستجابة نُصفّر [_summary] → اللوحة ترجع للحساب العميلي.
+  Future<void> _fetchSummary() async {
+    final (from, to) = _summaryDateRange();
+    final (department, assignee) = _summaryRoleContext();
+    try {
+      final res = await TaskApiService.instance.getSummary(
+        from: from,
+        to: to,
+        // لا يوجد تمييز مصدر (وكيل/شركة) في اللوحة حالياً → الكل.
+        source: null,
+        // سياق الدور — يطابق فلتر الدور العميلي (_applyRoleFilter).
+        department: department,
+        assignee: assignee,
+      );
+      if (!mounted) return;
+      if (res['success'] == true && res['data'] is Map) {
+        setState(() {
+          _summary = Map<String, dynamic>.from(res['data'] as Map);
+        });
+      } else {
+        // فشل → ارجع للحساب العميلي
+        setState(() => _summary = null);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _summary = null);
+    }
+  }
+
+  /// تحويل آمن لقيمة JSON إلى int (مع قيمة افتراضية عند الفشل/null)
+  int _asInt(dynamic v, [int fallback = 0]) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? fallback;
+    return fallback;
+  }
+
+  /// تحويل آمن لقيمة JSON إلى double
+  // ignore: unused_element
+  // مُستبقى عمداً: يُعاد استخدامه عند توسيع عقد `/summary` لتجميع التحصيل الخادمي
+  // (انظر الملاحظة في _buildCollectionStatsCard) — لا تحذفه.
+  double _asDouble(dynamic v, [double fallback = 0]) {
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? fallback;
+    return fallback;
+  }
+
   /// الحصول على القيم الفريدة من المهام لقوائم الفلتر
   List<String> _getUniqueDepartments() {
     return _currentTasks
@@ -393,6 +503,7 @@ class HomePageTasksState extends State<HomePageTasks> {
 
   /// بناء واجهة اللوحة الرئيسية
   Widget _buildDashboardView() {
+    // الأصل: حساب عميلي من _filteredTasks (يبقى fallback عند غياب/فشل _summary)
     int openTasks =
         _filteredTasks.where((task) => task.status == 'مفتوحة').length;
     int inProgressTasks =
@@ -402,6 +513,16 @@ class HomePageTasksState extends State<HomePageTasks> {
     int canceledTasks =
         _filteredTasks.where((task) => task.status == 'ملغية').length;
     int totalTasks = _filteredTasks.length;
+
+    // المصدر المعتمد: تجميع الخادم — نستبدل الأعداد من _summary!['buckets'] و total
+    final buckets = _summary?['buckets'];
+    if (buckets is Map) {
+      openTasks = _asInt(buckets['open'], openTasks);
+      inProgressTasks = _asInt(buckets['inProgress'], inProgressTasks);
+      completedTasks = _asInt(buckets['completed'], completedTasks);
+      canceledTasks = _asInt(buckets['cancelled'], canceledTasks);
+      totalTasks = _asInt(_summary?['total'], totalTasks);
+    }
 
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(
@@ -542,6 +663,14 @@ class HomePageTasksState extends State<HomePageTasks> {
       techReport[tech]!['amount'] = (techReport[tech]!['amount'] as double) + amt;
     }
 
+    // توحيد المصدر: بطاقة التحصيل بالكامل (الصفوف + الإجماليات + العدّادات) من
+    // **مصدر عميلي متّسق** — أُزيل استبدال amountDone بقيمة الخادم (FinalCost) الذي
+    // كان يخلط مصدرين/نطاقَي تاريخ مختلفين فتظهر أرقام غير متّسقة. بطاقات الحالة
+    // وجدول الفنّي تبقى على مصدر الخادم (وهما متّسقان مع بعضهما).
+    // TODO: تجميع التحصيل الخادمي الكامل (بما فيه pending/overdue/محصّل اليوم بنفس
+    //       نطاق التاريخ) يحتاج توسيع عقد `/summary` لاحقاً؛ عندها يُعاد اعتماد
+    //       collections.byTechnician[].totalCollected لكل صفوف/إجماليات البطاقة معاً.
+
     final isSmall = MediaQuery.of(context).size.width < 420;
     final fs = isSmall ? 11.0 : 13.0;
 
@@ -671,30 +800,53 @@ class HomePageTasksState extends State<HomePageTasks> {
   Widget _buildTechnicianDistributionCard() {
     // تجميع المهام حسب الفني مع القسم
     final Map<String, Map<String, dynamic>> techStats = {};
-    for (final task in _filteredTasks) {
-      final name = task.technician.trim();
-      if (name.isEmpty) continue;
-      techStats.putIfAbsent(
-          name,
-          () => {
-                'total': 0,
-                'open': 0,
-                'progress': 0,
-                'done': 0,
-                'canceled': 0,
-                'department': task.department.trim(),
-              });
-      techStats[name]!['total'] = (techStats[name]!['total'] as int) + 1;
-      if (task.status == 'مفتوحة') {
-        techStats[name]!['open'] = (techStats[name]!['open'] as int) + 1;
-      } else if (task.status == 'قيد التنفيذ') {
-        techStats[name]!['progress'] =
-            (techStats[name]!['progress'] as int) + 1;
-      } else if (task.status == 'مكتملة') {
-        techStats[name]!['done'] = (techStats[name]!['done'] as int) + 1;
-      } else if (task.status == 'ملغية') {
-        techStats[name]!['canceled'] =
-            (techStats[name]!['canceled'] as int) + 1;
+
+    // المصدر المعتمد: تجميع الخادم — _summary!['byTechnician']
+    final byTech = _summary?['byTechnician'];
+    if (byTech is List) {
+      for (final row in byTech) {
+        if (row is! Map) continue;
+        final name = (row['technician'] ?? '').toString().trim();
+        if (name.isEmpty) continue;
+        techStats[name] = {
+          'total': _asInt(row['total']),
+          'open': _asInt(row['open']),
+          // الخادم: inProgress → العميل: progress
+          'progress': _asInt(row['inProgress']),
+          // الخادم: completed → العميل: done
+          'done': _asInt(row['completed']),
+          // الخادم: cancelled → العميل: canceled
+          'canceled': _asInt(row['cancelled']),
+          'department': (row['department'] ?? '').toString().trim(),
+        };
+      }
+    } else {
+      // fallback: حساب عميلي من _filteredTasks
+      for (final task in _filteredTasks) {
+        final name = task.technician.trim();
+        if (name.isEmpty) continue;
+        techStats.putIfAbsent(
+            name,
+            () => {
+                  'total': 0,
+                  'open': 0,
+                  'progress': 0,
+                  'done': 0,
+                  'canceled': 0,
+                  'department': task.department.trim(),
+                });
+        techStats[name]!['total'] = (techStats[name]!['total'] as int) + 1;
+        if (task.status == 'مفتوحة') {
+          techStats[name]!['open'] = (techStats[name]!['open'] as int) + 1;
+        } else if (task.status == 'قيد التنفيذ') {
+          techStats[name]!['progress'] =
+              (techStats[name]!['progress'] as int) + 1;
+        } else if (task.status == 'مكتملة') {
+          techStats[name]!['done'] = (techStats[name]!['done'] as int) + 1;
+        } else if (task.status == 'ملغية') {
+          techStats[name]!['canceled'] =
+              (techStats[name]!['canceled'] as int) + 1;
+        }
       }
     }
 
@@ -715,6 +867,16 @@ class HomePageTasksState extends State<HomePageTasks> {
     final colW = 45.0;
     final totalW = 50.0;
     final hPad = 16.0;
+
+    // إجماليات صف التذييل — مجموعة من نفس مصدر الصفوف أعلاه (خادم أو fallback)
+    int sumTotal = 0, sumOpen = 0, sumProgress = 0, sumDone = 0, sumCanceled = 0;
+    for (final e in sorted) {
+      sumTotal += e.value['total'] as int;
+      sumOpen += e.value['open'] as int;
+      sumProgress += e.value['progress'] as int;
+      sumDone += e.value['done'] as int;
+      sumCanceled += e.value['canceled'] as int;
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -974,7 +1136,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${_filteredTasks.length}',
+                      '$sumTotal',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 14.0,
@@ -987,7 +1149,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                 SizedBox(
                   width: colW,
                   child: Text(
-                    '${_filteredTasks.where((t) => t.status == 'ملغية').length}',
+                    '$sumCanceled',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14.0,
@@ -999,7 +1161,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                 SizedBox(
                   width: colW,
                   child: Text(
-                    '${_filteredTasks.where((t) => t.status == 'مكتملة').length}',
+                    '$sumDone',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14.0,
@@ -1011,7 +1173,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                 SizedBox(
                   width: colW,
                   child: Text(
-                    '${_filteredTasks.where((t) => t.status == 'قيد التنفيذ').length}',
+                    '$sumProgress',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14.0,
@@ -1023,7 +1185,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                 SizedBox(
                   width: totalW,
                   child: Text(
-                    '${_filteredTasks.where((t) => t.status == 'مفتوحة').length}',
+                    '$sumOpen',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -2041,6 +2203,8 @@ class HomePageTasksState extends State<HomePageTasks> {
               _applyPermissionFilter();
               _filterTasksByStatus(_getStatusByIndex(currentIndex));
             });
+            // تغيّر نطاق التاريخ → أعد تجميع اللوحة من الخادم
+            _fetchSummary();
           },
         ),
       ),
@@ -2079,6 +2243,8 @@ class HomePageTasksState extends State<HomePageTasks> {
             _applyPermissionFilter();
             _filterTasksByStatus(_getStatusByIndex(currentIndex));
           });
+          // تغيّر نطاق التاريخ → أعد تجميع اللوحة من الخادم
+          _fetchSummary();
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -2406,6 +2572,8 @@ class HomePageTasksState extends State<HomePageTasks> {
           _applyPermissionFilter();
           _filterTasksByStatus(_getStatusByIndex(currentIndex));
         });
+        // تغيّر نطاق التاريخ → أعد تجميع اللوحة من الخادم
+        _fetchSummary();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -2754,6 +2922,8 @@ class HomePageTasksState extends State<HomePageTasks> {
                       _applyPermissionFilter();
                       _filterTasksByStatus(_getStatusByIndex(currentIndex));
                     });
+                    // تغيير القسم/الفني → أعد تجميع اللوحة من الخادم
+                    _fetchSummary();
                     Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
