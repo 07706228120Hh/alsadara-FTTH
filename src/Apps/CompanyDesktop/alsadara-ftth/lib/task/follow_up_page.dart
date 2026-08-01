@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
 import 'task_status_colors.dart';
+import 'widgets/task_common_widgets.dart';
 
 /// صفحة المتابعة - لمتابعة المهام المكتملة والملغية والتأكد من إتمامها
 class FollowUpPage extends StatefulWidget {
@@ -300,92 +301,63 @@ class _FollowUpPageState extends State<FollowUpPage> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildFilterChip('الكل', _statusFilter, (v) {
-                    setState(() => _statusFilter = v);
-                  }, Icons.list_rounded, const Color(0xFF1A1A2E)),
+                  AppFilterChip(
+                    label: 'الكل',
+                    currentFilter: _statusFilter,
+                    onSelected: (v) => setState(() => _statusFilter = v),
+                    icon: Icons.list_rounded,
+                    color: const Color(0xFF1A1A2E),
+                  ),
                   const SizedBox(width: 6),
-                  _buildFilterChip('مكتملة', _statusFilter, (v) {
-                    setState(() => _statusFilter = v);
-                  }, Icons.check_circle_outline, const Color(0xFF2ECC71)),
+                  AppFilterChip(
+                    label: 'مكتملة',
+                    currentFilter: _statusFilter,
+                    onSelected: (v) => setState(() => _statusFilter = v),
+                    icon: Icons.check_circle_outline,
+                    color: const Color(0xFF2ECC71),
+                  ),
                   const SizedBox(width: 6),
-                  _buildFilterChip('ملغية', _statusFilter, (v) {
-                    setState(() => _statusFilter = v);
-                  }, Icons.cancel_outlined, const Color(0xFFE74C3C)),
+                  AppFilterChip(
+                    label: 'ملغية',
+                    currentFilter: _statusFilter,
+                    onSelected: (v) => setState(() => _statusFilter = v),
+                    icon: Icons.cancel_outlined,
+                    color: const Color(0xFFE74C3C),
+                  ),
                   const SizedBox(width: 12),
                   Container(width: 1, height: 24, color: Colors.grey.shade300),
                   const SizedBox(width: 12),
-                  _buildFilterChip('لم يتم', _followUpFilter, (v) {
-                    setState(() =>
-                        _followUpFilter = _followUpFilter == v ? 'الكل' : v);
-                  }, Icons.pending_outlined, Colors.grey, isFollowUp: true),
+                  AppFilterChip(
+                    label: 'لم يتم',
+                    currentFilter: _followUpFilter,
+                    onSelected: (v) => setState(() =>
+                        _followUpFilter = _followUpFilter == v ? 'الكل' : v),
+                    icon: Icons.pending_outlined,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(width: 6),
-                  _buildFilterChip('تم التدقيق', _followUpFilter, (v) {
-                    setState(() =>
-                        _followUpFilter = _followUpFilter == v ? 'الكل' : v);
-                  }, Icons.verified_outlined, const Color(0xFF3498DB),
-                      isFollowUp: true),
+                  AppFilterChip(
+                    label: 'تم التدقيق',
+                    currentFilter: _followUpFilter,
+                    onSelected: (v) => setState(() =>
+                        _followUpFilter = _followUpFilter == v ? 'الكل' : v),
+                    icon: Icons.verified_outlined,
+                    color: const Color(0xFF3498DB),
+                  ),
                   const SizedBox(width: 6),
-                  _buildFilterChip('مشكلة', _followUpFilter, (v) {
-                    setState(() =>
-                        _followUpFilter = _followUpFilter == v ? 'الكل' : v);
-                  }, Icons.warning_amber_rounded, const Color(0xFFE67E22),
-                      isFollowUp: true),
+                  AppFilterChip(
+                    label: 'مشكلة',
+                    currentFilter: _followUpFilter,
+                    onSelected: (v) => setState(() =>
+                        _followUpFilter = _followUpFilter == v ? 'الكل' : v),
+                    icon: Icons.warning_amber_rounded,
+                    color: const Color(0xFFE67E22),
+                  ),
                 ],
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(
-    String label,
-    String currentFilter,
-    Function(String) onSelected,
-    IconData icon,
-    Color color, {
-    bool isFollowUp = false,
-  }) {
-    final isSelected = currentFilter == label;
-    return GestureDetector(
-      onTap: () => onSelected(label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? color : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.shade300,
-            width: isSelected ? 1.5 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                size: 14, color: isSelected ? Colors.white : Colors.grey),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.white : Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -572,81 +544,35 @@ class _FollowUpPageState extends State<FollowUpPage> {
       children: [
         // العميل
         Expanded(
-          child: _buildInfoTile(
-            Icons.person_outline_rounded,
-            'العميل',
-            task.username,
-            const Color(0xFF3498DB),
+          child: AppInfoTile(
+            icon: Icons.person_outline_rounded,
+            label: 'العميل',
+            value: task.username,
+            color: const Color(0xFF3498DB),
           ),
         ),
         const SizedBox(width: 6),
         // الفني
         Expanded(
-          child: _buildInfoTile(
-            Icons.engineering_rounded,
-            'الفني',
-            task.technician,
-            const Color(0xFF009688),
+          child: AppInfoTile(
+            icon: Icons.engineering_rounded,
+            label: 'الفني',
+            value: task.technician,
+            color: const Color(0xFF009688),
           ),
         ),
         const SizedBox(width: 6),
         // المبلغ
         if (task.hasAmount)
           Expanded(
-            child: _buildInfoTile(
-              Icons.monetization_on_outlined,
-              'المبلغ',
-              '${task.amountFormatted} د.ع',
-              const Color(0xFFE74C3C),
+            child: AppInfoTile(
+              icon: Icons.monetization_on_outlined,
+              label: 'المبلغ',
+              value: '${task.amountFormatted} د.ع',
+              color: const Color(0xFFE74C3C),
             ),
           ),
       ],
-    );
-  }
-
-  Widget _buildInfoTile(
-      IconData icon, String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Icon(icon, size: 11, color: color),
-          ),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 8, color: Colors.grey.shade500),
-                ),
-                Text(
-                  value.isNotEmpty ? value : '-',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 

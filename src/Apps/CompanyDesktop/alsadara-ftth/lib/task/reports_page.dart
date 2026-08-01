@@ -8,6 +8,7 @@ import '../models/task.dart';
 import '../services/task_api_service.dart';
 import '../services/task_export_service.dart';
 import 'task_status_colors.dart';
+import 'widgets/task_common_widgets.dart';
 
 class ReportsPage extends StatefulWidget {
   final List<Task> tasks;
@@ -870,44 +871,45 @@ class _ReportsPageState extends State<ReportsPage> {
                     children: [
                       Row(children: [
                         Expanded(
-                            child: _buildStatCard(
-                                'المجموع الكلي',
-                                currentFilteredTasks.length.toString(),
-                                Icons.assignment,
-                                Colors.blue,
-                                true)),
+                            child: AppStatCard(
+                                title: 'المجموع الكلي',
+                                value: currentFilteredTasks.length.toString(),
+                                icon: Icons.assignment,
+                                color: Colors.blue,
+                                isSmallScreen: true)),
                         const SizedBox(width: 8),
                         Expanded(
-                            child: _buildStatCard(
-                                'المكتملة',
-                                currentFilteredTasks
+                            child: AppStatCard(
+                                title: 'المكتملة',
+                                value: currentFilteredTasks
                                     .where((t) => t.status == 'مكتملة')
                                     .length
                                     .toString(),
-                                Icons.check_circle,
-                                Colors.green,
-                                true)),
+                                icon: Icons.check_circle,
+                                color: Colors.green,
+                                isSmallScreen: true)),
                       ]),
                       const SizedBox(height: 12),
                       Row(children: [
                         Expanded(
-                            child: _buildStatCard(
-                                'الملغية',
-                                currentFilteredTasks
+                            child: AppStatCard(
+                                title: 'الملغية',
+                                value: currentFilteredTasks
                                     .where((t) => t.status == 'ملغية')
                                     .length
                                     .toString(),
-                                Icons.cancel,
-                                Colors.red,
-                                true)),
+                                icon: Icons.cancel,
+                                color: Colors.red,
+                                isSmallScreen: true)),
                         const SizedBox(width: 8),
                         Expanded(
-                            child: _buildStatCard(
-                                'المبلغ الإجمالي',
-                                '${formatTaskAmount(widget.calculateTotalAmount(currentFilteredTasks) as num)} د.ع',
-                                Icons.account_balance_wallet,
-                                Colors.orange,
-                                true)),
+                            child: AppStatCard(
+                                title: 'المبلغ الإجمالي',
+                                value:
+                                    '${formatTaskAmount(widget.calculateTotalAmount(currentFilteredTasks) as num)} د.ع',
+                                icon: Icons.account_balance_wallet,
+                                color: Colors.orange,
+                                isSmallScreen: true)),
                       ]),
                     ],
                   )
@@ -915,42 +917,43 @@ class _ReportsPageState extends State<ReportsPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       Expanded(
-                          child: _buildStatCard(
-                              'المجموع الكلي',
-                              currentFilteredTasks.length.toString(),
-                              Icons.assignment,
-                              Colors.blue,
-                              false)),
+                          child: AppStatCard(
+                              title: 'المجموع الكلي',
+                              value: currentFilteredTasks.length.toString(),
+                              icon: Icons.assignment,
+                              color: Colors.blue,
+                              isSmallScreen: false)),
                       const SizedBox(width: 12),
                       Expanded(
-                          child: _buildStatCard(
-                              'المكتملة',
-                              currentFilteredTasks
+                          child: AppStatCard(
+                              title: 'المكتملة',
+                              value: currentFilteredTasks
                                   .where((t) => t.status == 'مكتملة')
                                   .length
                                   .toString(),
-                              Icons.check_circle,
-                              Colors.green,
-                              false)),
+                              icon: Icons.check_circle,
+                              color: Colors.green,
+                              isSmallScreen: false)),
                       const SizedBox(width: 12),
                       Expanded(
-                          child: _buildStatCard(
-                              'الملغية',
-                              currentFilteredTasks
+                          child: AppStatCard(
+                              title: 'الملغية',
+                              value: currentFilteredTasks
                                   .where((t) => t.status == 'ملغية')
                                   .length
                                   .toString(),
-                              Icons.cancel,
-                              Colors.red,
-                              false)),
+                              icon: Icons.cancel,
+                              color: Colors.red,
+                              isSmallScreen: false)),
                       const SizedBox(width: 12),
                       Expanded(
-                          child: _buildStatCard(
-                              'المبلغ الإجمالي',
-                              '${formatTaskAmount(widget.calculateTotalAmount(currentFilteredTasks) as num)} د.ع',
-                              Icons.account_balance_wallet,
-                              Colors.orange,
-                              false)),
+                          child: AppStatCard(
+                              title: 'المبلغ الإجمالي',
+                              value:
+                                  '${formatTaskAmount(widget.calculateTotalAmount(currentFilteredTasks) as num)} د.ع',
+                              icon: Icons.account_balance_wallet,
+                              color: Colors.orange,
+                              isSmallScreen: false)),
                     ],
                   ),
           );
@@ -1046,49 +1049,6 @@ class _ReportsPageState extends State<ReportsPage> {
   // ══════════════════════════════════════
   //  بطاقة إحصائيات
   // ══════════════════════════════════════
-
-  Widget _buildStatCard(String title, String value, IconData icon, Color color,
-      bool isSmallScreen) {
-    return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 8.0 : 12.0),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: isSmallScreen ? 24 : 32, color: color),
-          SizedBox(height: isSmallScreen ? 6 : 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: isSmallScreen ? 16 : 20,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ),
-          SizedBox(height: isSmallScreen ? 2 : 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: isSmallScreen ? 10 : 12,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ══════════════════════════════════════
   //  بطاقة المهمة — مختصرة + توسيع عند الضغط
