@@ -49,6 +49,17 @@ jobs:
           Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "..\..\..\..\..\..\Alsadara-Windows-${{ github.ref_name }}.zip"
         shell: pwsh
 
+      - name: Verify bundled root certificate fingerprint
+        run: |
+          $expected = (Get-Content certs\isrgrootx1.der.sha256).Split(' ')[0].Trim().ToUpper()
+          $actual = (Get-FileHash -Algorithm SHA256 certs\isrgrootx1.der).Hash.ToUpper()
+          if ($actual -ne $expected) {
+            Write-Error "ISRG Root X1 fingerprint mismatch! expected=$expected actual=$actual"
+            exit 1
+          }
+          Write-Host "Root cert fingerprint verified: $actual"
+        shell: pwsh
+
       - name: Build Installer with Inno Setup
         run: |
           choco install innosetup -y --no-progress
