@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:url_launcher/url_launcher.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
+import 'task_status_colors.dart';
 
 /// صفحة المتابعة - لمتابعة المهام المكتملة والملغية والتأكد من إتمامها
 class FollowUpPage extends StatefulWidget {
@@ -416,9 +417,7 @@ class _FollowUpPageState extends State<FollowUpPage> {
   }
 
   Widget _buildFollowUpCard(Task task) {
-    final statusColor = task.status == 'مكتملة'
-        ? const Color(0xFF2ECC71)
-        : const Color(0xFFE74C3C);
+    final statusColor = TaskStatusColors.colorFor(task.status);
     final followUpState = _followUpStatus[task.id] ?? 'لم يتم';
     final rating = _ratings[task.id] ?? 0;
 
@@ -840,66 +839,82 @@ class _FollowUpPageState extends State<FollowUpPage> {
   }
 
   Widget _buildRatingAndActions(Task task, int rating, String followUpState) {
+    // لفّ العناصر بـ Wrap لمنع overflow على الشاشات الضيقة (360px):
+    // النجوم + أزرار الاتصال في مجموعة، وأزرار التدقيق في مجموعة تنساب لسطر ثانٍ.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          // التقييم بالنجوم
-          _buildStarRating(task, rating),
-          const SizedBox(width: 8),
+          // مجموعة: التقييم بالنجوم + الاتصال
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // التقييم بالنجوم
+              _buildStarRating(task, rating),
 
-          // فاصل
-          Container(width: 1, height: 28, color: Colors.grey.shade200),
-          const SizedBox(width: 8),
+              // فاصل
+              Container(width: 1, height: 28, color: Colors.grey.shade200),
 
-          // أزرار الاتصال
-          if (task.phone.isNotEmpty)
-            _buildActionBtn(
-              Icons.phone_rounded,
-              'العميل',
-              const Color(0xFF2ECC71),
-              () => _makeCall(task.phone),
-            ),
-          if (task.agentName.isNotEmpty)
-            _buildActionBtn(
-              Icons.person_pin_rounded,
-              'الوكيل',
-              const Color(0xFF9B59B6),
-              () {
-                // يمكن إضافة اتصال بالوكيل
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('الوكيل: ${task.agentName}'),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              },
-            ),
-          if (task.phone.isNotEmpty)
-            _buildActionBtn(
-              Icons.message_rounded,
-              'واتساب',
-              const Color(0xFF25D366),
-              () => _launchWhatsApp(task.phone),
-            ),
-
-          const Spacer(),
-
-          // أزرار حالة التدقيق
-          _buildFollowUpBtn(
-            task,
-            'تم التدقيق',
-            Icons.verified_rounded,
-            const Color(0xFF3498DB),
-            followUpState,
+              // أزرار الاتصال
+              if (task.phone.isNotEmpty)
+                _buildActionBtn(
+                  Icons.phone_rounded,
+                  'العميل',
+                  const Color(0xFF2ECC71),
+                  () => _makeCall(task.phone),
+                ),
+              if (task.agentName.isNotEmpty)
+                _buildActionBtn(
+                  Icons.person_pin_rounded,
+                  'الوكيل',
+                  const Color(0xFF9B59B6),
+                  () {
+                    // يمكن إضافة اتصال بالوكيل
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('الوكيل: ${task.agentName}'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              if (task.phone.isNotEmpty)
+                _buildActionBtn(
+                  Icons.message_rounded,
+                  'واتساب',
+                  const Color(0xFF25D366),
+                  () => _launchWhatsApp(task.phone),
+                ),
+            ],
           ),
-          const SizedBox(width: 4),
-          _buildFollowUpBtn(
-            task,
-            'مشكلة',
-            Icons.warning_rounded,
-            const Color(0xFFE67E22),
-            followUpState,
+
+          // مجموعة: أزرار حالة التدقيق
+          Wrap(
+            spacing: 4,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _buildFollowUpBtn(
+                task,
+                'تم التدقيق',
+                Icons.verified_rounded,
+                const Color(0xFF3498DB),
+                followUpState,
+              ),
+              _buildFollowUpBtn(
+                task,
+                'مشكلة',
+                Icons.warning_rounded,
+                const Color(0xFFE67E22),
+                followUpState,
+              ),
+            ],
           ),
         ],
       ),

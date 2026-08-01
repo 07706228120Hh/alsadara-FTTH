@@ -17,6 +17,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../inventory/services/inventory_api_service.dart';
 import '../services/vps_auth_service.dart';
 import '../utils/responsive_helper.dart';
+import 'task_status_colors.dart';
 
 /// TaskCard محسن مع عرض جميل لعنوان المهم�� وحل لجميع ����لأخطاء
 class TaskCard extends StatefulWidget {
@@ -610,17 +611,30 @@ class _TaskCardState extends State<TaskCard> {
     );
   }
 
-  /// أيقونة صغيرة أنيقة
+  /// أيقونة صغيرة أنيقة — توسيع منطقة اللمس أفقياً ≥44px دون تكبير الأيقونة.
+  /// ملاحظة: هذه الأيقونة تُستخدم كـ trailing داخل بطاقات info مضغوطة، لذا لا
+  /// نفرض minHeight:44 حتى لا يتضخّم ارتفاع البطاقة؛ نكتفي بمنطقة لمس أفقية مريحة
+  /// مع padding رأسي بسيط.
   Widget _buildMiniIconButton(IconData icon, Color color, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(4),
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 44),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Center(
+            widthFactor: 1,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Icon(icon, size: 13, color: color),
+            ),
+          ),
         ),
-        child: Icon(icon, size: 13, color: color),
       ),
     );
   }
@@ -3163,31 +3177,8 @@ class _TaskCardState extends State<TaskCard> {
     }
   }
 
-  /// تحديد لون حالة المهمة
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'مفتوحة':
-        return Colors.blue;
-      case 'قيد المراجعة':
-        return Colors.indigo;
-      case 'موافق عليه':
-        return Colors.teal;
-      case 'معينة':
-        return Colors.purple;
-      case 'قيد التنفيذ':
-        return Colors.orange;
-      case 'معلقة':
-        return Colors.amber.shade700;
-      case 'مكتملة':
-        return Colors.green;
-      case 'ملغية':
-        return Colors.red;
-      case 'مرفوضة':
-        return Colors.red.shade900;
-      default:
-        return Colors.grey;
-    }
-  }
+  /// تحديد لون حالة المهمة — مصدر موحّد عبر شاشات المهام.
+  Color _getStatusColor(String status) => TaskStatusColors.colorFor(status);
 
   // وظائف الوكلاء
 

@@ -7,6 +7,7 @@ import '../utils/smart_text_color.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
 import '../services/task_export_service.dart';
+import 'task_status_colors.dart';
 
 class ReportsPage extends StatefulWidget {
   final List<Task> tasks;
@@ -903,7 +904,7 @@ class _ReportsPageState extends State<ReportsPage> {
                         Expanded(
                             child: _buildStatCard(
                                 'المبلغ الإجمالي',
-                                '${widget.calculateTotalAmount(currentFilteredTasks).toStringAsFixed(0)} د.ع',
+                                '${formatTaskAmount(widget.calculateTotalAmount(currentFilteredTasks) as num)} د.ع',
                                 Icons.account_balance_wallet,
                                 Colors.orange,
                                 true)),
@@ -946,7 +947,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       Expanded(
                           child: _buildStatCard(
                               'المبلغ الإجمالي',
-                              '${widget.calculateTotalAmount(currentFilteredTasks).toStringAsFixed(0)} د.ع',
+                              '${formatTaskAmount(widget.calculateTotalAmount(currentFilteredTasks) as num)} د.ع',
                               Icons.account_balance_wallet,
                               Colors.orange,
                               false)),
@@ -1323,20 +1324,8 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'مكتملة':
-        return Colors.green;
-      case 'قيد التنفيذ':
-        return Colors.orange;
-      case 'جديدة':
-        return Colors.blue;
-      case 'ملغية':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
+  // مصدر موحّد لألوان الحالات (يشمل «مفتوحة» التي كانت ناقصة سابقاً).
+  Color _getStatusColor(String status) => TaskStatusColors.colorFor(status);
 
   // ══════════════════════════════════════
   //  زر التبديل بين العروض
@@ -1510,18 +1499,7 @@ class _ReportsPageState extends State<ReportsPage> {
       );
     }
 
-    final statusColors = <String, Color>{
-      'مكتملة': Colors.green,
-      'قيد التنفيذ': Colors.orange,
-      'مفتوحة': Colors.blue,
-      'ملغية': Colors.red,
-      'جديدة': Colors.blue,
-      'قيد المراجعة': Colors.purple,
-      'موافق عليه': Colors.teal,
-      'مرفوضة': Colors.red.shade800,
-      'معلقة': Colors.amber,
-    };
-
+    // ألوان الحالات من المصدر الموحّد (يشمل كل الحالات والمرادفات).
     final total = currentFilteredTasks.length;
     final entries = statusCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -1541,7 +1519,7 @@ class _ReportsPageState extends State<ReportsPage> {
                 centerSpaceRadius: 36,
                 sections: entries.map((e) {
                   final pct = (e.value / total * 100).toStringAsFixed(1);
-                  final color = statusColors[e.key] ?? Colors.grey;
+                  final color = TaskStatusColors.colorFor(e.key);
                   return PieChartSectionData(
                     value: e.value.toDouble(),
                     color: color,
@@ -1565,7 +1543,7 @@ class _ReportsPageState extends State<ReportsPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: entries.map((e) {
-                  final color = statusColors[e.key] ?? Colors.grey;
+                  final color = TaskStatusColors.colorFor(e.key);
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 3),
                     child: Row(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../models/task.dart';
+import 'task_status_colors.dart';
 
 /// لوحة أداء الفنيين — إحصائيات ورسوم بيانية
 class TechnicianPerformancePage extends StatefulWidget {
@@ -412,10 +413,10 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
           Wrap(
             spacing: isMobile ? 8 : 16,
             children: [
-              _legendDot('مكتملة', const Color(0xFF4CAF50)),
-              _legendDot('تنفيذ', const Color(0xFFFF9800)),
-              _legendDot('مفتوحة', const Color(0xFF2196F3)),
-              _legendDot('ملغية', const Color(0xFFE53935)),
+              _legendDot('مكتملة', TaskStatusColors.completed),
+              _legendDot('تنفيذ', TaskStatusColors.inProgress),
+              _legendDot('مفتوحة', TaskStatusColors.open),
+              _legendDot('ملغية', TaskStatusColors.cancelled),
             ],
           ),
           const SizedBox(height: 12),
@@ -515,25 +516,25 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                       toY: s.done.toDouble(),
                       width: w,
                       borderRadius: r,
-                      color: const Color(0xFF4CAF50),
+                      color: TaskStatusColors.completed,
                     ),
                     BarChartRodData(
                       toY: s.progress.toDouble(),
                       width: w,
                       borderRadius: r,
-                      color: const Color(0xFFFF9800),
+                      color: TaskStatusColors.inProgress,
                     ),
                     BarChartRodData(
                       toY: s.open.toDouble(),
                       width: w,
                       borderRadius: r,
-                      color: const Color(0xFF2196F3),
+                      color: TaskStatusColors.open,
                     ),
                     BarChartRodData(
                       toY: s.cancelled.toDouble(),
                       width: w,
                       borderRadius: r,
-                      color: const Color(0xFFE53935),
+                      color: TaskStatusColors.cancelled,
                     ),
                   ]);
                 }).toList(),
@@ -642,9 +643,9 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
           Row(
             children: [
               _miniStat('الإجمالي', '${s.total}', const Color(0xFF3B82F6)),
-              _miniStat('مكتملة', '${s.done}', const Color(0xFF4CAF50)),
-              _miniStat('تنفيذ', '${s.progress}', const Color(0xFFFF9800)),
-              _miniStat('ملغية', '${s.cancelled}', const Color(0xFFE53935)),
+              _miniStat('مكتملة', '${s.done}', TaskStatusColors.completed),
+              _miniStat('تنفيذ', '${s.progress}', TaskStatusColors.inProgress),
+              _miniStat('ملغية', '${s.cancelled}', TaskStatusColors.cancelled),
               _miniStat('المتوسط', s.done > 0 ? s.avgHoursFormatted : '-',
                   const Color(0xFF9C27B0)),
             ],
@@ -671,7 +672,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                 Icon(Icons.payments_outlined,
                     size: 14, color: Colors.grey.shade500),
                 const SizedBox(width: 4),
-                Text('${s.totalAmount.toStringAsFixed(0)} د.ع',
+                Text('${formatTaskAmount(s.totalAmount)} د.ع',
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

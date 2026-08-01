@@ -11,6 +11,7 @@ import '../services/whatsapp_template_storage.dart';
 import '../ftth/tasks/customer_search_connect_page.dart';
 import '../services/task_api_service.dart';
 import '../widgets/sla_settings_dialog.dart';
+import 'task_status_colors.dart';
 
 class HomePageTasks extends StatefulWidget {
   final String username;
@@ -543,7 +544,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                     child: Row(children: [
                       Expanded(
                           child: _buildStatCard('مفتوحة', openTasks, totalTasks,
-                              const Color(0xFF3B82F6), Icons.inbox_rounded,
+                              TaskStatusColors.open, Icons.inbox_rounded,
                               compact: true, tiny: isSmall)),
                       SizedBox(width: cardGap),
                       Expanded(
@@ -551,7 +552,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                               'قيد التنفيذ',
                               inProgressTasks,
                               totalTasks,
-                              const Color(0xFFF59E0B),
+                              TaskStatusColors.inProgress,
                               Icons.sync_rounded,
                               compact: true,
                               tiny: isSmall)),
@@ -565,7 +566,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                               'مكتملة',
                               completedTasks,
                               totalTasks,
-                              const Color(0xFF10B981),
+                              TaskStatusColors.completed,
                               Icons.check_circle_rounded,
                               compact: true,
                               tiny: isSmall)),
@@ -575,7 +576,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                               'ملغية',
                               canceledTasks,
                               totalTasks,
-                              const Color(0xFFEF4444),
+                              TaskStatusColors.cancelled,
                               Icons.cancel_rounded,
                               compact: true,
                               tiny: isSmall)),
@@ -588,23 +589,23 @@ class HomePageTasksState extends State<HomePageTasks> {
               children: [
                 Expanded(
                     child: _buildStatCard('مفتوحة', openTasks, totalTasks,
-                        const Color(0xFF3B82F6), Icons.inbox_rounded)),
+                        TaskStatusColors.open, Icons.inbox_rounded)),
                 const SizedBox(width: 14),
                 Expanded(
                     child: _buildStatCard(
                         'قيد التنفيذ',
                         inProgressTasks,
                         totalTasks,
-                        const Color(0xFFF59E0B),
+                        TaskStatusColors.inProgress,
                         Icons.sync_rounded)),
                 const SizedBox(width: 14),
                 Expanded(
                     child: _buildStatCard('مكتملة', completedTasks, totalTasks,
-                        const Color(0xFF10B981), Icons.check_circle_rounded)),
+                        TaskStatusColors.completed, Icons.check_circle_rounded)),
                 const SizedBox(width: 14),
                 Expanded(
                     child: _buildStatCard('ملغية', canceledTasks, totalTasks,
-                        const Color(0xFFEF4444), Icons.cancel_rounded)),
+                        TaskStatusColors.cancelled, Icons.cancel_rounded)),
               ],
             );
           }),
@@ -711,9 +712,9 @@ class HomePageTasksState extends State<HomePageTasks> {
         ]),
         SizedBox(height: isSmall ? 6 : 10),
         Row(children: [
-          Expanded(child: _collectionStatTile('مبالغ معلقة', '${totalPending.toStringAsFixed(0)} د.ع', Colors.orange, Icons.account_balance_wallet, isSmall)),
+          Expanded(child: _collectionStatTile('مبالغ معلقة', '${formatTaskAmount(totalPending)} د.ع', Colors.orange, Icons.account_balance_wallet, isSmall)),
           SizedBox(width: isSmall ? 4 : 8),
-          Expanded(child: _collectionStatTile('محصّل اليوم', '${totalCompletedToday.toStringAsFixed(0)} د.ع', Colors.green, Icons.paid, isSmall)),
+          Expanded(child: _collectionStatTile('محصّل اليوم', '${formatTaskAmount(totalCompletedToday)} د.ع', Colors.green, Icons.paid, isSmall)),
         ]),
 
         // ── تقرير الفنيين ──
@@ -752,7 +753,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                     Text(
                       isSmall
                           ? '$done/$total ($pct%) — $pend معلق'
-                          : 'محصّل: $done/$total ($pct%) — معلق: $pend — مبلغ: ${amtDone.toStringAsFixed(0)} د.ع',
+                          : 'محصّل: $done/$total ($pct%) — معلق: $pend — مبلغ: ${formatTaskAmount(amtDone)} د.ع',
                       style: TextStyle(fontSize: isSmall ? 9 : fs - 1, color: Colors.grey.shade600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -856,10 +857,10 @@ class HomePageTasksState extends State<HomePageTasks> {
 
     if (sorted.isEmpty) return const SizedBox.shrink();
 
-    final isSmall = MediaQuery.of(context).size.width < 420;
-
-    // على الشاشات الصغيرة: عرض بطاقات بدلاً من جدول
-    if (isSmall) {
+    // على شاشات الهاتف (≤600px): عرض بطاقات بدلاً من الجدول لمنع تكدّس/overflow الأعمدة.
+    // (كان العتبة 420px فقط، فيظهر الجدول مزدحماً بين 420–600px.)
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    if (isMobile) {
       return _buildTechnicianCards(sorted);
     }
 
@@ -920,7 +921,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         style: TextStyle(
                             fontSize: fs,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFFE53935)))),
+                            color: TaskStatusColors.cancelled))),
                 SizedBox(
                     width: colW,
                     child: Text('مكتملة',
@@ -928,7 +929,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         style: TextStyle(
                             fontSize: fs,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF4CAF50)))),
+                            color: TaskStatusColors.completed))),
                 SizedBox(
                     width: colW,
                     child: Text('تنفيذ',
@@ -936,7 +937,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         style: TextStyle(
                             fontSize: fs,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFF9800)))),
+                            color: TaskStatusColors.inProgress))),
                 SizedBox(
                     width: totalW,
                     child: Text('مفتوحة',
@@ -944,7 +945,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         style: TextStyle(
                             fontSize: fs,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF2196F3)))),
+                            color: TaskStatusColors.open))),
                 Expanded(
                     child: Text('القسم',
                         textAlign: TextAlign.center,
@@ -1023,7 +1024,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         fontSize: numFs,
                         fontWeight: FontWeight.w800,
                         color: canceled > 0
-                            ? const Color(0xFFE53935)
+                            ? TaskStatusColors.cancelled
                             : const Color(0xFFD1D5DB),
                       ),
                     ),
@@ -1038,7 +1039,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         fontSize: numFs,
                         fontWeight: FontWeight.w800,
                         color: done > 0
-                            ? const Color(0xFF4CAF50)
+                            ? TaskStatusColors.completed
                             : const Color(0xFFD1D5DB),
                       ),
                     ),
@@ -1053,7 +1054,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         fontSize: numFs,
                         fontWeight: FontWeight.w800,
                         color: progress > 0
-                            ? const Color(0xFFFF9800)
+                            ? TaskStatusColors.inProgress
                             : const Color(0xFFD1D5DB),
                       ),
                     ),
@@ -1068,7 +1069,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                         fontSize: numFs,
                         fontWeight: FontWeight.w800,
                         color: open > 0
-                            ? const Color(0xFF2196F3)
+                            ? TaskStatusColors.open
                             : const Color(0xFFD1D5DB),
                       ),
                     ),
@@ -1151,10 +1152,10 @@ class HomePageTasksState extends State<HomePageTasks> {
                   child: Text(
                     '$sumCanceled',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14.0,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFFE53935),
+                      color: TaskStatusColors.cancelled,
                     ),
                   ),
                 ),
@@ -1163,10 +1164,10 @@ class HomePageTasksState extends State<HomePageTasks> {
                   child: Text(
                     '$sumDone',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14.0,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF4CAF50),
+                      color: TaskStatusColors.completed,
                     ),
                   ),
                 ),
@@ -1175,10 +1176,10 @@ class HomePageTasksState extends State<HomePageTasks> {
                   child: Text(
                     '$sumProgress',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14.0,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFFFF9800),
+                      color: TaskStatusColors.inProgress,
                     ),
                   ),
                 ),
@@ -1187,10 +1188,10 @@ class HomePageTasksState extends State<HomePageTasks> {
                   child: Text(
                     '$sumOpen',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF2196F3),
+                      color: TaskStatusColors.open,
                     ),
                   ),
                 ),
@@ -1283,12 +1284,12 @@ class HomePageTasksState extends State<HomePageTasks> {
                 alignment: WrapAlignment.start,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  _buildMiniStatChip('مفتوحة', open, const Color(0xFF2196F3)),
+                  _buildMiniStatChip('مفتوحة', open, TaskStatusColors.open),
                   _buildMiniStatChip(
-                      'تنفيذ', progress, const Color(0xFFFF9800)),
-                  _buildMiniStatChip('مكتملة', done, const Color(0xFF4CAF50)),
+                      'تنفيذ', progress, TaskStatusColors.inProgress),
+                  _buildMiniStatChip('مكتملة', done, TaskStatusColors.completed),
                   _buildMiniStatChip(
-                      'ملغية', canceled, const Color(0xFFE53935)),
+                      'ملغية', canceled, TaskStatusColors.cancelled),
                   _buildMiniStatChip(
                       'تحصيل',
                       _filteredTasks.where((t) => t.title.contains('تحصيل مبلغ') || t.title.contains('استحصال مبلغ')).length,
@@ -2026,9 +2027,13 @@ class HomePageTasksState extends State<HomePageTasks> {
     final isMobile = screenWidth < 500;
     final isSmallMobile = screenWidth < 380;
     final iconSize = isSmallMobile ? 16.0 : isMobile ? 18.0 : 20.0;
-    final fontSize = isSmallMobile ? 8.0 : isMobile ? 9.0 : 11.0;
+    // رفع الحدّ الأدنى للخط من 8px إلى 9px لتحسين القراءة على الهاتف الضيق.
+    final fontSize = isSmallMobile ? 9.0 : isMobile ? 10.0 : 11.0;
     final hMargin = isSmallMobile ? 1.0 : isMobile ? 2.0 : 3.0;
     final hPadding = isSmallMobile ? 2.0 : isMobile ? 3.0 : 4.0;
+    // اختصار «قيد التنفيذ» → «تنفيذ» على الشاشات شديدة الضيق لتجنّب التكدّس.
+    final displayLabel =
+        (isSmallMobile && label == 'قيد التنفيذ') ? 'تنفيذ' : label;
 
     return Expanded(
       child: GestureDetector(
@@ -2092,7 +2097,7 @@ class HomePageTasksState extends State<HomePageTasks> {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  label,
+                  displayLabel,
                   style: TextStyle(
                     color: isSelected ? Colors.white : const Color(0xFF6B7280),
                     fontSize: fontSize,
@@ -2327,9 +2332,9 @@ class HomePageTasksState extends State<HomePageTasks> {
                   r.contentPaddingH, 8, r.contentPaddingH, 4),
               child: Row(
                 children: [
-                  // رجوع
+                  // رجوع — chevron_right يتّجه صحيحاً في RTL (كما في شاشة مهام FTTH)
                   _buildBarIcon(
-                      Icons.arrow_back, () => Navigator.of(context).pop()),
+                      Icons.chevron_right, () => Navigator.of(context).pop()),
                   const SizedBox(width: 8),
 
                   // عنوان الصفحة
@@ -2540,7 +2545,7 @@ class HomePageTasksState extends State<HomePageTasks> {
     );
   }
 
-  /// أيقونة شريط أدوات موحّدة
+  /// أيقونة شريط أدوات موحّدة — منطقة لمس ≥44px دون تكبير الأيقونة بصرياً
   Widget _buildBarIcon(IconData icon, VoidCallback onTap) {
     final isMobile = MediaQuery.of(context).size.width < 500;
     final iconSize = isMobile ? 18.0 : 22.0;
@@ -2550,13 +2555,20 @@ class HomePageTasksState extends State<HomePageTasks> {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: EdgeInsets.all(pad),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          child: Center(
+            widthFactor: 1,
+            heightFactor: 1,
+            child: Container(
+              padding: EdgeInsets.all(pad),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: iconSize, color: Colors.white),
+            ),
           ),
-          child: Icon(icon, size: iconSize, color: Colors.white),
         ),
       ),
     );

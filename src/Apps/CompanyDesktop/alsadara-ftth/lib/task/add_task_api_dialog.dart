@@ -1014,7 +1014,9 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
               },
               icon: _isLoading
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Icon(isLast ? Icons.check_rounded : Icons.arrow_back, size: 20),
+                  // في RTL «التالي» يتّجه لليسار — arrow_back_ios_new يعكس صحيحاً
+                  // (مقابل زر «السابق» الذي يستخدم arrow_forward لليمين)
+                  : Icon(isLast ? Icons.check_rounded : Icons.arrow_back_ios_new, size: 20),
               label: Text(isLast ? 'حفظ المهمة' : 'التالي'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isLast ? const Color(0xFF4CAF50) : const Color(0xFF1A237E),
@@ -1206,7 +1208,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                   icon: const Icon(Icons.my_location_rounded),
                   tooltip: 'تحديد الموقع من الجهاز',
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.blue.withOpacity(0.1),
+                    backgroundColor: Colors.blue.withValues(alpha: 0.1),
                     foregroundColor: Colors.blue,
                     padding: const EdgeInsets.all(12),
                   ),

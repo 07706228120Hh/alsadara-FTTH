@@ -102,14 +102,25 @@ class _TasksTabState extends State<TasksTab> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
         children: [
-          _miniStat('إجمالي', total, _accent),
-          const SizedBox(width: 12),
-          _miniStat('مكتملة', completed, _green),
-          const SizedBox(width: 12),
-          _miniStat('نسبة الإنجاز', total > 0 ? (completed * 100 ~/ total) : 0,
-              _purple,
-              suffix: '%'),
-          const Spacer(),
+          // بطاقات الإحصائيات الثلاث — قابلة للتمرير أفقياً لمنع overflow على الشاشات الضيقة
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _miniStat('إجمالي', total, _accent),
+                  const SizedBox(width: 12),
+                  _miniStat('مكتملة', completed, _green),
+                  const SizedBox(width: 12),
+                  _miniStat(
+                      'نسبة الإنجاز',
+                      total > 0 ? (completed * 100 ~/ total) : 0,
+                      _purple,
+                      suffix: '%'),
+                ],
+              ),
+            ),
+          ),
           IconButton(
             onPressed: _load,
             icon: const Icon(Icons.refresh, color: _accent),
@@ -124,9 +135,9 @@ class _TasksTabState extends State<TasksTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.1),
+        color: c.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: c.withOpacity(0.3)),
+        border: Border.all(color: c.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -185,7 +196,7 @@ class _TasksTabState extends State<TasksTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.task_outlined, size: 48, color: _gray.withOpacity(0.5)),
+            Icon(Icons.task_outlined, size: 48, color: _gray.withValues(alpha: 0.5)),
             const SizedBox(height: 8),
             Text('لا توجد مهام',
                 style: GoogleFonts.cairo(color: _gray, fontSize: 14)),
@@ -231,6 +242,8 @@ class _TasksTabState extends State<TasksTab> {
               children: [
                 Expanded(
                   child: Text(title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.cairo(
                           fontWeight: FontWeight.bold, fontSize: 14)),
                 ),
@@ -273,7 +286,7 @@ class _TasksTabState extends State<TasksTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
@@ -314,7 +327,10 @@ class _TasksTabState extends State<TasksTab> {
   Color _getStatusColor(String status) {
     final s = status.toLowerCase();
     if (s == 'completed' || s == 'done') return _green;
-    if (s == 'inprogress' || s == 'in_progress') return _accent;
+    // «قيد التنفيذ» = برتقالي (كان أزرق بالخطأ)
+    if (s == 'inprogress' || s == 'in_progress' || s == 'قيد التنفيذ') {
+      return _orange;
+    }
     if (s == 'overdue') return _red;
     if (s == 'pending') return _orange;
     return _gray;

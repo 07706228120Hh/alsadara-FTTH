@@ -508,13 +508,13 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
             ),
           ),
 
-          // مؤشر التغيير
+          // مؤشر التغيير — منطقة لمس ≥44px دون تكبير الأيقونة
           SizedBox(
-            width: 28,
+            width: 44,
             child: isModified
                 ? IconButton(
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                     icon: Icon(Icons.undo, size: 16, color: Colors.grey.shade600),
                     tooltip: 'إرجاع القيمة الأصلية ($originalValue)',
                     onPressed: () {
