@@ -14,6 +14,20 @@ using Microsoft.IdentityModel.Tokens;
 var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL") ?? "http://127.0.0.1:5080";
 var nodeId     = Environment.GetEnvironmentVariable("NODE_ID")     ?? "node-nour-office-01";
 
+// إعداد العقدة من ملف (يُسلّمه مدير النظام عند التسجيل — يحاكي المُثبِّت)
+var nodeConfigPath = Environment.GetEnvironmentVariable("NODE_CONFIG")
+    ?? Path.Combine(AppContext.BaseDirectory, "node.config.json");
+if (File.Exists(nodeConfigPath))
+{
+    var cfg = System.Text.Json.JsonSerializer.Deserialize<NodeConfig>(File.ReadAllText(nodeConfigPath));
+    if (cfg is not null)
+    {
+        if (!string.IsNullOrWhiteSpace(cfg.gateway_url)) gatewayUrl = cfg.gateway_url!;
+        if (!string.IsNullOrWhiteSpace(cfg.node_id))     nodeId     = cfg.node_id!;
+    }
+    Console.WriteLine($"[node] حُمّل الإعداد من {nodeConfigPath}");
+}
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddSimpleConsole(o => o.SingleLine = true);
@@ -94,3 +108,5 @@ static bool HasPerm(ClaimsPrincipal user, string perm)
     return claim.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Contains(perm);
 }
+
+record NodeConfig(string? gateway_url, string? jwks_url, string? company_id, string? company_name, string? node_id);

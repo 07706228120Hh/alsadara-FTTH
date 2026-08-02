@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Text.Json;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // بوابة الهوية المركزية (نموذج أوّلي). سلطة الهوية والترخيص فقط:
@@ -47,6 +49,21 @@ var users = new List<AppUser>
         "node-nour-office-01"),
 };
 const string AdminKey = "super-admin-demo-key"; // الإنتاج: حساب مدير النظام/سر قوي
+
+// ── حفظ الحالة على القرص (تبقى الشركات/المديرون بعد إعادة التشغيل) ──
+var stateFile = Path.Combine(AppContext.BaseDirectory, "gateway-state.json");
+void SaveState() => File.WriteAllText(stateFile,
+    JsonSerializer.Serialize(new StateDto(companies, users), new JsonSerializerOptions { WriteIndented = true }));
+if (File.Exists(stateFile))
+{
+    var loaded = JsonSerializer.Deserialize<StateDto>(File.ReadAllText(stateFile));
+    if (loaded is not null)
+    {
+        companies.Clear(); companies.AddRange(loaded.Companies);
+        users.Clear();     users.AddRange(loaded.Users);
+    }
+}
+else SaveState();
 
 // ── الصحّة ──
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "sadara-identity-gateway", kid = Kid }));
@@ -109,6 +126,7 @@ app.MapPost("/admin/companies", ([FromHeader(Name = "X-Admin-Key")] string? admi
         return Results.Json(new { error = "forbidden" }, statusCode: 403);
     var id = "company-" + Guid.NewGuid().ToString("N")[..4].ToUpperInvariant();
     companies.Add(new(id, req.Name, true, DateTime.UtcNow.AddYears(1)));
+    SaveState();
     return Results.Ok(new { company_id = id, name = req.Name, active = true });
 });
 
@@ -123,7 +141,45 @@ app.MapPost("/admin/users", ([FromHeader(Name = "X-Admin-Key")] string? adminKey
         return Results.Json(new { error = "user_exists" }, statusCode: 409);
     users.Add(new(req.Username, Hash(req.Password), req.CompanyId, "CompanyManager",
         req.Permissions ?? Array.Empty<string>(), req.NodeId ?? ("node-" + req.CompanyId)));
+    SaveState();
     return Results.Ok(new { username = req.Username, company_id = req.CompanyId });
+});
+
+// ── مدير النظام: تسجيل شركة كاملة بأمر واحد (Onboarding) ──
+// ينشئ الشركة + حساب مديرها بكلمة مرور مؤقتة + يعيد "حزمة إعداد العقدة" الجاهزة.
+app.MapPost("/admin/enroll", ([FromHeader(Name = "X-Admin-Key")] string? adminKey, EnrollReq req) =>
+{
+    if (adminKey != AdminKey)
+        return Results.Json(new { error = "forbidden" }, statusCode: 403);
+    if (users.Any(u => u.Username == req.AdminUsername))
+        return Results.Json(new { error = "user_exists" }, statusCode: 409);
+
+    var cid = "company-" + Guid.NewGuid().ToString("N")[..4].ToUpperInvariant();
+    var nodeId = string.IsNullOrWhiteSpace(req.NodeId) ? ("node-" + cid.ToLowerInvariant()) : req.NodeId!;
+    var perms = req.Permissions ?? new[] { "subscribers.view" };
+    var tempPassword = GenTempPassword();
+    var gw = string.IsNullOrWhiteSpace(req.GatewayUrl) ? "http://127.0.0.1:5080" : req.GatewayUrl!;
+
+    companies.Add(new(cid, req.CompanyName, true, DateTime.UtcNow.AddYears(1)));
+    users.Add(new(req.AdminUsername, Hash(tempPassword), cid, "CompanyManager", perms, nodeId));
+    SaveState();
+
+    // حزمة إعداد العقدة — لا تحوي أي سرّ (فقط رابط المفتاح العام JWKS)
+    var nodeConfig = new
+    {
+        gateway_url = gw,
+        jwks_url = gw + "/.well-known/jwks.json",
+        company_id = cid,
+        company_name = req.CompanyName,
+        node_id = nodeId
+    };
+    return Results.Ok(new
+    {
+        company_id = cid,
+        node_id = nodeId,
+        manager = new { username = req.AdminUsername, temp_password = tempPassword, note = "سلّمها لمدير الشركة — تظهر مرة واحدة" },
+        node_config = nodeConfig
+    });
 });
 
 app.Run("http://127.0.0.1:5080");
@@ -145,9 +201,19 @@ static bool Verify(string pw, string stored)
     var actual = Rfc2898DeriveBytes.Pbkdf2(pw, salt, 100_000, HashAlgorithmName.SHA256, 32);
     return CryptographicOperations.FixedTimeEquals(actual, expected);
 }
+static string GenTempPassword()
+{
+    const string chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    var bytes = RandomNumberGenerator.GetBytes(12);
+    var sb = new StringBuilder();
+    foreach (var b in bytes) sb.Append(chars[b % chars.Length]);
+    return sb.ToString() + "#9"; // ضمان رمز ورقم
+}
 
 record Company(string Id, string Name, bool Active, DateTime LicenseExp);
 record AppUser(string Username, string PasswordHash, string CompanyId, string Role, string[] Permissions, string NodeId);
 record LoginReq(string Username, string Password);
 record CompanyReq(string Name);
 record UserReq(string Username, string Password, string CompanyId, string[]? Permissions, string? NodeId);
+record EnrollReq(string CompanyName, string AdminUsername, string[]? Permissions, string? NodeId, string? GatewayUrl);
+record StateDto(List<Company> Companies, List<AppUser> Users);

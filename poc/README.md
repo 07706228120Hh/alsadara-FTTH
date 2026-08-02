@@ -50,6 +50,21 @@ TOKEN=... # access_token من تسجيل الدخول
 curl $N/subscribers -H "Authorization: Bearer $TOKEN"
 ```
 
+## تدفّق تسجيل شركة جديدة (Onboarding)
+
+مدير النظام يسجّل شركة كاملة بأمر واحد فيحصل على بيانات مديرها + حزمة إعداد العقدة:
+
+```bash
+curl -X POST $G/admin/enroll -H "X-Admin-Key: super-admin-demo-key" \
+  -H "Content-Type: application/json" \
+  -d '{"companyName":"AlRafidain","adminUsername":"rafidain_admin","permissions":["subscribers.view"],"nodeId":"node-rafidain-hq"}'
+# يعيد: company_id + manager{username, temp_password يظهر مرة واحدة} + node_config
+```
+
+يُحفظ `node_config` في ملف `node.config.json` بجانب العقدة (أو عبر متغيّر البيئة `NODE_CONFIG`)،
+فتُعدّ العقدة نفسها تلقائياً (رابط البوابة + معرّف العقدة) وتجلب المفتاح العام عند الإقلاع.
+حزمة الإعداد **لا تحوي أي سرّ** — فقط رابط JWKS العام. الحالة تُحفظ في `gateway-state.json` (تبقى بعد إعادة التشغيل).
+
 ## نتائج الفحص (مُثبَتة 2026-08-02)
 
 | الاختبار | النتيجة |
