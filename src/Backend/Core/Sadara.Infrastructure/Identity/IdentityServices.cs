@@ -27,9 +27,11 @@ public class JwtService : IJwtService
     private readonly string _issuer;
     private readonly string _audience;
     private readonly int _expiryMinutes;
+    private readonly IJwtTokenSigner _signer;
 
-    public JwtService(string secret, string issuer, string audience, int expiryMinutes = 60)
+    public JwtService(IJwtTokenSigner signer, string secret, string issuer, string audience, int expiryMinutes = 60)
     {
+        _signer = signer;
         _secret = secret;
         _issuer = issuer;
         _audience = audience;
@@ -38,9 +40,7 @@ public class JwtService : IJwtService
 
     public string GenerateAccessToken(User user)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
+        // نفس claims الثمانية ونفس ترتيبها ونفس المدة (60د) ونفس issuer/audience — لا تغيير إطلاقاً.
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
@@ -54,15 +54,13 @@ public class JwtService : IJwtService
             new Claim("company_id", user.CompanyId?.ToString() ?? "")
         };
 
-        var token = new JwtSecurityToken(
-            issuer: _issuer,
-            audience: _audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_expiryMinutes),
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        // ADR-003 خطوة 0: التوقيع يُفوَّض إلى المكوّن المشترك. عند HS256 (الافتراضي) النتيجة مطابقة
+        // بنيوياً للتوكن السابق (نفس alg بلا kid، نفس claims وترتيبها، نفس expires) — لا jti/nbf مُضافة هنا.
+        return _signer.Sign(
+            claims,
+            DateTime.UtcNow.AddMinutes(_expiryMinutes),
+            _issuer,
+            _audience);
     }
 
     public string GenerateRefreshToken()

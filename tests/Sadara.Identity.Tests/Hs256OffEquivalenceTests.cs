@@ -19,8 +19,14 @@ public class Hs256OffEquivalenceTests
     // سرّ اختبار محلي (لا علاقة له بأي سرّ إنتاجي؛ طوله كافٍ لـ HMAC-SHA256).
     private const string TestSecret = "unit-test-only-hs256-secret-key-do-not-use-in-prod-0123456789";
 
+    // بعد التوحيد (ADR-003 خطوة 0): JwtService يستهلك IJwtTokenSigner.
+    // عند flag OFF (لا Jwt:Algorithm) المُوقّع يعمل HS256 بنفس السرّ — سلوك مطابق للسابق.
     private static JwtService NewHs256(int expiryMinutes = 60)
-        => new JwtService(TestSecret, TestSupport.Issuer, TestSupport.Audience, expiryMinutes);
+    {
+        var config = TestSupport.BuildConfig(TestSecret, expiryMinutes); // Jwt:Algorithm غير مضبوط ⇒ HS256
+        var signer = new JwtTokenSigner(config);
+        return new JwtService(signer, TestSecret, TestSupport.Issuer, TestSupport.Audience, expiryMinutes);
+    }
 
     [Fact]
     public void Hs256_GeneratedToken_UsesHmacSha256_Header()

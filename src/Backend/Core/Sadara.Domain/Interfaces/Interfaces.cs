@@ -199,6 +199,24 @@ public interface IJwtService
     bool ValidateToken(string token);
 }
 
+/// <summary>
+/// مكوّن توقيع JWT مشترك (ADR-003 خطوة 0 — الموضع A فقط).
+/// يفصل «آلية التوقيع» (HS256 افتراضياً / RS256 خلف flag) عن «بناء الحمولة/الـ claims».
+/// المستهلك يبني claims/المدة/issuer/audience ثم يفوّض التوقيع هنا.
+/// السلوك الافتراضي (HS256) مطابق حرفياً لما كان يفعله JwtService سابقاً — بلا kid، بلا nbf/jti مُضافة هنا.
+/// </summary>
+public interface IJwtTokenSigner
+{
+    /// <summary>
+    /// يوقّع مجموعة claims ويعيد التوكن المُسلسل (compact JWS).
+    /// </summary>
+    /// <param name="claims">الـ claims كما بناها المستهلك (لا يُضيف المُوقّع أي claim جديد).</param>
+    /// <param name="expiresUtc">وقت انتهاء الصلاحية (UTC) — يُمرَّر كما هو إلى بناء التوكن.</param>
+    /// <param name="issuer">مُصدِر التوكن.</param>
+    /// <param name="audience">جمهور التوكن.</param>
+    string Sign(System.Collections.Generic.IEnumerable<System.Security.Claims.Claim> claims, System.DateTime expiresUtc, string issuer, string audience);
+}
+
 public interface ISmsService
 {
     Task<bool> SendSmsAsync(string phoneNumber, string message);

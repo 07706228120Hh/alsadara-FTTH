@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Microsoft.Extensions.Configuration;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 
@@ -15,6 +16,22 @@ internal static class TestSupport
 {
     public const string Issuer = "sadara-test-issuer";
     public const string Audience = "sadara-test-audience";
+
+    /// <summary>
+    /// يبني IConfiguration في الذاكرة بإعداد Jwt الافتراضي (HS256؛ Jwt:Algorithm غير مضبوط عمداً).
+    /// يستخدمه JwtTokenSigner في الوضع OFF. لا appsettings ولا اتصال DB.
+    /// </summary>
+    public static IConfiguration BuildConfig(string secret, int expiryMinutes = 60)
+        => new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Secret"] = secret,
+                ["Jwt:Issuer"] = Issuer,
+                ["Jwt:Audience"] = Audience,
+                ["Jwt:ExpiryMinutes"] = expiryMinutes.ToString(),
+                // Jwt:Algorithm غير مضبوط عمداً ⇒ HS256 الافتراضي (flag OFF).
+            })
+            .Build();
 
     /// <summary>
     /// يولّد زوج مفاتيح RSA-2048 مؤقتاً ويعيد المفتاح الخاص بصيغة PEM (نصّ في الذاكرة فقط).

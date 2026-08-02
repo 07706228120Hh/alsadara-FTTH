@@ -64,6 +64,10 @@ var jwtAlgorithm = (builder.Configuration["Jwt:Algorithm"] ?? "HS256").Trim().To
 var rs256PrivateKeyPath = builder.Configuration["Jwt:Rs256PrivateKeyPath"];
 Rs256JwtService? rs256SingletonForJwks = null;
 
+// ADR-003 خطوة 0 («إثبات»): المكوّن المشترك للتوقيع. هو وحده من يقرّر الخوارزمية (HS256 افتراضياً / RS256 خلف flag).
+// عند HS256 يبقى إصدار التوكن مطابقاً بنيوياً للحالي (بلا kid). RS256 يُضيف kid فقط.
+builder.Services.AddSingleton<IJwtTokenSigner, JwtTokenSigner>();
+
 if (jwtAlgorithm == "RS256")
 {
     // fail-closed: RS256 يتطلب مسار مفتاح خاص صالح وموجود، وإلا نرفض بدل السقوط الصامت إلى HS256.
@@ -77,21 +81,19 @@ if (jwtAlgorithm == "RS256")
     var rs256Expiry = int.Parse(builder.Configuration["Jwt:ExpiryMinutes"] ?? "60");
     var rs256KeyId = builder.Configuration["Jwt:Rs256KeyId"]; // اختياري
 
-    // نبني نسخة singleton لخدمة JWKS (نشر المفتاح العام) وللتسجيل كـ IJwtService.
+    // نبني نسخة singleton لخدمة JWKS (نشر المفتاح العام) وللتحقّق (RS256). لم تعُد تُسجَّل كـ IJwtService —
+    // المكوّن المشترك (IJwtTokenSigner) وحده يقرّر خوارزمية التوقيع الآن.
     rs256SingletonForJwks = new Rs256JwtService(rs256Pem, rs256Issuer, rs256Audience, rs256Expiry, rs256KeyId);
-    var rs256Captured = rs256SingletonForJwks;
-    builder.Services.AddScoped<IJwtService>(_ => rs256Captured);
 }
-else
-{
-    // HS256 (الافتراضي/OFF) — التسجيل الحالي حرفياً دون أي تغيير.
-    builder.Services.AddScoped<IJwtService>(sp => new JwtService(
-        builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed."),
-        builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
-        builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
-        int.Parse(builder.Configuration["Jwt:ExpiryMinutes"] ?? "60")
-    ));
-}
+
+// ADR-003 خطوة 0: JwtService هو دائماً تنفيذ IJwtService؛ خوارزمية التوقيع يقرّرها IJwtTokenSigner المُحقَن.
+builder.Services.AddScoped<IJwtService>(sp => new JwtService(
+    sp.GetRequiredService<IJwtTokenSigner>(),
+    builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed."),
+    builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
+    builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
+    int.Parse(builder.Configuration["Jwt:ExpiryMinutes"] ?? "60")
+));
 
 // ═══ ADR-002: خدمة JWKS. عند HS256/OFF أو غياب مفتاح RS256 ⇒ { "keys": [] } (لا توليد تلقائي). ═══
 builder.Services.AddSingleton(new JwksService(rs256SingletonForJwks));

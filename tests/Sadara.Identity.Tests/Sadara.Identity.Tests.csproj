@@ -20,6 +20,9 @@
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="FluentAssertions" Version="6.12.1" />
+    <!-- IConfiguration InMemory للاختبارات المعزولة (بناء إعداد Jwt في الذاكرة، بلا appsettings/DB) -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.2" />
     <!-- تُوحّد إصدار EF Core لتفادي CS1705 عند جرّ تبعيات Infrastructure -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.2" />
