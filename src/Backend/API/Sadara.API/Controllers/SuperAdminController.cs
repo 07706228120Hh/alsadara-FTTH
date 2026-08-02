@@ -1,15 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using System.Diagnostics;
-using System.IdentityModel.Tokens.Jwt;
 using System.Net.NetworkInformation;
 using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
 
 namespace Sadara.API.Controllers;
@@ -27,17 +24,20 @@ public class SuperAdminController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ILogger<SuperAdminController> _logger;
     private readonly HttpClient _httpClient;
+    private readonly IJwtTokenSigner _signer;
 
     public SuperAdminController(
         IUnitOfWork unitOfWork,
         IConfiguration configuration,
         ILogger<SuperAdminController> logger,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        IJwtTokenSigner signer)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _logger = logger;
         _httpClient = httpClient;
+        _signer = signer;
     }
 
     #region Authentication
@@ -224,13 +224,8 @@ public class SuperAdminController : ControllerBase
 
     private string GenerateJwtToken(Domain.Entities.User user)
     {
-        var jwtKey = _configuration["Jwt:Secret"]
-            ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — لا يمكن توليد توكن JWT (fail-closed).");
         var jwtIssuer = _configuration["Jwt:Issuer"] ?? "SadaraPlatform";
         var jwtAudience = _configuration["Jwt:Audience"] ?? "SadaraClients";
-
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
         {
@@ -242,15 +237,13 @@ public class SuperAdminController : ControllerBase
             new Claim("role_id", ((int)user.Role).ToString())
         };
 
-        var token = new JwtSecurityToken(
-            issuer: jwtIssuer,
-            audience: jwtAudience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(24),
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        // ADR-003 خطوة 0: التوقيع يُفوَّض إلى المكوّن المشترك. عند HS256 (الافتراضي) النتيجة مطابقة
+        // حرفياً للتوكن السابق (نفس alg بلا kid، نفس claims وترتيبها، نفس المدة 24 ساعة، نفس issuer/audience).
+        return _signer.Sign(
+            claims,
+            DateTime.UtcNow.AddHours(24),
+            jwtIssuer,
+            jwtAudience);
     }
 
     private static string GenerateRefreshToken()

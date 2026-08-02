@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Sadara.API.Controllers;
 using Sadara.Api.Tests.Fakes;
 using Sadara.Domain.Entities;
+using Sadara.Infrastructure.Identity;
 using Xunit;
 
 namespace Sadara.Api.Tests;
@@ -39,6 +40,8 @@ public class SuperAdminControllerNodeConfigTests
         var settings = new Dictionary<string, string?>();
         if (gatewayUrl is not null)
             settings["Distributed:GatewayUrl"] = gatewayUrl;
+        // Jwt:Secret مطلوب فقط لبناء JwtTokenSigner (HS256 الافتراضي)؛ GetNodeConfig لا يستعمل المُوقّع.
+        settings["Jwt:Secret"] = "unit-test-only-hs256-secret-key-do-not-use-in-prod-0123456789";
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(settings)
@@ -50,7 +53,8 @@ public class SuperAdminControllerNodeConfigTests
             uow,
             configuration,
             NullLogger<SuperAdminController>.Instance,
-            new HttpClient());
+            new HttpClient(),
+            new JwtTokenSigner(configuration));
     }
 
     /// <summary>يستخرج كائن data من غلاف الاستجابة { success, data } عبر reflection.</summary>
