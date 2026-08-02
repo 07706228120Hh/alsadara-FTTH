@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    مشروع اختبار وحدة للكونترولرات معزول تماماً عن قاعدة البيانات والـ web host.
+    - لا WebApplicationFactory، لا Testcontainers، لا PostgresFixture، لا اتصال DB.
+    - الكونترولر يُنشأ مباشرة بحقن تبعيات وهمية (fake IUnitOfWork/IRepository يدوي — بلا Moq).
+    - يرجع إلى Sadara.API (للكونترولر) + Domain (للكيانات) + Application (تبعية متعدّية).
+    - EF Core موحّد 9.0.2 لتفادي CS1705 عند جرّ تبعيات Infrastructure عبر Sadara.API.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="FluentAssertions" Version="6.12.1" />
+    <!-- توحيد إصدار EF Core مع Sadara.API (يجرّ EF 9.0.2 عبر EFCore.Design) لتفادي CS1705 -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Backend\API\Sadara.API\Sadara.API.csproj" />
+    <ProjectReference Include="..\..\src\Backend\Core\Sadara.Domain\Sadara.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Backend\Core\Sadara.Application\Sadara.Application.csproj" />
+  </ItemGroup>
+
+  <!-- Sadara.API هو Microsoft.NET.Sdk.Web؛ نحتاج إطار ASP.NET Core لتجميع/تحميل الكونترولر -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>
