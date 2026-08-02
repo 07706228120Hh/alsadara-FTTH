@@ -14,6 +14,14 @@
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+    <!--
+      Security pin (security-auditor): تثبيت الحد الأدنى الصريح لحزم التحقق من JWT
+      لمنع أي تخفيض صامت (silent downgrade) عبر الشجرة المتعدية قد يعيد فتح ثغرة
+      "algorithm confusion". يجب ألا تُخفَّض هذه الإصدارات عن 8.15.0.
+    -->
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.15.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="10.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
