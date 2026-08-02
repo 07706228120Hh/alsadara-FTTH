@@ -1,16 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace Sadara.API.Controllers;
 
@@ -27,15 +24,18 @@ public class AgentsController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AgentsController> _logger;
+    private readonly IJwtTokenSigner _signer;
 
     public AgentsController(
         IUnitOfWork unitOfWork,
         IConfiguration configuration,
-        ILogger<AgentsController> logger)
+        ILogger<AgentsController> logger,
+        IJwtTokenSigner signer)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _logger = logger;
+        _signer = signer;
     }
 
     // ==================== مصادقة الوكيل ====================
@@ -1777,11 +1777,6 @@ public class AgentsController : ControllerBase
 
     private string GenerateAgentToken(Agent agent)
     {
-        var jwtSecret = _configuration["Jwt:Secret"]
-            ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.");
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, agent.Id.ToString()),
@@ -1793,15 +1788,13 @@ public class AgentsController : ControllerBase
             new Claim("user_type", "agent")
         };
 
-        var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"] ?? "SadaraPlatform",
-            audience: _configuration["Jwt:Audience"] ?? "SadaraClients",
-            claims: claims,
-            expires: DateTime.UtcNow.AddDays(30),
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        // ADR-003 خطوة 0 (الموضع F): التوقيع يُفوَّض إلى المكوّن المشترك. عند HS256 (الافتراضي) النتيجة مطابقة
+        // حرفياً للتوكن السابق (نفس alg بلا kid، نفس claims وترتيبها، نفس المدة 30 يوماً، نفس issuer/audience، بلا jti).
+        return _signer.Sign(
+            claims,
+            DateTime.UtcNow.AddDays(30),
+            _configuration["Jwt:Issuer"] ?? "SadaraPlatform",
+            _configuration["Jwt:Audience"] ?? "SadaraClients");
     }
 
     private Guid? GetCurrentUserId()
