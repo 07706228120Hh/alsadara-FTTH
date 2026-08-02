@@ -28,15 +28,18 @@ public class UnifiedAuthController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly ILogger<UnifiedAuthController> _logger;
+    private readonly IJwtTokenSigner _signer;
 
     public UnifiedAuthController(
         IUnitOfWork unitOfWork,
         IConfiguration configuration,
-        ILogger<UnifiedAuthController> logger)
+        ILogger<UnifiedAuthController> logger,
+        IJwtTokenSigner signer)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _logger = logger;
+        _signer = signer;
     }
 
     #region Unified Login
@@ -1065,10 +1068,6 @@ public class UnifiedAuthController : ControllerBase
 
     private string GenerateJwtToken(User user, Company? company)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-            _configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.")));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -1089,15 +1088,13 @@ public class UnifiedAuthController : ControllerBase
             claims.Add(new Claim("company_name", company.Name));
         }
 
-        var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"] ?? "SadaraPlatform",
-            audience: _configuration["Jwt:Audience"] ?? "SadaraClients",
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(24),
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        // ADR-003 خطوة 0: التوقيع يُفوَّض إلى المكوّن المشترك. عند HS256 (الافتراضي) النتيجة مطابقة
+        // حرفياً للتوكن السابق (نفس alg بلا kid، نفس claims وترتيبها، نفس المدة 24 ساعة، نفس issuer/audience).
+        return _signer.Sign(
+            claims,
+            DateTime.UtcNow.AddHours(24),
+            _configuration["Jwt:Issuer"] ?? "SadaraPlatform",
+            _configuration["Jwt:Audience"] ?? "SadaraClients");
     }
 
     private static string GenerateRefreshToken()

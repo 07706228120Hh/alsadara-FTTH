@@ -24,17 +24,20 @@ public class CompaniesController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ILogger<CompaniesController> _logger;
     private readonly ICurrentTenant _tenant;
+    private readonly IJwtTokenSigner _signer;
 
     public CompaniesController(
         IUnitOfWork unitOfWork,
         IConfiguration configuration,
         ILogger<CompaniesController> logger,
-        ICurrentTenant tenant)
+        ICurrentTenant tenant,
+        IJwtTokenSigner signer)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _logger = logger;
         _tenant = tenant;
+        _signer = signer;
     }
 
     /// <summary>عزل الشركة: يمنع الوصول لشركة غير شركة المستخدم (SuperAdmin يتجاوز). null = مسموح.</summary>
@@ -246,13 +249,8 @@ public class CompaniesController : ControllerBase
 
     private string GenerateJwtToken(User user, Company company)
     {
-        var jwtKey = _configuration["Jwt:Secret"] ?? _configuration["Jwt:Key"]
-            ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.");
         var jwtIssuer = _configuration["Jwt:Issuer"] ?? "SadaraPlatform";
         var jwtAudience = _configuration["Jwt:Audience"] ?? "SadaraClients";
-
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
         {
@@ -267,15 +265,13 @@ public class CompaniesController : ControllerBase
             new Claim("company_name", company.Name)
         };
 
-        var token = new JwtSecurityToken(
-            issuer: jwtIssuer,
-            audience: jwtAudience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(24),
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        // ADR-003 خطوة 0: التوقيع يُفوَّض إلى المكوّن المشترك. عند HS256 (الافتراضي) النتيجة مطابقة
+        // حرفياً للتوكن السابق (نفس alg بلا kid، نفس claims وترتيبها، نفس المدة 24 ساعة، نفس issuer/audience).
+        return _signer.Sign(
+            claims,
+            DateTime.UtcNow.AddHours(24),
+            jwtIssuer,
+            jwtAudience);
     }
 
     private static string GenerateRefreshToken()

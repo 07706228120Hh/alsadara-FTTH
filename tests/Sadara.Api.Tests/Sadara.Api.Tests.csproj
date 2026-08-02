@@ -30,6 +30,8 @@
     <ProjectReference Include="..\..\src\Backend\API\Sadara.API\Sadara.API.csproj" />
     <ProjectReference Include="..\..\src\Backend\Core\Sadara.Domain\Sadara.Domain.csproj" />
     <ProjectReference Include="..\..\src\Backend\Core\Sadara.Application\Sadara.Application.csproj" />
+    <!-- JwtTokenSigner (النوع الملموس) يقع في Sadara.Infrastructure.Identity؛ نحتاجه صريحاً لاختبار عقد B وD عبر المُوقّع المشترك الحقيقي -->
+    <ProjectReference Include="..\..\src\Backend\Core\Sadara.Infrastructure\Sadara.Infrastructure.csproj" />
   </ItemGroup>
 
   <!-- Sadara.API هو Microsoft.NET.Sdk.Web؛ نحتاج إطار ASP.NET Core لتجميع/تحميل الكونترولر -->
