@@ -9,6 +9,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/api/auth/super_admin_api.dart';
 import '../../services/api/api_client.dart';
 import '../../services/api/api_config.dart';
+import '../../services/node_provisioning_service.dart';
 import '../../services/departments_data_service.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'edit_company_page.dart';
@@ -46,8 +47,12 @@ class CompanyDetailsPage extends StatefulWidget {
 class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   final SuperAdminApi _superAdminApi = SuperAdminApi();
   final ApiClient _apiClient = ApiClient.instance;
+  final NodeProvisioningService _nodeProvisioning = NodeProvisioningService();
   late Company _company;
   late bool _isLinkedToCitizen;
+
+  /// حالة تنزيل حزمة إعداد العقدة (لتعطيل الزر أثناء العملية)
+  bool _isDownloadingNodeConfig = false;
 
   @override
   void initState() {
@@ -1020,6 +1025,35 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               ),
             ],
           ),
+
+          SizedBox(height: isCompact ? 12 : 16),
+
+          // الصف الثالث: أدوات إضافية (نقطة توسّع لأزرار مستقبلية)
+          Row(
+            children: [
+              Expanded(
+                child: _buildNewActionButton(
+                  icon: Icons.dns_rounded,
+                  label: _isDownloadingNodeConfig
+                      ? 'جارٍ التنزيل...'
+                      : 'تنزيل حزمة إعداد العقدة',
+                  backgroundColor: teal.withOpacity(0.18),
+                  foregroundColor: teal,
+                  // تعطيل الزر أثناء التحميل (no-op callback)
+                  onPressed:
+                      _isDownloadingNodeConfig ? () {} : _downloadNodeConfig,
+                  isCompact: isCompact,
+                ),
+              ),
+              SizedBox(width: isCompact ? 10 : 14),
+              // خانات فارغة للحفاظ على محاذاة الشبكة
+              const Expanded(child: SizedBox()),
+              SizedBox(width: isCompact ? 10 : 14),
+              const Expanded(child: SizedBox()),
+              SizedBox(width: isCompact ? 10 : 14),
+              const Expanded(child: SizedBox()),
+            ],
+          ),
         ],
       ),
     );
@@ -1296,6 +1330,54 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
         apiClient: _apiClient,
       ),
     );
+  }
+
+  /// تنزيل حزمة إعداد العقدة (node.config.json)
+  ///
+  /// يجلب الحزمة من الباك-إند بتوكن SuperAdmin ثم يحفظها كملف يختاره المستخدم.
+  /// المنطق كله في [NodeProvisioningService]؛ هذه الدالة تدير الحالة والرسائل فقط.
+  Future<void> _downloadNodeConfig() async {
+    if (_isDownloadingNodeConfig) return;
+
+    setState(() => _isDownloadingNodeConfig = true);
+
+    try {
+      final config = await _nodeProvisioning.fetchNodeConfig(_company.id);
+
+      if (!mounted) return;
+
+      if (config == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذّر جلب حزمة إعداد العقدة'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+        return;
+      }
+
+      final savedPath = await _nodeProvisioning.saveNodeConfigFile(config);
+
+      if (!mounted) return;
+
+      if (savedPath != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم حفظ حزمة إعداد العقدة:\n$savedPath'),
+            backgroundColor: const Color(0xFF059669),
+          ),
+        );
+      } else {
+        // المستخدم ألغى الحفظ أو حدث خطأ في الكتابة
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم إلغاء حفظ الحزمة')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloadingNodeConfig = false);
+      }
+    }
   }
 
   /// الدخول للشركة كمدير

@@ -42,6 +42,10 @@ class ApiConfig {
   static String companyToggleStatus(String id) =>
       '/superadmin/companies/$id/toggle-status';
 
+  /// حزمة إعداد العقدة (Node config) — محمي بـ SuperAdmin JWT (وليس internal key)
+  static String companyNodeConfig(String id) =>
+      '/superadmin/companies/$id/node-config';
+
   // ============================================
   // Endpoints - Citizens
   // ============================================
