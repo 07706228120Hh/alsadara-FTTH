@@ -363,6 +363,39 @@ public class SuperAdminController : ControllerBase
     }
 
     /// <summary>
+    /// جلب إعدادات العقدة الموزعة لشركة (قراءة فقط - بدون أي أسرار)
+    /// يشتق القيم من بيانات موجودة وإعداد Gateway العام فقط.
+    /// </summary>
+    [HttpGet("companies/{id}/node-config")]
+    public async Task<IActionResult> GetNodeConfig(Guid id)
+    {
+        try
+        {
+            var company = await _unitOfWork.Companies.GetByIdAsync(id);
+            if (company == null || company.IsDeleted)
+                return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+            var gatewayUrl = _configuration["Distributed:GatewayUrl"] ?? "https://72.61.183.61";
+
+            var nodeConfig = new
+            {
+                company_id = company.Id,
+                company_name = company.Name,
+                node_id = "node-" + (string.IsNullOrWhiteSpace(company.Code) ? company.Id.ToString() : company.Code),
+                gateway_url = gatewayUrl,
+                jwks_url = gatewayUrl + "/.well-known/jwks.json"
+            };
+
+            return Ok(new { success = true, data = nodeConfig });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب إعدادات العقدة للشركة {CompanyId}", id);
+            return StatusCode(500, new { success = false, message = "حدث خطأ في جلب إعدادات العقدة" });
+        }
+    }
+
+    /// <summary>
     /// إنشاء شركة جديدة
     /// </summary>
     [HttpPost("companies")]
