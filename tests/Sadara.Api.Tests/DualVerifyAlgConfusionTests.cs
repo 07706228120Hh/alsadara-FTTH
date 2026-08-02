@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using FluentAssertions;
 using Microsoft.IdentityModel.Tokens;
+using Sadara.Infrastructure.Identity;
 using Xunit;
 
 namespace Sadara.Api.Tests;
@@ -13,23 +14,22 @@ namespace Sadara.Api.Tests;
 /// هجوم alg confusion و alg:none، إضافةً إلى قبول التوكنات الصحيحة (HS256 و RS256).
 ///
 /// ═══ ما الذي يُختبَر بالضبط ═══
-/// هذا الاختبار **يعيد بناء `TokenValidationParameters` حرفياً** كما تُبنى داخل lambda الـ
-/// `.AddJwtBearer(...)` في `src/Backend/API/Sadara.API/Program.cs` (الأسطر 157–183):
+/// هذا الاختبار يستدعي **المصنع الإنتاجي الفعلي** `JwtValidationParametersFactory.Build(...)`
+/// (في `Sadara.Infrastructure.Identity`) — نفس الدالة التي يستدعيها `Program.cs` داخل
+/// `.AddJwtBearer(...)` لبناء `options.TokenValidationParameters`. المصنع يبني:
 ///   • IssuerSigningKeys = { new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),   // HS256 دائماً
-///                           new RsaSecurityKey(rsa.ExportParameters(false)){ KeyId } }  // RS256 عند التهيئة
+///                           rs256PublicKey (مع KeyId) عند التهيئة (≠ null) }             // RS256
 ///   • ValidAlgorithms   = { SecurityAlgorithms.HmacSha256, SecurityAlgorithms.RsaSha256 }
 ///   • ValidateIssuerSigningKey = ValidateIssuer = ValidateAudience = ValidateLifetime = true
 ///   • ClockSkew = TimeSpan.Zero
-///   • ValidIssuer / ValidAudience = نفس القيم (مع fallback "SadaraPlatform"/"SadaraClients").
+///   • ValidIssuer / ValidAudience = نفس القيم.
 ///
 /// ثم يشغّل `new JwtSecurityTokenHandler().ValidateToken(...)` مباشرةً على هذه البارامترات.
 ///
-/// ⚠️ حدود التغطية (documented gap):
-/// هذا **ليس** تشغيلاً للـ ASP.NET middleware الفعلي؛ لأن البارامترات تُبنى داخل الـ lambda ولا
-/// تُصدَّر إلى دالة قابلة للاستدعاء. الاختبار يحاكي نفس البارامترات نصّاً بنصّ. أي انحراف مستقبلي
-/// بين Program.cs وهذا الملف لن يُلتقَط تلقائياً. التوصية (في التقرير): استخراج بناء البارامترات
-/// إلى helper ثابت قابل للاختبار (مثل JwtValidationParametersFactory.Build(config, rsaPublicKey))
-/// يُستدعى من Program.cs ومن الاختبار معاً — عندها يغطّي المسار الفعلي.
+/// ✅ إغلاق الفجوة (كانت documented gap): بعد استخراج البناء إلى المصنع، صار الاختبار يغطّي المسار
+/// الإنتاجي الفعلي لا نسخة موازية. أي انحراف مستقبلي في منطق بناء البارامترات يُلتقَط هنا تلقائياً،
+/// لأن Program.cs والاختبار يستهلكان نفس `JwtValidationParametersFactory.Build`.
+/// (يبقى ما لا يُغطَّى: تركيب الـ ASP.NET middleware نفسه وربط JwtBearerEvents — خارج نطاق هذا الاختبار.)
 ///
 /// السرّ والمفاتيح أدناه قيم اختبار محلية مولّدة لحظياً، لا علاقة لها بأي سرّ إنتاجي.
 /// </summary>
@@ -51,48 +51,24 @@ public class DualVerifyAlgConfusionTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // إعادة بناء البارامترات حرفياً كما في Program.cs
+    // بناء البارامترات عبر المصنع الإنتاجي الفعلي (JwtValidationParametersFactory)
+    // — نفس الدالة التي يستدعيها Program.cs. لا إعادة بناء يدوية.
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>البارامترات في وضع "التشغيل المزدوج" (RS256 مهيّأ): HS256 + RS256 معاً — كما Program.cs عند Algorithm=RS256.</summary>
     private static TokenValidationParameters BuildDualVerifyParameters()
     {
-        var signingKeys = new List<SecurityKey>
-        {
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret)) // HS256 — دائماً
-        };
-        // rs256SingletonForJwks != null ⇒ يُضاف المفتاح العام RS256 (نفس منطق السطر 161–166).
-        signingKeys.Add(new RsaSecurityKey(ServerRsa.ExportParameters(includePrivateParameters: false))
+        // rs256SingletonForJwks != null ⇒ يُمرَّر المفتاح العام RS256 (بنفس شكل Program.cs: RsaSecurityKey مع KeyId).
+        var rs256PublicKey = new RsaSecurityKey(ServerRsa.ExportParameters(includePrivateParameters: false))
         {
             KeyId = "server-rs256-kid"
-        });
-
-        return NewParams(signingKeys);
-    }
-
-    /// <summary>البارامترات في وضع "OFF" (RS256 غير مهيّأ): HS256 فقط — محاكاة السطر 157–160 دون الإضافة.</summary>
-    private static TokenValidationParameters BuildHs256OnlyParameters()
-    {
-        var signingKeys = new List<SecurityKey>
-        {
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Secret)) // HS256 — دائماً، بلا RS256
         };
-        return NewParams(signingKeys);
+        return JwtValidationParametersFactory.Build(Secret, Issuer, Audience, rs256PublicKey);
     }
 
-    // نفس كتلة TokenValidationParameters في Program.cs (169–183) حرفياً، مع تباين IssuerSigningKeys فقط.
-    private static TokenValidationParameters NewParams(List<SecurityKey> signingKeys) => new()
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKeys = signingKeys,
-        ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256, SecurityAlgorithms.RsaSha256 },
-        ValidateIssuer = true,
-        ValidIssuer = Issuer,
-        ValidateAudience = true,
-        ValidAudience = Audience,
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
-    };
+    /// <summary>البارامترات في وضع "OFF" (RS256 غير مهيّأ): HS256 فقط — يُمرَّر null للمفتاح العام (كما Program.cs عند HS256).</summary>
+    private static TokenValidationParameters BuildHs256OnlyParameters()
+        => JwtValidationParametersFactory.Build(Secret, Issuer, Audience, rs256PublicKey: null);
 
     // ─────────────────────────────────────────────────────────────────────────
     // مولّدات التوكنات (صحيحة وهجومية)

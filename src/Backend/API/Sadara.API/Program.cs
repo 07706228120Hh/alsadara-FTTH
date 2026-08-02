@@ -129,10 +129,9 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 
 // JWT Authentication
+// fail-closed: Jwt:Secret مطلوب — نرفض بدل السقوط الصامت. يُمرَّر كما هو إلى JwtValidationParametersFactory
+// الذي يُشفّره بـ UTF8 (يطابق مسار التوقيع JwtTokenSigner؛ محايد للسرّ الحالي ASCII ويزيل قنبلة المحارف غير ASCII).
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.");
-// ADR-003 خطوة أ (إصلاح ترميز التحقّق): UTF8 ليطابق مسار التوقيع (JwtTokenSigner يستخدم UTF8).
-// محايد سلوكياً للسرّ الحالي (ASCII ⇒ نفس البايتات) لكنه يزيل قنبلة موقوتة عند احتواء السرّ على محارف غير ASCII.
-var key = Encoding.UTF8.GetBytes(jwtSecret);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -147,40 +146,24 @@ builder.Services.AddAuthentication(options =>
     // ═══ ADR-003 خطوة أ: التشغيل المزدوج للتحقّق (Dual-verify) — التوقيع يبقى حسب Jwt:Algorithm (افتراضي HS256). ═══
     // التحقّق يقبل الخوارزميتين معاً استعداداً للانتقال إلى RS256، بلا تفعيل التوقيع RS256.
     //
-    // قائمة مفاتيح التوقيع:
-    //   • مفتاح HS256 المتماثل (Encoding.UTF8) — مضاف دائماً (fail-closed: Jwt:Secret مطلوب أعلاه).
-    //   • مفتاح RS256 العام — يُضاف فقط إن كان مهيّأً (rs256SingletonForJwks ≠ null، أي Jwt:Algorithm=RS256 مع مفتاح صالح).
-    //     لا نولّد مفتاحاً هنا؛ نعيد استخدام نفس singleton المستهلَك من JwksService (مصدر واحد للمفتاح العام).
+    // بناء البارامترات صار في مصنع ثابت قابل للاختبار (JwtValidationParametersFactory) يستدعيه
+    // Program.cs والاختبار الأمني معاً — فيغطّي اختبار alg confusion المسار الإنتاجي الفعلي بدل إعادة بنائه.
     //
-    // عند OFF أو غياب مفتاح RS256 ⇒ القائمة = مفتاح HS256 فقط ⇒ السلوك مطابق للحالي (لكن UTF8 بدل ASCII).
-    // عند تهيئة مفتاح RS256 ⇒ يُقبل الاثنان (تشغيل مزدوج).
-    var signingKeys = new List<SecurityKey>
-    {
-        new SymmetricSecurityKey(key) // HS256 — دائماً
-    };
-    if (rs256SingletonForJwks is not null)
-    {
-        signingKeys.Add(new RsaSecurityKey(rs256SingletonForJwks.ExportPublicKeyParameters())
+    // المفتاح العام RS256 يُمرَّر فقط إن كان مهيّأً (rs256SingletonForJwks ≠ null، أي Jwt:Algorithm=RS256 مع مفتاح صالح).
+    // لا نولّد مفتاحاً هنا؛ نعيد استخدام نفس singleton المستهلَك من JwksService (مصدر واحد للمفتاح العام).
+    // عند OFF أو غياب مفتاح RS256 ⇒ HS256 فقط ⇒ السلوك مطابق للحالي.
+    var rs256PublicKey = rs256SingletonForJwks is not null
+        ? new RsaSecurityKey(rs256SingletonForJwks.ExportPublicKeyParameters())
         {
             KeyId = rs256SingletonForJwks.KeyId
-        });
-    }
+        }
+        : null;
 
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKeys = signingKeys,
-        // تحصين إلزامي ضد alg confusion (RS256↔HS256) و alg:none: نحصر الخوارزميات المقبولة صراحةً.
-        // لا نعتمد الافتراضي أبداً. المكتبة تختار المفتاح المطابق لنوع الخوارزمية المُعلَنة، فلا يُقبل
-        // توكن يدّعي HS256 موقّعاً بمادة المفتاح العام RSA ولا العكس.
-        ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256, SecurityAlgorithms.RsaSha256 },
-        ValidateIssuer = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
-        ValidateAudience = true,
-        ValidAudience = builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
-    };
+    options.TokenValidationParameters = JwtValidationParametersFactory.Build(
+        jwtSecret,
+        builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
+        builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
+        rs256PublicKey);
 
     // ═══ SignalR: قراءة JWT من query string لاتصالات WebSocket ═══
     options.Events = new JwtBearerEvents
