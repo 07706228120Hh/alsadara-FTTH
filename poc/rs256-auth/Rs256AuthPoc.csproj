@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- إثبات فكرة معزول تماماً — لا يمسّ الإنتاج ولا نظام الدخول الحقيقي.
+       يوضّح ترقية توقيع بطاقة الدخول من HS256 (مفتاح مشترك) إلى RS256
+       (مفتاح خاص في المركز + مفتاح عام في عقدة كل شركة). -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Sadara.Poc.Rs256Auth</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
+  </ItemGroup>
+
+</Project>

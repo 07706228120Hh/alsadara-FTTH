@@ -54,12 +54,47 @@ builder.Services.AddScoped<ICurrentTenant, Sadara.API.Services.CurrentTenant>();
 
 // Identity Services
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
-builder.Services.AddScoped<IJwtService>(sp => new JwtService(
-    builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed."),
-    builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
-    builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
-    int.Parse(builder.Configuration["Jwt:ExpiryMinutes"] ?? "60")
-));
+
+// ═══ ADR-002: اختيار خوارزمية توقيع JWT عبر إعداد Jwt:Algorithm (يبدأ OFF = HS256) ═══
+// الافتراضي HS256 ⇒ نفس مسار الإنتاج الحالي حرفياً (لا تغيير سلوك). RS256 قدرة إضافية خلف flag.
+var jwtAlgorithm = (builder.Configuration["Jwt:Algorithm"] ?? "HS256").Trim().ToUpperInvariant();
+
+// المفتاح الخاص RS256 يُقرأ من مسار ملف خارجي فقط (متغيّر بيئة/إعداد) — لا يُخزَّن في appsettings*.json.
+// اسم المتغيّر: Jwt:Rs256PrivateKeyPath (مثلاً من env var Jwt__Rs256PrivateKeyPath). null = غير مهيّأ.
+var rs256PrivateKeyPath = builder.Configuration["Jwt:Rs256PrivateKeyPath"];
+Rs256JwtService? rs256SingletonForJwks = null;
+
+if (jwtAlgorithm == "RS256")
+{
+    // fail-closed: RS256 يتطلب مسار مفتاح خاص صالح وموجود، وإلا نرفض بدل السقوط الصامت إلى HS256.
+    if (string.IsNullOrWhiteSpace(rs256PrivateKeyPath) || !File.Exists(rs256PrivateKeyPath))
+        throw new InvalidOperationException(
+            "Jwt:Algorithm=RS256 لكن Jwt:Rs256PrivateKeyPath غير مضبوط أو الملف غير موجود — fail-closed.");
+
+    var rs256Pem = File.ReadAllText(rs256PrivateKeyPath);
+    var rs256Issuer = builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform";
+    var rs256Audience = builder.Configuration["Jwt:Audience"] ?? "SadaraClients";
+    var rs256Expiry = int.Parse(builder.Configuration["Jwt:ExpiryMinutes"] ?? "60");
+    var rs256KeyId = builder.Configuration["Jwt:Rs256KeyId"]; // اختياري
+
+    // نبني نسخة singleton لخدمة JWKS (نشر المفتاح العام) وللتسجيل كـ IJwtService.
+    rs256SingletonForJwks = new Rs256JwtService(rs256Pem, rs256Issuer, rs256Audience, rs256Expiry, rs256KeyId);
+    var rs256Captured = rs256SingletonForJwks;
+    builder.Services.AddScoped<IJwtService>(_ => rs256Captured);
+}
+else
+{
+    // HS256 (الافتراضي/OFF) — التسجيل الحالي حرفياً دون أي تغيير.
+    builder.Services.AddScoped<IJwtService>(sp => new JwtService(
+        builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed."),
+        builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
+        builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
+        int.Parse(builder.Configuration["Jwt:ExpiryMinutes"] ?? "60")
+    ));
+}
+
+// ═══ ADR-002: خدمة JWKS. عند HS256/OFF أو غياب مفتاح RS256 ⇒ { "keys": [] } (لا توليد تلقائي). ═══
+builder.Services.AddSingleton(new JwksService(rs256SingletonForJwks));
 
 // SMS Service (Mock)
 builder.Services.AddScoped<ISmsService, MockSmsService>();
@@ -104,17 +139,42 @@ builder.Services.AddAuthentication(options =>
 {
     options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
     options.SaveToken = true;
-    options.TokenValidationParameters = new TokenValidationParameters
+
+    // ═══ ADR-002: بارامترات التحقّق مشروطة على Jwt:Algorithm. الفرع الافتراضي (HS256/OFF) هو المسار الحالي حرفياً. ═══
+    if (jwtAlgorithm == "RS256")
     {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
-        ValidateAudience = true,
-        ValidAudience = builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
-    };
+        // مسار RS256 (قدرة إضافية — لا يُنفَّذ عند OFF). التشغيل المزدوج (قبول HS256+RS256) مهمة لاحقة خارج نطاق هذه الزيادة.
+        // ValidAlgorithms مُحدَّدة صراحةً (تحصين ضد alg confusion — الشرط الأمني 4).
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = rs256SingletonForJwks is not null
+                ? new RsaSecurityKey(rs256SingletonForJwks.ExportPublicKeyParameters()) { KeyId = rs256SingletonForJwks.KeyId }
+                : throw new InvalidOperationException("Jwt:Algorithm=RS256 لكن مفتاح RS256 غير مهيّأ — fail-closed."),
+            ValidAlgorithms = new[] { SecurityAlgorithms.RsaSha256 },
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    }
+    else
+    {
+        // HS256 (الافتراضي/OFF) — نفس بارامترات التحقّق الحالية حرفياً. التوكنات الحالية تُقبل تماماً كما اليوم.
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "SadaraPlatform",
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "SadaraClients",
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    }
 
     // ═══ SignalR: قراءة JWT من query string لاتصالات WebSocket ═══
     options.Events = new JwtBearerEvents
@@ -335,6 +395,11 @@ app.MapHub<Sadara.API.Hubs.LocationHub>("/hubs/location");
 app.MapHub<Sadara.API.Hubs.ChatHub>("/hubs/chat");
 app.MapHub<Sadara.API.Hubs.TaskHub>("/hubs/tasks");
 app.MapHealthChecks("/health");
+
+// ═══ ADR-002: نقطة JWKS لنشر المفتاح العام RS256. ═══
+// عند HS256/OFF أو غياب مفتاح RS256 مهيّأ ⇒ { "keys": [] } (لا توليد تلقائي، لا كشف سرّ HS256).
+app.MapGet("/.well-known/jwks.json", (JwksService jwks) => Results.Json(jwks.GetJwks()))
+    .AllowAnonymous();
 
 // Apply migrations and seed data
 using (var scope = app.Services.CreateScope())

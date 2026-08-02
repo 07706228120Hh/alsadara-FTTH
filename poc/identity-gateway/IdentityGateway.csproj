@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- بوابة الهوية المركزية (نموذج أوّلي معزول).
+       سلطة الهوية/الترخيص: تصادق مدير الشركة وتُصدر بطاقة RS256 صالحة 24 ساعة،
+       وتنشر المفتاح العام عبر /.well-known/jwks.json لتتحقق منه عقد الشركات.
+       لا يمسّ الإنتاج ولا نظام الدخول الحالي — تخزين في الذاكرة فقط. -->
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Sadara.Poc.IdentityGateway</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
+  </ItemGroup>
+
+</Project>
