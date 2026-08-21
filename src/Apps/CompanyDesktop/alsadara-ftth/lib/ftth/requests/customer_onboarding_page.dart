@@ -384,7 +384,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           'birthday': _birthday.text.trim(),
         },
       },
-      'subscription': {'id': null, 'planName': _selectedPlanName ?? 'FIBER 35', 'username': null, 'password': null},
+      'subscription': {'id': null, 'planName': _selectedPlanName ?? (_plans.isNotEmpty ? (_plans.first['planName']?.toString() ?? _plans.first['displayValue']?.toString() ?? '') : ''), 'username': null, 'password': null},
       'requestAccountSiteInfo': {
         'gpsCoordinates': '${_mapCenter.latitude}, ${_mapCenter.longitude}',
         'address': _nearestPoint.text.trim(), 'appartmentNumber': _apartment.text.trim(),

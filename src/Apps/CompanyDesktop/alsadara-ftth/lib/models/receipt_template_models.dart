@@ -866,12 +866,12 @@ class TemplateVariableRegistry {
     TemplateVariable(
         key: 'selectedPlan',
         displayName: 'الخطة المختارة',
-        sampleValue: 'FIBER 35',
+        sampleValue: 'TURBO',
         category: 'service'),
     TemplateVariable(
         key: 'currentPlan',
         displayName: 'الخطة الحالية',
-        sampleValue: 'FIBER 75',
+        sampleValue: 'PRO MAX',
         category: 'service'),
     TemplateVariable(
         key: 'commitmentPeriod',

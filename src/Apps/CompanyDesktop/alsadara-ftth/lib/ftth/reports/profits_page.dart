@@ -14,6 +14,7 @@ import 'package:excel/excel.dart' as excel_pkg;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../services/auth_service.dart';
+import '../../services/ftth_plans_service.dart';
 import '../auth/auth_error_handler.dart';
 
 class ProfitsPage extends StatefulWidget {
@@ -64,28 +65,20 @@ class _ProfitsPageState extends State<ProfitsPage> {
   Map<String, Map<String, int>> actualTransactionCountByCategoryAndType = {};
 
   // بيانات الأرباح الإضافية حسب الفئات
-  Map<String, Map<String, TextEditingController>> categoryProfitControllers = {
-    '35 Fiber': {
-      'purchase': TextEditingController(),
-      'renewalFromPurchase': TextEditingController(),
-      'renewal': TextEditingController(),
-    },
-    '50 Fiber': {
-      'purchase': TextEditingController(),
-      'renewalFromPurchase': TextEditingController(),
-      'renewal': TextEditingController(),
-    },
-    '75 Fiber': {
-      'purchase': TextEditingController(),
-      'renewalFromPurchase': TextEditingController(),
-      'renewal': TextEditingController(),
-    },
-    '150 Fiber': {
-      'purchase': TextEditingController(),
-      'renewalFromPurchase': TextEditingController(),
-      'renewal': TextEditingController(),
-    },
-  };
+  // فئات الأرباح: القديمة (للبيانات التاريخية) + الفعّالة (ديناميكية من المزوّد)
+  static const List<String> _legacyCategories = [
+    '35 Fiber',
+    '50 Fiber',
+    '75 Fiber',
+    '150 Fiber',
+  ];
+  List<String> _activePlanCategories =
+      List<String>.from(FtthPlansService.fallbackActivePlans);
+  List<String> get _planCategories =>
+      [..._legacyCategories, ..._activePlanCategories];
+
+  // تُبنى ديناميكياً من _planCategories في _initializePage
+  Map<String, Map<String, TextEditingController>> categoryProfitControllers = {};
 
   // قيم الأرباح المحفوظة حسب الفئات
   Map<String, Map<String, double>> savedCategoryProfits = {};
@@ -109,8 +102,58 @@ class _ProfitsPageState extends State<ProfitsPage> {
 
   // تهيئة الصفحة بالترتيب الصحيح
   Future<void> _initializePage() async {
+    _buildCategoryControllers(); // ابنِ المتحكمات من الفئات (قديم+جديد)
+    await _loadActivePlanCategories(); // جلب الباقات الفعّالة ديناميكياً
     await _loadSavedProfits();
     await _calculateProfits();
+  }
+
+  /// بناء متحكمات الأرباح لكل فئة دون حذف الموجود
+  void _buildCategoryControllers() {
+    for (final category in _planCategories) {
+      categoryProfitControllers.putIfAbsent(
+        category,
+        () => {
+          'purchase': TextEditingController(),
+          'renewalFromPurchase': TextEditingController(),
+          'renewal': TextEditingController(),
+        },
+      );
+    }
+  }
+
+  /// جلب الباقات الفعّالة ديناميكياً من المزوّد ودمجها مع فئات الأرباح
+  Future<void> _loadActivePlanCategories() async {
+    try {
+      final active = await FtthPlansService.instance.getActivePlanNames();
+      if (active.isNotEmpty) {
+        _activePlanCategories = active;
+        _buildCategoryControllers();
+        if (mounted) setState(() {});
+      }
+    } catch (_) {}
+  }
+
+  /// تصنيف اسم الخدمة إلى فئة باقة (يدعم الأسماء الجديدة والقديمة).
+  /// نفحص الباقات الفعّالة أولاً، مع تأخير 'BASIC' لأنه يظهر ضمن اسم الحزمة "FTTH Basic".
+  String _categorizeService(String service) {
+    final s = service.toUpperCase();
+    final active = List<String>.from(_activePlanCategories);
+    active.sort((a, b) {
+      final aBasic = a.toUpperCase() == 'BASIC';
+      final bBasic = b.toUpperCase() == 'BASIC';
+      if (aBasic != bBasic) return aBasic ? 1 : -1;
+      return b.length.compareTo(a.length);
+    });
+    for (final name in active) {
+      if (name.isNotEmpty && s.contains(name.toUpperCase())) return name;
+    }
+    // الأسماء القديمة بالأرقام (فحص 150 قبل 50)
+    if (s.contains('150')) return '150 Fiber';
+    if (s.contains('75')) return '75 Fiber';
+    if (s.contains('50')) return '50 Fiber';
+    if (s.contains('35')) return '35 Fiber';
+    return 'غير محدد';
   }
 
   // تحميل القيم المحفوظة من SharedPreferences
@@ -341,20 +384,8 @@ class _ProfitsPageState extends State<ProfitsPage> {
         service = transaction['service']['displayValue'];
       }
 
-      // استخراج الفئة من اسم الخدمة
-      String category = 'غير محدد';
-      String serviceLower = service.toLowerCase();
-
-      // ملاحظة: يجب فحص 150 قبل 50 لأن "50" موجود في "150"
-      if (serviceLower.contains('150')) {
-        category = '150 Fiber';
-      } else if (serviceLower.contains('75')) {
-        category = '75 Fiber';
-      } else if (serviceLower.contains('50')) {
-        category = '50 Fiber';
-      } else if (serviceLower.contains('35')) {
-        category = '35 Fiber';
-      }
+      // استخراج الفئة من اسم الخدمة (يدعم الأسماء الجديدة والقديمة)
+      String category = _categorizeService(service);
 
       // تجاهل المعاملات التي ليست من الفئات المطلوبة
       if (category == 'غير محدد') continue;
@@ -433,7 +464,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
     Map<String, Map<String, double>> totalProfitsByCategory = {};
 
     // حساب الأرباح من معاملات الشراء مع تطبيق القاعدة الجديدة
-    for (var category in ['35 Fiber', '50 Fiber', '75 Fiber', '150 Fiber']) {
+    for (var category in _planCategories) {
       totalProfitsByCategory[category] = {
         'purchase': 0.0,
         'renewalFromPurchase': 0.0,
@@ -521,20 +552,8 @@ class _ProfitsPageState extends State<ProfitsPage> {
         service = transaction['service']['displayValue'];
       }
 
-      // استخراج الفئة من اسم الخدمة
-      String category = 'غير محدد';
-      String serviceLower = service.toLowerCase();
-
-      // ملاحظة: يجب فحص 150 قبل 50 لأن "50" موجود في "150"
-      if (serviceLower.contains('150')) {
-        category = '150 Fiber';
-      } else if (serviceLower.contains('75')) {
-        category = '75 Fiber';
-      } else if (serviceLower.contains('50')) {
-        category = '50 Fiber';
-      } else if (serviceLower.contains('35')) {
-        category = '35 Fiber';
-      }
+      // استخراج الفئة من اسم الخدمة (يدعم الأسماء الجديدة والقديمة)
+      String category = _categorizeService(service);
 
       // حساب قيمة الربح من الـ Map المحسوبة مسبقاً
       double profitAmount = 0.0;
@@ -1417,7 +1436,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                 ),
 
                 // صفوف البيانات - عرض جميع الفئات
-                ...['35 Fiber', '50 Fiber', '75 Fiber', '150 Fiber']
+                ..._planCategories
                     .map((category) {
                   // الحصول على العدد الفعلي (قبل الضرب في الأشهر)
                   int actualPurchaseCount =
@@ -1974,7 +1993,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
 
   double _calculateTotalProfitFromCategories() {
     double total = 0.0;
-    for (var category in ['35 Fiber', '50 Fiber', '75 Fiber', '150 Fiber']) {
+    for (var category in _planCategories) {
       if (savedCategoryProfits.containsKey(category)) {
         // حساب أرباح الشراء (مع القاعدة الجديدة)
         int actualPurchaseCount =
@@ -2013,7 +2032,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
   // حساب إجمالي أرباح الشراء فقط (الشهر الأول)
   double _calculateTotalPurchaseOnlyProfits() {
     double total = 0.0;
-    for (var category in ['35 Fiber', '50 Fiber', '75 Fiber', '150 Fiber']) {
+    for (var category in _planCategories) {
       if (savedCategoryProfits.containsKey(category)) {
         int actualPurchaseCount =
             actualTransactionCountByCategoryAndType[category]?['purchase'] ?? 0;
@@ -2028,7 +2047,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
   // حساب إجمالي أشهر التجديد من الشراء
   int _calculateTotalRenewalFromPurchaseMonths() {
     int total = 0;
-    for (var category in ['35 Fiber', '50 Fiber', '75 Fiber', '150 Fiber']) {
+    for (var category in _planCategories) {
       int actualPurchaseCount =
           actualTransactionCountByCategoryAndType[category]?['purchase'] ?? 0;
       int purchaseTotalMonths =
@@ -2044,7 +2063,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
   // حساب إجمالي أرباح التجديد من الشراء
   double _calculateTotalRenewalFromPurchaseProfits() {
     double total = 0.0;
-    for (var category in ['35 Fiber', '50 Fiber', '75 Fiber', '150 Fiber']) {
+    for (var category in _planCategories) {
       if (savedCategoryProfits.containsKey(category)) {
         int actualPurchaseCount =
             actualTransactionCountByCategoryAndType[category]?['purchase'] ?? 0;
@@ -2063,7 +2082,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
 
   double _calculateTotalPurchaseProfits() {
     double total = 0.0;
-    for (var category in ['35 Fiber', '50 Fiber', '75 Fiber', '150 Fiber']) {
+    for (var category in _planCategories) {
       if (savedCategoryProfits.containsKey(category)) {
         int actualPurchaseCount =
             actualTransactionCountByCategoryAndType[category]?['purchase'] ?? 0;
@@ -3004,12 +3023,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
             ],
             isHeader: true);
 
-        for (var category in [
-          '35 Fiber',
-          '50 Fiber',
-          '75 Fiber',
-          '150 Fiber'
-        ]) {
+        for (var category in _planCategories) {
           if (transactionCountByCategoryAndType.containsKey(category)) {
             final counts = transactionCountByCategoryAndType[category]!;
 

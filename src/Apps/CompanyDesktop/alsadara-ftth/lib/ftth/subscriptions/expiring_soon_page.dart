@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import '../../services/auth_service.dart';
+import '../../services/ftth_plans_service.dart';
 import '../auth/auth_error_handler.dart';
 import '../auth/login_page.dart';
 import 'package:excel/excel.dart' as ExcelLib;
@@ -65,12 +66,8 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
   String? _selectedZoneId;
   String? _selectedPlanName;
   bool _isLoadingZones = false;
-  final List<String> _planOptions = [
-    'FIBER 35',
-    'FIBER 50',
-    'FIBER 75',
-    'FIBER 100'
-  ];
+  // قائمة الباقات للفلتر — تُجلب ديناميكياً من المزوّد (مع الأسماء القديمة للبيانات التاريخية)
+  List<String> _planOptions = [];
 
   // فلاتر التاريخ: today, tomorrow, custom, default (3 days), all (بدون قيد)
   String _dateFilterType = 'default';
@@ -124,8 +121,19 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
   @override
   void initState() {
     super.initState();
+    _loadPlanOptions();
     _fetchZones();
     _fetchExpiringSoonData();
+  }
+
+  /// جلب قائمة باقات الفلتر ديناميكياً من المزوّد
+  Future<void> _loadPlanOptions() async {
+    try {
+      final plans = await FtthPlansService.instance.getFilterPlanNames();
+      if (mounted && plans.isNotEmpty) {
+        setState(() => _planOptions = plans);
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchExpiringSoonData() async {

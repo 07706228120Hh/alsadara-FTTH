@@ -2312,7 +2312,7 @@ class ThermalPrinterService {
                   'الاسم:',
                   'أحمد محمد',
                   'الخدمة:',
-                  'FIBER 50',
+                  'TURBO',
                   fontSize: 10,
                 ),
                 _buildPdfRow4Columns(
@@ -2455,7 +2455,7 @@ class ThermalPrinterService {
       final testData = {
         'customerName': 'أحمد محمد علي',
         'customerPhone': '07801234567',
-        'selectedPlan': 'FIBER 50',
+        'selectedPlan': 'TURBO',
         'selectedCommitmentPeriod': '12',
         'totalPrice': '150000',
         'currency': 'IQD',

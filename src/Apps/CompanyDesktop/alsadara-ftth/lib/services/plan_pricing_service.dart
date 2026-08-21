@@ -77,11 +77,8 @@ class PlanPricingService {
     return discount > 0 ? discount : null;
   }
 
-  /// الأسعار الافتراضية للباقات الشائعة
-  static Map<String, double> get defaultPrices => {
-        'FIBER 35': 35000,
-        'FIBER 50': 50000,
-        'FIBER 75': 75000,
-        'FIBER 150': 150000,
-      };
+  /// الأسعار الافتراضية.
+  /// لم تعد ثابتة بأسماء قديمة (FIBER…) — الأسعار الآن تُجلب ديناميكياً من
+  /// المزوّد عبر FtthPlansService.getPlanPrices()، وتُدار من محرّر أسعار الباقات.
+  static Map<String, double> get defaultPrices => const {};
 }

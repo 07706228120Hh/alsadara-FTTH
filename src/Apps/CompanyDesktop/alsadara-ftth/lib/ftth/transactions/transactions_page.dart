@@ -13,6 +13,7 @@ import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import '../../services/auth_service.dart';
+import '../../services/ftth_plans_service.dart';
 import '../auth/auth_error_handler.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'creator_amounts_page.dart';
@@ -197,11 +198,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
     },
   ];
 
-  final List<Map<String, String>> serviceNames = [
-    {'value': 'FIBER 35', 'label': 'FIBER 35'},
-    {'value': 'FIBER 50', 'label': 'FIBER 50'},
-    {'value': 'FIBER 75', 'label': 'FIBER 75'},
-    {'value': 'FIBER 150', 'label': 'FIBER 150'},
+  // الخدمات غير الباقات (VAS/أجهزة) — ثابتة
+  final List<Map<String, String>> _nonPlanServiceNames = [
     {'value': 'IPTV', 'label': 'IPTV'},
     {'value': 'Parental Control', 'label': 'الرقابة الأبوية'},
     {'value': 'VOIP', 'label': 'VOIP'},
@@ -212,9 +210,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
     {'value': 'Grace Plan', 'label': 'باقة السماح'},
   ];
 
+  // أسماء باقات FTTH — تُجلب ديناميكياً من المزوّد
+  List<String> _planNames = []; // اتحاد (قديم+جديد) — للفلتر
+  List<String> _activePlanNames = []; // الفعّالة حالياً — لبطاقات العدّ
+
+  // قائمة الفلتر الكاملة: باقات ديناميكية + خدمات ثابتة
+  List<Map<String, String>> get serviceNames => [
+        ..._planNames.map((p) => {'value': p, 'label': p}),
+        ..._nonPlanServiceNames,
+      ];
+
   @override
   void initState() {
     super.initState();
+    _loadPlanNames();
     // تعيين التاريخ الافتراضي لعرض عمليات الأمس (من 9 مساءً قبل الأمس إلى 9 مساءً الأمس)
     // التوقيت هنا بالتوقيت المحلي العراقي، وسيتم تحويله إلى UTC عند الإرسال للسيرفر
     final now = DateTime.now();
@@ -4002,33 +4011,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
                               flex: 3,
                               child: Row(
                                 children: [
-                                  Expanded(
-                                    child: _buildServiceCard(
-                                        'FIBER 35',
-                                        _getServiceTransactionCount(
-                                            'FIBER 35')),
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: _buildServiceCard(
-                                        'FIBER 50',
-                                        _getServiceTransactionCount(
-                                            'FIBER 50')),
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: _buildServiceCard(
-                                        'FIBER 75',
-                                        _getServiceTransactionCount(
-                                            'FIBER 75')),
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Expanded(
-                                    child: _buildServiceCard(
-                                        'FIBER 150',
-                                        _getServiceTransactionCount(
-                                            'FIBER 150')),
-                                  ),
+                                  for (int i = 0;
+                                      i < _activePlanNames.length;
+                                      i++) ...[
+                                    if (i > 0) const SizedBox(width: 3),
+                                    Expanded(
+                                      child: _buildServiceCard(
+                                          _activePlanNames[i],
+                                          _getServiceTransactionCount(
+                                              _activePlanNames[i])),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -5366,6 +5359,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   // دالة لحساب عدد المعاملات لخدمة معينة
+  /// جلب أسماء الباقات ديناميكياً (اتحاد قديم+جديد للفلتر، والفعّالة لبطاقات العدّ)
+  Future<void> _loadPlanNames() async {
+    try {
+      final union = await FtthPlansService.instance.getFilterPlanNames();
+      final active = await FtthPlansService.instance.getActivePlanNames();
+      if (mounted) {
+        setState(() {
+          _planNames = union;
+          _activePlanNames = active;
+        });
+      }
+    } catch (_) {}
+  }
+
   int _getServiceTransactionCount(String serviceName) {
     if (transactions.isEmpty) return 0;
 

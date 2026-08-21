@@ -15,6 +15,7 @@ import '../../services/auth_service.dart';
 import '../../services/accounting_service.dart';
 import '../../services/task_api_service.dart';
 import '../../services/plan_pricing_service.dart';
+import '../../services/ftth_plans_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../permissions/permission_manager.dart';
 import '../../theme/accounting_responsive.dart';
@@ -161,11 +162,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       'label': 'شراء اشتراك من التجربة'
     },
   ];
-  final List<Map<String, String>> _serviceNames = [
-    {'value': 'FIBER 35', 'label': 'FIBER 35'},
-    {'value': 'FIBER 50', 'label': 'FIBER 50'},
-    {'value': 'FIBER 75', 'label': 'FIBER 75'},
-    {'value': 'FIBER 150', 'label': 'FIBER 150'},
+  // الخدمات غير الباقات (VAS/أجهزة) — ثابتة
+  final List<Map<String, String>> _nonPlanServiceNames = [
     {'value': 'IPTV', 'label': 'IPTV'},
     {'value': 'Parental Control', 'label': 'الرقابة الأبوية'},
     {'value': 'VOIP', 'label': 'VOIP'},
@@ -175,6 +173,16 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     {'value': 'Hardware Plan Router', 'label': 'باقة راوتر'},
     {'value': 'Grace Plan', 'label': 'باقة السماح'},
   ];
+
+  // أسماء باقات FTTH — تُجلب ديناميكياً من المزوّد
+  List<String> _planNames = []; // اتحاد قديم+جديد — للفلتر
+  List<String> _activePlanNames = []; // الفعّالة — لمحرّر الأسعار
+
+  // قائمة الفلتر: باقات ديناميكية + خدمات ثابتة
+  List<Map<String, String>> get _serviceNames => [
+        ..._planNames.map((p) => {'value': p, 'label': p}),
+        ..._nonPlanServiceNames,
+      ];
 
   // تصنيف أنواع العمليات — 5 فئات
   static const _subscriptionTypeSet = {
@@ -291,6 +299,21 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     _loadAvailableZones();
     _loadAvailableUsernames();
     PlanPricingService.instance.load();
+    _loadPlanNames();
+  }
+
+  /// جلب أسماء الباقات ديناميكياً (اتحاد قديم+جديد للفلتر، والفعّالة لمحرّر الأسعار)
+  Future<void> _loadPlanNames() async {
+    try {
+      final union = await FtthPlansService.instance.getFilterPlanNames();
+      final active = await FtthPlansService.instance.getActivePlanNames();
+      if (mounted) {
+        setState(() {
+          _planNames = union;
+          _activePlanNames = active;
+        });
+      }
+    } catch (_) {}
   }
 
   void _setTodayAndYesterday() {
@@ -2438,21 +2461,26 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     await PlanPricingService.instance.load();
     final pricing = PlanPricingService.instance;
 
-    // الباقات المتاحة مع أسعار افتراضية
-    final allPlans = <String, double>{
-      'FIBER 35': 35000,
-      'FIBER 50': 50000,
-      'FIBER 75': 75000,
-      'FIBER 150': 150000,
-      'IPTV': 0,
-      'Parental Control': 0,
-      'VOIP': 0,
-      'VOD': 0,
-      'Learning Platform': 0,
-      'Hardware Plan ONT': 0,
-      'Hardware Plan Router': 0,
-      'Grace Plan': 0,
-    };
+    // الباقات المتاحة ديناميكياً من المزوّد + أسعارها (إن توفّرت)
+    final activePlans = await FtthPlansService.instance.getActivePlanNames();
+    final apiPrices = await FtthPlansService.instance.getPlanPrices();
+    final allPlans = <String, double>{};
+    for (final p in activePlans) {
+      allPlans[p] = apiPrices[p] ?? 0;
+    }
+    // الخدمات الثابتة (VAS/أجهزة)
+    for (final s in const [
+      'IPTV',
+      'Parental Control',
+      'VOIP',
+      'VOD',
+      'Learning Platform',
+      'Hardware Plan ONT',
+      'Hardware Plan Router',
+      'Grace Plan',
+    ]) {
+      allPlans.putIfAbsent(s, () => 0);
+    }
 
     // إنشاء controllers لكل باقة
     final controllers = <String, TextEditingController>{};
@@ -2507,10 +2535,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     TextButton.icon(
                       onPressed: () {
                         setDialogState(() {
-                          for (final entry
-                              in PlanPricingService.defaultPrices.entries) {
-                            controllers[entry.key]?.text =
-                                entry.value.toStringAsFixed(0);
+                          for (final entry in allPlans.entries) {
+                            controllers[entry.key]?.text = entry.value > 0
+                                ? entry.value.toStringAsFixed(0)
+                                : '';
                           }
                         });
                       },
@@ -2565,7 +2593,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         SizedBox(height: context.accR.spaceXS),
                         ..._buildPricingFields(
                           controllers,
-                          ['FIBER 35', 'FIBER 50', 'FIBER 75', 'FIBER 150'],
+                          activePlans,
                         ),
 
                         const Divider(height: 20),

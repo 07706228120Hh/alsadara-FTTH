@@ -54,7 +54,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
         TextCellValue('أحمد محمد'),
         TextCellValue('07701234567'),
         TextCellValue('2026-04-30'),
-        TextCellValue('FIBER 35'),
+        TextCellValue('TURBO'),
         TextCellValue('35000'),
       ]);
 
@@ -358,7 +358,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
                     decoration: InputDecoration(
                       isDense: true,
                       labelText: 'نص العرض الخاص',
-                      hintText: 'مثال: باقة FIBER 35 بسعر 30,000 فقط!',
+                      hintText: 'مثال: باقة TURBO بسعر 30,000 فقط!',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                       filled: true,
                       fillColor: Colors.orange.shade50,

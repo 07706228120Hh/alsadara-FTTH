@@ -306,12 +306,10 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     if (mounted) setState(fn);
   }
 
-  final List<String> availablePlans = [
-    "FIBER 35",
-    "FIBER 50",
-    "FIBER 75",
-    "FIBER 150",
-  ];
+  // قائمة الباقات المتاحة — تُجلب تلقائياً من واجهة المزوّد /api/plans/bundles
+  // كانت سابقاً ثابتة (FIBER 35/50/75/150) وهي أسماء قديمة لم تعد موجودة على الخادم؛
+  // استبدلها المزوّد بـ BASIC/PLUS/TURBO/PRO MAX. تُملأ ديناميكياً عبر _loadAvailablePlans().
+  List<String> availablePlans = [];
 
   // فترات الالتزام المتاحة (تمت إضافة 2 شهر بناءً على طلبك)
   final List<int> commitmentPeriods = [1, 2, 3, 6, 12];
@@ -775,7 +773,14 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     if (widget.initialAllowedActions != null) {
       _prefetchedAllowedActions = widget.initialAllowedActions;
     }
-    // initialBundles مبدئياً غير مستخدمة هنا (قد تستغل لاحقاً لحساب السعر بسرعة)
+    // جلب قائمة الباقات المتاحة تلقائياً من المزوّد (بدل القائمة الثابتة القديمة).
+    // نبدأ بالبيانات المُمرّرة مسبقاً (initialBundles) لتظهر الباقات فوراً في أول build،
+    // ثم نحدّثها من الـ API عبر _loadAvailablePlans() إن لزم.
+    final initialPlans = _parsePlansFromBundles(widget.initialBundles);
+    if (initialPlans.isNotEmpty) {
+      availablePlans = initialPlans;
+    }
+    _loadAvailablePlans();
   }
 
   Future<void> _loadDefaultWhatsAppPhone() async {
@@ -9284,17 +9289,109 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
 
   // تم إزالة صفوف المعلومات الإضافية بعد تبسيط البطاقة
 
-  // دالة للتأكد من أن الخطة المحددة موجودة في القائمة المتاحة
+  // دالة للتأكد من أن الخطة المحددة موجودة في القائمة المتاحة.
+  // مهم: لا نُرجع الخطة قسراً إلى أول عنصر (كان يسبب تحويل الباقة الفعلية → FIBER 35 قديماً)،
+  // بل نضيف الباقة الحالية للقائمة لأنها قيمة صالحة على الخادم.
   void _validateSelectedPlan() {
     if (selectedPlan == null) return; // لم يختر المستخدم بعد
-    if (!availablePlans.contains(selectedPlan)) {
-      String normalizedPlan =
-          SubscriptionInfo._normalizePlanName(selectedPlan!);
-      if (availablePlans.contains(normalizedPlan)) {
-        selectedPlan = normalizedPlan;
-      } else {
-        selectedPlan = availablePlans[0];
+    if (availablePlans.contains(selectedPlan)) return;
+    // مطابقة بعد التطبيع (فروق مسافات/حالة أحرف)
+    final normalizedSel = SubscriptionInfo._normalizePlanName(selectedPlan!);
+    for (final p in availablePlans) {
+      if (SubscriptionInfo._normalizePlanName(p) == normalizedSel) {
+        selectedPlan = p;
+        return;
       }
+    }
+    // الباقة الحالية قيمة صالحة على الخادم لكنها غير مدرجة بعد → أضِفها بدل استبدالها
+    if (selectedPlan!.trim().isNotEmpty) {
+      availablePlans.add(selectedPlan!);
+    } else if (availablePlans.isNotEmpty) {
+      selectedPlan = availablePlans.first;
+    }
+  }
+
+  /// يضمن وجود الباقة الحالية للاشتراك ضمن القائمة (كي لا يفشل الـ dropdown)
+  void _ensureCurrentPlanInList() {
+    final cur = subscriptionInfo?.currentPlan.trim() ?? '';
+    if (cur.isNotEmpty && !availablePlans.contains(cur)) {
+      availablePlans.add(cur);
+    }
+  }
+
+  /// تحليل استجابة /api/plans/bundles واستخراج أسماء الباقات المتاحة.
+  /// المصدر الأساسي: applicableSubscriptionsNames (مثال: BASIC/PLUS/TURBO/PRO MAX)،
+  /// وهي نفسها القيمة التي تُرسل في services[].value عند التجديد/التغيير.
+  List<String> _parsePlansFromBundles(Map<String, dynamic>? bundles) {
+    if (bundles == null) return const [];
+    try {
+      final items = bundles['items'];
+      if (items is! List || items.isEmpty) return const [];
+      final names = <String>[];
+      for (final item in items) {
+        if (item is! Map) continue;
+        final appNames = item['applicableSubscriptionsNames'];
+        if (appNames is List) {
+          for (final n in appNames) {
+            final s = n?.toString().trim() ?? '';
+            if (s.isNotEmpty && !names.contains(s)) names.add(s);
+          }
+        }
+      }
+      // مصدر بديل إن غابت applicableSubscriptionsNames: basePlanId من الباقات
+      if (names.isEmpty) {
+        for (final item in items) {
+          if (item is! Map) continue;
+          final subs = item['applicableSubscriptions'];
+          if (subs is List) {
+            for (final s in subs) {
+              if (s is Map) {
+                final p =
+                    (s['basePlanId'] ?? s['planName'])?.toString().trim() ?? '';
+                if (p.isNotEmpty && !names.contains(p)) names.add(p);
+              }
+            }
+          }
+        }
+      }
+      return names;
+    } catch (e) {
+      debugPrint('⚠️ فشل تحليل قائمة الباقات: $e');
+      return const [];
+    }
+  }
+
+  /// جلب قائمة الباقات المتاحة تلقائياً من المزوّد.
+  /// 1) يستخدم initialBundles المُمرّرة مسبقاً إن وُجدت، وإلا 2) يطلبها من الـ API.
+  Future<void> _loadAvailablePlans() async {
+    var plans = _parsePlansFromBundles(widget.initialBundles);
+    if (plans.isEmpty) {
+      try {
+        final resp = await AuthService.instance
+            .authenticatedRequest(
+              'GET',
+              'https://admin.ftth.iq/api/plans/bundles?includePrices=false&subscriptionId=${widget.subscriptionId}',
+            )
+            .timeout(const Duration(seconds: 15));
+        if (resp.statusCode == 200) {
+          plans = _parsePlansFromBundles(
+              jsonDecode(resp.body) as Map<String, dynamic>);
+        }
+      } catch (e) {
+        debugPrint('⚠️ فشل جلب قائمة الباقات من bundles: $e');
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      if (plans.isNotEmpty) {
+        availablePlans = plans;
+      }
+      // في كل الأحوال نضمن أن الباقة الحالية موجودة (قيمة صالحة على الخادم)
+      _ensureCurrentPlanInList();
+      _validateSelectedPlan();
+    });
+    if (plans.isNotEmpty) {
+      debugPrint('✅ الباقات المتاحة (تلقائياً): $availablePlans');
     }
   }
 

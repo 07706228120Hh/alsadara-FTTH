@@ -18,7 +18,7 @@ class WhatsAppBulkSenderPage extends StatefulWidget {
 
 class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
   final _offerTextController = TextEditingController(
-    text: 'باقة FIBER 35 بسعر 30,000 د.ع فقط!',
+    text: 'باقة TURBO بسعر 30,000 د.ع فقط!',
   );
 
   bool _isSending = false;
@@ -393,7 +393,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                   labelText: 'اسم الباقة',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.wifi),
-                  hintText: 'FIBER 35',
+                  hintText: 'TURBO',
                 ),
               ),
               const SizedBox(height: 12),
@@ -831,7 +831,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                         controller: _offerTextController,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          hintText: 'مثال: باقة FIBER 35 بسعر 30,000 د.ع فقط!',
+                          hintText: 'مثال: باقة TURBO بسعر 30,000 د.ع فقط!',
                         ),
                         maxLines: 2,
                       ),
