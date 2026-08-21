@@ -283,7 +283,13 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             // حساب الإجماليات من SubscriptionLogs (المصدر الموثوق)
             var slQuery2 = _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => l.LinkedTechnicianId == technicianId && l.CollectionType == "technician"
-                    && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+                    && l.PlanName != null && (
+                        l.PlanName.ToUpper().Contains("FIBER") ||
+                        l.PlanName.ToUpper().Contains("BASIC") ||
+                        l.PlanName.ToUpper().Contains("PLUS") ||
+                        l.PlanName.ToUpper().Contains("TURBO") ||
+                        l.PlanName.ToUpper().Contains("PRO MAX") ||
+                        l.PlanName.ToUpper().Contains("PROMAX")));
             if (from.HasValue)
             {
                 var fromUtcSl2 = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);

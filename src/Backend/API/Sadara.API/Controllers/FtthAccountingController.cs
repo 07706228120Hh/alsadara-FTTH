@@ -537,7 +537,13 @@ public class FtthAccountingController : ControllerBase
             }
 
             // فلترة خدمات الإنترنت فقط (استبعاد IPTV, Parental Control, VOIP, VOD, etc.)
-            query = query.Where(l => l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+            query = query.Where(l => l.PlanName != null && (
+                l.PlanName.ToUpper().Contains("FIBER") ||
+                l.PlanName.ToUpper().Contains("BASIC") ||
+                l.PlanName.ToUpper().Contains("PLUS") ||
+                l.PlanName.ToUpper().Contains("TURBO") ||
+                l.PlanName.ToUpper().Contains("PRO MAX") ||
+                l.PlanName.ToUpper().Contains("PROMAX")));
 
             var logs = await query.OrderByDescending(l => l.ActivationDate).ToListAsync();
 
@@ -732,7 +738,13 @@ public class FtthAccountingController : ControllerBase
             }
 
             // فلترة خدمات الإنترنت فقط (استبعاد IPTV, Parental Control, VOIP, VOD, etc.)
-            query = query.Where(l => l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+            query = query.Where(l => l.PlanName != null && (
+                l.PlanName.ToUpper().Contains("FIBER") ||
+                l.PlanName.ToUpper().Contains("BASIC") ||
+                l.PlanName.ToUpper().Contains("PLUS") ||
+                l.PlanName.ToUpper().Contains("TURBO") ||
+                l.PlanName.ToUpper().Contains("PRO MAX") ||
+                l.PlanName.ToUpper().Contains("PROMAX")));
 
             // تجميع حسب UserId مع تفصيل أنواع العمليات
             var grouped = await query
@@ -2833,7 +2845,13 @@ public class FtthAccountingController : ControllerBase
             }
 
             // فلترة خدمات الإنترنت فقط
-            query = query.Where(l => l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+            query = query.Where(l => l.PlanName != null && (
+                l.PlanName.ToUpper().Contains("FIBER") ||
+                l.PlanName.ToUpper().Contains("BASIC") ||
+                l.PlanName.ToUpper().Contains("PLUS") ||
+                l.PlanName.ToUpper().Contains("TURBO") ||
+                l.PlanName.ToUpper().Contains("PRO MAX") ||
+                l.PlanName.ToUpper().Contains("PROMAX")));
 
             var logs = await query.ToListAsync();
 
