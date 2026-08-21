@@ -184,6 +184,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ..._nonPlanServiceNames,
       ];
 
+  /// هل اسم الباقة يمثّل باقة إنترنت FTTH (قديمة FIBER أو جديدة BASIC/PLUS/TURBO/PRO MAX)؟
+  /// يُستخدم بدل فلتر contains('FIBER') الثابت الذي كان يستبعد الباقات الجديدة.
+  bool _isInternetPlanName(String planName) {
+    final p = planName.toUpperCase();
+    if (p.isEmpty) return false;
+    if (p.contains('FIBER')) return true; // الأسماء القديمة
+    // الباقات المعروفة (اتحاد ديناميكي محمّل، وإلا الاحتياطي: BASIC/PLUS/TURBO/PRO MAX + القديمة)
+    final known = _planNames.isNotEmpty
+        ? _planNames
+        : <String>[
+            ...FtthPlansService.fallbackActivePlans,
+            ...FtthPlansService.legacyPlanNames,
+          ];
+    return known.any((n) => n.isNotEmpty && p.contains(n.toUpperCase()));
+  }
+
   // تصنيف أنواع العمليات — 5 فئات
   static const _subscriptionTypeSet = {
     'PLAN_PURCHASE',
@@ -702,8 +718,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             final txId = tx['id']?.toString() ?? '';
             // تخطي العمليات المكررة (نفس المعرّف)
             if (txId.isNotEmpty && !seenTxIds.add(txId)) continue;
-            // تخطي الخدمات الإضافية (فقط FIBER = إنترنت)
-            if (!planName.toUpperCase().contains('FIBER')) continue;
+            // تخطي الخدمات الإضافية (باقات الإنترنت فقط — تدعم القديم والجديد)
+            if (!_isInternetPlanName(planName)) continue;
             final zoneId = tx['zoneId']?.toString() ?? '';
             final deviceUsername = tx['deviceUsername']?.toString() ?? '';
             final planDuration = (tx['planDurationInDays'] ??
@@ -906,8 +922,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     for (final tx in orphanTxs) {
       // تخطي إذا تم نسب هذه العملية مسبقاً
       if (tx.id.isNotEmpty && !assignedIds.add(tx.id)) continue;
-      // تخطي الخدمات الإضافية (فقط FIBER = إنترنت)
-      if (!tx.planName.toUpperCase().contains('FIBER')) continue;
+      // تخطي الخدمات الإضافية (باقات الإنترنت فقط — تدعم القديم والجديد)
+      if (!_isInternetPlanName(tx.planName)) continue;
 
       final auditCreator =
           tx.customerId.isNotEmpty ? customerAuditCreator[tx.customerId] : null;
@@ -1366,10 +1382,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           final txBody = jsonDecode(txResponse.body);
           final allTxsRaw = ((txBody is List ? txBody : (txBody['data'] ?? txBody['items'] ?? [])) as List)
               .cast<Map<String, dynamic>>();
-          // فلتر FIBER فقط — نفس فلتر الداشبورد
+          // فلتر باقات الإنترنت — نفس فلتر الداشبورد (يدعم القديم والجديد)
           final allTxs = allTxsRaw.where((tx) {
-            final plan = (tx['PlanName'] ?? tx['planName'] ?? '').toString().toUpperCase();
-            return plan.contains('FIBER');
+            final plan = (tx['PlanName'] ?? tx['planName'] ?? '').toString();
+            return _isInternetPlanName(plan);
           }).toList();
           // تجميع حسب userId
           _compareOperatorTxs = {};
