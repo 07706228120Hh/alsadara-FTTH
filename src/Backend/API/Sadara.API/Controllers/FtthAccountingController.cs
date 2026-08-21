@@ -2108,7 +2108,13 @@ public class FtthAccountingController : ControllerBase
         try
         {
             var baseQuery = _unitOfWork.SubscriptionLogs.AsQueryable()
-                .Where(l => !l.IsDeleted && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+                .Where(l => !l.IsDeleted && l.PlanName != null && (
+                    l.PlanName.ToUpper().Contains("FIBER") ||
+                    l.PlanName.ToUpper().Contains("BASIC") ||
+                    l.PlanName.ToUpper().Contains("PLUS") ||
+                    l.PlanName.ToUpper().Contains("TURBO") ||
+                    l.PlanName.ToUpper().Contains("PRO MAX") ||
+                    l.PlanName.ToUpper().Contains("PROMAX")));
 
             if (companyId.HasValue)
                 baseQuery = baseQuery.Where(l => l.CompanyId == companyId || l.CompanyId == null);
@@ -2671,7 +2677,13 @@ public class FtthAccountingController : ControllerBase
                 .Where(l => !l.IsDeleted
                     && l.JournalEntryId != null
                     && l.ActivationDate != null
-                    && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"));
+                    && l.PlanName != null && (
+                        l.PlanName.ToUpper().Contains("FIBER") ||
+                        l.PlanName.ToUpper().Contains("BASIC") ||
+                        l.PlanName.ToUpper().Contains("PLUS") ||
+                        l.PlanName.ToUpper().Contains("TURBO") ||
+                        l.PlanName.ToUpper().Contains("PRO MAX") ||
+                        l.PlanName.ToUpper().Contains("PROMAX")));
 
             if (companyId.HasValue)
                 query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
@@ -3853,7 +3865,13 @@ public class FtthAccountingController : ControllerBase
             var logsWithout = await _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => l.FtthTransactionId != null && l.JournalEntryId == null
                     && !l.IsDeleted && l.UserId.HasValue && l.CompanyId.HasValue
-                    && l.PlanPrice > 0 && l.PlanName != null && l.PlanName.ToUpper().Contains("FIBER"))
+                    && l.PlanPrice > 0 && l.PlanName != null && (
+                        l.PlanName.ToUpper().Contains("FIBER") ||
+                        l.PlanName.ToUpper().Contains("BASIC") ||
+                        l.PlanName.ToUpper().Contains("PLUS") ||
+                        l.PlanName.ToUpper().Contains("TURBO") ||
+                        l.PlanName.ToUpper().Contains("PRO MAX") ||
+                        l.PlanName.ToUpper().Contains("PROMAX")))
                 .ToListAsync();
 
             if (!logsWithout.Any())
