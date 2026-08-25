@@ -263,6 +263,10 @@ public class ServiceRequestsController : ControllerBase
 
         // بارامترات مشتركة — تُنشأ نسخة لكل استعلام لأن NpgsqlParameter لا يُعاد استخدامه عبر أوامر متعددة.
         NpgsqlParameter P(string name, object? value) => new(name, value ?? DBNull.Value);
+        // معامل نصّي بنوع صريح text — يمنع 42P08 (could not determine data type)
+        // عندما تكون القيمة NULL (المرشّحات الاختيارية source/department/assignee).
+        NpgsqlParameter PT(string name, string? value) =>
+            new(name, NpgsqlTypes.NpgsqlDbType.Text) { Value = (object?)value ?? DBNull.Value };
 
         // ═══════ Q1 — byStatus ═══════
         const string q1 = @"
@@ -273,8 +277,8 @@ WHERE ""IsDeleted"" = false
   AND (@from IS NULL OR ""CreatedAt"" >= @from)
   AND (@to   IS NULL OR ""CreatedAt"" <  @to)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND (""Details""::json->>'department') = @department))
-  AND (@assignee IS NULL OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
+  AND (@department IS NULL OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = @department))
+  AND (@assignee IS NULL OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
 GROUP BY ""Status"";";
 
         var statusRows = await _db.Database
@@ -282,9 +286,9 @@ GROUP BY ""Status"";";
                 P("@companyId", companyId),
                 P("@from", fromUtc),
                 P("@to", toUtc),
-                P("@source", normalizedSource),
-                P("@department", normalizedDepartment),
-                P("@assignee", normalizedAssignee))
+                PT("@source", normalizedSource),
+                PT("@department", normalizedDepartment),
+                PT("@assignee", normalizedAssignee))
             .ToListAsync();
 
         // بناء byStatus: كل التسع دائماً، صفر افتراضي.
@@ -330,7 +334,7 @@ SELECT (""Details""::json->>'technician') AS ""Technician"",
 FROM ""ServiceRequests""
 WHERE ""IsDeleted"" = false
   AND (@companyId IS NULL OR ""CompanyId"" = @companyId)
-  AND ""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]')
+  AND ""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]')
   AND (@from IS NULL OR ""CreatedAt"" >= @from)
   AND (@to   IS NULL OR ""CreatedAt"" <  @to)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
@@ -344,9 +348,9 @@ ORDER BY ""Total"" DESC;";
                 P("@companyId", companyId),
                 P("@from", fromUtc),
                 P("@to", toUtc),
-                P("@source", normalizedSource),
-                P("@department", normalizedDepartment),
-                P("@assignee", normalizedAssignee))
+                PT("@source", normalizedSource),
+                PT("@department", normalizedDepartment),
+                PT("@assignee", normalizedAssignee))
             .ToListAsync();
 
         var byTechnician = techRows.Select(r => new SummaryTechnician
@@ -405,7 +409,7 @@ SELECT (""Details""::json->>'technician') AS ""Technician"",
 FROM ""ServiceRequests""
 WHERE ""IsDeleted"" = false
   AND (@companyId IS NULL OR ""CompanyId"" = @companyId)
-  AND ""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]')
+  AND ""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]')
   AND ( (""Details""::json->>'taskType') LIKE '%استحصال مبلغ%' OR (""Details""::json->>'taskType') LIKE '%تحصيل مبلغ%' )
   AND (@from IS NULL OR ""CreatedAt"" >= @from)
   AND (@to   IS NULL OR ""CreatedAt"" <  @to)
@@ -420,9 +424,9 @@ ORDER BY ""TotalCollected"" DESC;";
                     P("@companyId", companyId),
                     P("@from", fromUtc),
                     P("@to", toUtc),
-                    P("@source", normalizedSource),
-                    P("@department", normalizedDepartment),
-                    P("@assignee", normalizedAssignee))
+                    PT("@source", normalizedSource),
+                    PT("@department", normalizedDepartment),
+                    PT("@assignee", normalizedAssignee))
                 .ToListAsync();
 
             var collectionsByTechnician = collectionRows.Select(r => new SummaryCollectionTechnician
