@@ -20,6 +20,34 @@ subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 
+// ─── إصلاح AGP 8+: حقن namespace للإضافات القديمة التي لا تحدّده ───
+// مثل webview_cookie_manager 2.0.6 — يقرأ package من AndroidManifest.xml،
+// وإلا يستخدم group. يجب تسجيله قبل evaluationDependsOn (وإلا "already evaluated").
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            def androidExtension = project.extensions.getByName("android")
+            if (androidExtension.namespace == null) {
+                def manifestFile = new File(project.projectDir, "src/main/AndroidManifest.xml")
+                if (manifestFile.exists()) {
+                    def matcher = (manifestFile.getText("UTF-8") =~ /package="([^"]+)"/)
+                    if (matcher.find()) {
+                        androidExtension.namespace = matcher.group(1)
+                    }
+                }
+                if (androidExtension.namespace == null) {
+                    androidExtension.namespace = project.group.toString()
+                }
+            }
+            // توحيد compileSdk 36 لكل الإضافات (مستوى التطبيق الطبيعي): يرفع القديمة
+            // (webview_cookie_manager/lStar) ولا يخفض الحديثة (androidx.browser 1.9 يحتاج 36)
+            try {
+                androidExtension.compileSdkVersion 36
+            } catch (Exception ignored) {}
+        }
+    }
+}
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
