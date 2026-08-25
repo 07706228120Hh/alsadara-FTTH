@@ -106,6 +106,10 @@ dependency_overrides:
   # نسخة محلية معدّلة: أُضيفت getCookies (قراءة cf_clearance HttpOnly عبر DevTools)
   webview_windows:
     path: third_party/webview_windows
+  # نسخة محلية معدّلة: إزالة PluginRegistry.Registrar (embedding v1 مُزال) + namespace/compileSdk
+  # لبناء أندرويد على AGP 8+ / Flutter الحديث (الإصدار الأصلي 2.0.6 يكسر البناء)
+  webview_cookie_manager:
+    path: third_party/webview_cookie_manager
 
 dev_dependencies:
   flutter_test:
