@@ -311,6 +311,12 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   // استبدلها المزوّد بـ BASIC/PLUS/TURBO/PRO MAX. تُملأ ديناميكياً عبر _loadAvailablePlans().
   List<String> availablePlans = [];
 
+  // ── ميتاداتا الحزمة (ديناميكية من /api/plans/bundles) — لبناء الطلبات بلا قيم ثابتة ──
+  // معرّفات خدمات VAS (مثل IPTV/PARENTAL_CONTROL) كما وردت في variants[type=Vas].id
+  List<String> _vasServiceIds = [];
+  // معرّف الحزمة (bundleId) كما ورد في items[].bundleId (بدل "FTTH_BASIC" الثابت)
+  String? _bundleIdFromApi;
+
   // فترات الالتزام المتاحة (تمت إضافة 2 شهر بناءً على طلبك)
   final List<int> commitmentPeriods = [1, 2, 3, 6, 12];
 
@@ -1805,16 +1811,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       priceDetails = null;
     });
     try {
-      final baseService = Uri.encodeComponent(
-          jsonEncode({"value": selectedPlan, "type": "Base"}));
-      final vasServices = [
-        {"value": "PARENTAL_CONTROL", "type": "Vas"},
-        {"value": "IPTV", "type": "Vas"},
-      ].map((s) => Uri.encodeComponent(jsonEncode(s)));
-      final servicesParams =
-          [baseService, ...vasServices].map((e) => 'services=$e').join('&');
+      final servicesParams = _buildServicesParams();
       final url =
-          'https://admin.ftth.iq/api/subscriptions/calculate-price?bundleId=${subscriptionInfo!.bundleId}&commitmentPeriodValue=$selectedCommitmentPeriod&planOperationType=Extend&subscriptionId=${widget.subscriptionId}&$servicesParams&salesType=${_getSalesTypeValue()}&changeType=1';
+          'https://admin.ftth.iq/api/subscriptions/calculate-price?bundleId=$_effectiveBundleId&commitmentPeriodValue=$selectedCommitmentPeriod&planOperationType=Extend&subscriptionId=${widget.subscriptionId}&$servicesParams&salesType=${_getSalesTypeValue()}&changeType=1';
       debugPrint('🔗 (AUTO) Extend calculate-price URL => $url');
       final r = await AuthService.instance
           .authenticatedRequest(
@@ -1926,16 +1925,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         }
 
         // fallback calculate-price trial
-        final baseService = Uri.encodeComponent(
-            jsonEncode({"value": selectedPlan, "type": "Base"}));
-        final vasServices = [
-          {"value": "IPTV", "type": "Vas"},
-          {"value": "PARENTAL_CONTROL", "type": "Vas"}
-        ].map((s) => Uri.encodeComponent(jsonEncode(s)));
-        final servicesParams =
-            [baseService, ...vasServices].map((e) => 'services=$e').join('&');
+        final servicesParams = _buildServicesParams();
         final url = 'https://admin.ftth.iq/api/subscriptions/calculate-price'
-            '?bundleId=FTTH_BASIC'
+            '?bundleId=$_effectiveBundleId'
             '&commitmentPeriodValue=$selectedCommitmentPeriod'
             '&planOperationType=PurchaseFromTrial'
             '&subscriptionId=${widget.subscriptionId}'
@@ -1956,16 +1948,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       } else {
         // اشتراك عادي (استخدام Extend عند التطابق، مع changeType=1 عند Extend)
         final opType = _getCalcPriceOperationType();
-        final baseService = Uri.encodeComponent(
-            jsonEncode({"value": selectedPlan, "type": "Base"}));
-        final vasServices = [
-          {"value": "IPTV", "type": "Vas"},
-          {"value": "PARENTAL_CONTROL", "type": "Vas"}
-        ].map((s) => Uri.encodeComponent(jsonEncode(s)));
-        final servicesParams =
-            [baseService, ...vasServices].map((e) => 'services=$e').join('&');
+        final servicesParams = _buildServicesParams();
         String url = 'https://admin.ftth.iq/api/subscriptions/calculate-price'
-            '?bundleId=${subscriptionInfo!.bundleId}'
+            '?bundleId=$_effectiveBundleId'
             '&commitmentPeriodValue=$selectedCommitmentPeriod'
             '&planOperationType=$opType'
             '&subscriptionId=${widget.subscriptionId}'
@@ -2320,18 +2305,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     debugPrint(
         '📊 جلب أسعار الاشتراك التجريبي من calculate-price مع PurchaseFromTrial...');
 
-    final baseService = Uri.encodeComponent(
-        jsonEncode({"value": selectedPlan, "type": "Base"}));
-    final vasServices = [
-      {"value": "IPTV", "type": "Vas"},
-      {"value": "PARENTAL_CONTROL", "type": "Vas"}
-    ].map((service) => Uri.encodeComponent(jsonEncode(service)));
-
-    final servicesParams = [baseService, ...vasServices]
-        .map((service) => 'services=$service')
-        .join('&');
+    final servicesParams = _buildServicesParams();
     final url = 'https://admin.ftth.iq/api/subscriptions/calculate-price'
-        '?bundleId=FTTH_BASIC'
+        '?bundleId=$_effectiveBundleId'
         '&commitmentPeriodValue=$selectedCommitmentPeriod'
         '&planOperationType=PurchaseFromTrial'
         '&subscriptionId=${widget.subscriptionId}'
@@ -2387,20 +2363,10 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   Future<void> _fetchRegularPriceDetails() async {
     debugPrint('📊 جلب أسعار الاشتراك العادي من calculate-price API...');
 
-    final baseService = Uri.encodeComponent(
-        jsonEncode({"value": selectedPlan, "type": "Base"}));
-
-    final vasServices = [
-      {"value": "IPTV", "type": "Vas"},
-      {"value": "PARENTAL_CONTROL", "type": "Vas"}
-    ].map((service) => Uri.encodeComponent(jsonEncode(service)));
-
-    final servicesParams = [baseService, ...vasServices]
-        .map((service) => 'services=$service')
-        .join('&');
+    final servicesParams = _buildServicesParams();
     final opType = _getCalcPriceOperationType();
     String url = 'https://admin.ftth.iq/api/subscriptions/calculate-price'
-        '?bundleId=${subscriptionInfo!.bundleId}'
+        '?bundleId=$_effectiveBundleId'
         '&commitmentPeriodValue=$selectedCommitmentPeriod'
         '&planOperationType=$opType'
         '&subscriptionId=${widget.subscriptionId}'
@@ -4066,14 +4032,10 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       final requestBody = {
         'subscriptionId': widget.subscriptionId,
         'customerId': widget.userId,
-        'bundleId': subscriptionInfo!.bundleId,
+        'bundleId': _effectiveBundleId,
         'commitmentPeriodValue': selectedCommitmentPeriod,
         'planOperationType': 'PurchaseFromTrial',
-        'services': [
-          {'value': selectedPlan, 'type': 'Base'},
-          {'value': 'IPTV', 'type': 'Vas'},
-          {'value': 'PARENTAL_CONTROL', 'type': 'Vas'}
-        ],
+        'services': _buildServices(),
         'salesType': _getSalesTypeValue(), // استخدام القيمة الحقيقية من API
         'paymentMethod': selectedPaymentMethod,
         'walletSource':
@@ -4309,13 +4271,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       bool useAltCommitKey =
           false, // استخدام commitmentPeriod بدل commitmentPeriodValue أو إضافته
     }) {
-      final services = <Map<String, String>>[
-        {'value': selectedPlan.toString(), 'type': 'Base'},
-        if (includeVas) {'value': 'IPTV', 'type': 'Vas'},
-        if (includeVas) {'value': 'PARENTAL_CONTROL', 'type': 'Vas'},
-      ];
+      final services = _buildServices(includeVas: includeVas);
       final body = <String, dynamic>{
-        'bundleId': subscriptionInfo!.bundleId,
+        'bundleId': _effectiveBundleId,
         'commitmentPeriodValue': selectedCommitmentPeriod,
         'services': services,
       };
@@ -4921,11 +4879,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     // }
     // ملاحظة مهمة: لا يوجد planOperationType في الطلب الناجح!
     Map<String, dynamic> buildBody() {
-      final services = [
-        {'value': selectedPlan, 'type': 'Base'},
-        {'value': 'IPTV', 'type': 'Vas'},
-        {'value': 'PARENTAL_CONTROL', 'type': 'Vas'},
-      ];
+      final services = _buildServices();
 
       // الحصول على السعر المحسوب من priceDetails
       final simulatedPrice = priceDetails?['finalPrice'] ??
@@ -4940,7 +4894,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       final body = <String, dynamic>{
         'simulatedPrice':
             simulatedPrice is double ? simulatedPrice.toInt() : simulatedPrice,
-        'bundleId': subscriptionInfo!.bundleId,
+        'bundleId': _effectiveBundleId,
         'services': services,
         'commitmentPeriodValue': selectedCommitmentPeriod,
         'salesType': _getSalesTypeValue(),
@@ -9303,7 +9257,14 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         return;
       }
     }
-    // الباقة الحالية قيمة صالحة على الخادم لكنها غير مدرجة بعد → أضِفها بدل استبدالها
+    // للاشتراك الجديد (تجريبي): الباقة الحالية اسم قديم لا يقبله الخادم
+    // (مثل "Fiber 35" من اشتراك تجريبي أُنشئ قبل تغيير الأسماء) → لا نُبقيه؛
+    // نختار أول باقة صالحة من الحزمة كي لا يُرسَل اسم مرفوض عند الشراء.
+    if (isNewSubscription) {
+      if (availablePlans.isNotEmpty) selectedPlan = availablePlans.first;
+      return;
+    }
+    // للتجديد: الباقة الحالية قيمة صالحة على الخادم لكنها غير مدرجة بعد → أضِفها بدل استبدالها
     if (selectedPlan!.trim().isNotEmpty) {
       availablePlans.add(selectedPlan!);
     } else if (availablePlans.isNotEmpty) {
@@ -9361,10 +9322,88 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     }
   }
 
+  /// يلتقط من استجابة /api/plans/bundles: معرّف الحزمة (bundleId) ومعرّفات خدمات
+  /// VAS (من variants[type=Vas].id) — ليُبنى services والطلبات ديناميكياً بلا قيم ثابتة.
+  void _captureBundleMeta(Map<String, dynamic>? bundles) {
+    if (bundles == null) return;
+    try {
+      final items = bundles['items'];
+      if (items is! List || items.isEmpty) return;
+      String? bundleId;
+      final vasIds = <String>[];
+      for (final item in items) {
+        if (item is! Map) continue;
+        final b = item['bundleId']?.toString().trim();
+        if ((bundleId == null || bundleId.isEmpty) && b != null && b.isNotEmpty) {
+          bundleId = b;
+        }
+        final subs = item['applicableSubscriptions'];
+        if (subs is List) {
+          for (final s in subs) {
+            if (s is! Map) continue;
+            final variants = s['variants'];
+            if (variants is! List) continue;
+            for (final v in variants) {
+              if (v is! Map) continue;
+              final t = v['type'];
+              final typeStr = (t is Map)
+                  ? (t['displayValue']?.toString() ?? '')
+                  : (t?.toString() ?? '');
+              if (typeStr.toLowerCase() == 'vas') {
+                final id = v['id']?.toString().trim() ?? '';
+                if (id.isNotEmpty && !vasIds.contains(id)) vasIds.add(id);
+              }
+            }
+          }
+        }
+      }
+      if (bundleId != null && bundleId.isNotEmpty) _bundleIdFromApi = bundleId;
+      if (vasIds.isNotEmpty) _vasServiceIds = vasIds;
+    } catch (e) {
+      debugPrint('⚠️ فشل التقاط ميتاداتا الحزمة: $e');
+    }
+  }
+
+  /// معرّف الحزمة الفعّال: من الـ API أولاً، ثم من الاشتراك، وأخيراً fallback أمان.
+  String get _effectiveBundleId {
+    final a = _bundleIdFromApi?.trim() ?? '';
+    if (a.isNotEmpty) return a;
+    final s = subscriptionInfo?.bundleId.trim() ?? '';
+    if (s.isNotEmpty) return s;
+    return 'FTTH_BASIC';
+  }
+
+  /// يبني مصفوفة services للطلبات (purchase/change/calculate-price) ديناميكياً:
+  /// الباقة الأساسية (selectedPlan) + خدمات VAS المُلتقطة من الحزمة.
+  /// عند غياب VAS المُلتقطة نرجع لقيم أمان ثابتة (لا يُفترض حدوثه بعد نجاح الجلب).
+  List<Map<String, dynamic>> _buildServices({bool includeVas = true}) {
+    final services = <Map<String, dynamic>>[];
+    final plan = selectedPlan?.toString().trim() ?? '';
+    if (plan.isNotEmpty) services.add({'value': plan, 'type': 'Base'});
+    if (includeVas) {
+      final vas = _vasServiceIds.isNotEmpty
+          ? _vasServiceIds
+          : const ['IPTV', 'PARENTAL_CONTROL'];
+      for (final v in vas) {
+        services.add({'value': v, 'type': 'Vas'});
+      }
+    }
+    return services;
+  }
+
+  /// نفس قائمة services مُرمَّزة كمعاملات URL لـ calculate-price:
+  /// services=...&services=...
+  String _buildServicesParams({bool includeVas = true}) {
+    return _buildServices(includeVas: includeVas)
+        .map((s) => 'services=${Uri.encodeComponent(jsonEncode(s))}')
+        .join('&');
+  }
+
   /// جلب قائمة الباقات المتاحة تلقائياً من المزوّد.
   /// 1) يستخدم initialBundles المُمرّرة مسبقاً إن وُجدت، وإلا 2) يطلبها من الـ API.
   Future<void> _loadAvailablePlans() async {
-    var plans = _parsePlansFromBundles(widget.initialBundles);
+    Map<String, dynamic>? bundlesData = widget.initialBundles;
+    var plans = _parsePlansFromBundles(bundlesData);
     if (plans.isEmpty) {
       try {
         final resp = await AuthService.instance
@@ -9374,13 +9413,15 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             )
             .timeout(const Duration(seconds: 15));
         if (resp.statusCode == 200) {
-          plans = _parsePlansFromBundles(
-              jsonDecode(resp.body) as Map<String, dynamic>);
+          bundlesData = jsonDecode(resp.body) as Map<String, dynamic>;
+          plans = _parsePlansFromBundles(bundlesData);
         }
       } catch (e) {
         debugPrint('⚠️ فشل جلب قائمة الباقات من bundles: $e');
       }
     }
+    // التقاط bundleId + معرّفات VAS من نفس الاستجابة (ديناميكي)
+    _captureBundleMeta(bundlesData);
     if (!mounted) return;
     setState(() {
       if (plans.isNotEmpty) {

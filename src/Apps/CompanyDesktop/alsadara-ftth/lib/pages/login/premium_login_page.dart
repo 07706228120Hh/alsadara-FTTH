@@ -855,8 +855,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // الشعار المتحرك
-          _buildAnimatedLogo(size: 80),
+          // صورة الترحيب داخل بطاقة بإطار
+          _buildHeroPortrait(width: 260, radius: 24),
           const SizedBox(height: 32),
 
           // العنوان الرئيسي
@@ -946,7 +946,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     final isSmall = w < 420;
     return Column(
       children: [
-        _buildAnimatedLogo(size: isSmall ? 40 : 60),
+        _buildHeroPortrait(width: isSmall ? 96 : 128, radius: isSmall ? 18 : 22),
         SizedBox(height: isSmall ? 6 : 16),
         Text(
           'منصة صدارة',
@@ -968,30 +968,46 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     );
   }
 
-  /// شعار ثابت
-  Widget _buildAnimatedLogo({required double size}) {
+  /// بطاقة صورة الترحيب (hero) بإطار وحواف دائرية
+  /// تُعرض في قسم الترحيب (سطح المكتب) والرأس المضغوط (تابلت/هاتف)
+  Widget _buildHeroPortrait({required double width, required double radius}) {
     return Container(
-      width: size,
-      height: size,
+      width: width,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: _primaryGradient,
-        ),
-        borderRadius: BorderRadius.circular(size * 0.3),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: Colors.white.withOpacity(0.25), width: 2),
         boxShadow: [
           BoxShadow(
             color: _primaryGradient[0].withOpacity(0.4),
-            blurRadius: 20,
-            spreadRadius: 2,
+            blurRadius: 30,
+            spreadRadius: 1,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      child: Icon(
-        Icons.fiber_smart_record,
-        size: size * 0.5,
-        color: Colors.white,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius - 2),
+        child: AspectRatio(
+          // الصورة مربّعة تقريباً — نعرضها كاملة دون قص
+          aspectRatio: 1,
+          child: Image.asset(
+            'assets/login_hero.jpg',
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            // احتياط: إن غابت الصورة نعرض تدرّجاً بأيقونة بدل شاشة مكسورة
+            errorBuilder: (context, error, stack) => Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: _primaryGradient,
+                ),
+              ),
+              child: const Icon(Icons.person_rounded,
+                  color: Colors.white54, size: 64),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -1064,11 +1064,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
 
     try {
       // بناء جسم الطلب
-      final services = [
-        {'value': selectedPlan, 'type': 'Base'},
-        {'value': 'IPTV', 'type': 'Vas'},
-        {'value': 'PARENTAL_CONTROL', 'type': 'Vas'},
-      ];
+      final services = _buildServices();
 
       final simulatedPrice = priceDetails?['finalPrice'] ??
           priceDetails?['totalAmountWithVat'] ??
@@ -1087,7 +1083,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
         apiUrl = 'https://admin.ftth.iq/api/subscriptions/purchase';
         body = {
           'zoneId': subscriptionInfo!.zoneId,
-          'bundleId': subscriptionInfo!.bundleId,
+          'bundleId': _effectiveBundleId,
           'services': services,
           'commitmentPeriod': selectedCommitmentPeriod,
           'trialSubscriptionId': widget.subscriptionId,
@@ -1105,7 +1101,7 @@ extension SubscriptionRenewalActions on _SubscriptionDetailsPageState {
         body = {
           'simulatedPrice':
               simulatedPrice is double ? simulatedPrice.toInt() : simulatedPrice,
-          'bundleId': subscriptionInfo!.bundleId,
+          'bundleId': _effectiveBundleId,
           'services': services,
           'commitmentPeriodValue': selectedCommitmentPeriod,
           'salesType': _getSalesTypeValue(),

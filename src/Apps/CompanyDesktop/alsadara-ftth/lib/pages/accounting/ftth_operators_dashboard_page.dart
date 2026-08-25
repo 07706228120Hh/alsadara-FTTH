@@ -11812,6 +11812,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   // ── Multi-select rows ──
   final Set<String> _selectedIds = {};
   bool _isDeletingSelected = false;
+  bool _isBulkEditing = false;
   String? _hoveredRowId;
 
   // ── Column visibility (saved locally) ──
@@ -12922,6 +12923,220 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     ));
   }
 
+  /// حوار التغيير الجماعي: يغيّر نوع التحصيل (+ الفني/الوكيل) لكل السجلات المحددة
+  Future<void> _bulkEditDialog() async {
+    if (_selectedIds.isEmpty) return;
+    await _loadStaffForEditing(); // تأكد من تحميل قوائم الفنيين/الوكلاء
+    if (!mounted) return;
+    final count = _selectedIds.length;
+    String? collType; // null = بدون تغيير
+    String? techName; // null = بدون تغيير
+    String? agentName; // null = بدون تغيير
+
+    Widget rowField(String label, Widget child) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(children: [
+            SizedBox(
+                width: 90,
+                child: Text(label,
+                    style: GoogleFonts.cairo(
+                        fontSize: 13, fontWeight: FontWeight.w600))),
+            const SizedBox(width: 8),
+            Expanded(child: child),
+          ]),
+        );
+    InputDecoration dec([String? hint]) => InputDecoration(
+        isDense: true,
+        hintText: hint,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)));
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: Row(children: [
+              const Icon(Icons.published_with_changes,
+                  color: Color(0xFF2C3E50)),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text('تغيير جماعي — $count عملية',
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.w700, fontSize: 15))),
+            ]),
+            content: SizedBox(
+              width: 360,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                    'غيّر ما تريد (تحصيل و/أو فني و/أو وكيل) — يُطبَّق على كل المحدد ($count) ويعيد حساب المحاسبة تلقائياً.',
+                    style: GoogleFonts.cairo(
+                        fontSize: 12, color: Colors.grey.shade700)),
+                const SizedBox(height: 12),
+                rowField(
+                  'نوع التحصيل',
+                  DropdownButtonFormField<String?>(
+                    value: collType,
+                    isDense: true,
+                    decoration: dec(),
+                    items: const [
+                      DropdownMenuItem(
+                          value: null, child: Text('— بدون تغيير —')),
+                      DropdownMenuItem(value: 'cash', child: Text('نقد')),
+                      DropdownMenuItem(value: 'credit', child: Text('آجل')),
+                      DropdownMenuItem(value: 'agent', child: Text('وكيل')),
+                      DropdownMenuItem(value: 'master', child: Text('ماستر')),
+                      DropdownMenuItem(
+                          value: 'technician', child: Text('فني')),
+                    ],
+                    onChanged: (v) => setDlg(() => collType = v),
+                  ),
+                ),
+                rowField(
+                  'الفني',
+                  DropdownButtonFormField<String?>(
+                    value: techName,
+                    isDense: true,
+                    isExpanded: true,
+                    decoration: dec(),
+                    items: [
+                      const DropdownMenuItem(
+                          value: null, child: Text('— بدون تغيير —')),
+                      ..._staffTechnicians.map((t) => DropdownMenuItem(
+                          value: t,
+                          child:
+                              Text(t, overflow: TextOverflow.ellipsis))),
+                    ],
+                    onChanged: (v) => setDlg(() => techName = v),
+                  ),
+                ),
+                rowField(
+                  'الوكيل',
+                  DropdownButtonFormField<String?>(
+                    value: agentName,
+                    isDense: true,
+                    isExpanded: true,
+                    decoration: dec(),
+                    items: [
+                      const DropdownMenuItem(
+                          value: null, child: Text('— بدون تغيير —')),
+                      ..._staffAgents.map((a) => DropdownMenuItem(
+                          value: a,
+                          child:
+                              Text(a, overflow: TextOverflow.ellipsis))),
+                    ],
+                    onChanged: (v) => setDlg(() => agentName = v),
+                  ),
+                ),
+              ]),
+            ),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text('إلغاء',
+                      style:
+                          GoogleFonts.cairo(color: Colors.grey.shade600))),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2C3E50),
+                    foregroundColor: Colors.white),
+                icon: const Icon(Icons.check, size: 16),
+                label: Text('تطبيق على $count',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                onPressed: (collType == null &&
+                        techName == null &&
+                        agentName == null)
+                    ? null
+                    : () => Navigator.pop(ctx, true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (ok != true) return;
+    await _applyBulkEdit(collType, techName, agentName);
+  }
+
+  /// تطبيق التغيير الجماعي — يكرّر نفس استدعاء PUT الموجود على كل سجل محدد
+  Future<void> _applyBulkEdit(
+      String? collType, String? techName, String? agentName) async {
+    final ids = _selectedIds.toList();
+    if (ids.isEmpty ||
+        (collType == null && techName == null && agentName == null)) return;
+    setState(() => _isBulkEditing = true);
+    final payMethod = collType == null
+        ? null
+        : (const {
+              'cash': 'نقد',
+              'credit': 'آجل',
+              'master': 'ماستر',
+              'technician': 'فني',
+              'agent': 'وكيل'
+            }[collType] ??
+            collType);
+    int done = 0;
+    for (final id in ids) {
+      try {
+        final bodyMap = <String, dynamic>{};
+        if (collType != null) {
+          bodyMap['CollectionType'] = collType;
+          bodyMap['PaymentMethod'] = payMethod;
+        }
+        if (techName != null) {
+          bodyMap['TechnicianName'] = techName;
+          if (_staffTechIdMap.containsKey(techName)) {
+            bodyMap['LinkedTechnicianId'] = _staffTechIdMap[techName];
+          }
+        }
+        if (agentName != null) {
+          bodyMap['AgentName'] = agentName;
+          if (_staffAgentIdMap.containsKey(agentName)) {
+            bodyMap['LinkedAgentId'] = _staffAgentIdMap[agentName];
+          }
+        }
+        if (bodyMap.isEmpty) continue;
+        final res = await http.put(
+          Uri.parse('$_baseUrl/$id'),
+          headers: {'X-Api-Key': _apiKey, 'Content-Type': 'application/json'},
+          body: jsonEncode(bodyMap),
+        );
+        if (res.statusCode == 200 || res.statusCode == 204) {
+          done++;
+          // تحديث محلي فوري — فقط الحقول المتغيّرة
+          final updated = <String, dynamic>{};
+          if (collType != null) {
+            updated['نوع التحصيل'] = _mapCollectionType(collType);
+            updated['نوع التحصيل_raw'] = collType;
+            updated['طريقة الدفع'] = payMethod;
+          }
+          if (techName != null) updated['الفني'] = techName;
+          if (agentName != null) updated['الوكيل'] = agentName;
+          final idx = _records.indexWhere((r) => r['id']?.toString() == id);
+          if (idx != -1) _records[idx] = {..._records[idx], ...updated};
+        }
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() {
+      _selectedIds.clear();
+      _isBulkEditing = false;
+    });
+    _applyFiltersFromRecords(_records);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('تم تغيير $done من ${ids.length} عملية',
+          style: GoogleFonts.cairo()),
+      backgroundColor:
+          done == ids.length ? Colors.green.shade700 : Colors.orange.shade700,
+      duration: const Duration(seconds: 3),
+    ));
+  }
+
   void _showRowMenu(BuildContext ctx, Offset globalPos,
       Map<String, dynamic> record) {
     final overlay = Overlay.of(ctx).context.findRenderObject() as RenderBox;
@@ -13205,6 +13420,19 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                               color: Colors.white, strokeWidth: 2)),
                     )
                   : _allOpsAppBarBtn(Icons.delete_sweep, 'حذف (${_selectedIds.length})', _deleteSelected, highlighted: true),
+            // تغيير جماعي (نوع التحصيل / الفني / الوكيل) للسجلات المحددة
+            if (_selectedIds.isNotEmpty)
+              _isBulkEditing
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2)),
+                    )
+                  : _allOpsAppBarBtn(Icons.published_with_changes,
+                      'تغيير جماعي (${_selectedIds.length})', _bulkEditDialog,
+                      highlighted: true),
             // عدد الفلاتر النشطة
             if (activeFiltersCount > 0)
               _allOpsAppBarBtn(Icons.filter_alt, '$activeFiltersCount فلتر', () {
