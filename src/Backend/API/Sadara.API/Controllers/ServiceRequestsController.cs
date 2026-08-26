@@ -277,8 +277,8 @@ WHERE ""IsDeleted"" = false
   AND (@from::timestamptz IS NULL OR ""CreatedAt"" >= @from::timestamptz)
   AND (@to::timestamptz   IS NULL OR ""CreatedAt"" <  @to::timestamptz)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR ""Department"" = @department OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND (""Details""::json->>'department') = @department))
-  AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
+  AND (@department IS NULL OR ""Department"" = @department OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = @department))
+  AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
 GROUP BY ""Status"";";
 
         var statusRows = await _db.Database
@@ -329,9 +329,9 @@ GROUP BY ""Status"";";
         // ذات العمود الفارغ فتظهر أرقام byTechnician أقل من byStatus.
         const string q2 = @"
 SELECT COALESCE(NULLIF(""TechnicianName"", ''),
-                CASE WHEN ""Details"" IS NOT NULL AND ""Details"" ~ '^\s*[{[]' THEN ""Details""::json->>'technician' END) AS ""Technician"",
+                CASE WHEN ""Details"" IS NOT NULL AND ""Details"" ~ '^\s*[{{[]' THEN ""Details""::json->>'technician' END) AS ""Technician"",
        COALESCE(NULLIF(""Department"", ''),
-                CASE WHEN ""Details"" IS NOT NULL AND ""Details"" ~ '^\s*[{[]' THEN ""Details""::json->>'department' END) AS ""Department"",
+                CASE WHEN ""Details"" IS NOT NULL AND ""Details"" ~ '^\s*[{{[]' THEN ""Details""::json->>'department' END) AS ""Department"",
        count(*) AS ""Total"",
        count(*) FILTER (WHERE ""Status"" IN (0,1,2,3,8)) AS ""Open"",
        count(*) FILTER (WHERE ""Status"" = 4)            AS ""InProgress"",
@@ -343,8 +343,8 @@ WHERE ""IsDeleted"" = false
   AND (@from::timestamptz IS NULL OR ""CreatedAt"" >= @from::timestamptz)
   AND (@to::timestamptz   IS NULL OR ""CreatedAt"" <  @to::timestamptz)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR ""Department"" = @department OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND (""Details""::json->>'department') = @department))
-  AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
+  AND (@department IS NULL OR ""Department"" = @department OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = @department))
+  AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
 GROUP BY 1, 2
 ORDER BY ""Total"" DESC;";
 
@@ -414,12 +414,12 @@ SELECT COALESCE(NULLIF(""TechnicianName"", ''), ""Details""::json->>'technician'
 FROM ""ServiceRequests""
 WHERE ""IsDeleted"" = false
   AND (@companyId IS NULL OR ""CompanyId"" = @companyId)
-  AND ""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]')
+  AND ""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]')
   AND ( (""Details""::json->>'taskType') LIKE '%استحصال مبلغ%' OR (""Details""::json->>'taskType') LIKE '%تحصيل مبلغ%' )
   AND (@from::timestamptz IS NULL OR ""CreatedAt"" >= @from::timestamptz)
   AND (@to::timestamptz   IS NULL OR ""CreatedAt"" <  @to::timestamptz)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR ""Department"" = @department OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{[]') AND (""Details""::json->>'department') = @department))
+  AND (@department IS NULL OR ""Department"" = @department OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = @department))
   AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)
 GROUP BY 1
 ORDER BY ""TotalCollected"" DESC;";
