@@ -96,8 +96,9 @@ class HomePageTasksState extends State<HomePageTasks> {
     super.initState();
     // استخدام المهام الممررة من task_list_screen مباشرة
     _currentTasks = widget.tasks;
-    _applyPermissionFilter();
-    _filterTasksByStatus(_getStatusByIndex(currentIndex));
+    // حساب مباشر قبل أول بناء (بلا setState) — يكفي _computeFilterByStatus لأنه
+    // يحسب فلتر الصلاحيات داخلياً في حالة "اللوحة".
+    _computeFilterByStatus(_getStatusByIndex(currentIndex));
     // اعرض آخر ملخّص مخزّن فوراً (إن وُجد) ثم حدّث من الخادم في الخلفية.
     _loadCachedSummary();
     // تجميع اللوحة من الخادم (لا يعطّل بناء الواجهة)
@@ -111,8 +112,7 @@ class HomePageTasksState extends State<HomePageTasks> {
     if (oldWidget.tasks != widget.tasks) {
       setState(() {
         _currentTasks = widget.tasks;
-        _applyPermissionFilter();
-        _filterTasksByStatus(_getStatusByIndex(currentIndex));
+        _computeFilterByStatus(_getStatusByIndex(currentIndex));
       });
       // الأب حدّث القائمة (تحديث تلقائي / SignalR / يدوي) → أعد تجميع اللوحة
       _fetchSummary();
@@ -211,114 +211,116 @@ class HomePageTasksState extends State<HomePageTasks> {
     }
   }
 
-  void _applyPermissionFilter() {
-    setState(() {
-      _filteredTasks = _applyRoleFilter(_currentTasks);
-
-      _filteredTasks.sort((a, b) {
-        final da = a.closedAt ?? a.createdAt;
-        final db = b.closedAt ?? b.createdAt;
-        return db.compareTo(da);
-      });
-
-      _filteredTasks = _applyDateFilter(_filteredTasks);
+  /// ترتيب المهام بالأحدث أولاً حسب (closedAt ثم createdAt) — مصدر موحّد.
+  /// (كان هذا المقارِن مكرَّراً حرفياً في ثلاثة مواضع.)
+  void _sortByRecency(List<Task> tasks) {
+    tasks.sort((a, b) {
+      final da = a.closedAt ?? a.createdAt;
+      final db = b.closedAt ?? b.createdAt;
+      return db.compareTo(da);
     });
   }
 
+  /// حساب فلتر الصلاحيات (بلا setState) — يُستدعى من داخل setState قائم لتفادي
+  /// تداخل setState داخل setState. لا يغيّر السلوك؛ فقط يفصل الحساب عن التحديث.
+  void _computePermissionFilter() {
+    _filteredTasks = _applyRoleFilter(_currentTasks);
+    _sortByRecency(_filteredTasks);
+    _filteredTasks = _applyDateFilter(_filteredTasks);
+  }
+
   void _filterTasksByStatus(String status) {
-    setState(() {
-      // إذا يوجد نتائج بحث من السيرفر، نعرضها مباشرة
-      if (_serverSearchResults != null) {
-        _filteredTasks = _serverSearchResults!;
-        return;
-      }
-      if (status == 'اللوحة') {
-        _applyPermissionFilter();
-      } else if (status == 'تحصيل') {
-        // فلتر مهام التحصيل
-        var collectionTasks = _currentTasks
-            .where((task) => task.title.contains('تحصيل مبلغ') || task.title.contains('استحصال مبلغ'))
-            .toList();
+    setState(() => _computeFilterByStatus(status));
+  }
 
-        // فلتر الحالة الفرعي
+  /// حساب فلترة الحالة (بلا setState) — يُستدعى من داخل setState قائم.
+  void _computeFilterByStatus(String status) {
+    // إذا يوجد نتائج بحث من السيرفر، نعرضها مباشرة
+    if (_serverSearchResults != null) {
+      _filteredTasks = _serverSearchResults!;
+      return;
+    }
+    if (status == 'اللوحة') {
+      _computePermissionFilter();
+    } else if (status == 'تحصيل') {
+      // فلتر مهام التحصيل
+      var collectionTasks = _currentTasks
+          .where((task) => task.title.contains('تحصيل مبلغ') || task.title.contains('استحصال مبلغ'))
+          .toList();
+
+      // فلتر الحالة الفرعي
+      final now = DateTime.now();
+      if (_collectionStatusFilter == 'معلقة') {
+        collectionTasks = collectionTasks.where((t) => t.status == 'مفتوحة' || t.status == 'قيد التنفيذ').toList();
+      } else if (_collectionStatusFilter == 'مكتملة غير مفعّل') {
+        collectionTasks = collectionTasks.where((t) => t.status == 'مكتملة' && !t.notes.contains('[مفعّل]')).toList();
+      } else if (_collectionStatusFilter == 'مكتملة مفعّل') {
+        collectionTasks = collectionTasks.where((t) => t.status == 'مكتملة' && t.notes.contains('[مفعّل]')).toList();
+      } else if (_collectionStatusFilter == 'متأخرة') {
+        collectionTasks = collectionTasks.where((t) =>
+            (t.status == 'مفتوحة' || t.status == 'قيد التنفيذ') &&
+            now.difference(t.createdAt).inHours >= 24).toList();
+      }
+
+      // فلتر الفني
+      if (_collectionTechFilter != null && _collectionTechFilter!.isNotEmpty) {
+        final wanted = normalizeName(_collectionTechFilter!);
+        collectionTasks = collectionTasks.where((t) => normalizeName(t.technician) == wanted).toList();
+      }
+
+      // تبويب التحصيل يتأثر بفلتر الدور — الليدر يرى مهام قسمه فقط
+      final savedMyOnly = _myTasksOnly;
+      _myTasksOnly = false;
+      _filteredTasks = _applyRoleFilter(collectionTasks);
+      _myTasksOnly = savedMyOnly;
+      _sortByRecency(_filteredTasks);
+      _filteredTasks = _applyDateFilter(_filteredTasks);
+    } else {
+      // فلتر الحالة ثم فلتر الصلاحيات (منطق موحّد)
+      final statusFilteredTasks =
+          _currentTasks.where((task) => task.status == status).toList();
+      _filteredTasks = _applyRoleFilter(statusFilteredTasks);
+
+      _sortByRecency(_filteredTasks);
+
+      // فلتر اليوم فقط للمكتملة والملغية
+      if (status == 'مكتملة' && _completedTodayOnly) {
         final now = DateTime.now();
-        if (_collectionStatusFilter == 'معلقة') {
-          collectionTasks = collectionTasks.where((t) => t.status == 'مفتوحة' || t.status == 'قيد التنفيذ').toList();
-        } else if (_collectionStatusFilter == 'مكتملة غير مفعّل') {
-          collectionTasks = collectionTasks.where((t) => t.status == 'مكتملة' && !t.notes.contains('[مفعّل]')).toList();
-        } else if (_collectionStatusFilter == 'مكتملة مفعّل') {
-          collectionTasks = collectionTasks.where((t) => t.status == 'مكتملة' && t.notes.contains('[مفعّل]')).toList();
-        } else if (_collectionStatusFilter == 'متأخرة') {
-          collectionTasks = collectionTasks.where((t) =>
-              (t.status == 'مفتوحة' || t.status == 'قيد التنفيذ') &&
-              now.difference(t.createdAt).inHours >= 24).toList();
-        }
-
-        // فلتر الفني
-        if (_collectionTechFilter != null && _collectionTechFilter!.isNotEmpty) {
-          final wanted = normalizeName(_collectionTechFilter!);
-          collectionTasks = collectionTasks.where((t) => normalizeName(t.technician) == wanted).toList();
-        }
-
-        // تبويب التحصيل يتأثر بفلتر الدور — الليدر يرى مهام قسمه فقط
-        final savedMyOnly = _myTasksOnly;
-        _myTasksOnly = false;
-        _filteredTasks = _applyRoleFilter(collectionTasks);
-        _myTasksOnly = savedMyOnly;
-        _filteredTasks.sort((a, b) {
-          final da = a.closedAt ?? a.createdAt;
-          final db = b.closedAt ?? b.createdAt;
-          return db.compareTo(da);
-        });
-        _filteredTasks = _applyDateFilter(_filteredTasks);
-      } else {
-        // فلتر الحالة ثم فلتر الصلاحيات (منطق موحّد)
-        final statusFilteredTasks =
-            _currentTasks.where((task) => task.status == status).toList();
-        _filteredTasks = _applyRoleFilter(statusFilteredTasks);
-
-        _filteredTasks.sort((a, b) {
-          final da = a.closedAt ?? a.createdAt;
-          final db = b.closedAt ?? b.createdAt;
-          return db.compareTo(da);
-        });
-
-        // فلتر اليوم فقط للمكتملة والملغية
-        if (status == 'مكتملة' && _completedTodayOnly) {
-          final now = DateTime.now();
-          _filteredTasks = _filteredTasks.where((t) {
-            final d = (t.closedAt ?? t.createdAt);
-            return d.year == now.year &&
-                d.month == now.month &&
-                d.day == now.day;
-          }).toList();
-        }
-        if (status == 'ملغية' && _cancelledTodayOnly) {
-          final now = DateTime.now();
-          _filteredTasks = _filteredTasks.where((t) {
-            final d = (t.closedAt ?? t.createdAt);
-            return d.year == now.year &&
-                d.month == now.month &&
-                d.day == now.day;
-          }).toList();
-        }
-
-        _filteredTasks = _applyDateFilter(_filteredTasks);
+        _filteredTasks = _filteredTasks.where((t) {
+          final d = (t.closedAt ?? t.createdAt);
+          return d.year == now.year &&
+              d.month == now.month &&
+              d.day == now.day;
+        }).toList();
       }
-    });
+      if (status == 'ملغية' && _cancelledTodayOnly) {
+        final now = DateTime.now();
+        _filteredTasks = _filteredTasks.where((t) {
+          final d = (t.closedAt ?? t.createdAt);
+          return d.year == now.year &&
+              d.month == now.month &&
+              d.day == now.day;
+        }).toList();
+      }
+
+      _filteredTasks = _applyDateFilter(_filteredTasks);
+    }
   }
 
   /// تطبيق فلتر التاريخ على قائمة المهام
   List<Task> _applyDateFilter(List<Task> tasks) {
     List<Task> result = tasks;
-    if (_dateFilter != 'all') {
-      final now = DateTime.now();
-      final DateTime targetDate;
-      if (_dateFilter == 'yesterday') {
-        targetDate = now.subtract(const Duration(days: 1));
-      } else {
-        targetDate = now; // today
-      }
+    final now = DateTime.now();
+    if (_dateFilter == 'all') {
+      // «الكل» = عمليات هذا الشهر فقط (بطلب المستخدم) — نفس السنة والشهر الحاليين.
+      result = result.where((t) {
+        final d = t.createdAt;
+        return d.year == now.year && d.month == now.month;
+      }).toList();
+    } else {
+      final DateTime targetDate = _dateFilter == 'yesterday'
+          ? now.subtract(const Duration(days: 1))
+          : now; // today
       result = result.where((t) {
         final d = t.createdAt;
         return d.year == targetDate.year &&
@@ -357,8 +359,9 @@ class HomePageTasksState extends State<HomePageTasks> {
   }
 
   /// حساب نطاق التاريخ (from/to) للّوحة الخادمية مطابقةً لفلتر التاريخ الحالي.
-  /// اليوم = بداية اليوم → بداية الغد؛ أمس = بداية أمس → بداية اليوم؛ الكل = null/null.
-  /// نُرجع (from, to) — كلاهما null عند 'all'.
+  /// اليوم = بداية اليوم → بداية الغد؛ أمس = بداية أمس → بداية اليوم؛
+  /// الكل = بداية الشهر الحالي → بداية الشهر القادم (هذا الشهر فقط، بطلب المستخدم).
+  /// نُرجع (from, to).
   ///
   /// الحدود تُحسب على أساس **الوقت المحلي** (بداية اليوم المحلي، بداية الغد المحلي)
   /// ثم تُحوَّل إلى UTC عبر `.toUtc()` قبل الإرسال، بحيث يحمل `toIso8601String()`
@@ -366,8 +369,13 @@ class HomePageTasksState extends State<HomePageTasks> {
   /// إزاحة 3 ساعات لبغداد تُخطئ مهام الساعات الأولى/الأخيرة في اليوم.)
   /// ملاحظة: "اليوم" يبقى [بداية اليوم المحلي، بداية الغد المحلي) — لا يُحسب بـUTC من الأصل.
   (DateTime?, DateTime?) _summaryDateRange() {
-    if (_dateFilter == 'all') return (null, null);
     final now = DateTime.now();
+    if (_dateFilter == 'all') {
+      // «الكل» = هذا الشهر فقط: [بداية الشهر، بداية الشهر القادم) — يطابق فلتر العميل.
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final startOfNextMonth = DateTime(now.year, now.month + 1, 1);
+      return (startOfMonth.toUtc(), startOfNextMonth.toUtc());
+    }
     final startOfToday = DateTime(now.year, now.month, now.day);
     if (_dateFilter == 'yesterday') {
       final startOfYesterday = startOfToday.subtract(const Duration(days: 1));
@@ -1626,7 +1634,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                 onSelected: (_) {
                   setState(() {
                     _collectionStatusFilter = f;
-                    _filterTasksByStatus('تحصيل');
+                    _computeFilterByStatus('تحصيل');
                   });
                 },
               ),
@@ -1654,7 +1662,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                   onChanged: (v) {
                     setState(() {
                       _collectionTechFilter = (v != null && v.isNotEmpty) ? v : null;
-                      _filterTasksByStatus('تحصيل');
+                      _computeFilterByStatus('تحصيل');
                     });
                   },
                 ),
@@ -1673,7 +1681,6 @@ class HomePageTasksState extends State<HomePageTasks> {
         _serverSearchResults = null;
         _isServerSearching = false;
       });
-      _applyPermissionFilter();
       _filterTasksByStatus(_getStatusByIndex(currentIndex));
       return;
     }
@@ -1723,7 +1730,6 @@ class HomePageTasksState extends State<HomePageTasks> {
                             _searchQuery = '';
                             _serverSearchResults = null;
                           });
-                          _applyPermissionFilter();
                           _filterTasksByStatus(_getStatusByIndex(currentIndex));
                         },
                       )
@@ -1753,7 +1759,6 @@ class HomePageTasksState extends State<HomePageTasks> {
                   }
                 });
                 // بحث محلي فوري
-                _applyPermissionFilter();
                 _filterTasksByStatus(_getStatusByIndex(currentIndex));
               },
               onSubmitted: (value) {
@@ -2082,7 +2087,7 @@ class HomePageTasksState extends State<HomePageTasks> {
           HapticFeedback.lightImpact();
           setState(() {
             currentIndex = index;
-            _filterTasksByStatus(_getStatusByIndex(index));
+            _computeFilterByStatus(_getStatusByIndex(index));
           });
         },
         child: AnimatedContainer(
@@ -2246,8 +2251,7 @@ class HomePageTasksState extends State<HomePageTasks> {
             if (v == null) return;
             setState(() {
               _dateFilter = v;
-              _applyPermissionFilter();
-              _filterTasksByStatus(_getStatusByIndex(currentIndex));
+              _computeFilterByStatus(_getStatusByIndex(currentIndex));
             });
             // تغيّر نطاق التاريخ → أعد تجميع اللوحة من الخادم
             _fetchSummary();
@@ -2286,8 +2290,7 @@ class HomePageTasksState extends State<HomePageTasks> {
         onTap: () {
           setState(() {
             _dateFilter = value;
-            _applyPermissionFilter();
-            _filterTasksByStatus(_getStatusByIndex(currentIndex));
+            _computeFilterByStatus(_getStatusByIndex(currentIndex));
           });
           // تغيّر نطاق التاريخ → أعد تجميع اللوحة من الخادم
           _fetchSummary();
@@ -2463,8 +2466,11 @@ class HomePageTasksState extends State<HomePageTasks> {
                       const SizedBox(width: 10),
                       GestureDetector(
                         onTap: () {
-                          setState(() => _myTasksOnly = !_myTasksOnly);
-                          _filterTasksByStatus(_getStatusByIndex(currentIndex));
+                          // setState واحد بدل اثنين: بدّل الحالة وأعد الفلترة معاً
+                          setState(() {
+                            _myTasksOnly = !_myTasksOnly;
+                            _computeFilterByStatus(_getStatusByIndex(currentIndex));
+                          });
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -2594,8 +2600,7 @@ class HomePageTasksState extends State<HomePageTasks> {
       onTap: () {
         setState(() {
           _dateFilter = value;
-          _applyPermissionFilter();
-          _filterTasksByStatus(_getStatusByIndex(currentIndex));
+          _computeFilterByStatus(_getStatusByIndex(currentIndex));
         });
         // تغيّر نطاق التاريخ → أعد تجميع اللوحة من الخادم
         _fetchSummary();
@@ -2944,8 +2949,7 @@ class HomePageTasksState extends State<HomePageTasks> {
                       _filterTechnician = tempTech;
                       _filterPriority = tempPriority;
                       _filterTaskType = tempTaskType;
-                      _applyPermissionFilter();
-                      _filterTasksByStatus(_getStatusByIndex(currentIndex));
+                      _computeFilterByStatus(_getStatusByIndex(currentIndex));
                     });
                     // تغيير القسم/الفني → أعد تجميع اللوحة من الخادم
                     _fetchSummary();

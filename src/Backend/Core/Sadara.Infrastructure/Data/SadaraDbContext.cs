@@ -1642,19 +1642,27 @@ public class SadaraDbContext : DbContext
         // يُطبّق في النهاية (آخر فلتر يفوز) تلقائياً على كل كيان يحمل خاصية CompanyId
         // من نوع Guid/Guid?، عدا قائمة الاستثناءات (كيانات null فيها = "عام لكل الشركات").
         // النتيجة: !IsDeleted && (تجاوز SuperAdmin/نظام || CompanyId == شركة المستخدم).
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        //
+        // مُحكَم بعلَم Tenancy:EnforceIsolation (ICurrentTenant.EnforceIsolation) — الافتراضي
+        // معطّل، فيبقى نشر الثنائي محايداً (لا يُضاف أي فلتر عزل، فالسلوك = ما قبل العزل)؛
+        // التفعيل قرار تشغيلي منفصل بعد اكتمال البوابات (DefaultCompanyId + backfill/verify=0
+        // + تدوير مفتاح API الداخلي + استثناء InternetPlan + معالجة IptvSubscriber).
+        if (_tenant.EnforceIsolation)
         {
-            var clrType = entityType.ClrType;
-            if (!typeof(BaseEntity).IsAssignableFrom(clrType)) continue;
-            if (TenantFilterExclusions.Contains(clrType.Name)) continue;
-
-            var companyProp = entityType.FindProperty("CompanyId");
-            if (companyProp != null &&
-                (companyProp.ClrType == typeof(Guid) || companyProp.ClrType == typeof(Guid?)))
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
-                SetTenantFilterMethod
-                    .MakeGenericMethod(clrType)
-                    .Invoke(this, new object[] { modelBuilder });
+                var clrType = entityType.ClrType;
+                if (!typeof(BaseEntity).IsAssignableFrom(clrType)) continue;
+                if (TenantFilterExclusions.Contains(clrType.Name)) continue;
+
+                var companyProp = entityType.FindProperty("CompanyId");
+                if (companyProp != null &&
+                    (companyProp.ClrType == typeof(Guid) || companyProp.ClrType == typeof(Guid?)))
+                {
+                    SetTenantFilterMethod
+                        .MakeGenericMethod(clrType)
+                        .Invoke(this, new object[] { modelBuilder });
+                }
             }
         }
     }
@@ -1701,7 +1709,9 @@ public class SadaraDbContext : DbContext
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAt = DateTime.UtcNow;
-                    if (!TenantFilterExclusions.Contains(entry.Metadata.ClrType.Name)
+                    // ختم CompanyId مُحكَم بنفس علَم العزل — عند التعطيل لا يُفرض/يُختَم شيء (سلوك ما قبل العزل).
+                    if (_tenant.EnforceIsolation
+                        && !TenantFilterExclusions.Contains(entry.Metadata.ClrType.Name)
                         && entry.Metadata.FindProperty("CompanyId") is { } cp
                         && (cp.ClrType == typeof(Guid) || cp.ClrType == typeof(Guid?)))
                     {

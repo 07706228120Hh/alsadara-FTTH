@@ -107,4 +107,18 @@ public class CurrentTenant : ICurrentTenant
             return Guid.TryParse(raw, out var id) ? id : (Guid?)null;
         }
     }
+
+    /// <summary>
+    /// علَم تفعيل العزل — يُقرأ من <c>Tenancy:EnforceIsolation</c> أو متغيّر البيئة
+    /// <c>SADARA_ENFORCE_ISOLATION</c>. الافتراضي false (معطّل) ⇒ نشر الثنائي محايد.
+    /// </summary>
+    public bool EnforceIsolation
+    {
+        get
+        {
+            var raw = _configuration["Tenancy:EnforceIsolation"]
+                   ?? Environment.GetEnvironmentVariable("SADARA_ENFORCE_ISOLATION");
+            return bool.TryParse(raw, out var on) && on;
+        }
+    }
 }

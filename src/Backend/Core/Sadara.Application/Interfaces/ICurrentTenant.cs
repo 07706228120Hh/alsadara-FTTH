@@ -32,4 +32,12 @@ public interface ICurrentTenant
     /// (فيُخفى عن قراءات JWT). null = غير مُهيّأة ⇒ لا خَتم (سلوك محايد).
     /// </summary>
     Guid? DefaultCompanyId { get; }
+
+    /// <summary>
+    /// هل يُفعَّل عزل الشركات (الفلتر المركزي عند القراءة + ختم CompanyId عند الإدراج)؟
+    /// يُقرأ من الإعداد <c>Tenancy:EnforceIsolation</c>. الافتراضي <b>false</b> (معطّل) —
+    /// كي يبقى نشر الثنائي محايداً ولا يُفعّل العزل تلقائياً؛ التفعيل قرار تشغيلي منفصل يُتخذ
+    /// بعد اكتمال البوابات (DefaultCompanyId + backfill/verify=0 + تدوير مفتاح API الداخلي).
+    /// </summary>
+    bool EnforceIsolation { get; }
 }

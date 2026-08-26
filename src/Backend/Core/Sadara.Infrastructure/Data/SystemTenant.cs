@@ -14,4 +14,7 @@ public sealed class SystemTenant : ICurrentTenant
 
     // سياق النظام/design-time لا يختم شركة افتراضية: الـ seeds والهجرات تضبط CompanyId بنفسها.
     public Guid? DefaultCompanyId => null;
+
+    // سياق النظام يتجاوز العزل أصلاً (BypassTenantFilter=true)؛ لا حاجة لتطبيق الفلتر/الختم هنا.
+    public bool EnforceIsolation => false;
 }
