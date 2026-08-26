@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using NpgsqlTypes;
 using Sadara.API.Authorization;
 using Sadara.API.Hubs;
 using Sadara.Application.Interfaces;
@@ -266,7 +267,10 @@ public class ServiceRequestsController : ControllerBase
         var toUtc = NormalizeToUtc(to);
 
         // بارامترات مشتركة — تُنشأ نسخة لكل استعلام لأن NpgsqlParameter لا يُعاد استخدامه عبر أوامر متعددة.
-        NpgsqlParameter P(string name, object? value) => new(name, value ?? DBNull.Value);
+        // نُحدّد النوع صراحةً: Npgsql يرسل NULL غير مُنمَّط بلا نوع ⇒ Postgres يفشل بـ42P08
+        // (could not determine data type of parameter) على البارامترات الفارغة (from/to/source/…).
+        NpgsqlParameter P(string name, object? value, NpgsqlDbType type)
+            => new(name, type) { Value = value ?? DBNull.Value };
 
         // ═══════ Q1 — byStatus ═══════
         const string q1 = @"
@@ -283,12 +287,12 @@ GROUP BY ""Status"";";
 
         var statusRows = await _db.Database
             .SqlQueryRaw<StatusCountRow>(q1,
-                P("@companyId", companyId),
-                P("@from", fromUtc),
-                P("@to", toUtc),
-                P("@source", normalizedSource),
-                P("@department", normalizedDepartment),
-                P("@assignee", normalizedAssignee))
+                P("@companyId", companyId, NpgsqlDbType.Uuid),
+                P("@from", fromUtc, NpgsqlDbType.TimestampTz),
+                P("@to", toUtc, NpgsqlDbType.TimestampTz),
+                P("@source", normalizedSource, NpgsqlDbType.Text),
+                P("@department", normalizedDepartment, NpgsqlDbType.Text),
+                P("@assignee", normalizedAssignee, NpgsqlDbType.Text))
             .ToListAsync();
 
         // بناء byStatus: كل التسع دائماً، صفر افتراضي.
@@ -350,12 +354,12 @@ ORDER BY ""Total"" DESC;";
 
         var techRows = await _db.Database
             .SqlQueryRaw<TechnicianAggRow>(q2,
-                P("@companyId", companyId),
-                P("@from", fromUtc),
-                P("@to", toUtc),
-                P("@source", normalizedSource),
-                P("@department", normalizedDepartment),
-                P("@assignee", normalizedAssignee))
+                P("@companyId", companyId, NpgsqlDbType.Uuid),
+                P("@from", fromUtc, NpgsqlDbType.TimestampTz),
+                P("@to", toUtc, NpgsqlDbType.TimestampTz),
+                P("@source", normalizedSource, NpgsqlDbType.Text),
+                P("@department", normalizedDepartment, NpgsqlDbType.Text),
+                P("@assignee", normalizedAssignee, NpgsqlDbType.Text))
             .ToListAsync();
 
         var byTechnician = techRows.Select(r => new SummaryTechnician
@@ -426,12 +430,12 @@ ORDER BY ""TotalCollected"" DESC;";
 
             var collectionRows = await _db.Database
                 .SqlQueryRaw<CollectionAggRow>(q3,
-                    P("@companyId", companyId),
-                    P("@from", fromUtc),
-                    P("@to", toUtc),
-                    P("@source", normalizedSource),
-                    P("@department", normalizedDepartment),
-                    P("@assignee", normalizedAssignee))
+                    P("@companyId", companyId, NpgsqlDbType.Uuid),
+                    P("@from", fromUtc, NpgsqlDbType.TimestampTz),
+                    P("@to", toUtc, NpgsqlDbType.TimestampTz),
+                    P("@source", normalizedSource, NpgsqlDbType.Text),
+                    P("@department", normalizedDepartment, NpgsqlDbType.Text),
+                    P("@assignee", normalizedAssignee, NpgsqlDbType.Text))
                 .ToListAsync();
 
             var collectionsByTechnician = collectionRows.Select(r => new SummaryCollectionTechnician
