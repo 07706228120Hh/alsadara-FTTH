@@ -2306,6 +2306,7 @@ public class InternalDataController : ControllerBase
             var newAgentTx = new AgentTransaction
             {
                 AgentId = newAgent.Id,
+                CompanyId = newAgent.CompanyId,
                 Type = TransactionType.Charge,
                 Category = agentTxCat,
                 Amount = amount,
@@ -3204,6 +3205,7 @@ public class InternalDataController : ControllerBase
                 var agentTx2 = new AgentTransaction
                 {
                     AgentId = agent.Id,
+                    CompanyId = agent.CompanyId,
                     Type = TransactionType.Charge,
                     Category = agentTxCat,
                     Amount = collectedAmount,

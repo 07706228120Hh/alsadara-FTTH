@@ -1050,6 +1050,7 @@ public class SadaraDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.AgentId);
+            entity.HasIndex(e => e.CompanyId);
             entity.HasIndex(e => e.Type);
             entity.HasIndex(e => e.CreatedAt);
             entity.Property(e => e.Amount).HasPrecision(18, 2);

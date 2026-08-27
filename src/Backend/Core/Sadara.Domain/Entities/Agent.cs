@@ -184,7 +184,10 @@ public class AgentTransaction : BaseEntity<long>
 {
     /// <summary>الوكيل صاحب المعاملة</summary>
     public Guid AgentId { get; set; }
-    
+
+    /// <summary>الشركة التي تتبع لها المعاملة (تُشتق من الوكيل) — أساس عزل المستأجر المباشر</summary>
+    public Guid CompanyId { get; set; }
+
     /// <summary>نوع المعاملة (أجور / تسديد / خصم / تعديل)</summary>
     public TransactionType Type { get; set; }
     

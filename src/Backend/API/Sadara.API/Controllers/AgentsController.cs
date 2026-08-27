@@ -631,6 +631,7 @@ public class AgentsController : ControllerBase
             var transaction = new AgentTransaction
             {
                 AgentId = id,
+                CompanyId = agent.CompanyId,
                 Type = TransactionType.Charge,
                 Category = request.Category,
                 Amount = request.Amount,
@@ -749,6 +750,7 @@ public class AgentsController : ControllerBase
             var transaction = new AgentTransaction
             {
                 AgentId = id,
+                CompanyId = agent.CompanyId,
                 Type = TransactionType.Payment,
                 Category = request.Category,
                 Amount = request.Amount,
@@ -1349,6 +1351,7 @@ public class AgentsController : ControllerBase
             var transaction = new AgentTransaction
             {
                 AgentId = agentId.Value,
+                CompanyId = agent.CompanyId,
                 Type = TransactionType.Payment,
                 Category = request.Category,
                 Amount = request.Amount,
@@ -1464,6 +1467,7 @@ public class AgentsController : ControllerBase
             var transaction = new AgentTransaction
             {
                 AgentId = agentId.Value,
+                CompanyId = agent.CompanyId,
                 Type = TransactionType.Charge,
                 Category = dto.Category == 7 ? TransactionCategory.BankTransfer : TransactionCategory.CashPayment,
                 Amount = dto.Amount,

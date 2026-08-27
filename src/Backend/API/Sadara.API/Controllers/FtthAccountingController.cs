@@ -341,6 +341,7 @@ public class FtthAccountingController : ControllerBase
                 var agentTx = new AgentTransaction
                 {
                     AgentId = agent.Id,
+                    CompanyId = agent.CompanyId,
                     Type = TransactionType.Charge,
                     Category = dto.OperationType?.ToLower() == "purchase"
                         ? TransactionCategory.NewSubscription
