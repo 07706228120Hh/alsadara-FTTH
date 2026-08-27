@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Sadara.API.Authorization;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
@@ -27,16 +29,26 @@ public class AgentsController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AgentsController> _logger;
+    private readonly ICurrentTenant _tenant;
 
     public AgentsController(
         IUnitOfWork unitOfWork,
         IConfiguration configuration,
-        ILogger<AgentsController> logger)
+        ILogger<AgentsController> logger,
+        ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _logger = logger;
+        _tenant = tenant;
     }
+
+    // ── عزل المستأجر: نطاق الشركة الفعّال لعمليات الوكلاء ──
+    // SuperAdmin: يصل لكل الشركات (يحترم companyId المطلوب إن وُجد، وإلا الكل).
+    // أي مستخدم آخر: يُقيَّد دائماً بشركة توكنه (company_id) ويتجاهل أي companyId مُرسَل —
+    // فلا يرى/يعدّل/ينشئ وكلاء شركة أخرى (عزل تام مستقل عن علَم EnforceIsolation العام).
+    private Guid? ScopeCompanyId(Guid? requested)
+        => _tenant.IsSuperAdmin ? requested : _tenant.CompanyId;
 
     // ==================== مصادقة الوكيل ====================
 
@@ -118,15 +130,20 @@ public class AgentsController : ControllerBase
     /// جلب جميع الوكلاء (للشركة أو مدير النظام)
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = "CompanyAdminOrAbove")]
+    [Authorize]
+    [RequirePermission("accounting.agent_transactions", "view")]
     public async Task<IActionResult> GetAll([FromQuery] Guid? companyId, [FromQuery] AgentStatus? status)
     {
         try
         {
             IQueryable<Agent> query = _unitOfWork.Agents.AsQueryable();
 
-            if (companyId.HasValue)
-                query = query.Where(a => a.CompanyId == companyId.Value);
+            // عزل: غير SuperAdmin يُقيَّد بشركته دائماً (يتجاهل companyId المُرسَل).
+            var scope = ScopeCompanyId(companyId);
+            if (!_tenant.IsSuperAdmin && scope == null)
+                return Ok(new { success = true, data = Array.Empty<object>(), total = 0 });
+            if (scope.HasValue)
+                query = query.Where(a => a.CompanyId == scope.Value);
 
             if (status.HasValue)
                 query = query.Where(a => a.Status == status.Value);
@@ -198,7 +215,8 @@ public class AgentsController : ControllerBase
     /// جلب وكيل بالمعرف
     /// </summary>
     [HttpGet("{id:guid}")]
-    [Authorize(Policy = "CompanyAdminOrAbove")]
+    [Authorize]
+    [RequirePermission("accounting.agent_transactions", "view")]
     public async Task<IActionResult> GetById(Guid id)
     {
         try
@@ -206,6 +224,10 @@ public class AgentsController : ControllerBase
             var agent = await _unitOfWork.Agents.FirstOrDefaultAsync(a => a.Id == id);
 
             if (agent == null)
+                return NotFound(new { success = false, message = "الوكيل غير موجود" });
+
+            // عزل: غير SuperAdmin لا يصل لوكيل خارج شركته (نُرجع 404 كي لا نكشف وجوده).
+            if (!_tenant.IsSuperAdmin && agent.CompanyId != _tenant.CompanyId)
                 return NotFound(new { success = false, message = "الوكيل غير موجود" });
 
             // تحميل الشركة بشكل منفصل
@@ -225,7 +247,8 @@ public class AgentsController : ControllerBase
     /// إنشاء وكيل جديد
     /// </summary>
     [HttpPost]
-    [Authorize(Policy = "CompanyAdminOrAbove")]
+    [Authorize]
+    [RequirePermission("accounting.agent_transactions", "view")]
     public async Task<IActionResult> Create([FromBody] CreateAgentRequest request)
     {
         try
@@ -234,10 +257,16 @@ public class AgentsController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.PhoneNumber) || string.IsNullOrWhiteSpace(request.Password))
                 return BadRequest(new { success = false, message = "الاسم ورقم الهاتف وكلمة المرور مطلوبان" });
 
-            // التحقق من عدم تكرار رقم الهاتف
-            var existingAgent = await _unitOfWork.Agents.FirstOrDefaultAsync(a => a.PhoneNumber == request.PhoneNumber);
+            // عزل: غير SuperAdmin يُنشئ دائماً ضمن شركته (يتجاهل CompanyId المُرسَل من العميل).
+            var companyId = _tenant.IsSuperAdmin ? request.CompanyId : (_tenant.CompanyId ?? Guid.Empty);
+            if (companyId == Guid.Empty)
+                return BadRequest(new { success = false, message = "تعذّر تحديد الشركة للوكيل" });
+
+            // التحقق من عدم تكرار رقم الهاتف — ضمن نفس الشركة فقط (تفرّد لكل مستأجر).
+            var existingAgent = await _unitOfWork.Agents.FirstOrDefaultAsync(
+                a => a.PhoneNumber == request.PhoneNumber && a.CompanyId == companyId);
             if (existingAgent != null)
-                return BadRequest(new { success = false, message = "رقم الهاتف مستخدم بالفعل" });
+                return BadRequest(new { success = false, message = "رقم الهاتف مستخدم بالفعل ضمن هذه الشركة" });
 
             // توليد كود الوكيل
             var agentCode = await GenerateAgentCode();
@@ -258,7 +287,7 @@ public class AgentsController : ControllerBase
                 Latitude = request.Latitude,
                 Longitude = request.Longitude,
                 PageId = request.PageId,
-                CompanyId = request.CompanyId,
+                CompanyId = companyId,
                 Status = AgentStatus.Active,
                 Notes = request.Notes,
                 TotalCharges = 0,
@@ -289,13 +318,18 @@ public class AgentsController : ControllerBase
     /// تعديل بيانات وكيل
     /// </summary>
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "CompanyAdminOrAbove")]
+    [Authorize]
+    [RequirePermission("accounting.agent_transactions", "view")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAgentRequest request)
     {
         try
         {
             var agent = await _unitOfWork.Agents.GetByIdAsync(id);
             if (agent == null)
+                return NotFound(new { success = false, message = "الوكيل غير موجود" });
+
+            // عزل: غير SuperAdmin لا يعدّل وكيل خارج شركته.
+            if (!_tenant.IsSuperAdmin && agent.CompanyId != _tenant.CompanyId)
                 return NotFound(new { success = false, message = "الوكيل غير موجود" });
 
             // تحديث الحقول المرسلة فقط
@@ -322,9 +356,9 @@ public class AgentsController : ControllerBase
             // تغيير رقم الهاتف (مع التحقق من عدم التكرار)
             if (!string.IsNullOrWhiteSpace(request.PhoneNumber) && request.PhoneNumber != agent.PhoneNumber)
             {
-                var exists = await _unitOfWork.Agents.AnyAsync(a => a.PhoneNumber == request.PhoneNumber && a.Id != id);
+                var exists = await _unitOfWork.Agents.AnyAsync(a => a.PhoneNumber == request.PhoneNumber && a.Id != id && a.CompanyId == agent.CompanyId);
                 if (exists)
-                    return BadRequest(new { success = false, message = "رقم الهاتف مستخدم بالفعل" });
+                    return BadRequest(new { success = false, message = "رقم الهاتف مستخدم بالفعل ضمن هذه الشركة" });
                 agent.PhoneNumber = request.PhoneNumber;
             }
 
@@ -379,7 +413,8 @@ public class AgentsController : ControllerBase
     /// جلب جميع معاملات الوكلاء لشركة معينة
     /// </summary>
     [HttpGet("transactions/all")]
-    [Authorize(Policy = "CompanyAdminOrAbove")]
+    [Authorize]
+    [RequirePermission("accounting.agent_transactions", "view")]
     public async Task<IActionResult> GetAllTransactions(
         [FromQuery] string? companyId,
         [FromQuery] TransactionType? type,
@@ -390,10 +425,13 @@ public class AgentsController : ControllerBase
     {
         try
         {
-            // جلب وكلاء الشركة
+            // جلب وكلاء الشركة — عزل: غير SuperAdmin يُقيَّد بشركته دائماً (Guid.Empty = لا شيء).
             var agentsQuery = _unitOfWork.Agents.AsQueryable();
-            if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cId))
-                agentsQuery = agentsQuery.Where(a => a.CompanyId == cId);
+            Guid? txScope = _tenant.IsSuperAdmin
+                ? (Guid.TryParse(companyId, out var cId) ? cId : (Guid?)null)
+                : (_tenant.CompanyId ?? Guid.Empty);
+            if (txScope.HasValue)
+                agentsQuery = agentsQuery.Where(a => a.CompanyId == txScope.Value);
 
             var agentIds = await agentsQuery.Select(a => a.Id).ToListAsync();
             var agentNames = await agentsQuery.ToDictionaryAsync(a => a.Id, a => new { a.Name, a.AgentCode });
@@ -495,7 +533,8 @@ public class AgentsController : ControllerBase
     /// جلب معاملات وكيل معين
     /// </summary>
     [HttpGet("{id:guid}/transactions")]
-    [Authorize(Policy = "CompanyAdminOrAbove")]
+    [Authorize]
+    [RequirePermission("accounting.agent_transactions", "view")]
     public async Task<IActionResult> GetTransactions(
         Guid id,
         [FromQuery] TransactionType? type,
@@ -508,6 +547,10 @@ public class AgentsController : ControllerBase
         {
             var agent = await _unitOfWork.Agents.GetByIdAsync(id);
             if (agent == null)
+                return NotFound(new { success = false, message = "الوكيل غير موجود" });
+
+            // عزل: غير SuperAdmin لا يطّلع على معاملات وكيل خارج شركته.
+            if (!_tenant.IsSuperAdmin && agent.CompanyId != _tenant.CompanyId)
                 return NotFound(new { success = false, message = "الوكيل غير موجود" });
 
             var query = _unitOfWork.AgentTransactions.AsQueryable()
@@ -562,13 +605,18 @@ public class AgentsController : ControllerBase
     /// إضافة أجور على الوكيل (Charge)
     /// </summary>
     [HttpPost("{id:guid}/charge")]
-    [Authorize(Policy = "CompanyAdminOrAbove")]
+    [Authorize]
+    [RequirePermission("accounting.agent_transactions", "view")]
     public async Task<IActionResult> AddCharge(Guid id, [FromBody] CreateTransactionRequest request)
     {
         try
         {
             var agent = await _unitOfWork.Agents.GetByIdAsync(id);
             if (agent == null)
+                return NotFound(new { success = false, message = "الوكيل غير موجود" });
+
+            // عزل: غير SuperAdmin لا يجري معاملات على وكيل خارج شركته.
+            if (!_tenant.IsSuperAdmin && agent.CompanyId != _tenant.CompanyId)
                 return NotFound(new { success = false, message = "الوكيل غير موجود" });
 
             if (request.Amount <= 0)
@@ -675,13 +723,18 @@ public class AgentsController : ControllerBase
     /// تسجيل تسديد من الوكيل (Payment)
     /// </summary>
     [HttpPost("{id:guid}/payment")]
-    [Authorize(Policy = "CompanyAdminOrAbove")]
+    [Authorize]
+    [RequirePermission("accounting.agent_transactions", "view")]
     public async Task<IActionResult> AddPayment(Guid id, [FromBody] CreateTransactionRequest request)
     {
         try
         {
             var agent = await _unitOfWork.Agents.GetByIdAsync(id);
             if (agent == null)
+                return NotFound(new { success = false, message = "الوكيل غير موجود" });
+
+            // عزل: غير SuperAdmin لا يجري معاملات على وكيل خارج شركته.
+            if (!_tenant.IsSuperAdmin && agent.CompanyId != _tenant.CompanyId)
                 return NotFound(new { success = false, message = "الوكيل غير موجود" });
 
             if (request.Amount <= 0)
@@ -788,14 +841,19 @@ public class AgentsController : ControllerBase
     /// ملخص محاسبة جميع الوكلاء (للمدير)
     /// </summary>
     [HttpGet("accounting/summary")]
-    [Authorize(Policy = "CompanyAdminOrAbove")]
+    [Authorize]
+    [RequirePermission("accounting.agent_transactions", "view")]
     public async Task<IActionResult> GetAccountingSummary([FromQuery] Guid? companyId)
     {
         try
         {
             var query = _unitOfWork.Agents.AsQueryable();
-            if (companyId.HasValue)
-                query = query.Where(a => a.CompanyId == companyId.Value);
+            // عزل: غير SuperAdmin يُقيَّد بشركته دائماً.
+            var scope = ScopeCompanyId(companyId);
+            if (scope.HasValue)
+                query = query.Where(a => a.CompanyId == scope.Value);
+            else if (!_tenant.IsSuperAdmin)
+                query = query.Where(a => a.CompanyId == Guid.Empty);
 
             var agents = await query.ToListAsync();
 

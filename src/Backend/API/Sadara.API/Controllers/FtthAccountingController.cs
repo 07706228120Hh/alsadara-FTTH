@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
@@ -22,12 +23,14 @@ public class FtthAccountingController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<FtthAccountingController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly ICurrentTenant _tenant;
 
-    public FtthAccountingController(IUnitOfWork unitOfWork, ILogger<FtthAccountingController> logger, IConfiguration configuration)
+    public FtthAccountingController(IUnitOfWork unitOfWork, ILogger<FtthAccountingController> logger, IConfiguration configuration, ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _configuration = configuration;
+        _tenant = tenant;
     }
 
     /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم الكامل — للعمليات الفردية
@@ -2009,8 +2012,10 @@ public class FtthAccountingController : ControllerBase
             var query = _unitOfWork.Agents.AsQueryable()
                 .Where(a => a.Status == AgentStatus.Active);
 
-            if (companyId.HasValue)
-                query = query.Where(a => a.CompanyId == companyId);
+            // عزل: غير SuperAdmin يُقيَّد بشركته دائماً (Guid.Empty = لا شيء) ويتجاهل companyId المُرسَل.
+            var scope = _tenant.IsSuperAdmin ? companyId : (_tenant.CompanyId ?? Guid.Empty);
+            if (scope.HasValue)
+                query = query.Where(a => a.CompanyId == scope.Value);
 
             var agents = await query
                 .Select(a => new { a.Id, a.Name, a.AgentCode, a.PhoneNumber })

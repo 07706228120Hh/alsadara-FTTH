@@ -2144,7 +2144,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ'),
+                            content: Text(e.toString().replaceFirst('Exception: ', '')),
                             backgroundColor: Colors.red),
                       );
                     }
@@ -2283,7 +2283,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ'),
+                            content: Text(e.toString().replaceFirst('Exception: ', '')),
                             backgroundColor: Colors.red),
                       );
                     }
@@ -2433,7 +2433,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ'),
+                            content: Text(e.toString().replaceFirst('Exception: ', '')),
                             backgroundColor: Colors.red),
                       );
                     }
@@ -2596,7 +2596,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('خطأ'),
+                            content: Text(e.toString().replaceFirst('Exception: ', '')),
                             backgroundColor: Colors.red),
                       );
                     }
@@ -2797,7 +2797,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red),
         );
       }
     }

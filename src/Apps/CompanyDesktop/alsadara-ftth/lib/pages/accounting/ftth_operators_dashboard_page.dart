@@ -12672,6 +12672,20 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           }
         }
         // الوكلاء: است��راج أسماء فريدة من العمود "ا��وكيل" في البيانات المحمّلة
+        // الوكلاء: تُجلب من endpoint المعزول (كل وكلاء الشركة النشطين) — لا كشطاً من السجلات.
+        try {
+          final agentsResp =
+              await AccountingService.instance.getAgentsList(companyId: widget.companyId);
+          for (final a in agentsResp) {
+            final name = (a['name'] ?? a['Name'])?.toString().trim() ?? '';
+            final id = (a['id'] ?? a['Id'])?.toString() ?? '';
+            if (name.isNotEmpty && !agents.contains(name)) {
+              agents.add(name);
+              if (id.isNotEmpty) agentIdMap[name] = id;
+            }
+          }
+        } catch (_) {}
+        // احتياط: أسماء وكلاء موجودة في السجلات لكن غير مدرجة (مثل وكيل موقوف)
         for (final r in _records) {
           final agent = r['الوكيل']?.toString().trim() ?? '';
           final agentId = r['linkedAgentId']?.toString() ?? '';
