@@ -58,6 +58,103 @@ public class InternalDataController : ControllerBase
     }
 
     // ═══════════════════════════════════════════════════════
+    // Backfill: قيود محاسبية لأجور المهام التاريخية (بلا قيد) — المرحلة 2ب
+    // idempotent (يعالج فقط JournalEntryId=null)، dry-run، ودفعات
+    // ═══════════════════════════════════════════════════════
+    /// <summary>تسوية تاريخية: قيد (مدين 1140x / دائن إيراد) لكل أجور مهمة قديمة بلا قيد</summary>
+    [HttpPost("backfill-task-fee-journals")]
+    [AllowAnonymous]
+    public async Task<IActionResult> BackfillTaskFeeJournals([FromQuery] bool dryRun = true, [FromQuery] int limit = 500)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        // فئات الأجور: Maintenance=0, DeliveryFee=6, InstallationFee=7, OtherFee=8
+        var feeCats = new[]
+        {
+            TechnicianTransactionCategory.Maintenance, TechnicianTransactionCategory.DeliveryFee,
+            TechnicianTransactionCategory.InstallationFee, TechnicianTransactionCategory.OtherFee
+        };
+
+        var baseQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
+            .Where(t => !t.IsDeleted
+                && t.Type == TechnicianTransactionType.Charge
+                && t.JournalEntryId == null
+                && t.ServiceRequestId != null
+                && t.CompanyId != Guid.Empty
+                && feeCats.Contains(t.Category));
+
+        if (dryRun)
+        {
+            var remaining = await baseQuery.CountAsync();
+            var totalAmount = await baseQuery.SumAsync(t => (decimal?)t.Amount) ?? 0m;
+            return Ok(new { success = true, dryRun = true, remaining, totalAmount,
+                message = $"معاينة: {remaining} أجور مهمة بلا قيد بإجمالي {totalAmount:N0}. أرسل dryRun=false للتنفيذ." });
+        }
+
+        var batch = await baseQuery.OrderBy(t => t.CreatedAt).Take(Math.Clamp(limit, 1, 1000)).ToListAsync();
+        int processed = 0, linked = 0, errors = 0;
+        foreach (var tx in batch)
+        {
+            try
+            {
+                var refId = tx.ServiceRequestId!.Value.ToString();
+                // حارس تكرار: قيد موجود لنفس المهمة؟ اربطه فقط (لا تُنشئ ثانياً)
+                var existingJe = await _unitOfWork.JournalEntries.AsQueryable()
+                    .Where(j => j.ReferenceType == JournalReferenceType.ServiceRequest && j.ReferenceId == refId && !j.IsDeleted)
+                    .Select(j => (Guid?)j.Id).FirstOrDefaultAsync();
+                if (existingJe.HasValue)
+                {
+                    tx.JournalEntryId = existingJe.Value;
+                    _unitOfWork.TechnicianTransactions.Update(tx);
+                    linked++;
+                    continue;
+                }
+
+                var tech = await _unitOfWork.Users.GetByIdAsync(tx.TechnicianId);
+                var techName = tech?.FullName ?? $"فني {tx.TechnicianId}";
+                var revenueCode = tx.Category switch
+                {
+                    TechnicianTransactionCategory.Maintenance => "4110",
+                    TechnicianTransactionCategory.InstallationFee => "4130",
+                    TechnicianTransactionCategory.DeliveryFee => "4140",
+                    _ => "4200",
+                };
+                var revenueAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, tx.CompanyId)
+                    ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4200", tx.CompanyId)
+                    ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4110", tx.CompanyId);
+                if (revenueAcct == null) { errors++; continue; }
+
+                var debitAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                    _unitOfWork, "1140", tx.TechnicianId, techName, tx.CompanyId);
+                var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                {
+                    (debitAcct.Id, tx.Amount, 0m, $"أجور مهمة (تسوية تاريخية) - {techName}"),
+                    (revenueAcct.Id, 0m, tx.Amount, $"إيراد أجور مهمة (تسوية تاريخية) - {techName}")
+                };
+                var jeId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                    _unitOfWork, tx.CompanyId, Guid.Empty,
+                    $"تسوية تاريخية: أجور مهمة - {techName}",
+                    JournalReferenceType.ServiceRequest, refId, lines,
+                    entryDate: DateTime.SpecifyKind(tx.CreatedAt, DateTimeKind.Utc));
+                tx.JournalEntryId = jeId;
+                _unitOfWork.TechnicianTransactions.Update(tx);
+                processed++;
+            }
+            catch (Exception ex)
+            {
+                errors++;
+                _logger.LogWarning(ex, "فشل backfill قيد أجور المهمة للمعاملة {TxId}", tx.Id);
+            }
+        }
+        await _unitOfWork.SaveChangesAsync();
+
+        var stillRemaining = await baseQuery.CountAsync();
+        return Ok(new { success = true, dryRun = false, processed, linked, errors, remaining = stillRemaining,
+            message = $"أُنشئ {processed} قيد + رُبِط {linked} (أخطاء {errors}). متبقٍ {stillRemaining}." });
+    }
+
+    // ═══════════════════════════════════════════════════════
     // مساعدات فلترة الصلاحيات حسب صلاحيات الشركة
     // ═══════════════════════════════════════════════════════
 
