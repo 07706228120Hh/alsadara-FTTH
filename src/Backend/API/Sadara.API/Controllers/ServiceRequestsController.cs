@@ -900,7 +900,7 @@ ORDER BY ""TotalCollected"" DESC;";
                 user.TechNetBalance = user.TechTotalPayments - user.TechTotalCharges;
                 _unitOfWork.Users.Update(user);
 
-                await _unitOfWork.TechnicianTransactions.AddAsync(new TechnicianTransaction
+                var techTx = new TechnicianTransaction
                 {
                     TechnicianId = user.Id,
                     Type = TechnicianTransactionType.Charge,
@@ -912,7 +912,56 @@ ORDER BY ""TotalCollected"" DESC;";
                     CreatedById = request.CompanyId ?? Guid.Empty,
                     CompanyId = request.CompanyId ?? Guid.Empty,
                     CreatedAt = DateTime.UtcNow,
-                });
+                };
+                await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
+
+                // ═══ المرحلة 2: قيد محاسبي لأجور المهمة (يسدّ فجوة عدم دخول أجور المهام الدفتر) ═══
+                //   مدين 1140x ذمّة الفني / دائن حساب إيراد بحسب فئة الأجر (حسابات مُبذّرة، بلا seeding).
+                //   يُطابق ReferenceType/ReferenceId مسار الإبطال الموجود مسبقاً عند الإلغاء/الرفض.
+                var feeCompanyId = request.CompanyId ?? Guid.Empty;
+                if (feeCompanyId != Guid.Empty && amount > 0)
+                {
+                    try
+                    {
+                        var jeExists = await _unitOfWork.JournalEntries.AsQueryable()
+                            .AnyAsync(j => j.ReferenceType == JournalReferenceType.ServiceRequest
+                                && j.ReferenceId == id.ToString() && !j.IsDeleted);
+                        if (!jeExists)
+                        {
+                            // حسابات الإيراد الفعلية على الإنتاج: 4110 صيانة، 4130 تنصيب، 4140 عمولة تحصيل، 4200 أخرى
+                            var revenueCode = category switch
+                            {
+                                TechnicianTransactionCategory.Maintenance => "4110",     // ايراد صيانة
+                                TechnicianTransactionCategory.InstallationFee => "4130", // ايراد تنصيب
+                                TechnicianTransactionCategory.DeliveryFee => "4140",     // ايراد عمولة تحصيل
+                                _ => "4200",                                             // ايرادات أخرى (تجديد/غيره)
+                            };
+                            var revenueAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, revenueCode, feeCompanyId)
+                                ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4200", feeCompanyId)
+                                ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, "4110", feeCompanyId);
+                            if (revenueAcct != null)
+                            {
+                                var debitAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                                    _unitOfWork, "1140", user.Id, user.FullName, feeCompanyId);
+                                var feeLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                                {
+                                    (debitAcct.Id, amount, 0m, $"أجور {description} - {user.FullName}"),
+                                    (revenueAcct.Id, 0m, amount, $"إيراد أجور مهمة - {user.FullName}")
+                                };
+                                var feeJeId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                                    _unitOfWork, feeCompanyId, request.CompanyId ?? Guid.Empty,
+                                    $"أجور مهمة {request.RequestNumber} - {description}",
+                                    JournalReferenceType.ServiceRequest, id.ToString(), feeLines);
+                                techTx.JournalEntryId = feeJeId;
+                                _unitOfWork.TechnicianTransactions.Update(techTx);
+                            }
+                        }
+                    }
+                    catch (Exception feeJeEx)
+                    {
+                        _logger.LogWarning(feeJeEx, "⚠️ فشل قيد أجور المهمة {RequestNumber} — سُجِّلت الأجور بلا قيد", request.RequestNumber);
+                    }
+                }
 
                 _logger.LogInformation("تم تسجيل {Category} {Amount} على {UserId} — مهمة {RequestNumber}",
                     category, amount, user.Id, request.RequestNumber);
