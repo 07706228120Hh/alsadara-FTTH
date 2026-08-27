@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Constants;
 using Sadara.Domain.Entities;
+using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using System.Security.Claims;
 
@@ -355,10 +357,38 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
             };
             await _unitOfWork.EmployeeDeductionBonuses.AddAsync(deduction);
 
-            await _unitOfWork.SaveChangesAsync();
+            // 3. قيد محاسبي لصرف السلفة (يسدّ فجوة عدم ظهور السلفة في الدفتر) — النموذج B1:
+            //    مدين 5100 مصروف رواتب / دائن 1110 نقد. لا يغيّر حساب الرواتب (السلفة تبقى خصماً على الصافي).
+            var advCompanyId = req.CompanyId ?? employee.CompanyId ?? Guid.Empty;
+            var advExpenseAcct = advCompanyId != Guid.Empty
+                ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.SalaryExpense, advCompanyId)
+                : null;
+            var advCashAcct = advCompanyId != Guid.Empty
+                ? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.Cash, advCompanyId)
+                : null;
+
+            if (advExpenseAcct != null && advCashAcct != null && req.Amount > 0)
+            {
+                var advLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                {
+                    (advExpenseAcct.Id, req.Amount, 0m, $"صرف سلفة موظف {req.UserName} (طلب #{req.Id})"),
+                    (advCashAcct.Id, 0m, req.Amount, $"نقد سلفة {req.UserName}")
+                };
+                // يُنشئ القيد المرحّل ويحفظ كل التغييرات المتعقَّبة (الطلب + الخصم + القيد) معاً (ذرّي)
+                await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                    _unitOfWork, advCompanyId, reviewer ?? Guid.Empty,
+                    $"صرف سلفة موظف {req.UserName} - {req.Amount:N0} د.ع",
+                    JournalReferenceType.Salary, $"ADV-{req.Id}", advLines);
+            }
+            else
+            {
+                // حسابات النقد/المصروف غير مهيأة للشركة — نُكمل الصرف بلا قيد (سلوك محايد) مع تحذير
+                await _unitOfWork.SaveChangesAsync();
+                _logger.LogWarning("⚠️ صرف سلفة #{Id} بلا قيد محاسبي — 5100 أو 1110 غير موجود للشركة {CompanyId}", id, advCompanyId);
+            }
 
             _logger.LogInformation(
-                "💸 تم صرف سلفة #{Id} - {Amount} د.ع للموظف {UserName}. خصم سلفة على الراتب.",
+                "💸 تم صرف سلفة #{Id} - {Amount} د.ع للموظف {UserName}. خصم سلفة على الراتب + قيد محاسبي.",
                 id, req.Amount, req.UserName);
 
             return Ok(new
