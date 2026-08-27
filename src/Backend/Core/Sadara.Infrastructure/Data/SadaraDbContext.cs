@@ -1721,25 +1721,30 @@ public class SadaraDbContext : DbContext
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAt = DateTime.UtcNow;
-                    // ختم CompanyId مُحكَم بنفس علَم العزل — عند التعطيل لا يُفرض/يُختَم شيء (سلوك ما قبل العزل).
-                    if (_tenant.EnforceIsolation
-                        && !TenantFilterExclusions.Contains(entry.Metadata.ClrType.Name)
+                    // ختم CompanyId على كل سجل جديد — **مستقل عن علَم عزل القراءة EnforceIsolation**.
+                    // تصحيح انحدار v2.3.4: كان الختم محكوماً بالعلَم (OFF افتراضياً) فتيتّمت كل
+                    // السجلات الجديدة (CompanyId=NULL) لأن مسارات الإنشاء تعتمد على الختم المركزي.
+                    // نُعيد الختم دائماً لكن **الفرض الصارم** (طمس أي قيمة مخالفة لمنع الحقن) يبقى
+                    // محكوماً بالعلَم؛ عند تعطيله نختم **فقط عند الفراغ** (لا نطمس قيمة صريحة).
+                    if (!TenantFilterExclusions.Contains(entry.Metadata.ClrType.Name)
                         && entry.Metadata.FindProperty("CompanyId") is { } cp
                         && (cp.ClrType == typeof(Guid) || cp.ClrType == typeof(Guid?)))
                     {
                         var prop = entry.Property("CompanyId");
-                        if (!_tenant.BypassTenantFilter && _tenant.CompanyId.HasValue)
+                        if (_tenant.EnforceIsolation && !_tenant.BypassTenantFilter && _tenant.CompanyId.HasValue)
                         {
-                            // مستخدم مُصادَق غير-متجاوز: افرض شركته دائماً — يمنع مركزياً حقن سجل
-                            // في شركة أخرى حتّى لو حدّد الكود/الطلب CompanyId مختلفاً.
+                            // عزل مُفعّل: افرض شركة المستخدم دائماً — يمنع مركزياً حقن سجل في شركة أخرى.
                             prop.CurrentValue = _tenant.CompanyId.Value;
                         }
-                        else if (IsCompanyIdEmpty(prop.CurrentValue) && _tenant.DefaultCompanyId.HasValue)
+                        else if (IsCompanyIdEmpty(prop.CurrentValue))
                         {
-                            // ضمان مركزي: سياق تجاوز (مفتاح API/مجهول/نظام) وصل بـ CompanyId فارغ —
-                            // اختم الشركة الافتراضية كي لا يبقى صفّ تينانت بلا شركة (يُخفى عن قراءات JWT).
-                            // لا نطمس قيمة صريحة قائمة (مثل tenantId من الـ route).
-                            prop.CurrentValue = _tenant.DefaultCompanyId.Value;
+                            // ختم عند الفراغ فقط (السلوك الأساسي المستعاد): شركة المستخدم المُصادَق إن
+                            // وُجدت، وإلا الشركة الافتراضية لسياق التجاوز (مفتاح API/نظام). لا نطمس
+                            // قيمة صريحة قائمة (مثل tenantId من الـ route أو إنشاء SuperAdmin لشركة).
+                            if (!_tenant.BypassTenantFilter && _tenant.CompanyId.HasValue)
+                                prop.CurrentValue = _tenant.CompanyId.Value;
+                            else if (_tenant.DefaultCompanyId.HasValue)
+                                prop.CurrentValue = _tenant.DefaultCompanyId.Value;
                         }
                     }
                     break;
