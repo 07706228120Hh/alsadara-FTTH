@@ -949,7 +949,7 @@ ORDER BY ""TotalCollected"" DESC;";
                                     (revenueAcct.Id, 0m, amount, $"إيراد أجور مهمة - {user.FullName}")
                                 };
                                 var feeJeId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
-                                    _unitOfWork, feeCompanyId, request.CompanyId ?? Guid.Empty,
+                                    _unitOfWork, feeCompanyId, user.Id, // مُنشئ القيد = مستخدم صالح (FK) بدل معرّف الشركة
                                     $"أجور مهمة {request.RequestNumber} - {description}",
                                     JournalReferenceType.ServiceRequest, id.ToString(), feeLines);
                                 techTx.JournalEntryId = feeJeId;

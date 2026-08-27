@@ -92,6 +92,15 @@ public class InternalDataController : ControllerBase
                 message = $"معاينة: {remaining} أجور مهمة بلا قيد بإجمالي {totalAmount:N0}. أرسل dryRun=false للتنفيذ." });
         }
 
+        // مُنشئ القيد: مستخدم صالح (FK JournalEntries→Users) — مدير شركة/نظام، وإلا أي مستخدم
+        var creatorId = await _unitOfWork.Users.AsQueryable()
+            .Where(u => !u.IsDeleted && (u.Role == UserRole.CompanyAdmin || u.Role == UserRole.SuperAdmin))
+            .Select(u => u.Id).FirstOrDefaultAsync();
+        if (creatorId == Guid.Empty)
+            creatorId = await _unitOfWork.Users.AsQueryable().Where(u => !u.IsDeleted).Select(u => u.Id).FirstOrDefaultAsync();
+        if (creatorId == Guid.Empty)
+            return StatusCode(500, new { success = false, message = "لا يوجد مستخدم صالح لإسناد مُنشئ القيد" });
+
         var batch = await baseQuery.OrderBy(t => t.CreatedAt).Take(Math.Clamp(limit, 1, 1000)).ToListAsync();
         int processed = 0, linked = 0, errors = 0;
         foreach (var tx in batch)
@@ -134,7 +143,7 @@ public class InternalDataController : ControllerBase
                     (revenueAcct.Id, 0m, tx.Amount, $"إيراد أجور مهمة (تسوية تاريخية) - {techName}")
                 };
                 var jeId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
-                    _unitOfWork, tx.CompanyId, Guid.Empty,
+                    _unitOfWork, tx.CompanyId, creatorId, // مُنشئ صالح (FK)
                     $"تسوية تاريخية: أجور مهمة - {techName}",
                     JournalReferenceType.ServiceRequest, refId, lines,
                     entryDate: DateTime.SpecifyKind(tx.CreatedAt, DateTimeKind.Utc));

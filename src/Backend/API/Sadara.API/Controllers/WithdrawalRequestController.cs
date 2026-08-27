@@ -376,7 +376,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
                 };
                 // يُنشئ القيد المرحّل ويحفظ كل التغييرات المتعقَّبة (الطلب + الخصم + القيد) معاً (ذرّي)
                 await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
-                    _unitOfWork, advCompanyId, reviewer ?? Guid.Empty,
+                    _unitOfWork, advCompanyId, reviewer ?? employee.Id, // مُنشئ صالح (FK) لو غاب المراجِع
                     $"صرف سلفة موظف {req.UserName} - {req.Amount:N0} د.ع",
                     JournalReferenceType.Salary, $"ADV-{req.Id}", advLines);
             }
