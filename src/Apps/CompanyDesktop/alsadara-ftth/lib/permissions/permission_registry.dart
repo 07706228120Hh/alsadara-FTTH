@@ -1539,19 +1539,10 @@ class PermissionRegistry {
   static Map<String, Map<String, List<String>>> _buildAccLeaderTemplate() {
     return {
       ..._basePermissions(),
-      // محاسبة — بدون حذف وإعدادات
-      'accounting': {'actions': ['view', 'add', 'edit', 'export', 'print']},
-      'accounting.dashboard': {'actions': ['view']},
-      'accounting.journals': {'actions': ['view', 'add', 'edit', 'print']},
-      'accounting.compound_journals': {'actions': ['view', 'add', 'edit']},
-      'accounting.expenses': {'actions': ['view', 'add', 'edit', 'export']},
-      'accounting.revenue': {'actions': ['view', 'add', 'edit', 'export']},
-      'accounting.collections': {'actions': ['view', 'add', 'edit', 'export']},
-      'accounting.cashbox': {'actions': ['view', 'add', 'edit']},
-      'accounting.client_accounts': {'actions': ['view', 'export']},
-      'accounting.statistics': {'actions': ['view', 'export']},
-      'accounting.ftth_operators': {'actions': ['view']},
-      'accounting.audit_trail': {'actions': ['view']},
+      // محاسبة — كل الشاشات (كالمدير) بطلب المستخدم: يشمل الوكلاء والسحوبات وغيرها
+      'accounting': {'actions': _allActions},
+      for (final e in firstSystem.where((e) => e.parent == 'accounting'))
+        e.key: {'actions': e.allowedActions ?? _allActions},
       // HR — رواتب عرض
       'hr.salaries': {'actions': ['view', 'export', 'print']},
       'attendance': {'actions': ['view']},
