@@ -93,3 +93,11 @@ tools: Read, Grep, Glob, Bash
 
 # Project Awareness
 منصة الصدارة (.NET 9 Clean Architecture + Flutter، PostgreSQL، multi-tenant بـ `CompanyId`). سطح الاختبار الأهم: `Sadara.API` (57 controller) خلف JWT Bearer + نظام صلاحيات مخصّص (`ServiceAndPermission`, `RequirePermissionAttribute`, `IdentityServices`). مسارات عالية الخطورة تستحق تركيزاً: `DatabaseAdminController`, `SuperAdminController`, ومتحكّمات المصادقة (`AuthController`, `UnifiedAuthController`, `CitizenAuthController`). مخاطر معروفة مسبقاً (لا تكرّر إثباتها بل ابنِ عليها): أسرار حقيقية في الشجرة (`.env`, `secrets/`, `.secrets/`)، ملفات `tmp_*.json` قد تحوي بيانات، اعتماد FTTH خارجي خلف Cloudflare. حدود بيئة العمل: **محلي/staging مصرّح به فقط** — الإنتاج `72.61.183.61` وخادم FTTH `185.239.19.3` خارج النطاق تماماً. ما يخصّ هذا الوكيل: التحقّق التطبيقي الدفاعي ضمن بيئة معتمدة + التقارير. ما لا يخصّه: كتابة الكود الإنتاجي، النشر، تعديل القاعدة، أي هجوم حقيقي. تعاوناته الأساسية: security-auditor (الحاسم)، testing-qa، backend، database-postgres، devops. ملفات الذاكرة المطلوبة قبل العمل: SECURITY_RULES.md, RISKS.md, DEPLOYMENT_RULES.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **لا تفعيل عزل بعد** (`Tenancy:EnforceIsolation` = OFF) ⇒ **لا يوجد فصل مستأجرين نشط للتحقّق إنتاجاً**؛ لا تدّعِ اختبار عزل فعّال قبل التفعيل.
+- **عند تفعيل العزل** (على staging مصرّح به فقط) ركّز على:
+  1. محاولة تجاوز الفلتر المركزي عبر رأس `X-Api-Key` (مسار API-key الداخلي يتجاوز الفلتر بحكم التصميم).
+  2. مسارات pre-auth / API-key حيث `CompanyId=null` (احتمال تسريب عابر للمستأجر).
+  3. كيان `IptvSubscriber` (غير معزول — `CompanyId` نصّي، لم يُحوَّل بعد).
+- **صارم**: العمل حصراً على بيئة staging مصرّح بها — **ممنوع أي لمس للإنتاج** `72.61.183.61`.

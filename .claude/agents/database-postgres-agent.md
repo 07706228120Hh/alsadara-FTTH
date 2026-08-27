@@ -72,3 +72,12 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 
 # Project Awareness
 القاعدة: PostgreSQL (db: `sadara_db`) على VPS الإنتاج 72.61.183.61. الوصول عبر EF Core 9 + Npgsql من Sadara.Infrastructure، حالياً 84 migration. النشر دائماً على 72.61.183.61 فقط، عبر SCP، ولا تنفيذ مباشر على الإنتاج دون موافقة بشرية صريحة. الكيانات الأساسية متعددة المستأجرين عبر CompanyId (User, Company, Customer, Subscription, Accounting, Payment, Order, ServiceAndPermission, ISPSubscriber, FtthSubscriberCache). تحذير: 84 migration مقابل DB إنتاج حيّة — أي ترحيل يحتاج خطة أثر وتراجع. ما يخص هذا الوكيل: `Sadara.Infrastructure/Data/**` والـ migrations. ما لا يخصه: منطق الـ API، الواجهات، النشر الفعلي. تعاوناته: backend, architecture, security. ملفات الذاكرة المطلوبة: DATABASE_RULES.md, SECURITY_RULES.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **هذا الوكيل يقود بوابات العزل على مستوى DB** قبل رفع `Tenancy:EnforceIsolation=true`:
+  1. **backfill شامل لـ CompanyId + verify = 0** (لا صفوف يتيمة قبل التفعيل).
+  2. تحويل `IptvSubscriber.CompanyId` من `string` → `Guid` (كود + migration) — كيان غير معزول حالياً (P0).
+  3. backfill أعمدة `Department`/`TechnicianName` من `Details` (العمود ناقص ~28%).
+- **درس ملزم**: المرآة `sadara_db_mirror` تكفي لاختبار SQL بـ psql لكنها **لا تكفي** لاختبار مسار EF `SqlQueryRaw` (String.Format braces + تنميط بارامترات) — نسّق مع testing-qa لاختبار EF فعلياً.
+- **ترحيلات v2.3.4 المطبَّقة عند الإقلاع** (أعمدة nullable آمنة): `20260717223916` (CompanyId لأبناء المحاسبة) + `20260801164003` (أعمدة Department/TechnicianName).
+- **قاعدة صارمة**: أي migration/تحويل نوع على الإنتاج = موافقة بشرية صريحة + نسخة احتياطية + خطة rollback (نسخة v2.3.4: `/root/backups/sadara_db_pre_v234_*.sql.gz`).

@@ -77,3 +77,10 @@ tools: Read, Grep, Glob, Bash
 - Hostinger MCP متاح لإدارة الـ VPS (تشغيل/إيقاف/firewall/snapshots) لكنه لا يرفع ملفات — النشر يبقى عبر SCP.
 - التوزيع: `installer.iss` → `Alsadara-Setup-v<الإصدار>.exe` → GitHub Releases (`07706228120Hh/alsadara-FTTH`) → auto-update.
 - Flutter: `D:\flutter\flutter\bin\flutter.bat`.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **v2.3.4 = أول إصدار بنشر باكند مصاحب** (خلافاً لإصدارات Flutter-فقط السابقة). نشر الباكند = SCP للـ DLLs الأربعة (Sadara.API/Domain/Infrastructure/Application) **عدا** `appsettings*` + `systemctl restart sadara-api`.
+- **الثنائي المنشور يشحن كود العزل النشط لكنه محايد** لأن `Tenancy:EnforceIsolation` افتراضي **OFF**؛ النشر آمن بلا تفعيل العزل.
+- رفع `Tenancy:EnforceIsolation=true` + restart = إجراء **يحتاج موافقة بشرية صريحة** (تفعيل عزل، لا مجرد نشر).
+- **CI مقفل بالفوترة** ⇒ الإصدارات يدوية حالياً (`gh release create --latest`)؛ لا تعتمد على GitHub Actions لبناء/نشر آلي.
+- نسخ v2.3.4 للتراجع: DLLs في `/var/www/sadara-api.pre_v234_*` + DB في `/root/backups/sadara_db_pre_v234_*.sql.gz`.

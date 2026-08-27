@@ -70,3 +70,8 @@ tools: Read, Write, Edit, Grep, Glob
 - Auth: JWT + نظام صلاحيات مخصص (RequirePermissionAttribute)، Firebase FCM.
 - اعتماد خارجي: `api.ftth.iq` (قراءة فقط، خلف Cloudflare).
 - وثّق الواقع لا التمنيات.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **`docs/RELEASE_v2.3.4.md` = تقرير الإصدار المعتمد** (المرجع الحالي لحالة النظام بعد v2.3.4).
+- **تصحيح توثيقي إلزامي**: حالة عزل المستأجرين تغيّرت من «خامل على فرع منفصل» إلى **«نشط في `SadaraDbContext` خلف علَم `Tenancy:EnforceIsolation` = OFF»** — يجب أن ينعكس هذا في الوثائق المعمارية (ARCHITECTURE/DECISIONS) بالتنسيق مع architecture-evolution-agent.
+- الإصدار المنشور الحالي = `2.3.4+309` (latest) — حدّث أي وثيقة تذكر `2.2.25+304`.

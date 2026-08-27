@@ -485,12 +485,16 @@ ORDER BY ""TotalCollected"" DESC;";
             _ => raw.ToString()
         };
 
-        // تطبيع كامل: إزالة الأطراف + دمج المسافات الداخلية المكرّرة في مسافة واحدة —
-        // ليطابق normalizeName في العميل (كان .Trim() فقط يترك المسافات الداخلية).
-        return string.IsNullOrWhiteSpace(value)
+        return NormalizeName(value);
+    }
+
+    /// تطبيع اسم/قسم: إزالة الأطراف + دمج المسافات الداخلية المكرّرة في مسافة واحدة —
+    /// ليطابق normalizeName في العميل. يُطبَّق على العمود و Details معاً عند الكتابة
+    /// (كانت مسارات التحديث تكتب Details خاماً بلا تطبيع فيختلف عن العمود المشذَّب).
+    private static string? NormalizeName(string? value)
+        => string.IsNullOrWhiteSpace(value)
             ? null
             : System.Text.RegularExpressions.Regex.Replace(value.Trim(), @"\s+", " ");
-    }
 
     /// <summary>
     /// يحوّل تاريخاً (قد يكون Local/Unspecified) إلى UTC صريح لأن Npgsql timestamptz يتطلب UTC.
@@ -1738,9 +1742,9 @@ ORDER BY ""TotalCollected"" DESC;";
             catch { details = new(); }
         }
 
-        if (!string.IsNullOrEmpty(dto.Department)) { details["department"] = dto.Department; request.Department = dto.Department.Trim(); }
+        if (!string.IsNullOrEmpty(dto.Department)) { var d = NormalizeName(dto.Department); details["department"] = d; request.Department = d; }
         if (!string.IsNullOrEmpty(dto.Leader)) details["leader"] = dto.Leader;
-        if (!string.IsNullOrEmpty(dto.Technician)) { details["technician"] = dto.Technician; request.TechnicianName = dto.Technician.Trim(); }
+        if (!string.IsNullOrEmpty(dto.Technician)) { var t = NormalizeName(dto.Technician); details["technician"] = t; request.TechnicianName = t; }
         if (!string.IsNullOrEmpty(dto.TechnicianPhone)) details["technicianPhone"] = dto.TechnicianPhone;
         if (!string.IsNullOrEmpty(dto.FBG)) details["fbg"] = dto.FBG;
         if (!string.IsNullOrEmpty(dto.FAT)) details["fat"] = dto.FAT;
@@ -1837,11 +1841,11 @@ ORDER BY ""TotalCollected"" DESC;";
             catch { details = new(); }
         }
 
-        // dual-write (مرحلة ب): نُبقي دلالة "!= null" للـJSON كما هي (يسمح بالتفريغ عبر سلسلة فارغة)،
-        // ونعكس نفس التغيير على العمود المطبّع مع تطبيع الفارغ إلى null (لاتساق الفلترة/التجميع).
-        if (dto.Department != null) { details["department"] = dto.Department; request.Department = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim(); }
+        // dual-write: تطبيع موحّد للعمود و Details معاً (تشذيب + دمج المسافات) عبر NormalizeName —
+        // الفارغ/المسافات ⇒ null (تفريغ الحقل + اتساق الفلترة/التجميع). يحافظ على دلالة "!= null".
+        if (dto.Department != null) { var d = NormalizeName(dto.Department); details["department"] = d; request.Department = d; }
         if (dto.Leader != null) details["leader"] = dto.Leader;
-        if (dto.Technician != null) { details["technician"] = dto.Technician; request.TechnicianName = string.IsNullOrWhiteSpace(dto.Technician) ? null : dto.Technician.Trim(); }
+        if (dto.Technician != null) { var t = NormalizeName(dto.Technician); details["technician"] = t; request.TechnicianName = t; }
         if (dto.TechnicianPhone != null) details["technicianPhone"] = dto.TechnicianPhone;
         if (dto.FBG != null) details["fbg"] = dto.FBG;
         if (dto.FAT != null) details["fat"] = dto.FAT;

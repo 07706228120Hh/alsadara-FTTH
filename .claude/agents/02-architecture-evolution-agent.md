@@ -69,3 +69,8 @@ tools: Read, Grep, Glob, Write, Edit
 
 # Project Awareness
 البنية: Clean Architecture بـ .NET 9 — Sadara.API (57 Controllers، SignalR Hubs، JWT، RequirePermissionAttribute)، Sadara.Application (Services/DTOs/Validators/Mapping)، Sadara.Domain (37+ Entities: User, Company, Customer, Subscription, Accounting, Payment, Order, ServiceAndPermission, ISPSubscriber, FtthSubscriberCache)، Sadara.Infrastructure (EF Core 9 + Npgsql، 84 migrations، IdentityServices، Repositories). Multi-tenant بـ CompanyId. اعتماد خارجي على مزوّد FTTH (api.ftth.iq) قراءة فقط خلف Cloudflare. ما يخص هذا الوكيل: التصميم والطبقات والقرارات. ما لا يخصه: كتابة الكود أو الـ SQL أو النشر. تعاوناته: backend, database, security, project-manager. ملفات الذاكرة المطلوبة: ARCHITECTURE.md, DECISIONS.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **تصحيح جوهري لحالة سابقة**: الفلتر المركزي لعزل المستأجرين في `SadaraDbContext` **نشط ومدموج في فرع الإصدار** — لم يعد «خاملاً على فرع منفصل». حدّث أي وصف معماري قديم بهذا.
+- **النمط المعتمد**: علَم `Tenancy:EnforceIsolation` يفصل **«النشر»** عن **«التفعيل»** — يُنشر الكود محايداً (OFF) ويُفعَّل العزل بقرار تشغيلي منفصل بموافقة. وثّق هذا النمط في DECISIONS.md/ARCHITECTURE.md.
+- **بوابة P1 معمارية غير منفّذة**: استثناء `InternetPlan` من الفلتر (دلالة `CompanyId=null` = خطة عامة) لم يُنفَّذ بعد — يجب حسمه قبل تفعيل العزل.

@@ -71,3 +71,12 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 
 # Project Awareness
 Backend بـ .NET 9: Sadara.API (57 Controllers، SignalR Hubs، Authorization/RequirePermissionAttribute، JWT Bearer)، Sadara.Application (Services/DTOs/Interfaces/Mapping/Validators)، Sadara.Domain (37+ Entities)، Sadara.Infrastructure (EF Core 9 + Npgsql، Identity/IdentityServices، Repositories). Controllers للمصادقة: AuthController, UnifiedAuthController, CitizenAuthController, SuperAdminController, DatabaseAdminController (الأخيران حسّاسان — مراجعة أمنية لازمة). Firebase FCM للإشعارات. ما يخص هذا الوكيل: `src/Backend/**` عدا Migrations. ما لا يخصه: الـ migrations، الأمن النهائي، الواجهات، النشر. تعاوناته: database, security, frontend, mobile, architecture. ملفات الذاكرة المطلوبة: SECURITY_RULES.md, ARCHITECTURE.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **`ServiceRequestsController` `/summary` مُصلَح ومنشور** (كان 500). قاعدة دائمة عند أي SQL خام عبر EF `SqlQueryRaw`/`ExecuteSqlRaw`:
+  1. نمّط **كل** بارامتر بنوع `NpgsqlDbType` صريح (Uuid/TimestampTz/Text) — خاصة قيم NULL للتواريخ/النصوص، وإلا تسقط بـ`42P08`.
+  2. هرّب أي `{`/`}` حرفية إلى `{{`/`}}` لأن EF يمرّر النص عبر `String.Format` (regex/JSON path يكسر البناء).
+- **قراءة الفني/القسم**: `ServiceRequestsController` يقرأ من `Details` عبر `COALESCE(NULLIF("TechnicianName",''), Details::json->>'technician')` لأن العمود ناقص backfill (~28%). أبقِ هذا النمط (COALESCE عمود↔Details) في أي قراءة/فلترة لـ assignee/department.
+- **دَين مفتوح**: مسارات **تحديث** المهمة (`ServiceRequestsController:1737,1840`) ما زالت تكتب `Details` خاماً — أُصلح مسار **الإنشاء** فقط؛ عالِج التحديث لاحقاً بتنسيق مع project-manager (منخفض الأولوية).
+- **منطق محاسبي (لا يوجد accounting-agent مستقل — يعالَج هنا)**: `collections` في `/summary` مقيّد بصلاحية `accounting.collections/view`؛ المبلغ المُحصَّل يأتي من `FinalCost`. تحذيران P2 قبل أي بناء عليهما: كشف `FinalCost` بلا صلاحية في `GetAll`/`GetStatistics`، و`RequirePermissionAttribute` **fail-open** (يُضعف بوابة التحصيل) — أي محاذاة لهذه الصلاحيات تمرّ على security-auditor. أرشفة المهام مرتبطة مالياً (لا حذف أعمى).
+- **العزل**: كود الفلتر المركزي وختم CompanyId نشط لكن محكوم بعلَم `Tenancy:EnforceIsolation` (افتراضي OFF)؛ استمر بفلترة CompanyId يدوياً في أي منطق جديد ولا تعتمد على الفلتر المركزي وحده قبل تفعيله.

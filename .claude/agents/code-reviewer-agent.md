@@ -70,3 +70,10 @@ tools: Read, Grep, Glob
 - Auth: JWT + نظام صلاحيات مخصص (`RequirePermissionAttribute`) — أي endpoint جديد يجب أن يحمل فحص صلاحية مناسب.
 - توجد controllers حسّاسة (`DatabaseAdmin`, `SuperAdmin`) — راجع التعديلات عليها بصرامة.
 - يوجد تاريخ تسرّب جلسة بين المستخدمين تم إصلاحه — تيقّظ لأي كود يمسّ الجلسة/التخزين المحلي.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+عند مراجعة **SQL خام مع EF** (`SqlQueryRaw`/`ExecuteSqlRaw`) تحقّق من:
+1. **تنميط كل بارامتر** بـ`NpgsqlDbType` صريح (خاصة NULL للتواريخ/النصوص) — وإلا `42P08` وقت التشغيل.
+2. **تهريب `{`/`}`** الحرفية إلى `{{`/`}}` (EF يمرّرها عبر `String.Format`).
+3. **اتساق قراءة الحقول** بين العمود و`Details` عبر `COALESCE` (مثل TechnicianName/assignee/department) طالما الأعمدة ناقصة backfill.
+4. أن مسارات **تحديث** المهمة لا تُبقي كتابة `Details` خاماً (`ServiceRequestsController:1737,1840` دَين مفتوح) — علِّق أي كود جديد يكرّر ذلك.

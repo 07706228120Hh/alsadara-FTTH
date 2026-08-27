@@ -66,3 +66,8 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 
 # Project Awareness
 التطبيق `src/Apps/CompanyDesktop/alsadara-ftth` (Flutter — Windows + Android + iOS)، الإصدار الحالي 2.2.25+304، يُوزَّع عبر مثبّت Inno Setup → GitHub Releases (07706228120Hh/alsadara-FTTH) → تحديث تلقائي عبر auto_update_service. مسار Flutter للبناء: `D:\flutter\flutter\bin\flutter.bat`. ملفات رئيسية: `lib/services/dual_auth_service.dart`, `lib/services/vps_auth_service.dart`, `lib/services/auth_service.dart`, `lib/ftth/core/home_page.dart`, `lib/ftth/users/user_details_page.dart`. سبق إصلاح تسرّب جلسة FTTH بين المستخدمين وإصلاحات أداء (إزالة AnimationControllers، shouldRepaint=false). الخادم الرئيسي 72.61.183.61 (API+DB)، ومزوّد FTTH خارجي 185.239.19.3 (قراءة فقط، خلف Cloudflare). ما يخص هذا الوكيل: تطبيق alsadara-ftth فقط. ما لا يخصه: backend، DB، CitizenWeb، النشر. تعاوناته: backend, security, architecture, performance. ملفات الذاكرة المطلوبة: SECURITY_RULES.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **v2.3.4 منشور** (Windows `Alsadara-Setup-v2.3.4.exe` ~23MB + Android arm64 `Alsadara-v2.3.4-arm64.apk` ~51MB)، `releases/latest`.
+- **شاشة المهام** (`home_page_tasks.dart`): تبويب «الكل» = عمليات **هذا الشهر** فقط + تحسينات أداء (دمج `setState`، إزالة تكرار/حساب مهدور).
+- **إصلاح سلوكي**: عند فشل `/summary` سابقاً كان fallback العميل يعرض ~50 بدل الإجمالي؛ الآن الخادم يردّ الإجمالي الصحيح — لا تُعِد إضافة fallback رقمي مضلِّل.

@@ -67,3 +67,11 @@ tools: Read, Write, Edit, Grep, Glob
 
 # Project Awareness
 منصة الصدارة: .NET 9 + PostgreSQL (72.61.183.61) + Flutter alsadara-ftth (الإصدار 2.2.25+304) + CitizenWeb. التوزيع عبر مثبّت Inno Setup → GitHub Releases مع تحديث تلقائي. النشر دائماً على 72.61.183.61 عبر SCP + systemd service `sadara-api`. مخاطر معروفة: أسرار في الشجرة، اختبارات ضعيفة، 84 migration مقابل DB إنتاج، اعتماد FTTH خارجي هشّ خلف Cloudflare. ما يخص هذا الوكيل: كل شيء تحت `.claude/memory`. ما لا يخصه: الكود وSQL والنشر. تعاوناته: الكل (يجمع التقارير)، خصوصاً architecture وsecurity وproject-manager. ملفات الذاكرة المطلوبة: PROJECT_STATE.md, TASK_HISTORY.md, DECISIONS.md, RISKS.md, ROADMAP.md.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+تحديثات ذاكرة مطلوبة بعد v2.3.4:
+- `PROJECT_STATE.md`: الإصدار الحالي = **2.3.4+309** (منشور، latest) بدل 2.2.25+304.
+- `tenant-isolation-status`: الكود **نشط** في `SadaraDbContext` + محكوم بعلَم `Tenancy:EnforceIsolation` (OFF) — لم يعد «خاملاً».
+- `tasks-system-optimization`: إصلاحات `/summary` (42P08 + String.Format braces + COALESCE للفني) **منشورة على الإنتاج**.
+- `release-runbook`: v2.3.4 = **نشر مزدوج** (تطبيق + باكند) + **درس EF vs psql** (اختبر SQL الخام عبر EF لا psql).
+- **تنبيه مواءمة**: بعض ملفات الذاكرة توجد في ذاكرة المستخدم (`C:\Users\...\.claude\projects\...\memory`) لا في `.claude/memory/` بالمستودع — نبّه لمزامنة الموقعين لتفادي تضارب الحقائق.

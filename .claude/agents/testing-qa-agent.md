@@ -68,3 +68,8 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 
 # Project Awareness
 الاختبارات في `tests/` ضمن ثلاثة مشاريع: Sadara.API.Tests، Sadara.Domain.Tests، Sadara.Integration.Tests — لكنها حالياً هزيلة/شبه فارغة والتغطية الفعلية Unknown، لذا رفع التغطية أولوية عُليا. البنية محلّ الاختبار: .NET 9 backend (Controllers/Services/Domain/Infrastructure) + PostgreSQL، ومناطق حرجة تستحق تغطية مبكّرة: المصادقة (JWT)، الصلاحيات (RequirePermissionAttribute)، القيود المحاسبية FTTH، وعزل المستأجرين (CompanyId). يوجد CI: `.github/workflows/build-windows.yml` (يبني مثبّت Windows) — لا تعطّله. ما يخص هذا الوكيل: `tests/**`. ما لا يخصه: تعديل منطق التطبيق أو الـ schema أو النشر. تعاوناته: backend, frontend, mobile, database, security. ملفات الذاكرة المطلوبة: TESTING_RULES.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **درس ملزم من حادثتَي `/summary`**: اختبار SQL على مرآة psql **لا يكفي** لمسار EF `SqlQueryRaw` — العطلان (String.Format braces + `42P08` للبارامترات غير المُنمَّطة) ظهرا فقط عبر EF. اختبر تغييرات SQL الخام **عبر EF فعلياً** (Testcontainers/Postgres حقيقي)، لا psql فقط.
+- **فجوة CI**: اختبارات الملخّص كانت **Skipped** لغياب Docker — أدرج تشغيل Docker في CI لتفعيل اختبارات Testcontainers.
+- **قاعدة تغطية**: أدرج المسارات **المُصادَقة** (بـ JWT صحيح) والحالات الحدّية (بارامترات NULL للتواريخ/النصوص) — الفجوة السابقة كانت الاكتفاء بالتحقّق بـ401 فقط دون مسار مصادَق ناجح.

@@ -69,3 +69,8 @@ tools: Read, Grep, Glob, Bash
 - يوجد سجل تحسينات أداء Flutter سابقة يُحتذى به: تحويل `shouldRepaint` إلى `=> false`، إزالة `AnimationController` (مثل `_bgAnimationController`)، إزالة Lottie المتكرر، جعل الانتقالات `Duration.zero`، ونقل عمليات dispose الثقيلة إلى `Future.microtask()`.
 - Backend: EF Core 9 + Npgsql؛ انتبه لـ N+1 و tracking غير الضروري.
 - بعض القيم في dashboards تراكمية بدون فلتر تاريخ — لا تخلط الأداء بصحة البيانات.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **تحسينات شاشة المهام مطبَّقة** (لا تكرّرها): إزالة حساب مهدور ×9، دمج `setState`، إلغاء «تحميل 10K»، caching خفيف.
+- **اختناق قائم مؤجَّل**: الفلترة على `Details` (JSON نصّي) = **Seq Scan**؛ التحسين المقترح (م7ب) = تحويل `text → jsonb + فهرس GIN` — مؤجّل، لا تطبّقه دون database-postgres-agent وقياس قبل/بعد.
+- **ملاحظة قياس**: `::json` أسرع ~40% من `::jsonb` في مسار القراءة الحالي — راعِها في أي توصية على `/summary`.

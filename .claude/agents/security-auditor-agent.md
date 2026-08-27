@@ -65,3 +65,12 @@ tools: Read, Grep, Glob
 
 # Project Awareness
 الأمن في منصة الصدارة: JWT Bearer + نظام صلاحيات مخصّص (ServiceAndPermission entity، RequirePermissionAttribute، IdentityServices). Controllers حسّاسة تحتاج تدقيقاً خاصاً: DatabaseAdminController، SuperAdminController، إضافةً لمتحكّمات المصادقة (AuthController, UnifiedAuthController, CitizenAuthController). مخاطر فعلية معروفة يجب التركيز عليها: (1) أسرار/ملفات .env بقيم حقيقية في جذر الشجرة و .secrets/ و secrets/ (JWT_SECRET_KEY، ENCRYPTION_KEY/IV، Firebase service account، VPS_PASSWORD، SMTP)؛ (2) ملفات tmp_*.json في الجذر مثل tmp_exec_detail.json (~1.6MB) قد تحوي بيانات حقيقية؛ (3) عزل المستأجرين عبر CompanyId؛ (4) اعتماد FTTH خارجي خلف Cloudflare. ما يخص هذا الوكيل: التحليل الأمني للكل (قراءة فقط). ما لا يخصه: كتابة الكود أو الإصلاح المباشر أو النشر. تعاوناته: الكل بصفة مراجع. ملفات الذاكرة المطلوبة: SECURITY_RULES.md, RISKS.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
+
+# تحديثات الإصدار / معرفة حالية (v2.3.4)
+- **الكلمة النهائية في تفعيل عزل المستأجرين لك**. علَم `Tenancy:EnforceIsolation` = **OFF** إنتاجاً ⇒ العزل **غير مفعّل فعلياً** رغم أن الكود منشور.
+- **بوابات أمنية قبل التفعيل**:
+  - **P0** `Security:InternalApiKey` مسرَّب/غير مُدوَّر — تدويره بوابة إلزامية بتنسيق متزامن مع n8n والتطبيق (وإلا تنكسر التكاملات).
+  - **P0** `IptvSubscriber` غير معزول (`CompanyId` نصّي) — يحتاج تحويل نوع + migration عبر database-postgres-agent.
+- **ديون P2 للمحاذاة**: `RequirePermissionAttribute` **fail-open** (يُضعف بوابة تحصيل `accounting.collections/view`)؛ كشف `FinalCost` بلا صلاحية في `GetAll`/`GetStatistics`.
+- **دَين أمني قديم**: `User.PlainPassword` مخزّن نصّاً صريحاً.
+- **قاعدة**: أي رفع للعلَم أو تدوير سرّ أو migration إنتاج = موافقة بشرية صريحة + نسخة احتياطية + rollback.

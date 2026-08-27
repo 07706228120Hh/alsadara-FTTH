@@ -1664,12 +1664,23 @@ public class SadaraDbContext : DbContext
                         .Invoke(this, new object[] { modelBuilder });
                 }
             }
+
+            // InternetPlan (مستثنى من الحلقة أعلاه): CompanyId=null = "باقة عامة لكل الشركات".
+            // فلتر خاص يشمل العامة إلى جانب باقات الشركة — وإلا تختفي الباقات العامة عن
+            // مستخدمي الشركة فور تفعيل العزل (شاشات التجديد/الاشتراك الجديد).
+            modelBuilder.Entity<InternetPlan>().HasQueryFilter(e =>
+                !e.IsDeleted &&
+                (_tenant.BypassTenantFilter
+                 || e.CompanyId == _tenant.CompanyId
+                 || e.CompanyId == null));
         }
     }
 
     // كيانات لها CompanyId لكن null فيها = "عام لكل الشركات" — تُستثنى من فلتر العزل
     // (مثل قوالب الصلاحيات: قالب بلا شركة = قالب افتراضي مشترك).
-    private static readonly HashSet<string> TenantFilterExclusions = new() { "PermissionTemplate" };
+    // - InternetPlan: CompanyId=null = "باقة عامة" ⇒ يُستثنى من الفلتر العام ويأخذ فلتراً خاصاً
+    //   يشمل العامة (وإلا تختفي الباقات العامة عن مستخدمي الشركة عند التفعيل).
+    private static readonly HashSet<string> TenantFilterExclusions = new() { "PermissionTemplate", "InternetPlan" };
 
     // مرجع دالة تطبيق فلتر العزل (تُستدعى عبر Reflection لكل كيان مستأجر).
     private static readonly MethodInfo SetTenantFilterMethod =
