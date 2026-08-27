@@ -107,6 +107,7 @@ public class InternalDataController : ControllerBase
                 {
                     tx.JournalEntryId = existingJe.Value;
                     _unitOfWork.TechnicianTransactions.Update(tx);
+                    await _unitOfWork.SaveChangesAsync();
                     linked++;
                     continue;
                 }
@@ -139,15 +140,16 @@ public class InternalDataController : ControllerBase
                     entryDate: DateTime.SpecifyKind(tx.CreatedAt, DateTimeKind.Utc));
                 tx.JournalEntryId = jeId;
                 _unitOfWork.TechnicianTransactions.Update(tx);
+                await _unitOfWork.SaveChangesAsync();
                 processed++;
             }
             catch (Exception ex)
             {
                 errors++;
+                _context.ChangeTracker.Clear(); // إزالة تلوّث السياق بعد فشل حفظ (تصادم رقم القيد تحت الحمل الحيّ)
                 _logger.LogWarning(ex, "فشل backfill قيد أجور المهمة للمعاملة {TxId}", tx.Id);
             }
         }
-        await _unitOfWork.SaveChangesAsync();
 
         var stillRemaining = await baseQuery.CountAsync();
         return Ok(new { success = true, dryRun = false, processed, linked, errors, remaining = stillRemaining,
