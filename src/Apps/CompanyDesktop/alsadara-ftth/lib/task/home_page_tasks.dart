@@ -88,8 +88,11 @@ class HomePageTasksState extends State<HomePageTasks> {
   // فلتر التحصيل: الحالة والفني
   String _collectionStatusFilter = 'الكل'; // الكل، معلقة، مكتملة، متأخرة
   String? _collectionTechFilter;
-  // فلتر "مهامي فقط" — للمدير والليدر لعرض المهام الموجهة لهم فقط
-  bool _myTasksOnly = true;
+  // فلتر "مهامي فقط" — للمدير والليدر لعرض المهام الموجهة لهم فقط.
+  // الافتراضي false: تُفتح اللوحة على **كل** مهام الشركة (مدير) أو القسم (ليدر)،
+  // ويُفعِّل المستخدم "مهامي" يدوياً عند الحاجة. (كان true فتُفتح على مهامه هو فقط
+  // فتظهر البطاقات صفراً رغم وجود مهام أنشأها/أُسندت لآخرين.)
+  bool _myTasksOnly = false;
 
   @override
   void initState() {
@@ -2471,6 +2474,10 @@ class HomePageTasksState extends State<HomePageTasks> {
                             _myTasksOnly = !_myTasksOnly;
                             _computeFilterByStatus(_getStatusByIndex(currentIndex));
                           });
+                          // تبديل "مهامي" يغيّر سياق الدور (assignee) المُرسَل للخادم →
+                          // يجب إعادة تجميع اللوحة، وإلا بقيت البطاقات على أرقام
+                          // "مهامي" القديمة (صفر) حتى التحديث التلقائي التالي.
+                          _fetchSummary();
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
