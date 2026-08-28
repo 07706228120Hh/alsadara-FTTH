@@ -281,7 +281,7 @@ WHERE ""IsDeleted"" = false
   AND (@from::timestamptz IS NULL OR ""CreatedAt"" >= @from::timestamptz)
   AND (@to::timestamptz   IS NULL OR ""CreatedAt"" <  @to::timestamptz)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR ""Department"" = @department OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = @department))
+  AND (@department IS NULL OR ""Department"" = ANY(string_to_array(@department, ',')) OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = ANY(string_to_array(@department, ','))))
   AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
 GROUP BY ""Status"";";
 
@@ -347,7 +347,7 @@ WHERE ""IsDeleted"" = false
   AND (@from::timestamptz IS NULL OR ""CreatedAt"" >= @from::timestamptz)
   AND (@to::timestamptz   IS NULL OR ""CreatedAt"" <  @to::timestamptz)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR ""Department"" = @department OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = @department))
+  AND (@department IS NULL OR ""Department"" = ANY(string_to_array(@department, ',')) OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = ANY(string_to_array(@department, ','))))
   AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
 GROUP BY 1, 2
 ORDER BY ""Total"" DESC;";
@@ -423,7 +423,7 @@ WHERE ""IsDeleted"" = false
   AND (@from::timestamptz IS NULL OR ""CreatedAt"" >= @from::timestamptz)
   AND (@to::timestamptz   IS NULL OR ""CreatedAt"" <  @to::timestamptz)
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
-  AND (@department IS NULL OR ""Department"" = @department OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = @department))
+  AND (@department IS NULL OR ""Department"" = ANY(string_to_array(@department, ',')) OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = ANY(string_to_array(@department, ','))))
   AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)
 GROUP BY 1
 ORDER BY ""TotalCollected"" DESC;";

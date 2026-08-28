@@ -412,12 +412,15 @@ class HomePageTasksState extends State<HomePageTasks> {
       // يرى الكل → بلا قصر.
       return (null, null);
     } else if (role == 'ليدر') {
-      // ليدر مقيّد بقسمه — الخادم يقبل قسماً واحداً؛ نمرّر أول قسم غير فارغ.
-      final firstDept = widget.department
+      // ليدر مقيّد بأقسامه — نمرّر **كل** أقسامه مفصولةً بفواصل؛ الخادم يقسّمها
+      // ويطابق أياً منها (مثل قائمة المهام). كان يمرّر أول قسم فقط ⇒ ليدر أول
+      // قسمه فارغ من المهام (مثل «الفنيين») يرى اللوحة صفراً رغم امتلاء بقية أقسامه.
+      final depts = widget.department
           .split(',')
           .map((d) => d.trim())
-          .firstWhere((d) => d.isNotEmpty, orElse: () => '');
-      return (firstDept.isNotEmpty ? firstDept : null, null);
+          .where((d) => d.isNotEmpty)
+          .join(',');
+      return (depts.isNotEmpty ? depts : null, null);
     } else {
       // فني/موظف عادي — يطابق فرع _applyRoleFilter (technician|createdBy == username).
       return (null, me);
