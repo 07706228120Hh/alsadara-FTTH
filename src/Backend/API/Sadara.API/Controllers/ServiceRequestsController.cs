@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 using NpgsqlTypes;
 using Sadara.API.Authorization;
@@ -29,6 +30,7 @@ public class ServiceRequestsController : ControllerBase
     private readonly TaskHubNotifier _taskHubNotifier;
     private readonly SadaraDbContext _db;
     private readonly ICurrentTenant _tenant;
+    private readonly IConfiguration _configuration;
 
     public ServiceRequestsController(
         IUnitOfWork unitOfWork,
@@ -36,7 +38,8 @@ public class ServiceRequestsController : ControllerBase
         IFcmNotificationService fcmService,
         TaskHubNotifier taskHubNotifier,
         SadaraDbContext db,
-        ICurrentTenant tenant)
+        ICurrentTenant tenant,
+        IConfiguration configuration)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -44,6 +47,7 @@ public class ServiceRequestsController : ControllerBase
         _taskHubNotifier = taskHubNotifier;
         _db = db;
         _tenant = tenant;
+        _configuration = configuration;
     }
 
     #region Service Requests CRUD
@@ -888,6 +892,19 @@ ORDER BY ""TotalCollected"" DESC;";
             // ══════ دالة مساعدة لتسجيل أجور على ذمة شخص ══════
             async Task<bool> RegisterFeeOnUser(Guid userId, decimal amount, TechnicianTransactionCategory category, string description)
             {
+                // ═══ علَم تشغيلي: إيقاف أجور المهام على الفنيين (كل المهام مجانية) ═══
+                // الافتراضي مُفعّل. عند Accounting:TechnicianTaskFeesEnabled = false لا يُشحن
+                // الفني إطلاقاً (لا حركة ولا قيد) — قرار مؤقت قابل للعكس بلا إصدار/بناء
+                // (يُضبط عبر متغيّر البيئة Accounting__TechnicianTaskFeesEnabled). يشمل حتى
+                // المهام المعلّقة عند إكمالها. لإعادة التفعيل: احذف العلَم/اجعله true + restart.
+                var feesFlag = _configuration["Accounting:TechnicianTaskFeesEnabled"];
+                if (!string.IsNullOrWhiteSpace(feesFlag)
+                    && (feesFlag.Trim().ToLowerInvariant() is "false" or "0" or "off" or "no"))
+                {
+                    _logger.LogInformation("أجور المهام مُوقَفة (مجاني) — تخطّي شحن {Category} على {UserId}", category, userId);
+                    return false;
+                }
+
                 var user = await _unitOfWork.Users.GetByIdAsync(userId);
                 if (user == null) return false;
 
