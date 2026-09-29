@@ -1,0 +1,705 @@
+<title>مرجع SAS4 API</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F3F6F8; --surface:#FFFFFF; --surface2:#E9EEF2; --line:#D3DBE2; --ink:#16212B; --ink2:#4A5866; --muted:#7A8794;
+  --accent:#0E7C86; --accent-ink:#0A5C64; --accent-soft:#DDF1F3;
+  --get:#1F7A4D; --get-bg:#E3F3EA; --post:#B45309; --post-bg:#FBEBD6; --del:#B91C1C; --del-bg:#FBE1E1;
+  --warn-bg:#FFF4D6; --warn-line:#E0B341; --code-bg:#1B252F; --code-ink:#DCE6EF; --code-key:#8CD5DC; --code-str:#F2C98A; --code-num:#B5D99C;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F151B; --surface:#161E26; --surface2:#1E2832; --line:#2C3944; --ink:#E6ECF1; --ink2:#B4C0CB; --muted:#7F8D9A;
+  --accent:#4FC3CC; --accent-ink:#8ADDE3; --accent-soft:#12333A;
+  --get:#6FD39A; --get-bg:#173327; --post:#F0A65B; --post-bg:#3A2A14; --del:#F08787; --del-bg:#3D1C1C;
+  --warn-bg:#3A3012; --warn-line:#B8932F; --code-bg:#0B1016; --code-ink:#DCE6EF;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F151B; --surface:#161E26; --surface2:#1E2832; --line:#2C3944; --ink:#E6ECF1; --ink2:#B4C0CB; --muted:#7F8D9A;
+  --accent:#4FC3CC; --accent-ink:#8ADDE3; --accent-soft:#12333A;
+  --get:#6FD39A; --get-bg:#173327; --post:#F0A65B; --post-bg:#3A2A14; --del:#F08787; --del-bg:#3D1C1C;
+  --warn-bg:#3A3012; --warn-line:#B8932F; --code-bg:#0B1016; --code-ink:#DCE6EF;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;font-size:15px;line-height:1.75;direction:rtl}
+a{color:var(--accent-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+code,pre,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;direction:ltr;unicode-bidi:isolate}
+code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:.88em;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:14px 16px;border-radius:8px;overflow-x:auto;font-size:12.5px;line-height:1.6;margin:0;text-align:left;white-space:pre}
+pre .k{color:var(--code-key)} pre .s{color:var(--code-str)} pre .n{color:var(--code-num)}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.3;margin:0}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh}
+nav.side{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--surface);border-left:1px solid var(--line);padding:22px 18px 40px}
+nav.side .brand{font-weight:700;font-size:17px;color:var(--accent-ink);margin-bottom:4px}
+nav.side .sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+nav.side .grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px;font-weight:600}
+nav.side a{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:6px;color:var(--ink2);font-size:13.5px}
+nav.side a:hover{background:var(--surface2);text-decoration:none;color:var(--ink)}
+nav.side a .cnt{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+main{padding:36px 48px 100px;max-width:1080px}
+.hero{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:34px}
+.hero .eyebrow{font-size:12px;letter-spacing:.1em;color:var(--accent-ink);font-weight:600;margin-bottom:8px}
+.hero h1{font-size:34px;font-weight:700}
+.hero p{max-width:70ch;color:var(--ink2);margin:14px 0 0}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 16px;min-width:120px}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums;color:var(--accent-ink)}
+.stat span{font-size:12px;color:var(--muted)}
+section{margin-bottom:56px;scroll-margin-top:20px}
+section>h2{font-size:24px;font-weight:700;padding-bottom:10px;border-bottom:2px solid var(--accent);display:inline-block;margin-bottom:16px}
+section>p,.prose p{max-width:75ch;color:var(--ink2)}
+.prose ul{max-width:75ch;color:var(--ink2);padding-right:22px}
+.prose li{margin-bottom:4px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:12px 0}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+th{background:var(--surface2);font-weight:600;font-size:13px}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+.callout{background:var(--warn-bg);border-right:4px solid var(--warn-line);padding:12px 16px;border-radius:6px;margin:14px 0;max-width:80ch;color:var(--ink)}
+.callout.info{background:var(--accent-soft);border-right-color:var(--accent)}
+.folder-head{margin:0 0 6px;font-size:22px;font-weight:700}
+.folder-base{font-size:13px;color:var(--muted);margin-bottom:6px}
+.folder-desc{color:var(--ink2);max-width:75ch;margin:0 0 18px}
+.ep{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:18px;overflow:hidden;scroll-margin-top:16px}
+.ep-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.badge{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;padding:3px 10px;border-radius:5px;letter-spacing:.04em;flex:none}
+.badge.GET{color:var(--get);background:var(--get-bg)} .badge.POST{color:var(--post);background:var(--post-bg)} .badge.DELETE{color:var(--del);background:var(--del-bg)}
+.ep-title{font-weight:600;font-size:16px}
+.ep-en{font-size:12.5px;color:var(--muted);font-family:"IBM Plex Mono",monospace;direction:ltr}
+.ep-url{direction:ltr;text-align:left;font-family:"IBM Plex Mono",monospace;font-size:13px;background:var(--surface2);padding:8px 14px;color:var(--ink);overflow-x:auto;white-space:nowrap}
+.ep-url .var{color:var(--accent-ink)}
+.ep-body{padding:14px 18px;display:grid;gap:12px}
+.ep-body p{margin:0;color:var(--ink2);max-width:80ch}
+.lbl{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.lbl .auth{font-size:11px;background:var(--accent-soft);color:var(--accent-ink);padding:1px 8px;border-radius:10px;letter-spacing:0;text-transform:none}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:1000px){.cols{grid-template-columns:1fr}}
+details{border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+details summary{cursor:pointer;padding:8px 14px;font-size:13px;color:var(--ink2);font-weight:500;list-style:none;display:flex;justify-content:space-between}
+details summary::after{content:"+";font-family:monospace;color:var(--muted)}
+details[open] summary::after{content:"−"}
+details pre{border-radius:0 0 8px 8px}
+.note{font-size:13.5px;color:var(--ink2);background:var(--surface2);padding:8px 12px;border-radius:6px}
+.note.warn{background:var(--warn-bg)}
+.arch{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:10px;margin:16px 0;font-size:13.5px}
+.arch .box{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;text-align:center}
+.arch .box b{display:block;color:var(--accent-ink);margin-bottom:4px}
+.arch .arrow{color:var(--muted);font-size:20px}
+.arch .stack{display:grid;gap:8px}
+@media (max-width:900px){.layout{grid-template-columns:1fr}nav.side{position:static;height:auto;border-left:0;border-bottom:1px solid var(--line)}main{padding:24px 18px 80px}.arch{grid-template-columns:1fr}.arch .arrow{transform:rotate(90deg);text-align:center}}
+.filter{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px;margin-bottom:8px}
+.filter:focus{outline:2px solid var(--accent);outline-offset:1px}
+.kbd{font-family:"IBM Plex Mono",monospace;font-size:12px;background:var(--surface2);border:1px solid var(--line);border-radius:4px;padding:0 6px}
+.map-flow{display:grid;gap:6px;margin:10px 0 18px}
+.step{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px}
+.step .no{font-family:"IBM Plex Mono",monospace;color:var(--accent-ink);font-weight:600;font-variant-numeric:tabular-nums}
+.step code{font-size:12.5px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+</style>
+
+<div class="layout">
+<nav class="side" id="nav">
+  <div class="brand">مرجع SAS4 API</div>
+  <div class="sub">Snono Systems · SASv4 Radius Billing</div>
+  <input class="filter" id="q" type="search" placeholder="ابحث في الـ endpoints…" aria-label="بحث">
+  <div class="grp">الأساسيات</div>
+  <a href="#overview">نظرة عامة</a>
+  <a href="#auth">المصادقة JWT</a>
+  <a href="#encryption">تشفير الطلبات AES</a>
+  <a href="#conventions">أنواع البيانات والصفحات والأخطاء</a>
+  <a href="#impl">أكواد التشفير الجاهزة</a>
+  <div class="grp">الـ Endpoints</div>
+  <div id="navFolders"></div>
+  <div class="grp">للمنصة</div>
+  <a href="#central">خطة الربط المركزي</a>
+  <a href="#mapping">مصفوفة العمليات</a>
+  <a href="#security">ملاحظات أمنية وثغرات موثقة</a>
+</nav>
+
+<main>
+<div class="hero">
+  <div class="eyebrow">SAS4 FOR DEVELOPERS · توثيق مُستخرج بالكامل من Postman</div>
+  <h1>مرجع SAS4 API الكامل بالعربي</h1>
+  <p>SASv4 هو نظام فوترة وخادم AAA (مصادقة، تخويل، محاسبة) لمزودي الإنترنت من شركة Snono Systems. هذه الصفحة تشرح كل endpoint موثّق في مجموعة Postman الرسمية (9 مجلدات، 66 طلب)، مع الـ payload المفكوك، عينات الاستجابة، وملاحظات عملية لربط منصة <b>الصدارة (Ramzbot)</b> كنقطة مركزية لكل شركات الإنترنت التي تعمل على SAS4.</p>
+  <div class="stats" id="stats"></div>
+</div>
+
+<section id="overview">
+  <h2>نظرة عامة على النظام</h2>
+  <div class="prose">
+  <p>SAS4 يعمل كـ RADIUS server مرتبط بأجهزة NAS (غالباً MikroTik) ويدير المستخدمين (المشتركين)، المدراء (Managers/Resellers)، الباقات (Profiles)، الكروت، الفواتير والتقارير. النظام مبني على Laravel (PHP) ولهذا ترى في الروابط <code>index.php/api/</code> وصيغة Laravel Pagination في الاستجابات.</p>
+  <p>يوجد واجهتان منفصلتان للـ API، ولكل واحدة مسار وأساس مصادقة مختلف:</p>
+  </div>
+  <div class="tbl"><table>
+  <tr><th>الواجهة</th><th>المسار الأساسي</th><th>من يستخدمها</th><th>نموذج الصلاحيات</th></tr>
+  <tr><td><b>Admin API</b> (لوحة الإدارة)</td><td><code>http://{host}/admin/api/index.php/api/</code></td><td>المدير/الموزع (Manager) — هذا ما تستخدمه المنصة للتفعيل والشحن وإدارة المشتركين</td><td>ACL Group لكل مدير، الصلاحيات تبدأ بـ <code>prm_*</code></td></tr>
+  <tr><td><b>User Portal API</b> (بوابة المشترك)</td><td><code>http://{host}/user/api/index.php/api/</code></td><td>المشترك النهائي — لتطبيق العميل (رصيدي، استهلاكي، تغيير باقتي)</td><td>صلاحيات <code>prm_ucp_*</code></td></tr>
+  </table></div>
+  <div class="prose">
+  <p>الهيكل الهرمي: <b>admin</b> ← <b>Managers</b> (موزعون، لكل واحد رصيد و debt_limit ونقاط مكافآت) ← <b>Users</b> (المشتركون، لكل واحد profile وتاريخ انتهاء ورصيد). كل مدير يرى فقط المستخدمين التابعين له ولمدرائه الفرعيين.</p>
+  <p>مفاهيم ستتكرر: <code>profile_id</code> الباقة، <code>parent_id</code> المدير المالك للمشترك، <code>transaction_id</code> رقم UUID تولده أنت في كل عملية مالية لمنع التكرار، <code>method</code> طريقة الدفع (<code>credit</code> من رصيد المدير أو <code>reward_points</code> أو <code>card</code> بكرت).</p>
+  </div>
+</section>
+
+<section id="auth">
+  <h2>المصادقة — JWT Bearer</h2>
+  <div class="prose">
+  <p>كل الطلبات (عدا login/register) تحتاج هيدر <code>Authorization: Bearer &lt;token&gt;</code>. تحصل على التوكن من <code>POST /admin/api/index.php/api/login</code> بإرسال payload مشفّر يحوي اسم المدير وكلمة مروره واللغة. نوع المنحة المستخدم هو Client Credentials Grant.</p>
+  <p>بعد الحصول على التوكن، الطريقة القياسية في SAS4 لتحميل الواجهة هي: <code>GET /api/auth</code> لمعرفة بيانات المدير وصلاحياته (قائمة <code>prm_*</code>) وميزات الرخصة (<code>features</code> مثل <code>sastrack</code> و<code>freezone</code>) وتاريخ انتهاء الرخصة، ثم <code>GET /api/resources/menu</code> لمعرفة القوائم المسموح بها، و<code>GET /api/resources/language/{code}</code> لملف الترجمة.</p>
+  </div>
+  <div class="callout info">التوثيق لا يذكر مدة صلاحية التوكن. عملياً في المنصة: خزّن التوكن لكل شركة، وأعد تسجيل الدخول تلقائياً عند أي استجابة 401 أو عند <code>status</code> غير 200 مع رسالة انتهاء الجلسة.</div>
+</section>
+
+<section id="encryption">
+  <h2>تشفير الطلبات — AES (CryptoJS)</h2>
+  <div class="prose">
+  <p>كل طلب <b>POST</b> يجب أن يُرسل بجسم واحد فقط اسمه <code>payload</code> (كـ <code>application/x-www-form-urlencoded</code> أو JSON) وقيمته هي JSON الفعلي مشفّراً بـ <code>CryptoJS.AES.encrypt(JSON.stringify(data), KEY)</code>. المفتاح الظاهر في التوثيق الرسمي هو:</p>
+  </div>
+  <pre>abcdefghijuklmno0123456789012345</pre>
+  <div class="prose">
+  <p>نقطة تقنية مهمة جداً لأي تنفيذ خارج JavaScript: عندما تمرّر لـ CryptoJS مفتاحاً كنص (passphrase) لا كبايتات، فهو يستخدم صيغة OpenSSL: يولّد salt عشوائي 8 بايت، يشتق المفتاح (32 بايت) والـ IV (16 بايت) بـ <code>EVP_BytesToKey</code> (MD5 متكرر)، ويشفّر بـ AES-256-CBC مع PKCS7، ثم يخرج Base64 لـ <code>"Salted__" + salt + ciphertext</code>. لهذا كل الـ payloads في التوثيق تبدأ بـ <code>U2FsdGVkX1</code> (وهي "Salted__" بعد Base64). أكواد Dart وPHP وPython الجاهزة في قسم <a href="#impl">أكواد التشفير</a>.</p>
+  </div>
+  <div class="cols">
+    <div><div class="lbl">مثال التوثيق (Node.js)</div>
+<pre>const request = require('request');
+const CryptoJS = require("crypto-js");
+const form = {user: 'admin', password: 'snonosystems'};
+const cypData = CryptoJS.AES.encrypt(JSON.stringify(form),
+  'abcdefghijuklmno0123456789012345');
+request.post({
+  url: 'http://demo4.sasradius.com/admin/api/index.php/api/login',
+  json: true,
+  body: { payload: cypData.toString() }
+}, (err, res, body) => console.log(res.statusCode, body));</pre></div>
+    <div><div class="lbl">الناتج المرسل فعلياً</div>
+<pre>{
+  "payload": "U2FsdGVkX19TGvGsXp3eR8h/fVKdKbm4tzbrEmk7s0xsrhjKy6VybasH8b7xu6xYDcvDjNk6ulb/dVoq2J417uRhJozvbPuSfkSaXD/f644="
+}</pre>
+    <p class="note" style="margin-top:10px">مراجع رسمية مذكورة في التوثيق: مكتبة PHP <code>hasanenalbana/sasconnector-php</code> وسكربت Node <code>abdo0/sas4-request-encrypt-or-decrypt</code> على GitHub.</p></div>
+  </div>
+</section>
+
+<section id="conventions">
+  <h2>أنواع البيانات، الصفحات (Pagination)، والأخطاء</h2>
+  <div class="cols">
+  <div>
+    <div class="lbl">أنواع البيانات</div>
+    <div class="tbl"><table>
+    <tr><th>النوع</th><th>الوصف</th></tr>
+    <tr><td><code>string</code></td><td>نص UTF-8</td></tr>
+    <tr><td><code>number</code></td><td>عدد صحيح</td></tr>
+    <tr><td><code>datetime</code></td><td>ISO8601 بتوقيت UTC (+00:00) — عملياً تظهر بصيغة <code>YYYY-MM-DD HH:mm:ss</code></td></tr>
+    <tr><td><code>decimal</code></td><td>قيم مالية بمنزلتين عشريتين، موجبة أو سالبة (مثل <code>-20.00</code> = دين)</td></tr>
+    </table></div>
+    <div class="lbl">هيكل الخطأ</div>
+    <div class="tbl"><table>
+    <tr><th>الحقل</th><th>النوع</th><th>الوصف</th></tr>
+    <tr><td><code>message</code></td><td>string</td><td>رسالة مقروءة، غالباً مفتاح ترجمة مثل <code>rsp_save_success</code></td></tr>
+    <tr><td><code>status</code></td><td>number</td><td>كود HTTP داخل الجسم</td></tr>
+    </table></div>
+    <div class="callout">تحذير من التوثيق نفسه: قد يرجع HTTP <b>200</b> مع <code>status: -1</code> أو رسالة خطأ. لا تعتمد على كود HTTP وحده — افحص <code>status</code> داخل JSON دائماً.</div>
+  </div>
+  <div>
+    <div class="lbl">معاملات القوائم (تُرسل داخل الـ payload المشفّر)</div>
+    <div class="tbl"><table>
+    <tr><th>المعامل</th><th>الوصف</th></tr>
+    <tr><td><code>page</code></td><td>رقم الصفحة</td></tr>
+    <tr><td><code>count</code></td><td>عدد السجلات في الصفحة</td></tr>
+    <tr><td><code>sortBy</code></td><td>اسم الحقل للترتيب</td></tr>
+    <tr><td><code>direction</code></td><td><code>asc</code> / <code>desc</code> (التوثيق يكتبها أحياناً <code>diraction</code> خطأً؛ الأمثلة الفعلية تستخدم <code>direction</code>)</td></tr>
+    <tr><td><code>columns</code></td><td>مصفوفة أسماء الأعمدة المطلوبة (اختياري)</td></tr>
+    <tr><td><code>search</code></td><td>نص بحث حر (موجود في الأمثلة)</td></tr>
+    </table></div>
+    <div class="lbl">شكل الاستجابة المُصفّحة (Laravel)</div>
+<pre>{
+  "current_page": 1, "data": [ ... ],
+  "first_page_url": "...?page=1", "from": 1,
+  "last_page": 1, "last_page_url": "...?page=1",
+  "next_page_url": null, "path": "...",
+  "per_page": 10, "prev_page_url": null,
+  "to": 2, "total": 2
+}</pre>
+    <p class="note" style="margin-top:8px">في الصفحة الأولى لا يوجد <code>prev_page_url</code>، وفي الأخيرة لا يوجد <code>next_page_url</code>؛ إن كانت كل البيانات في صفحة واحدة يغيب الاثنان.</p>
+  </div>
+  </div>
+</section>
+
+<section id="impl">
+  <h2>أكواد التشفير الجاهزة (متوافقة مع CryptoJS)</h2>
+  <p>كل الأكواد التالية تنتج نفس صيغة OpenSSL التي يفهمها SAS4. الدالة <code>encrypt</code> ترسل، و<code>decrypt</code> مفيدة لفك أمثلة التوثيق أو أي استجابة مشفّرة.</p>
+  <div class="cols">
+  <div><div class="lbl">Dart / Flutter (يحتاج حزمتي <code>encrypt</code> و<code>crypto</code>)</div>
+<pre>import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
+import 'package:encrypt/encrypt.dart' as enc;
+
+class Sas4Crypto {
+  static const magic = 'Salted__';
+
+  // EVP_BytesToKey (MD5) كما في OpenSSL/CryptoJS
+  static List&lt;Uint8List&gt; _kdf(List&lt;int&gt; pass, List&lt;int&gt; salt) {
+    var out = &lt;int&gt;[]; var prev = &lt;int&gt;[];
+    while (out.length &lt; 48) {
+      prev = md5.convert([...prev, ...pass, ...salt]).bytes;
+      out.addAll(prev);
+    }
+    return [Uint8List.fromList(out.sublist(0, 32)),
+            Uint8List.fromList(out.sublist(32, 48))];
+  }
+
+  static String encrypt(Map data, String passphrase) {
+    final salt = Uint8List.fromList(
+        List.generate(8, (_) =&gt; Random.secure().nextInt(256)));
+    final kv = _kdf(utf8.encode(passphrase), salt);
+    final e = enc.Encrypter(enc.AES(enc.Key(kv[0]), mode: enc.AESMode.cbc));
+    final ct = e.encryptBytes(utf8.encode(jsonEncode(data)), iv: enc.IV(kv[1]));
+    return base64.encode([...utf8.encode(magic), ...salt, ...ct.bytes]);
+  }
+
+  static String decrypt(String b64, String passphrase) {
+    final raw = base64.decode(b64);
+    final salt = raw.sublist(8, 16); final ct = raw.sublist(16);
+    final kv = _kdf(utf8.encode(passphrase), salt);
+    final e = enc.Encrypter(enc.AES(enc.Key(kv[0]), mode: enc.AESMode.cbc));
+    return e.decrypt(enc.Encrypted(Uint8List.fromList(ct)), iv: enc.IV(kv[1]));
+  }
+}
+// الإرسال:  body: {'payload': Sas4Crypto.encrypt({...}, key)}</pre></div>
+  <div><div class="lbl">PHP (للـ backend / n8n Code node بـ Python أدناه)</div>
+<pre>function sas4_encrypt(array $data, string $pass): string {
+  $salt = random_bytes(8);
+  $d = ''; $prev = '';
+  while (strlen($d) &lt; 48) { $prev = md5($prev.$pass.$salt, true); $d .= $prev; }
+  $key = substr($d, 0, 32); $iv = substr($d, 32, 16);
+  $ct = openssl_encrypt(json_encode($data), 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+  return base64_encode('Salted__'.$salt.$ct);
+}
+function sas4_decrypt(string $b64, string $pass): string {
+  $raw = base64_decode($b64); $salt = substr($raw, 8, 8); $ct = substr($raw, 16);
+  $d = ''; $prev = '';
+  while (strlen($d) &lt; 48) { $prev = md5($prev.$pass.$salt, true); $d .= $prev; }
+  return openssl_decrypt($ct, 'aes-256-cbc', substr($d,0,32), OPENSSL_RAW_DATA, substr($d,32,16));
+}</pre>
+  <div class="lbl" style="margin-top:12px">Python (FastAPI / n8n) — <code>pip install pycryptodome</code></div>
+<pre>import json, os, base64, hashlib
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+
+def _kdf(p: bytes, salt: bytes):
+    d = b''; prev = b''
+    while len(d) &lt; 48:
+        prev = hashlib.md5(prev + p + salt).digest(); d += prev
+    return d[:32], d[32:48]
+
+def sas4_encrypt(data: dict, passphrase: str) -&gt; str:
+    salt = os.urandom(8); key, iv = _kdf(passphrase.encode(), salt)
+    ct = AES.new(key, AES.MODE_CBC, iv).encrypt(pad(json.dumps(data).encode(), 16))
+    return base64.b64encode(b'Salted__' + salt + ct).decode()
+
+def sas4_decrypt(b64: str, passphrase: str) -&gt; str:
+    raw = base64.b64decode(b64); key, iv = _kdf(passphrase.encode(), raw[8:16])
+    return unpad(AES.new(key, AES.MODE_CBC, iv).decrypt(raw[16:]), 16).decode()</pre></div>
+  </div>
+</section>
+
+<div id="endpoints"></div>
+
+<section id="central">
+  <h2>خطة الربط المركزي في منصة الصدارة</h2>
+  <div class="prose">
+  <p>الهدف: أن تكون المنصة الطبقة المركزية الوحيدة التي يتعامل معها الوكلاء والمشتركون، بينما كل شركة إنترنت تحتفظ بسيرفر SAS4 الخاص بها. المنصة لا تلمس قاعدة بيانات SAS4 مباشرة، بل تتحدث معه عبر Admin API بحساب مدير (Manager) مخصص لكل شركة.</p>
+  </div>
+  <div class="arch">
+    <div class="stack">
+      <div class="box"><b>تطبيق الصدارة (Flutter)</b>وكلاء · مشتركون · إدارة</div>
+      <div class="box"><b>n8n / أتمتة</b>حملات، تنبيهات انتهاء، مزامنة</div>
+    </div>
+    <div class="arrow">←</div>
+    <div class="box"><b>SAS4 Gateway (خدمة مركزية)</b>جدول الشركات · تشفير AES · إدارة التوكنات · Idempotency · سجل العمليات · Rate limit · تحويل الاستجابات لصيغة موحدة</div>
+    <div class="arrow">←</div>
+    <div class="stack">
+      <div class="box"><b>شركة A</b>SAS4 · Manager: ramz_api</div>
+      <div class="box"><b>شركة B</b>SAS4 · Manager: ramz_api</div>
+      <div class="box"><b>شركة N</b>…</div>
+    </div>
+  </div>
+  <div class="lbl">ما تخزنه المنصة لكل شركة (Tenant Config)</div>
+  <div class="tbl"><table>
+  <tr><th>الحقل</th><th>ملاحظة</th></tr>
+  <tr><td><code>base_url</code></td><td>مثل <code>http://sas.company.iq</code> — أضف <code>/admin/api/index.php/api/</code> و<code>/user/api/index.php/api/</code> برمجياً</td></tr>
+  <tr><td><code>manager_username</code> / <code>manager_password</code></td><td>مدير خاص بالمنصة تنشئه الشركة داخل SAS4 بمجموعة صلاحيات محدودة (فقط ما تحتاجه المنصة: <code>prm_users_index</code>، <code>prm_users_activate</code>، <code>prm_users_deposit</code>، <code>prm_users_change_profile</code>، <code>prm_users_extend</code>، <code>prm_users_sessions_index</code>…). خزّنها مشفّرة.</td></tr>
+  <tr><td><code>aes_key</code></td><td>المفتاح الافتراضي في التوثيق هو <code>abcdefghijuklmno0123456789012345</code>؛ اجعله قابلاً للتعديل لكل شركة تحسّباً لتغييره في إصدارات لاحقة.</td></tr>
+  <tr><td><code>token</code> + <code>token_at</code></td><td>كاش التوكن مع تجديد تلقائي عند الفشل</td></tr>
+  <tr><td><code>manager_id</code>, <code>parent_id_for_new_users</code></td><td>من استجابة <code>GET /auth</code> ← <code>client.id</code>؛ يُستخدم كـ <code>parent_id</code> عند إنشاء مشتركين</td></tr>
+  <tr><td><code>profiles_cache</code></td><td>نتيجة <code>GET /list/profile/0</code> مع الأسعار من <code>activationData</code> — تُحدّث دورياً لعرض الباقات في التطبيق</td></tr>
+  </table></div>
+
+  <div class="lbl">دورة حياة الطلب داخل الـ Gateway</div>
+  <div class="map-flow">
+    <div class="step"><span class="no">1</span><span>استلم طلب المنصة مع <code>company_id</code> ونوع العملية والبيانات.</span></div>
+    <div class="step"><span class="no">2</span><span>ولّد <code>transaction_id</code> (UUID v4) واحفظ العملية بحالة <code>pending</code> قبل الإرسال — هذا ما يمنع الشحن المزدوج إن انقطع الاتصال.</span></div>
+    <div class="step"><span class="no">3</span><span>احضر توكن الشركة من الكاش أو نفّذ <code>POST /login</code>.</span></div>
+    <div class="step"><span class="no">4</span><span>شفّر الـ JSON بـ AES بمفتاح الشركة وأرسله كـ <code>payload</code> مع هيدر <code>Authorization: Bearer</code>.</span></div>
+    <div class="step"><span class="no">5</span><span>افحص <code>status</code> داخل الجسم (وليس HTTP فقط)؛ عند 401 جدّد التوكن وأعد المحاولة مرة واحدة بنفس <code>transaction_id</code>.</span></div>
+    <div class="step"><span class="no">6</span><span>حوّل الاستجابة لصيغة المنصة الموحدة وسجّل النتيجة (نجاح/فشل + رسالة <code>rsp_*</code> مترجمة من ملف اللغة).</span></div>
+  </div>
+</section>
+
+<section id="mapping">
+  <h2>مصفوفة عمليات المنصة ↔ endpoints في SAS4</h2>
+  <div class="tbl"><table>
+  <tr><th>عملية في الصدارة</th><th>الطلبات المطلوبة بالترتيب</th><th>ملاحظات</th></tr>
+  <tr><td>ربط شركة جديدة</td><td><code>POST /login</code> → <code>GET /auth</code> → <code>GET /list/profile/0</code> → <code>GET /index/manager</code></td><td>تحقق أن الصلاحيات المطلوبة موجودة في <code>permissions</code> وأن <code>license_status = 1</code></td></tr>
+  <tr><td>البحث عن مشترك</td><td><code>POST /index/user</code> مع <code>search</code> و<code>columns</code></td><td>الحقل <code>status.status</code> يحدد فعّال/منتهي؛ <code>online_status</code> متصل الآن</td></tr>
+  <tr><td>عرض بيانات مشترك</td><td><code>GET /user/{id}</code> أو <code>GET /user/overview/{id}</code></td><td>overview يحتوي المتبقي من الترافيك والوقت</td></tr>
+  <tr><td>تجديد/تفعيل اشتراك (شحن إنترنت)</td><td><code>GET /user/activationData/{id}</code> (لعرض السعر <code>required_amount</code>) → <code>POST /user/activate</code></td><td><code>method: "credit"</code> يخصم من رصيد مدير المنصة في SAS4 — المنصة تخصم من رصيد الوكيل عندها أولاً</td></tr>
+  <tr><td>تفعيل بكرت</td><td><code>POST /user/activate</code> مع <code>method: "card"</code> و<code>pin</code></td><td>أو من بوابة المشترك: <code>POST /redeem</code></td></tr>
+  <tr><td>تغيير الباقة</td><td><code>GET /list/profile/{id}</code> → <code>POST /user/changeProfile</code></td><td>إن كان المشترك فعّالاً يُطبّق التغيير عند الانتهاء القادم</td></tr>
+  <tr><td>إضافة أيام/تمديد</td><td><code>GET /user/extensionData/{id}</code> → <code>GET /allowedExtensions/{profile_id}</code> → <code>POST /user/extend</code></td><td>الامتدادات باقات من نوع EXT مرتبطة بالباقة الأساسية</td></tr>
+  <tr><td>إضافة ترافيك</td><td><code>POST /user/addTraffic</code></td><td><code>target</code>: <code>rxtx_mbytes</code> / <code>rx_mbytes</code> / <code>tx_mbytes</code>، الكمية بالميغابايت</td></tr>
+  <tr><td>إيداع/سحب رصيد مشترك</td><td><code>POST /user/deposit</code> / <code>POST /user/withdraw</code></td><td>الرصيد داخل SAS4 يمكن أن يستخدمه المشترك للتفعيل الذاتي من بوابته</td></tr>
+  <tr><td>إلغاء خدمة واسترداد</td><td><code>GET /user/refundData/{id}</code> → <code>GET /user/refund/{id}</code></td><td>الاسترداد GET وليس POST — انتبه، وهو غير قابل للتراجع</td></tr>
+  <tr><td>إنشاء مشترك جديد</td><td><code>GET /site</code> → <code>POST /user</code></td><td><code>parent_id</code> = مدير المنصة أو المدير الفرعي للوكيل</td></tr>
+  <tr><td>المتصلون الآن / فحص اتصال</td><td><code>POST /index/online</code> → <code>POST /user/ping</code></td><td>ping يحتاج <code>radacctid</code> من قائمة المتصلين</td></tr>
+  <tr><td>تقارير الاستهلاك</td><td><code>POST /user/traffic</code>, <code>POST /userNetworksTraffic</code>, <code>POST /index/UserJournal/{id}</code>, <code>POST /index/UserHistory/{id}</code></td><td>مصفوفات 30/31 قيمة يومية rx/tx</td></tr>
+  <tr><td>إدارة الوكلاء داخل SAS4 (اختياري)</td><td><code>POST /manager</code>, <code>POST /manager/deposit</code>, <code>POST /manager/withdraw</code>, <code>POST /manager/payDebt</code></td><td>إذا أردت لكل وكيل مدير مقابل في SAS4 بدلاً من مدير واحد للمنصة</td></tr>
+  <tr><td>تطبيق المشترك النهائي</td><td>User Portal: <code>/auth/login</code>, <code>/dashboard</code>, <code>/service</code>, <code>/packages</code>, <code>/traffic</code>, <code>/index/invoice</code></td><td>تسجيل دخول بحساب المشترك نفسه (username/password الـ PPPoE)</td></tr>
+  </table></div>
+</section>
+
+<section id="security">
+  <h2>ملاحظات أمنية ونقاط انتبه لها (مُستنتجة من التوثيق نفسه)</h2>
+  <div class="prose"><ul>
+  <li><b>تسريب أسرار الـ NAS في قائمة المتصلين:</b> استجابة <code>POST /index/online</code> ترجع كائن <code>nas_details</code> كاملاً بما فيه <code>secret</code> (RADIUS secret) و<code>api_username</code>/<code>api_password</code> (MikroTik API) و<code>snmp_community</code>. لا تمرّر هذه الاستجابة كما هي لتطبيق الوكلاء — صفّها في الـ Gateway.</li>
+  <li><b>كلمة المرور بنص واضح:</b> <code>GET /user/overview/{id}</code> يرجع حقل <code>password</code> للمشترك. مفيد للوكيل لكن يجب حصره بصلاحية.</li>
+  <li><b>التشفير ليس أماناً حقيقياً:</b> مفتاح AES ثابت ومنشور في التوثيق؛ اعتبره "تغليفاً" فقط. الأمان الفعلي من HTTPS بين المنصة وسيرفرات الشركات (التوثيق يستخدم http — اطلب من كل شركة تفعيل TLS أو مرّر عبر VPN/WireGuard).</li>
+  <li><b>Idempotency:</b> كل عملية مالية تحمل <code>transaction_id</code> (UUID). بوابة المشترك تستخدم <code>uuid</code> بنفس الغرض في <code>/user/activate</code>. ولّده مرة واحدة لكل نقرة وأعد استخدامه عند إعادة المحاولة.</li>
+  <li><b>حقول بأخطاء إملائية في التوثيق:</b> <code>diraction</code> بدل <code>direction</code>، و<code>user</code> في شرح login بينما المثال الفعلي يستخدم <code>username</code>. الأمثلة الفعلية هي المرجع الأصح.</li>
+  <li><b>تغيير كلمة مرور المشترك من بوابته</b> موثّق بأنه "bugged" وبانتظار إصلاح — اختبره على كل إصدار قبل الاعتماد عليه.</li>
+  <li><b>الرخصة:</b> <code>GET /auth</code> يرجع <code>license_expiration</code>؛ راقبها لكل شركة ونبّه قبل انتهائها لأن التفعيلات ستتوقف.</li>
+  <li><b>مجلد Dashboard فارغ</b> في التوثيق الرسمي — لا يوجد endpoint موثّق للوحة الإحصائيات؛ ابنِ إحصائيات المنصة من قوائم المستخدمين والمتصلين.</li>
+  </ul></div>
+</section>
+</main>
+</div>
+
+<script>
+const A = "/admin/api/index.php/api"; const U = "/user/api/index.php/api";
+const DATA = [
+{ f:"Authorization", ar:"المصادقة", base:A, desc:"الحصول على توكن JWT ومعرفة بيانات صاحب التوكن وصلاحياته. النوع المستخدم Client Credentials Grant.", r:[
+ { n:"Access Granted Client Credentials", ar:"تسجيل دخول المدير والحصول على التوكن", m:"POST", u:A+"/login", auth:"بدون توكن",
+   d:"يرسل اسم المدير وكلمة مروره واللغة داخل payload مشفّر. الاستجابة تحوي التوكن الذي يُستخدم في كل الطلبات اللاحقة. (التوثيق يذكر الحقل باسم user لكن المثال الفعلي يستخدم username).",
+   p:`{"username":"admin","password":"snonosystems","language":"en"}`,
+   res:`{ "status": 200, "token": "<JWT_TOKEN>" }` },
+ { n:"Get Token Information", ar:"بيانات التوكن الحالي (المدير + الصلاحيات + الرخصة)", m:"GET", u:A+"/auth",
+   d:"يرجع كائن client ببيانات المدير (id, username, balance, debt_limit, acl_group_id, parent_id, reward_points, discount_rate…)، ثم مصفوفة permissions بكل صلاحيات prm_*، ومصفوفة features بميزات الرخصة، وحالة الرخصة وتاريخ انتهائها. هذا أول طلب بعد login لتقرير ما يمكن للمنصة فعله على هذا السيرفر.",
+   res:`{
+  "status": 200,
+  "client": { "id": 1, "username": "admin", "enabled": 1, "city": "Baghdad", "country": "Iraq",
+    "firstname": "Administrator", "lastname": "Snono", "email": "admin@gmail.com",
+    "balance": "0.000", "debt_limit": null, "subscriber_suffix": null, "subscriber_prefix": null,
+    "manager_id": 1, "max_users": null, "mikrotik_addresslist": null, "acl_group_id": 1,
+    "site_id": null, "parent_id": 0, "reward_points": 0, "discount_rate": "0.00" },
+  "permissions": [ "prm_any", "prm_backup_create", "prm_cards_index", "prm_managers_create",
+    "prm_managers_deposit", "prm_nas_index", "prm_profiles_index", "prm_users_activate",
+    "prm_users_activate_card", "prm_users_activate_credit", "prm_users_change_profile",
+    "prm_users_create", "prm_users_deposit", "prm_users_disconnect", "prm_users_extend",
+    "prm_users_index", "prm_users_sessions_index", "prm_users_withdraw", "prm_billing",
+    "prm_ucp_activate", "prm_ucp_change_profile", "prm_report_sessions", "... (نحو 95 صلاحية)" ],
+  "features": [ "sastrack", "freezone" ],
+  "license_status": "1",
+  "license_expiration": "2021-06-02 09:57:16"
+}` }
+]},
+{ f:"After Authorization Details", ar:"ما بعد المصادقة (موارد الواجهة)", base:A, desc:"بعد الحصول على التوكن تحتاج الواجهة لملف الترجمة والقوائم. SAS4 نظام مبني على الصلاحيات: القوائم التي ترجع تعتمد على مجموعة صلاحيات المدير.", r:[
+ { n:"Available Transulations", ar:"اللغات المتاحة", m:"GET", u:A+"/resources/languages", d:"يرجع اللغات المدعومة على هذا السيرفر مع اتجاه الكتابة والخط.",
+   res:`{ "status": 200, "data": [
+  { "id": "ar", "name": "Arabic",    "direction": "rtl", "author": "hasanen@snono-systems.com", "font": "Arial" },
+  { "id": "en", "name": "English",   "direction": "ltr", "author": "hasanen@snono-systems.com", "font": "Arial" },
+  { "id": "pt", "name": "Português", "direction": "ltr", "author": "renda@inforomba.net",       "font": "Arial" },
+  { "id": "tr", "name": "Turkish",   "direction": "ltr", "author": "safa@teknobilgroup.com",    "font": "Arial" } ] }` },
+ { n:"Tansulation File", ar:"ملف الترجمة للغة", m:"GET", u:A+"/resources/language/{code}", d:"يرجع كل مفاتيح الترجمة (menu_*, users_table_*, users_action_*, managers_table_*, global_*, label_*…) بقيمها. مفيد جداً لترجمة رسائل rsp_* التي ترجعها العمليات (مثل rsp_save_success) إلى نص للمستخدم. المثال يستخدم en.",
+   res:`{ "info": { "id": "en", "name": "English", "direction": "ltr", "author": "hasanen@snono-systems.com", "font": "Arial" },
+  "words": {
+    "global_username": "Username", "global_expiration": "Expiration", "global_profile": "Profile",
+    "global_available_balance": "Available Balance", "global_filter_paid": "Paid",
+    "menu_dashboard": "Dashboard", "menu_users": "Users", "menu_users_list": "Users List",
+    "menu_users_online": "Online Users", "menu_users_tickets": "Support Tickets", "menu_nas": "NAS",
+    "menu_profiles": "Profiles", "menu_profiles_pricing": "Pricing List", "menu_cards": "Cards System",
+    "menu_reports": "Reports", "menu_reports_syslog": "System Log", "menu_reports_activations": "Activations",
+    "menu_reports_profits": "Profits", "menu_reports_sessions": "Sessions", "menu_reports_radius_log": "Radius Log",
+    "menu_tools_backup": "Backup", "menu_tools_bulk_changes": "Bulk Changes",
+    "menu_settings_freezone": "free zone", "menu_settings_sms": "sms", "menu_settings_telegram": "telegram",
+    "menu_settings_payment_gateways": "payment gateways", "menu_settings_billing": "postpaid billing",
+    "menu_billing_user_invoices": "User Invoices", "menu_ip_pools": "IP Pools", "menu_bandwidth_controller": "Bandwidth Controller",
+    "managers_table_balance": "Balance", "managers_table_users_count": "Users", "managers_table_reward_points": "Reward Points",
+    "users_table_status": "Status", "users_table_expiration": "Expiration", "users_table_daily_traffic": "Daily Traffic",
+    "users_table_used_traffic": "Used Traffic", "users_table_simultaneous_sessions": "Simultaneous Sessions",
+    "users_action_activate": "Activate", "users_action_change_profile": "Change Profile",
+    "users_action_disconnect": "Disconnect", "users_action_lock_mac": "Lock MAC", "users_action_ping": "Ping",
+    "users_action_extend": "Extend Service", "users_action_cancel": "Cancel Service",
+    "... (مئات المفاتيح)": "" } }` },
+ { n:"Menus", ar:"قوائم الواجهة المسموح بها للتوكن", m:"GET", u:A+"/resources/menu", d:"يرجع شجرة القوائم (name, title كمفتاح ترجمة, icon, link, weight, parent, acl). الحقل acl هو الصلاحية المطلوبة لظهور القائمة، ويمكن أن يجمع عدة صلاحيات بـ |. يكشف لك خريطة وحدات النظام كاملة.",
+   res:`[
+  { "name": "dashboard", "title": "menu_dashboard", "icon": "fas fa-tachometer-alt", "link": "/dashboard", "weight": 0, "parent": "root", "acl": "any" },
+  { "name": "users", "title": "menu_users", "icon": "fa fa-users", "link": "users", "weight": 2, "parent": "root", "acl": "prm_users_index" },
+  { "name": "users", "title": "menu_users_list",   "link": "/users/index",  "parent": "users", "acl": "prm_users_index" },
+  { "name": "users", "title": "menu_users_online", "link": "/users/online", "parent": "users", "acl": "prm_users_index" },
+  { "name": "managers", "title": "menu_managers", "icon": "fa fa-user-secret", "link": "/managers/index", "parent": "root", "acl": "prm_managers_index" },
+  { "name": "nas", "title": "menu_nas", "icon": "fa fa-server", "link": "/nas/index", "parent": "root", "acl": "prm_nas_index" },
+  { "name": "profiles", "title": "menu_profiles", "link": "profiles", "parent": "root", "acl": "prm_profiles_index|prm_profiles_pricing" },
+  { "name": "profiles_list", "title": "menu_profiles_list", "link": "/profiles/index", "parent": "profiles", "acl": "prm_profiles_index" },
+  { "name": "profiles_pricing", "title": "menu_profiles_pricing", "link": "/profiles/pricing", "parent": "profiles", "acl": "prm_profiles_pricing" },
+  { "name": "profiles_usage_notifications", "title": "menu_profiles_usage_notifications", "link": "/profiles/notifications", "parent": "profiles", "acl": "prm_managers_sysadmin" },
+  { "name": "cards", "title": "menu_cards", "icon": "fa fa-credit-card", "link": "/cards/index", "parent": "root", "acl": "prm_cards_index" },
+  { "name": "billing", "title": "menu_billing", "link": "billing", "parent": "root", "acl": "prm_billing" },
+  { "name": "user_invoices", "title": "menu_billing_user_invoices", "link": "/billing/invoices/index", "parent": "billing", "acl": "prm_billing" },
+  { "name": "user_issue_invoice", "title": "menu_billing_user_invoice_issue", "link": "/billing/userInvoiceForm", "parent": "billing", "acl": "prm_billing" },
+  { "name": "reports", "title": "menu_reports", "icon": "fas fa-chart-bar", "link": "reports", "parent": "root", "acl": "any" },
+  { "name": "reports", "title": "menu_reports_syslog", "link": "/report/syslog", "parent": "reports", "acl": "prm_report_syslog" },
+  { "name": "reports", "title": "menu_reports_managers_journal", "link": "/report/journal/managers", "parent": "reports", "acl": "prm_report_managers_journal" },
+  { "name": "reports", "title": "menu_reports_managers_invoices", "link": "/report/invoice/managers", "parent": "reports", "acl": "prm_report_managers_invoices" },
+  { "name": "reports", "title": "menu_reports_managers_receipts", "link": "/report/receipts/managers", "parent": "reports", "acl": "prm_managers_receipt" },
+  { "name": "reports", "title": "menu_reports_user_auth_log", "link": "/report/userauthlog", "parent": "reports", "acl": "prm_report_activations" },
+  { "name": "reports", "title": "menu_reports_activations", "link": "/report/activations", "parent": "reports", "acl": "prm_any" },
+  { "name": "reports", "title": "menu_reports_activations_stats", "link": "/report/activations_statistics", "parent": "reports", "acl": "prm_any" },
+  { "name": "reports", "title": "menu_reports_profits", "link": "/report/profits", "parent": "reports", "acl": "prm_any" },
+  { "name": "reports", "title": "menu_reports_sessions", "link": "/report/sessions", "parent": "reports", "acl": "prm_report_sessions" },
+  { "name": "reports", "title": "menu_report_users", "link": "/report/users", "parent": "reports", "acl": "prm_report_users" },
+  { "name": "reports", "title": "menu_reports_traffic", "link": "/report/traffic", "parent": "reports", "acl": "prm_managers_sysadmin" },
+  { "name": "reports", "title": "menu_reports_money_transfer", "link": "..." , "...": "(القائمة تكمل: cards usage, radius log, tools, settings…)" }
+]` }
+]},
+{ f:"Dashboard", ar:"لوحة الإحصائيات", base:A, desc:"المجلد موجود في التوثيق الرسمي لكنه فارغ — لا يوجد أي endpoint موثّق للوحة الإحصائيات.", r:[] },
+{ f:"User Portal (user panel)", ar:"بوابة المشترك (تطبيق العميل)", base:U, desc:"واجهة المشترك النهائي. المسار الأساسي /user/api/index.php/api/. تسجيل الدخول بحساب المشترك نفسه (اسم مستخدم PPPoE وكلمته)، والصلاحيات من نوع prm_ucp_*. كل POST يُرسل كـ payload مشفّر.", r:[
+ { n:"Login", ar:"تسجيل دخول المشترك", m:"POST", u:U+"/auth/login", auth:"بدون توكن", d:"يصادق المشترك عبر SAS4 ويرجع توكن.", p:`{"username":"Example","password":"Example","language":"en"}`, res:`{ "status": 200, "token": "<JWT_TOKEN>" }` },
+ { n:"Register", ar:"تسجيل مشترك جديد ذاتياً", m:"POST", u:U+"/register", auth:"بدون توكن", d:"يسجّل مشتركاً جديداً من البوابة (إن كانت الشركة تسمح بالتسجيل الذاتي) ويرجع توكن مباشرة.",
+   p:`{"username":"Example","email":"Example@gmail.com","mobile":"07813370000","password":"Example","confirm_password":"Example","firstname":"Example","lastname":"Example"}`,
+   res:`{ "status": 200, "message": "rsp_save_success", "token": "<JWT_TOKEN>" }` },
+ { n:"invoices", ar:"فواتير المشترك", m:"POST", u:U+"/index/invoice", d:"قائمة مُصفّحة بفواتير المشترك (رقم الفاتورة، النوع، المبلغ، مدفوعة أم لا، تاريخ الاستحقاق).", p:`{"page":1,"count":10,"sortBy":"id","direction":"desc"}`,
+   res:`{ "current_page": 1,
+  "data": [ { "id": 2, "invoice_number": "2020-1-2", "type": "custom", "amount": "0.00", "description": null,
+              "paid": 0, "created_by": 1, "created_at": "2020-09-24 11:21:45", "payment_method": null, "due_date": "2020-09-24 11:21:45" } ],
+  "first_page_url": ".../index/invoice?page=1", "from": 1, "last_page": 1, "next_page_url": null, "per_page": 10, "prev_page_url": null, "to": 1, "total": 1 }` },
+ { n:"Change Subscription", ar:"تغيير الباقة من قبل المشترك", m:"POST", u:U+"/service", d:"يغيّر باقة المشترك إلى new_service. ملاحظة من التوثيق: إذا اخترت نفس الباقة الحالية ترجع استجابة فارغة بكود 200.", p:`{"new_service":"2","current_password":true}`, res:`{ "status": 200, "message": "rsp_service_change_success" }` },
+ { n:"User sessions", ar:"جلسات المشترك", m:"POST", u:U+"/index/session", d:"قائمة مُصفّحة بجلسات الاتصال (radacct). الترتيب الافتراضي بـ radacctid.", p:`{"page":1,"count":10,"sortBy":"radacctid","direction":"desc"}`, res:`{ "current_page": 1, "data": [], "from": null, "last_page": 1, "next_page_url": null, "per_page": 10, "prev_page_url": null, "to": null, "total": 0 }` },
+ { n:"User traffic", ar:"استهلاك المشترك اليومي (30 يوم)", m:"POST", u:U+"/traffic", d:"يرجع الاستهلاك لكل يوم من الشهر المحدد كمصفوفات rx (تحميل) وtx (رفع) وtotal وtotal_real وfree_traffic، قيمة لكل يوم.", p:`{"report_type":"daily","month":9,"year":2020,"user_id":null}`, res:`{ "status": 200, "data": { "rx": [0,0,0,…31], "tx": [0,0,0,…], "total": [0,0,0,…], "total_real": [0,0,0,…], "free_traffic": [0,0,0,…] } }` },
+ { n:"Redeem code", ar:"تعبئة كرت (PIN)", m:"POST", u:U+"/redeem", d:"يفعّل/يشحن اشتراك المشترك برقم كرت. (وصف التوثيق الأصلي مكرر بالخطأ من endpoint آخر؛ الوظيفة الفعلية هي استخدام كرت).", p:`{"pin":"136154"}`, res:`{ "status": 200, "message": "rsp_success" }` },
+ { n:"Activate user subscription", ar:"تفعيل الاشتراك من رصيد المشترك", m:"POST", u:U+"/user/activate", d:"يفعّل اشتراك المشترك ويخصم السعر من رصيده داخل SAS4. الحقل uuid آلية منع تكرار: يُولّد في الواجهة عند تحميل الصفحة، فإذا ضغط المشترك تفعيل عدة مرات تُرسل كلها بنفس uuid فلا يتكرر التفعيل.", p:`{"uuid":"edad62f6-d324-7510-8c6a-90a9b4a3fee2","current_password":true}`, res:`{ "status": 200, "message": "rsp_success" }` },
+ { n:"Activate Subscription Extension", ar:"شراء امتداد (إضافة) للاشتراك", m:"POST", u:U+"/user/extend", d:"يضيف امتداداً من الامتدادات المتاحة (profile_id هو معرّف باقة الامتداد من Get Extensions).", p:`{"profile_id":"3","current_password":true}`, res:`{ "status": 200, "message": "rsp_success" }` },
+ { n:"Change password", ar:"تغيير كلمة مرور المشترك", m:"POST", u:U+"/user", d:"يغيّر كلمة المرور؛ value هي الكلمة الجديدة. التوثيق يصرّح: هذه الوظيفة فيها خلل (bugged) والإصلاح في تحديث لاحق — اختبرها قبل الاعتماد عليها.", p:`{"key":"password","value":"1234","current_password":true}`, res:`{ "status": 200 }`, warn:true },
+ { n:"Language keywords", ar:"ملف ترجمة بوابة المشترك", m:"GET", u:U+"/resources/language/{code}", d:"مفاتيح ترجمة البوابة (menu_account, menu_billing, breadcrumb_*, account_label_*, session_table_*, invoices_table_*…). الأمثلة تشمل en وar. اللغة العربية جاهزة كاملة (مثل menu_packages = الباقات، account_label_remaining_days = الايام المتبقية).",
+   res:`{ "info": { "id": "ar", "name": "Arabic", "direction": "ltr", "font": "Arial" },
+  "words": {
+    "menu_account": "معلومات عامة", "menu_billing": "الحسابات", "menu_invoices": "الفواتير", "menu_payments": "الايصالات",
+    "menu_data_usage": "بيانات الاستهلاك", "menu_sessions": "الجلسات", "menu_packages": "الباقات", "menu_support": "الدعم الفني",
+    "menu_journal": "سجل الحسابات", "menu_documents": "وثائق شخصية",
+    "session_table_started": "وقت البدئ", "session_table_ended": "وقت النهاية", "session_table_download": "التحميل", "session_table_upload": "الرفع",
+    "invoices_table_no": "رقم الفاتورة", "invoices_table_amount": "المبلغ", "invoices_table_due_date": "تأريخ الاستحقاق", "invoices_table_paid": "مدفوعة",
+    "payment_table_no": "رقم الايصال", "user_journal_table_cr": "دائن", "user_journal_table_dr": "مدين", "user_journal_table_balance": "الرصيد",
+    "breadcrumb_activate_renew": "شراء باقة", "breadcrumb_change_service": "تغيير الخدمة", "breadcrumb_activate_extend": "تمديد الخدمة",
+    "account_label_remaining_days": "الايام المتبقية", "account_label_remaining_traffic": "البيانات المتبقية", "account_label_balance": "رصيد الحساب",
+    "account_label_unpaid_invoices": "الفواتير المستحقة", "account_label_remaining_uptime": "الوقت المتبقي",
+    "account_label_redeem": "تعبئة بطاقة", "account_label_redeem_card_number": "ادخل رقم البطاقة",
+    "account_label_service_info": "معلومات الاشتراك", "account_label_current_service": "الخدمة الحالية", "...": "" } }` },
+ { n:"User Details & Permissions", ar:"بيانات المشترك وصلاحياته في البوابة", m:"GET", u:U+"/user", d:"بيانات الحساب الأساسية (username, email, phone, balance, auto_renew, profile_id, تاريخ التسجيل) ومصفوفة الصلاحيات prm_ucp_* التي تحدد ما يظهر له في البوابة.",
+   res:`{ "status": 200,
+  "data": { "username": "Example1", "firstname": null, "lastname": null, "name": null, "email": "Example1@gmail.com", "phone": "07813370000",
+            "address": null, "company": null, "registered_on": { "date": "2020-09-24 13:48:34.000000", "timezone_type": 3, "timezone": "Europe/Moscow" },
+            "id": 6, "static_ip": null, "balance": 0, "auto_renew": 0, "profile_id": 1 },
+  "permissions": [ "prm_ucp_activate", "prm_ucp_auto_login", "prm_ucp_billing", "prm_ucp_browse_packages", "prm_ucp_change_info",
+                   "prm_ucp_change_password", "prm_ucp_change_profile", "prm_ucp_data_usage", "prm_ucp_extend", "prm_ucp_login",
+                   "prm_ucp_sessions", "prm_ucp_support" ] }` },
+ { n:"Balance Info", ar:"ملخص الحساب (الأيام والترافيك المتبقي والرصيد)", m:"GET", u:U+"/dashboard", d:"ملخص لوحة المشترك: الأيام المتبقية، الترافيك المتبقي، الوقت المتبقي، الرصيد، عدد الفواتير غير المدفوعة، وحالة القرض (loan) إن وُجد.",
+   res:`{ "status": 200, "data": { "remaining_days": 0, "remaining_traffic": "_", "remaining_uptime": "_", "balance": "0.00", "unpaid_invoices": 1,
+  "loan": { "rx_mb": null, "tx_mb": null, "rxtx_mb": null, "days": null } } }` },
+ { n:"Profiles / Services", ar:"الباقة الحالية للمشترك", m:"GET", u:U+"/service", d:"تفاصيل الخدمة الحالية: اسم الباقة، السعر، تاريخ الانتهاء، وحالة الاشتراك مفصّلة (status/traffic/expiration/uptime) والحدود (limits).",
+   res:`{ "status": 200, "data": { "profile_name": "default-2Mbit-1Month", "description": null, "expiration": "2020-09-24 13:48:34", "profile_id": 1,
+  "status": false, "price": 20,
+  "subscription_status": { "status": false, "traffic": true, "expiration": false, "uptime": true },
+  "limits": { "rx_bytes": null, "tx_bytes": null, "rxtx_bytes": null, "uptime_seconds": null } } }` },
+ { n:"Packages", ar:"الباقات المتاحة للشراء", m:"GET", u:U+"/packages", d:"قائمة الباقات التي يمكن للمشترك الانتقال إليها أو شراؤها مع أسعارها.", res:`{ "status": 200, "data": [ { "id": 1, "name": "default-2Mbit-1Month", "description": null, "price": 20 }, { "id": 2, "name": "band_1", "description": null, "price": 10 } ] }` },
+ { n:"Menus", ar:"قوائم بوابة المشترك", m:"GET", u:U+"/resources/menu", d:"قوائم البوابة مع الصلاحية المطلوبة لكل قائمة (account, billing→invoices/payments/journal, data usage, sessions, packages, support).",
+   res:`[ { "name": "account",    "title": "menu_account",    "icon": "fas fa-user",        "link": "/account",  "parent": "root",    "acl": "any" },
+  { "name": "billing",    "title": "menu_billing",    "icon": "fas fa-book-open",   "link": "billing",   "parent": "root",    "acl": "prm_ucp_billing" },
+  { "name": "invoices",   "title": "menu_invoices",   "link": "/invoices",  "parent": "billing", "acl": "prm_ucp_billing" },
+  { "name": "payments",   "title": "menu_payments",   "link": "/payments",  "parent": "billing", "acl": "prm_ucp_billing" },
+  { "name": "journal",    "title": "menu_journal",    "link": "/journal",   "parent": "billing", "acl": "prm_ucp_billing" },
+  { "name": "date_usage", "title": "menu_data_usage", "icon": "fas fa-chart-area",  "link": "/data",     "parent": "root", "acl": "prm_ucp_data_usage" },
+  { "name": "sessions",   "title": "menu_sessions",   "icon": "fas fa-list",        "link": "/sessions", "parent": "root", "acl": "prm_ucp_sessions" },
+  { "name": "packages",   "title": "menu_packages",   "icon": "fas fa-puzzle-piece","link": "/packages", "parent": "root", "acl": "prm_ucp_browse_packages" },
+  { "name": "support",    "title": "menu_support",    "icon": "fas fa-life-ring",   "link": "/support",  "parent": "root", "acl": "prm_ucp_support" } ]` },
+ { n:"Get Extensions", ar:"امتدادات متاحة لباقة", m:"GET", u:U+"/extensions/{profile_id}", d:"قائمة الامتدادات (إضافات ترافيك/أيام) المتاحة لباقة معينة مع أسعارها. المثال: /extensions/2.", res:`{ "status": 200, "data": [ { "name": "extension test", "id": 3, "price": 10 }, { "name": "Extension test 2", "id": 4, "price": 100 } ] }` }
+]},
+{ f:"Users - List", ar:"المشتركون — القائمة والعمليات", base:A, desc:"يعرض كل المشتركين التابعين لك ولمدرائك الفرعيين، مع عمليات الإنشاء والتفعيل والشحن والتمديد وتغيير الباقة والحذف. هذا هو المجلد الأهم للمنصة.", r:[
+ { n:"Users List", ar:"قائمة المشتركين", m:"POST", u:A+"/index/user", d:"قائمة مُصفّحة بالمشتركين. الأعمدة المتاحة في columns: n_row, id, username, firstname, lastname, expiration, parent_username, name, balance, traffic, city, static_ip, notes, last_online, company, simultaneous_sessions, used_traffic, phone, address, contract_id. كل سجل يرجع أيضاً status (status/traffic/expiration/uptime كل منها true/false)، online_status، profile_details، daily_traffic_details.",
+   p:`{ "page": 1, "count": 10, "sortBy": "username", "direction": "asc", "search": "",
+  "columns": ["id","username","firstname","lastname","expiration","parent_username","name","traffic"] }`,
+   res:`{ "current_page": 1,
+  "data": [
+    { "id": 2, "username": "snono", "firstname": "Snono", "lastname": "Test", "city": null, "phone": "1111111111", "profile_id": 1,
+      "balance": "0.00", "expiration": "2020-07-15 14:56:55", "last_online": null, "parent_id": 2, "email": "test@test.com",
+      "static_ip": null, "enabled": 1, "company": "Snono Systems", "notes": null, "simultaneous_sessions": 1, "address": null,
+      "contract_id": null, "created_at": "2020-07-15 11:57:56", "n_row": 1,
+      "status": { "status": true, "traffic": true, "expiration": true, "uptime": true },
+      "online_status": 0, "used_traffic": 0, "parent_username": "manager1",
+      "profile_details": { "id": 1, "name": "default-2Mbit-1Month", "type": 0 }, "daily_traffic_details": null },
+    { "id": 1, "username": "user1", "balance": "-20.00", "expiration": "2019-09-28 14:19:33",
+      "status": { "status": false, "traffic": true, "expiration": false, "uptime": true }, "online_status": 0, "parent_username": "manager1", "...": "" }
+  ],
+  "first_page_url": ".../index/user?page=1", "from": 1, "last_page": 1, "next_page_url": null, "per_page": 10, "prev_page_url": null, "to": 2, "total": 2 }` },
+ { n:"Users List - with search", ar:"قائمة المشتركين مع بحث", m:"POST", u:A+"/index/user", d:"نفس الطلب السابق مع تعبئة الحقل search بنص (اسم مستخدم، هاتف، اسم…). نفس الأعمدة ونفس شكل الاستجابة.", p:`{ "page": 1, "count": 10, "sortBy": "username", "direction": "asc", "search": "snono", "columns": ["id","username","firstname","lastname","expiration","parent_username","name","traffic"] }`, res:`(نفس استجابة Users List مُصفّاة بنص البحث)` },
+ { n:"User - Create", ar:"إنشاء مشترك", m:"POST", u:A+"/user", d:"إنشاء مشترك جديد. الحقول المطلوبة: username (اسم الاتصال PPPoE)، enabled (1/0)، password و confirm_password، profile_id (الباقة)، parent_id (المدير المالك)، site_id. البقية اختيارية: mac_auth, allowed_macs, بيانات شخصية، expiration، simultaneous_sessions، static_ip، حقول MikroTik (winbox_group, framed_route, addresslist, ipv6_prefix)، auto_renew، user_type.",
+   p:`{ "username": "test", "enabled": 1, "password": "1111", "confirm_password": "1111", "profile_id": 1, "parent_id": 2, "site_id": 0,
+  "mac_auth": 0, "allowed_macs": null, "firstname": "Test", "lastname": "API", "company": "Snono Systems", "email": "test@test.com",
+  "phone": null, "city": null, "address": null, "apartment": null, "street": null, "contract_id": null, "national_id": null, "notes": null,
+  "expiration": "2020-07-15 15:04:24", "simultaneous_sessions": 1, "static_ip": null,
+  "mikrotik_winbox_group": null, "mikrotik_framed_route": null, "mikrotik_addresslist": null, "mikrotik_ipv6_prefix": null,
+  "auto_renew": 0, "user_type": "0" }`,
+   res:`{ "status": 200, "message": "rsp_save_success" }` },
+ { n:"User - All Data", ar:"كل بيانات مشترك", m:"GET", u:A+"/user/{user_id}", d:"السجل الكامل للمشترك كما في قاعدة البيانات: الباقة، الانتهاء، العنوان، إعدادات MAC وIP الثابت، حقول MikroTik، الرصيد، gps_lat/gps_lng، pin_tries، last_profile_id، auto_renew، profile_name، status المفصّل، profileChange (هل هناك تغيير باقة مجدول)، parent_username.",
+   res:`{ "status": 200, "data": { "id": 2, "username": "snonoactivate", "profile_id": 1, "enabled": 1, "expiration": "2020-07-29 11:00:35",
+  "address": null, "city": null, "country": null, "mac_auth": 0, "static_ip": null, "group_id": null, "service": null,
+  "firstname": null, "lastname": null, "email": null, "phone": null, "company": null, "apartment": null, "street": null,
+  "contract_id": null, "parent_id": 1, "created_at": "2020-07-29 08:00:44", "updated_at": "2020-07-29 08:00:44", "deleted_at": null,
+  "last_ip_address": null, "last_online": null, "user_type": 0, "created_by": "1", "national_id": null, "simultaneous_sessions": 1,
+  "mikrotik_winbox_group": null, "mikrotik_framed_route": null, "mikrotik_addresslist": null, "mikrotik_ipv6_prefix": null,
+  "balance": "0.00", "notes": null, "picture": null, "pin_tries": 0, "site_id": null, "gps_lat": null, "gps_lng": null,
+  "last_profile_id": null, "auto_renew": 0, "profile_name": "default-2Mbit-1Month",
+  "status": { "status": true, "traffic": true, "expiration": true, "uptime": true }, "profileChange": false, "parent_username": "admin" } }` },
+ { n:"User - Rename", ar:"إعادة تسمية مشترك", m:"POST", u:A+"/user/rename/{user_id}", d:"يغيّر اسم المستخدم (اسم الاتصال). يحتاج صلاحية prm_users_rename، وقد يكون المدير محدوداً بعدد مرات (limit_rename_count).", p:`{ "new_username": "new_name" }`, res:`{ "status": 200 }` },
+ { n:"User - Activation Data", ar:"بيانات ما قبل التفعيل (السعر والرصيد)", m:"GET", u:A+"/user/activationData/{user_id}", d:"يرجع كل ما تحتاجه شاشة التفعيل: اسم الباقة، رصيد المدير، رصيد المشترك، تاريخ الانتهاء، سعر الوحدة، مدة الباقة، حجم الترافيك، الضريبة، المبلغ المطلوب (required_amount كنص و n_required_amount كرقم)، ونقاط المكافآت المطلوبة والمتوفرة. استدعه قبل activate لعرض السعر للوكيل والتأكد من كفاية الرصيد.",
+   res:`{ "data": { "username": "snonoactivate", "profile_name": "default-2Mbit-1Month", "profile_id": 1, "manager_balance": "$ 20.00",
+  "user_balance": "$ 0.00", "user_expiration": "2020-07-27 14:26:46", "unit_price": "$ 20.00", "profile_duration": "1 month(s)",
+  "profile_traffic": "0 B", "profile_dl_traffic": "0 B", "profile_ul_traffic": "0 B", "profile_description": null, "vat": "$ 0.00",
+  "units": 1, "required_amount": "$ 20.00", "n_required_amount": 20, "reward_points": 0, "required_points": 0, "reward_points_balance": 0 },
+  "status": 200 }` },
+ { n:"User - Activation Service", ar:"تفعيل/تجديد الاشتراك", m:"POST", u:A+"/user/activate", d:"العملية الأساسية للشحن. method: credit (من رصيد المدير) أو card (مع pin) أو reward_points أو user_balance حسب الصلاحيات (prm_users_activate_credit / _card / _user_balance). money_collected هل استلم الوكيل المبلغ نقداً، comments تعليق، issue_invoice إصدار فاتورة، transaction_id رقم UUID فريد لمنع التكرار. الاستجابة الموثقة فارغة بكود 200؛ تحقق من التفعيل بطلب User - All Data بعدها.",
+   p:`{ "method": "credit", "pin": "", "user_id": "3", "money_collected": true, "comments": "Activation comment goes here!",
+  "issue_invoice": true, "transaction_id": "4c0c2dfe-7530-ae94-2796-7e18029f1363" }`, res:`200 OK (جسم فارغ في التوثيق)` },
+ { n:"User - Add Traffic", ar:"إضافة ترافيك لمشترك", m:"POST", u:A+"/user/addTraffic", d:"يضيف كمية ترافيك بالميغابايت. target: rxtx_mbytes (تحميل+رفع) أو rx_mbytes (تحميل فقط) أو tx_mbytes (رفع فقط).", p:`{ "user_id": 1, "username": "ahmed@shl", "amount": 1024, "comment": "add traffic to user", "transaction_id": "a5b2d74f-d5bd-60da-0f12-95be2c80a470", "target": "rxtx_mbytes" }`, res:`(لا توجد استجابة موثقة)` },
+ { n:"User - Extension Data", ar:"بيانات ما قبل التمديد", m:"GET", u:A+"/user/extensionData/{user_id}", d:"المتبقي من الترافيك (rxtx/rx/tx) والوقت وتاريخ الانتهاء والباقة الحالية ورصيد المدير ونقاط المكافآت — لعرضها في شاشة التمديد.",
+   res:`{ "status": 200, "data": { "remaining_rxtx": "0 B", "remaining_rx": "0 B", "remaining_tx": "0 B", "remaining_uptime": null,
+  "expiration": "2020-06-29 10:34:31", "profile_name": "default-2Mbit-1Month", "profile_id": 1, "username": "snonoactivate",
+  "balance": "$ 20.00", "reward_points_balance": 0, "reward_points": null, "required_points": null } }` },
+ { n:"User - Extension Profiles", ar:"باقات التمديد المسموحة لباقة", m:"GET", u:A+"/allowedExtensions/{profile_id}", d:"قائمة باقات الامتداد (EXT) المرتبطة بالباقة الأساسية. المثال /allowedExtensions/1.", res:`{ "0": 200, "status": 200, "data": [ { "id": 2, "name": "default-2Mbit-1Month_EXT" }, { "id": 3, "name": "default-2Mbit-1Month_EXT_BOOST" } ] }` },
+ { n:"User - Extend Service", ar:"تنفيذ التمديد", m:"POST", u:A+"/user/extend", d:"يطبّق باقة امتداد على المشترك. طريقتا دفع: credit أو reward_points. profile_id هنا هو معرّف باقة الامتداد.", p:`{ "user_id": "2", "profile_id": "2", "method": "reward_points", "transaction_id": "e6ad8a4e-2e94-64dd-8f76-f06de53614f2" }`, res:`200 OK (جسم فارغ في التوثيق)` },
+ { n:"User - Change Profile", ar:"تغيير باقة مشترك", m:"POST", u:A+"/user/changeProfile", d:"يغيّر الباقة. ملاحظة التوثيق: إذا كان المشترك فعّالاً حالياً يُطبّق التغيير عند تاريخ الانتهاء القادم (ويظهر ذلك في profileChange / next_profile_change). طريقتا دفع: credit أو reward_points. يحتاج قائمة الباقات مسبقاً (User - List Profiles).", p:`{ "user_id": "2", "profile_id": "2", "method": "credit", "transaction_id": "e6ad8a4e-2e94-64dd-8f76-f06de53614f2" }`, res:`200 OK (جسم فارغ في التوثيق)` },
+ { n:"User - Deposit", ar:"إيداع رصيد في حساب مشترك", m:"POST", u:A+"/user/deposit", d:"يضيف مبلغاً لرصيد المشترك داخل SAS4 (يُخصم من رصيد المدير). يمكن للمشترك لاحقاً التفعيل ذاتياً من بوابته بهذا الرصيد.", p:`{ "user_id": 2, "user_username": "snonoactivate", "amount": 10, "comment": "deposit comment goes here!", "transaction_id": "e1366ad4-3b92-3276-6839-018a0e6c04af" }`, res:`200 OK (جسم فارغ في التوثيق)` },
+ { n:"User - Withdraw", ar:"سحب رصيد من حساب مشترك", m:"POST", u:A+"/user/withdraw", d:"يخصم مبلغاً من رصيد المشترك ويعيده لرصيد المدير.", p:`{ "user_id": 2, "user_username": "snonoactivate", "amount": 10, "comment": "", "transaction_id": "eec7f5bf-2379-5cdd-a63e-32308ad2adc2" }`, res:`{ "status": 200, "message": "rsp_amount_deducted" }` },
+ { n:"User - Cancel Data", ar:"بيانات ما قبل إلغاء الخدمة (الاسترداد)", m:"GET", u:A+"/user/refundData/{user_id}", d:"يعرض آخر تفعيل: تاريخ الانتهاء الحالي والسابق، الأيام المتبقية، الباقة، رقم المعاملة، السعر، المدير الذي فعّل، والمبلغ الذي سيُسترد.",
+   res:`{ "status": 200, "data": { "id": 2, "username": "snonoactivate", "expiration": "2020-08-29 11:00:35", "created_at": "2020-07-29 09:23:55",
+  "old_expiration": "2020-07-29 11:00:35", "remaining_days": "31 day", "profile_name": "default-2Mbit-1Month", "transaction": "6FHCxI1bk5dot88",
+  "price": "$ 20.00", "manager_name": "admin", "manager_id": 1, "refund_amount": "$ 20" } }` },
+ { n:"User - Cancel Service", ar:"إلغاء آخر تفعيل واسترداد المبلغ", m:"GET", u:A+"/user/refund/{user_id}", d:"ينفّذ الإلغاء ويعيد المبلغ لرصيد المدير ويرجع تاريخ الانتهاء السابق. انتبه: طلب GET ينفّذ عملية مالية غير قابلة للتراجع — لا تضعه خلف رابط يمكن أن يُفتح بالخطأ.", res:`{ "status": 200 }`, warn:true },
+ { n:"User - Delete", ar:"حذف مشترك", m:"DELETE", u:A+"/user/{user_id}", d:"حذف المشترك (soft delete على الأرجح لوجود deleted_at). يحتاج prm_users_delete وقد يكون المدير محدوداً بـ limit_delete_count.", res:`{ "status": 200, "message": "rsp_user_deleted" }`, warn:true }
+]},
+{ f:"Users - Form", ar:"المشترك — نموذج التفاصيل والتقارير", base:A, desc:"الطلبات التي تملأ شاشة تفاصيل مشترك واحد: نظرة عامة، MAC، سمات RADIUS مخصصة، المواقع، الباقات، السجل، القيود المالية، والاستهلاك.", r:[
+ { n:"User - Overview", ar:"نظرة عامة على مشترك", m:"GET", u:A+"/user/overview/{user_id}", d:"ملخص جاهز للعرض: الباقة، الانتهاء، الحالة، من أنشأه ومتى، الرصيد، كلمة المرور (نص واضح!)، بيانات الاتصال، المتبقي من التحميل/الرفع/الوقت، هل هناك تغيير باقة قادم، pin_tries، آخر اتصال. يتطلب قائمة المدراء البسيطة.",
+   res:`{ "data": { "username": "snonoactivate", "parent_username": "admin", "profile_name": "default-2Mbit-1Month", "profile_id": 1,
+  "expiration": "2020-07-29 11:00:35", "status": false, "created_at": "29 Jul 2020 - 08:00:44", "created_by": "admin", "balance": 0,
+  "password": "1111", "firstname": "Snono", "lastname": "Test", "phone": "+964 7700 826 164", "address": "Al Resafah", "city": "Baghdad",
+  "email": "info@snono-systems.com", "remaining_rx": null, "remaining_tx": null, "remaining_rxtx": null, "remaining_uptime": null,
+  "next_profile_change": false, "pin_tries": 0, "last_online": null }, "status": 200 }` },
+ { n:"User - MAC", ar:"عناوين MAC المقفلة للمشترك", m:"GET", u:A+"/mac/{user_id}", d:"قائمة عناوين MAC المرتبطة بالمشترك (قفل MAC).", res:`{ "status": 200, "data": [] }` },
+ { n:"User - Custom Radius Attribute", ar:"سمات RADIUS المخصصة للمشترك", m:"GET", u:A+"/customRadiusAttribute/user/{user_id}", d:"سمات RADIUS إضافية معرّفة يدوياً لهذا المشترك (مثل Mikrotik-Rate-Limit مخصص).", res:`{ "status": 200, "data": [] }` },
+ { n:"User - Site", ar:"المواقع (Sites)", m:"GET", u:A+"/site", d:"قائمة المواقع الجغرافية/الفروع المعرّفة في النظام. تحتاجها لحقل site_id عند إنشاء مشترك.", res:`{ "data": [ { "id": 0, "name": "_default", "status": 1 } ], "status": 200 }` },
+ { n:"User - List Profiles", ar:"الباقات المتاحة لتغيير باقة مشترك", m:"GET", u:A+"/list/profile/{user_id}", d:"قائمة الباقات التي يمكن نقل هذا المشترك إليها (تراعي صلاحيات المدير وتسعيره). المثال /list/profile/5.", res:`{ "0": 200, "status": 200, "data": [ { "id": 1, "name": "default-2Mbit-1Month" }, { "id": 4, "name": "10Mbit-1Month" }, { "id": 5, "name": "20Mbit-1Month" } ] }` },
+ { n:"User - History", ar:"سجل أحداث المشترك", m:"POST", u:A+"/index/UserHistory/{user_id}", d:"قائمة مُصفّحة بالأحداث (إنشاء، تعديل، تفعيل…) مع المدير الذي نفّذها. الـ payload هو معاملات التصفيح القياسية.", p:`{ "page": 1, "count": 10, "sortBy": "id", "direction": "desc" }`,
+   res:`{ "current_page": 1, "data": [
+    { "id": 4, "event": "used updated", "description": "manager updated user data", "created_by_manager_id": 1, "created_at": "2020-07-30 10:34:21",
+      "manager_details": { "id": 1, "username": "admin", "firstname": "Administrator", "lastname": "Snono" }, "user_details": null },
+    { "id": 3, "event": "user_created", "description": "user created: snonoactivate", "created_by_manager_id": 1, "created_at": "2020-07-29 08:00:44",
+      "manager_details": { "id": 1, "username": "admin", "firstname": "Administrator", "lastname": "Snono" }, "user_details": null } ],
+  "per_page": 10, "total": 2, "last_page": 1 }` },
+ { n:"User - Journal", ar:"القيود المالية للمشترك", m:"POST", u:A+"/index/UserJournal/{user_id}", d:"قائمة مُصفّحة بحركات رصيد المشترك (مدين/دائن).", p:`{ "page": 1, "count": 10, "sortBy": "id", "direction": "desc" }`, res:`{ "data": [], "current_page": 1, "total": 0 }` },
+ { n:"User - Network Traffic", ar:"استهلاك المشترك حسب الشبكة", m:"POST", u:A+"/userNetworksTraffic", d:"استهلاك يومي rx/tx/total كمصفوفات (مفيد مع FreeZone لفصل الترافيك المحلي عن الدولي).", p:`{ "user_id": 2, "report_type": "daily", "month": 7, "year": 2020 }`, res:`{ "status": 200, "data": { "rx": [0,0,0,…], "tx": [0,0,0,…], "total": [0,0,0,…] } }` },
+ { n:"User - Traffic", ar:"استهلاك المشترك اليومي", m:"POST", u:A+"/user/traffic", d:"نفس تقرير بوابة المشترك لكن من جهة الإدارة: rx, tx, total, total_real, free_traffic لكل يوم من الشهر.", p:`{ "report_type": "daily", "month": 7, "year": 2020, "user_id": 2 }`, res:`{ "status": 200, "data": { "rx": [0,0,0,…], "tx": [0,0,0,…], "total": [0,0,0,…], "total_real": [0,0,0,…], "free_traffic": [0,0,0,…] } }` }
+]},
+{ f:"Users - Online List", ar:"المتصلون الآن", base:A, desc:"قائمة الجلسات النشطة من جدول radacct مع تفاصيل الـ NAS والمشترك، وفحص ping للمشترك عبر الراوتر.", r:[
+ { n:"Online Users List", ar:"قائمة المتصلين حالياً", m:"POST", u:A+"/index/online", d:"قائمة مُصفّحة بالجلسات النشطة. أعمدة خاصة بالجلسة: radacctid, nasipaddress, framedipaddress (IP المشترك), framedprotocol, acctsessiontime (ثوانٍ), acctstarttime, acctinputoctets/acctoutputoctets (بايت), callingstationid (MAC), calledstationid (الـ VLAN/المنفذ), fup, user_profile_name, oui (شركة الجهاز), daily_usage_percentage. يرجع أيضاً nas_details (كائن الـ NAS الكامل — يحوي أسراراً) وuser_details.",
+   p:`{ "page": 1, "count": 10, "sortBy": null, "direction": "asc", "search": "",
+  "columns": ["id","username","acctoutputoctets","acctinputoctets","user_profile_name","framedipaddress","callingstationid","acctsessiontime","oui"] }`,
+   res:`{ "current_page": 1, "data": [
+  { "radacctid": 362618, "nasipaddress": "172.16.26.2", "framedipaddress": "10.26.255.168", "profile_id": 9, "framedprotocol": "PPP",
+    "acctsessiontime": 4598181, "acctstarttime": "2020-06-06 08:08:27", "acctinputoctets": 138320331, "acctoutputoctets": 70897674,
+    "username": "862gpl", "callingstationid": "CC:2D:E0:33:89:41", "calledstationid": "Kurdsat2VLAN-66", "fup": 1,
+    "user_profile_name": "Pro-33000", "user_profile_id": 8,
+    "status": { "status": false, "traffic": true, "expiration": false, "uptime": true },
+    "oui": "Routerboard.com", "daily_usage_percentage": 0,
+    "nas_details": { "id": 27, "nasname": "172.16.26.2", "shortname": "Kurdsat2", "type": 1, "secret": "…", "api_username": "SAS4_API",
+      "api_password": "…", "coa_port": 1700, "version": "mikrtik_6.36", "description": "RADIUS Client", "enabled": 1, "http_port": 7318,
+      "monitor": 1, "ping_time": 4, "ping_loss": 0, "ip_accounting_enabled": 1, "pool_name": null, "api_port": 8728, "snmp_community": "…" },
+    "user_details": { "id": 3019, "username": "862gpl", "firstname": "هاوکار احمد فرج", "profile_id": 8, "expiration": "2019-05-20 18:43:57",
+      "profile_details": { "id": 8, "name": "Pro-33000", "type": 0 } } } ],
+  "per_page": 10, "total": 3 }`, warn:true },
+ { n:"Online Users List - with search", ar:"المتصلون مع بحث", m:"POST", u:A+"/index/online", d:"نفس الطلب مع الحقل search. نفس الأعمدة والاستجابة.", p:`{ "page": 1, "count": 10, "sortBy": null, "direction": "asc", "search": "862gpl", "columns": ["id","username","framedipaddress","callingstationid","acctsessiontime"] }`, res:`(نفس استجابة Online Users List)` },
+ { n:"Ping User", ar:"فحص ping لمشترك متصل", m:"POST", u:A+"/user/ping", d:"ينفّذ ping من الـ NAS إلى IP المشترك ويرجع النتيجة (وقت الاستجابة، الفقد). يحتاج radacctid من قائمة المتصلين.", p:`{ "radacctid": 1005910, "username": "846iop" }`,
+   res:`{ "status": 200, "data": { "seq": "0", "host": "10.8.24.207", "size": "56", "ttl": "64", "time": "4ms", "sent": "1", "received": "1",
+  "packet-loss": "0", "min-rtt": "4ms", "avg-rtt": "4ms", "max-rtt": "4ms", "status": "0", "avg": "4ms", "loss": "0" } }` }
+]},
+{ f:"Managers", ar:"المدراء / الموزعون", base:A, desc:"إدارة المدراء (الوكلاء داخل SAS4): القوائم، الشجرة، الإنشاء، التعديل، الحذف، الإيداع والسحب، القروض، نقاط المكافآت، وتسديد الدين. ملاحظة: بعض الطلبات هنا موثّقة بشكل خام (payload مشفّر فقط) وحقل auth فارغ في التوثيق لكنها تحتاج Bearer عملياً.", r:[
+ { n:"Managers - Simple List", ar:"قائمة مبسّطة بالمدراء", m:"GET", u:A+"/index/manager", d:"id و username فقط لكل مدير — للقوائم المنسدلة (مثل اختيار parent_id).", res:`{ "0": 200, "data": [ { "id": 1, "username": "admin" }, { "id": 2, "username": "manager1" } ] }` },
+ { n:"Managers - Tree", ar:"شجرة المدراء", m:"GET", u:A+"/manager/tree", d:"الهيكل الهرمي للمدراء (كل مدير مع parent_id).", res:`[ { "id": 2, "parent_id": 1, "username": "manager1" }, { "id": 1, "username": "admin", "parent": null } ]` },
+ { n:"Managers - List", ar:"قائمة المدراء التفصيلية", m:"POST", u:A+"/index/manager", d:"قائمة مُصفّحة بالمدراء مع الرصيد، مجموعة الصلاحيات، المدير الأعلى، عدد المستخدمين، نقاط المكافآت، نسبة الخصم.", p:`{ "page": 1, "count": 10, "sortBy": "username", "direction": "asc", "search": "", "columns": ["username","firstname","lastname","balance","loan_balance","name","users_count"] }`,
+   res:`{ "current_page": 1, "data": [
+  { "id": 2, "username": "manager1", "firstname": "manager", "lastname": " ", "city": null, "phone": null, "acl_group_id": 21, "balance": null,
+    "parent_id": 1, "enabled": 1, "reward_points": 0, "created_at": "2019-07-25 09:00:34", "discount_rate": "0.00", "users_count": 1,
+    "acl_group_details": { "id": 21, "name": "Normal Reseller", "dashboard_id": 2 }, "parent_details": { "id": 1, "username": "admin" } } ],
+  "per_page": 10, "total": 1, "last_page": 1 }` },
+ { n:"Add Manager", ar:"إنشاء مدير/وكيل", m:"POST", u:A+"/manager", d:"إنشاء مدير. الحقول: username, enabled, password/confirm_password, acl_group_id (مجموعة الصلاحيات), parent_id, بيانات شخصية, subscriber_prefix/suffix (بادئة/لاحقة إجبارية لأسماء مشتركيه), max_users, site_id, debt_limit (حد الدين), discount_rate (نسبة الخصم), mikrotik_addresslist, allowed_ppp_services, allowed_nases (مصفوفة NAS المسموحة), requires_2fa, admin_notes, وحدود العمليات: limit_delete/limit_delete_count, limit_rename/_count, limit_profile_change/_count, limit_mac_change/_count.",
+   p:`{ "username": "example_manager", "enabled": 1, "password": "123123", "confirm_password": "123123", "acl_group_id": 21, "parent_id": 1,
+  "firstname": "first_name_param", "lastname": "last_name_param", "company": null, "email": null, "phone": null, "city": null, "address": null,
+  "notes": null, "subscriber_prefix": null, "subscriber_suffix": null, "max_users": "0", "site_id": null, "debt_limit": "0", "discount_rate": "0",
+  "mikrotik_addresslist": null, "allowed_ppp_services": null, "allowed_nases": [], "requires_2fa": 0, "admin_notes": null,
+  "limit_delete": 0, "limit_delete_count": "0", "limit_rename": 0, "limit_rename_count": "0",
+  "limit_profile_change": 0, "limit_profile_change_count": "0", "limit_mac_change": 0, "limit_mac_change_count": "0" }`,
+   res:`{ "status": 200 }` },
+ { n:"Delete Manager", ar:"حذف مدير", m:"DELETE", u:A+"/manager/{manager_id}", d:"حذف مدير. لا توجد استجابة موثقة.", res:`(لا توجد استجابة موثقة)`, warn:true },
+ { n:"Update Manager", ar:"تعديل مدير", m:"POST", u:A+"/manager/{manager_id}", d:"تحديث بيانات مدير بنفس حقول الإنشاء.", p:`(نفس حقول Add Manager)`, res:`(لا توجد استجابة موثقة)` },
+ { n:"Rename Manager", ar:"إعادة تسمية مدير", m:"POST", u:A+"/manager/{manager_id}", d:"نفس مسار التعديل لكن بإرسال username فقط.", p:`{ "username": "manager_example_rename" }`, res:`(لا توجد استجابة موثقة)` },
+ { n:"Manager Deposit", ar:"إيداع رصيد لمدير", m:"POST", u:A+"/manager/deposit", d:"إيداع من رصيد المدير الحالي إلى مدير فرعي. (وصف التوثيق الأصلي لهذا الطلب يعرض payload قائمة بالخطأ؛ الشكل الصحيح كما في Deposit Loans مع is_loan=false).", p:`{ "manager_id": 5, "manager_username": "Manager_4", "amount": 24, "comment": "deposit", "transaction_id": "ac06844b-1471-80ca-f19e-7c90ecd1dcb8", "is_loan": false, "balance": null }`, res:`(لا توجد استجابة موثقة)` },
+ { n:"Manager - Deposit Loans", ar:"إيداع كقرض (دين) لمدير", m:"POST", u:A+"/manager/deposit", d:"نفس مسار الإيداع مع is_loan: true — يُسجَّل المبلغ كدين على المدير الفرعي (يظهر في loan_balance) ضمن debt_limit.", p:`{ "manager_id": 5, "manager_username": "Manager_4", "amount": 24, "comment": "deposit_example_2_loans", "transaction_id": "ac06844b-1471-80ca-f19e-7c90ecd1dcb8", "is_loan": true, "balance": null }`, res:`(لا توجد استجابة موثقة)` },
+ { n:"Managers - withdraw", ar:"سحب رصيد من مدير", m:"POST", u:A+"/manager/withdraw", d:"سحب مبلغ من رصيد مدير فرعي وإعادته للمدير الأعلى. balance في المثال هو الرصيد الحالي المعروض للتأكيد.", p:`{ "manager_id": 2, "manager_username": "manager_example_rename", "amount": 24, "comment": "withdraw_example", "transaction_id": "ce5ceae0-49f0-6b57-72ea-fd5cc4430a45", "balance": 985 }`, res:`(لا توجد استجابة موثقة)` },
+ { n:"Managers - Add Reward Points", ar:"إضافة نقاط مكافآت لمدير", m:"POST", u:A+"/manager/addRewardPoints", d:"يضيف نقاط مكافآت يمكن للمدير استخدامها كطريقة دفع (method: reward_points) في التفعيل والتمديد. (يوجد في التوثيق نسخة GET من نفس الطلب بلا URL — خطأ توثيقي؛ الصحيح POST).", p:`{ "manager_id": 2, "amount": 23 }`, res:`(لا توجد استجابة موثقة)` },
+ { n:"Managers - Deduct Managers points", ar:"خصم نقاط مكافآت من مدير", m:"POST", u:A+"/manager/deductRewardPoints", d:"يخصم نقاط مكافآت.", p:`{ "manager_id": 5, "amount": 1 }`, res:`(لا توجد استجابة موثقة)` },
+ { n:"Manager - Pay debt", ar:"تسديد دين مدير", m:"POST", u:A+"/manager/payDebt", d:"طلب بسيط لتسديد (كل أو جزء من) دين المدير الناتج عن القروض. الحقول غير مفكوكة في التوثيق؛ المتوقع manager_id و amount و transaction_id.", p:`{ "manager_id": 5, "amount": 24, "transaction_id": "<uuid>" }`, res:`(لا توجد استجابة موثقة)` }
+]},
+{ f:"Profiles", ar:"الباقات", base:A, desc:"قائمة الباقات المتاحة للمدير الحالي.", r:[
+ { n:"Profiles - Simple List", ar:"قائمة الباقات المبسّطة", m:"GET", u:A+"/list/profile/0", d:"id واسم لكل باقة متاحة للمدير الحالي (المعامل 0 يعني بدون مشترك محدد). للأسعار استخدم activationData لمشترك، أو صفحة التسعير في لوحة SAS4 (لا يوجد endpoint موثّق للتسعير).", res:`{ "0": 200, "status": 200, "data": [ { "id": 1, "name": "default-2Mbit-1Month" }, { "id": 4, "name": "10Mbit-1Month" }, { "id": 5, "name": "20Mbit-1Month" } ] }` }
+]}
+];
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function hl(s){ return esc(s).replace(/"([^"\n]*)"(\s*:)/g,'<span class="k">"$1"</span>$2').replace(/:\s*"([^"\n]*)"/g,': <span class="s">"$1"</span>').replace(/:\s*(-?\d+(\.\d+)?|true|false|null)\b/g,': <span class="n">$1</span>'); }
+function urlHtml(u){ return esc(u).replace(/\{[^}]+\}/g, m=>'<span class="var">'+m+'</span>'); }
+function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""); }
+
+let total=0, byM={GET:0,POST:0,DELETE:0};
+const navF=document.getElementById("navFolders"); const root=document.getElementById("endpoints");
+DATA.forEach((fo,fi)=>{
+  const fid="f-"+slug(fo.f);
+  navF.insertAdjacentHTML("beforeend",`<a href="#${fid}"><span>${fo.ar}</span><span class="cnt">${fo.r.length}</span></a>`);
+  let h=`<section id="${fid}" class="folder"><h2 class="folder-head">${fo.ar}</h2><div class="folder-base mono">${esc(fo.f)} · base: <code>{host}${fo.base}</code></div><p class="folder-desc">${fo.desc}</p>`;
+  if(!fo.r.length) h+=`<div class="note">لا توجد طلبات موثقة في هذا المجلد.</div>`;
+  fo.r.forEach((r,ri)=>{ total++; byM[r.m]=(byM[r.m]||0)+1;
+    const id=fid+"-"+slug(r.n);
+    h+=`<article class="ep" id="${id}" data-q="${esc((r.n+" "+r.ar+" "+r.u).toLowerCase())}">
+      <div class="ep-head"><span class="badge ${r.m}">${r.m}</span><span class="ep-title">${r.ar}</span><span class="ep-en">${esc(r.n)}</span></div>
+      <div class="ep-url">${r.m} ${urlHtml(r.u)}</div>
+      <div class="ep-body">
+        <div class="lbl">الشرح <span class="auth">${r.auth||"Bearer token"}</span></div><p>${r.d}</p>
+        ${r.warn?`<div class="note warn">عملية حساسة / أو فيها ملاحظة موثّقة — راجع قسم الملاحظات الأمنية.</div>`:""}
+        ${r.p?`<div><div class="lbl">الـ payload قبل التشفير (يُرسل كـ payload=AES(...))</div><pre>${hl(r.p)}</pre></div>`:""}
+        <details ${ri<2&&fi<2?"open":""}><summary>عينة الاستجابة</summary><pre>${hl(r.res||"")}</pre></details>
+      </div></article>`;
+  });
+  h+=`</section>`; root.insertAdjacentHTML("beforeend",h);
+});
+document.getElementById("stats").innerHTML=`<div class="stat"><b>${DATA.length}</b><span>مجلدات</span></div><div class="stat"><b>${total}</b><span>endpoint موثّق</span></div><div class="stat"><b>${byM.GET}</b><span>GET</span></div><div class="stat"><b>${byM.POST}</b><span>POST (مشفّر)</span></div><div class="stat"><b>${byM.DELETE}</b><span>DELETE</span></div>`;
+document.getElementById("q").addEventListener("input",e=>{ const v=e.target.value.trim().toLowerCase(); document.querySelectorAll(".ep").forEach(el=>{ el.hidden = v && !el.dataset.q.includes(v); }); document.querySelectorAll(".folder").forEach(s=>{ s.hidden = v && !s.querySelector(".ep:not([hidden])"); }); });
+</script>

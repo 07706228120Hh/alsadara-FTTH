@@ -1,0 +1,325 @@
+{
+  "_comment": [
+    "Adapter لجهاز Huawei MA5800 (X7 / X17 / X2).",
+    "قيَم OID الرقمية هنا هي أفضل قيَم موثّقة من عائلة Huawei Enterprise (1.3.6.1.4.1.2011)",
+    "مستقاة من HUAWEI-XPON-MIB / HUAWEI-DEVICE-MIB / HUAWEI-IPDSLAM-GPONONU-MIB.",
+    "هذه القيَم احتياطية — تُستبدَل وتُدقَّق عند توفّر ملفات MIB الرسمية من Huawei",
+    "ويحلّها mib_registry.py تلقائياً من حقل 'symbol' المرافق."
+  ],
+  "model": "MA5800",
+  "vendor": "Huawei",
+  "sysobjectid_prefix": "1.3.6.1.4.1.2011.2.218",
+  "match": {
+    "model": ["MA5800", "MA5800-X7", "MA5800-X17", "MA5800-X2"]
+  },
+  "fields": {
+    "olt.cpu": {
+      "oid": "1.3.6.1.4.1.2011.6.3.3.1.1.10",
+      "mib": "HUAWEI-DEVICE-MIB",
+      "symbol": "hwCpuDevDuty",
+      "kind": "gauge",
+      "scale": 1,
+      "unit": "%",
+      "description": "نسبة استخدام المعالج المركزي للجهاز"
+    },
+    "olt.memory": {
+      "oid": "1.3.6.1.4.1.2011.6.3.3.1.1.12",
+      "mib": "HUAWEI-DEVICE-MIB",
+      "symbol": "hwMemoryDevUsage",
+      "kind": "gauge",
+      "scale": 1,
+      "unit": "%",
+      "description": "نسبة استخدام الذاكرة"
+    },
+    "olt.temperature": {
+      "oid": "1.3.6.1.4.1.2011.6.3.3.2.1.13",
+      "mib": "HUAWEI-DEVICE-MIB",
+      "symbol": "hwSlotTemprature",
+      "kind": "gauge",
+      "index": "per_slot",
+      "scale": 1,
+      "unit": "C",
+      "description": "درجة حرارة كرت المعالج الرئيسي"
+    },
+    "olt.uptime": {
+      "oid": "1.3.6.1.2.1.1.3.0",
+      "mib": "RFC1213-MIB",
+      "symbol": "sysUpTime",
+      "kind": "timeticks",
+      "scale": 0.01,
+      "unit": "s",
+      "description": "وقت تشغيل الجهاز (ثوانٍ)"
+    },
+    "olt.sw_version": {
+      "oid": "1.3.6.1.2.1.1.1.0",
+      "mib": "RFC1213-MIB",
+      "symbol": "sysDescr",
+      "kind": "string",
+      "description": "وصف الجهاز يتضمن إصدار البرنامج"
+    },
+    "olt.power_status": {
+      "oid": "1.3.6.1.4.1.2011.6.3.3.2.1.8",
+      "mib": "HUAWEI-DEVICE-MIB",
+      "symbol": "hwSlotOperStatus",
+      "kind": "int",
+      "index": "per_slot",
+      "map": {
+        "1": "empty",
+        "2": "normal",
+        "3": "failure",
+        "4": "disabled",
+        "5": "discovering",
+        "6": "configuring",
+        "11": "out-of-service",
+        "13": "powered-off"
+      },
+      "description": "حالة تشغيل الكرت/مصدر الطاقة"
+    },
+    "olt.fan_status": {
+      "oid": "1.3.6.1.4.1.2011.6.3.3.5.1.3",
+      "mib": "HUAWEI-DEVICE-MIB",
+      "symbol": "hwFanStatus",
+      "kind": "int",
+      "index": "per_fan",
+      "map": {
+        "1": "normal",
+        "2": "abnormal"
+      },
+      "description": "حالة المراوح"
+    },
+    "pon.status": {
+      "oid": "1.3.6.1.4.1.2011.6.3.3.6.2.1.4",
+      "mib": "HUAWEI-DEVICE-MIB",
+      "symbol": "hwIfOperStatus",
+      "kind": "int",
+      "index": "per_port",
+      "map": {
+        "1": "up",
+        "2": "down",
+        "3": "testing"
+      },
+      "description": "حالة تشغيل منفذ PON"
+    },
+    "pon.tech": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.12.1.3",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponDevicePortPonType",
+      "kind": "int",
+      "index": "per_port",
+      "map": {
+        "1": "GPON",
+        "2": "XG-PON",
+        "3": "XGS-PON",
+        "4": "COMBO-PON"
+      },
+      "description": "نوع تقنية منفذ PON"
+    },
+    "pon.onts_registered": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.47.1.19",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponDevicePortMaxOntNum",
+      "kind": "gauge",
+      "index": "per_port",
+      "description": "إجمالي ONTs المسجّلة على المنفذ"
+    },
+    "pon.onts_online": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.47.1.9",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponDevicePortActiveOntNum",
+      "kind": "gauge",
+      "index": "per_port",
+      "description": "عدد ONTs متصلة (online)"
+    },
+    "pon.onts_offline": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.47.1.10",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponDevicePortDeactOntNum",
+      "kind": "gauge",
+      "index": "per_port",
+      "description": "عدد ONTs منفصلة (offline)"
+    },
+    "pon.rx_traffic": {
+      "oid": "1.3.6.1.2.1.2.2.1.10",
+      "mib": "RFC1213-MIB",
+      "symbol": "ifInOctets",
+      "kind": "counter",
+      "index": "per_interface",
+      "scale": 0.000008,
+      "unit": "Mbps",
+      "description": "حركة الاستقبال على منفذ PON (Mbps)"
+    },
+    "pon.tx_traffic": {
+      "oid": "1.3.6.1.2.1.2.2.1.16",
+      "mib": "RFC1213-MIB",
+      "symbol": "ifOutOctets",
+      "kind": "counter",
+      "index": "per_interface",
+      "scale": 0.000008,
+      "unit": "Mbps",
+      "description": "حركة الإرسال على منفذ PON (Mbps)"
+    },
+    "pon.utilization": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.47.1.25",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponDevicePortBandWidthUsageRatio",
+      "kind": "gauge",
+      "index": "per_port",
+      "scale": 1,
+      "unit": "%",
+      "description": "نسبة استخدام عرض النطاق الترددي للمنفذ"
+    },
+    "ont.status": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.46.1.15",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntInfoRunState",
+      "kind": "int",
+      "index": "per_ont",
+      "map": {
+        "1": "online",
+        "2": "offline",
+        "3": "unknown"
+      },
+      "description": "حالة تشغيل ONT"
+    },
+    "ont.optical_rx_dbm": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.51.1.4",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntOpticalDdmRxPower",
+      "kind": "int",
+      "index": "per_ont",
+      "scale": 0.01,
+      "unit": "dBm",
+      "description": "قدرة الضوء المستقبَل على ONT (dBm) — القيمة الخام × 0.01"
+    },
+    "ont.optical_tx_dbm": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.51.1.3",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntOpticalDdmTxPower",
+      "kind": "int",
+      "index": "per_ont",
+      "scale": 0.01,
+      "unit": "dBm",
+      "description": "قدرة إرسال الليزر على ONT (dBm)"
+    },
+    "ont.olt_rx_dbm": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.51.1.6",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntOpticalDdmOltRxOntPower",
+      "kind": "int",
+      "index": "per_ont",
+      "scale": 0.01,
+      "unit": "dBm",
+      "description": "قدرة الإشارة المستقبَلة على طرف OLT من ONT"
+    },
+    "ont.distance_meters": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.46.1.23",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntInfoDistance",
+      "kind": "gauge",
+      "index": "per_ont",
+      "scale": 1,
+      "unit": "m",
+      "description": "مسافة ONT (متر)"
+    },
+    "ont.temperature": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.51.1.1",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntOpticalDdmTemperature",
+      "kind": "int",
+      "index": "per_ont",
+      "scale": 1,
+      "unit": "C",
+      "description": "درجة حرارة وحدة الليزر في ONT"
+    },
+    "ont.voltage": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.51.1.2",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntOpticalDdmVoltage",
+      "kind": "int",
+      "index": "per_ont",
+      "scale": 0.001,
+      "unit": "V",
+      "description": "الجهد الكهربي على ONT (فولت) — القيمة الخام × 0.001"
+    },
+    "ont.bias_current": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.51.1.5",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntOpticalDdmBiasCurrent",
+      "kind": "int",
+      "index": "per_ont",
+      "scale": 0.002,
+      "unit": "mA",
+      "description": "تيار إضاءة الليزر (mA)"
+    },
+    "ont.last_down_cause": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.46.1.25",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntInfoLastDownCause",
+      "kind": "int",
+      "index": "per_ont",
+      "map": {
+        "1": "dying-gasp",
+        "2": "LOS",
+        "3": "LOF",
+        "4": "LODS",
+        "5": "software-fault",
+        "6": "hardware-fault",
+        "7": "loopback",
+        "8": "self-test",
+        "9": "password-error",
+        "10": "OLT-reboot",
+        "11": "ONT-reboot",
+        "12": "config-change",
+        "255": "unknown"
+      },
+      "description": "سبب آخر انقطاع ONT"
+    },
+    "ont.model": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.46.1.9",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntInfoEquipmentId",
+      "kind": "string",
+      "index": "per_ont",
+      "description": "طراز ONT (Equipment ID)"
+    },
+    "ont.hw_version": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.46.1.11",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntInfoHardwareVersion",
+      "kind": "string",
+      "index": "per_ont",
+      "description": "إصدار عتاد ONT"
+    },
+    "ont.sw_version": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.46.1.10",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntInfoSoftwareVersion",
+      "kind": "string",
+      "index": "per_ont",
+      "description": "إصدار برنامج ONT"
+    },
+    "ont.reg_method": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.46.1.4",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntInfoAuthType",
+      "kind": "int",
+      "index": "per_ont",
+      "map": {
+        "1": "sn",
+        "2": "password",
+        "3": "sn-password",
+        "4": "loid",
+        "5": "loid-password"
+      },
+      "description": "طريقة مصادقة ONT"
+    },
+    "ont.serial": {
+      "oid": "1.3.6.1.4.1.2011.6.128.1.1.2.46.1.3",
+      "mib": "HUAWEI-XPON-MIB",
+      "symbol": "hwGponOntInfoSerialNumber",
+      "kind": "string",
+      "index": "per_ont",
+      "description": "الرقم التسلسلي للـ ONT"
+    }
+  }
+}

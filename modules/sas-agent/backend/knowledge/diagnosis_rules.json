@@ -1,0 +1,62 @@
+{
+  "description": "قواعد التشخيص الخبيرة المستخرجة من أدلة HCIA/HCIP-Access V2.5",
+  "ont_state_rules": [
+    {
+      "id": "ctrl_deactive",
+      "condition": {"control_flag": "deactive"},
+      "severity": "major",
+      "diagnosis_ar": "الـ ONT معطَّل إدارياً (Control flag = deactive).",
+      "action_ar": "فعّل الجهاز بالأمر: ont activate <port> <ont-id>",
+      "command": "ont activate"
+    },
+    {
+      "id": "run_offline",
+      "condition": {"run_state": "offline"},
+      "severity": "critical",
+      "diagnosis_ar": "الـ ONT غير متصل (offline). غالباً مشكلة فايبر أو كهرباء أو موديول ضوئي.",
+      "action_ar": "افحص القدرة الضوئية عبر display port state وتأكد من سلامة الفايبر والتغذية. تحقق من سبب آخر انقطاع (LOS = فقدان إشارة ضوئية).",
+      "command": "display port state"
+    },
+    {
+      "id": "config_failed",
+      "condition": {"config_state": "failed"},
+      "severity": "major",
+      "diagnosis_ar": "فشل تسليم الإعدادات للـ ONT (Config state = failed).",
+      "action_ar": "شغّل display ont failed-configuration لمعرفة البند الفاشل وسببه، ثم صحّح البروفايل.",
+      "command": "display ont failed-configuration"
+    },
+    {
+      "id": "match_mismatch",
+      "condition": {"match_state": "mismatch"},
+      "severity": "major",
+      "diagnosis_ar": "البروفايل لا يطابق قدرات الجهاز (Match state = mismatch).",
+      "action_ar": "شغّل display ont capability لمعرفة قدرات الجهاز الفعلية، ثم عدّل line/service profile ليطابقها.",
+      "command": "display ont capability"
+    }
+  ],
+  "optical_power_thresholds": {
+    "unit": "dBm",
+    "rx_power": {
+      "normal_min": -27.0,
+      "normal_max": -8.0,
+      "warning_below": -25.0,
+      "critical_below": -28.0,
+      "note_ar": "قدرة الاستقبال أقل من -25dBm = تحذير (تدهور الفايبر)؛ أقل من -28dBm = حرجة (قرب الانقطاع). أعلى من -8dBm = قوية جداً (قرب OLT)."
+    }
+  },
+  "temperature_thresholds": {
+    "unit": "C",
+    "warning_above": 70,
+    "critical_above": 80,
+    "note_ar": "حرارة ONT فوق 70 = تحذير، فوق 80 = حرجة (احتمال تلف)."
+  },
+  "voice_quality_thresholds": {
+    "mos": {"good_above": 4.0, "poor_below": 3.5, "note_ar": "MOS فوق 4 ممتاز، أقل من 3.5 رديء (قطع/تشويش)."},
+    "packet_loss": {"warning_above": 1.0, "critical_above": 3.0, "unit": "%"},
+    "jitter": {"warning_above": 20, "unit": "ms"}
+  },
+  "alarm_events": {
+    "0x29000008": {"name_ar": "هجوم DoS على منفذ", "severity": "major"},
+    "0x29000009": {"name_ar": "انتهاء هجوم DoS", "severity": "info"}
+  }
+}
