@@ -68,7 +68,10 @@ public static class SeedData
             new() { Id = 11, Code = "support", Name = "Support Tickets", NameAr = "تذاكر الدعم", Description = "صلاحيات إدارة تذاكر الدعم", Icon = "support", SystemType = SystemType.CitizenPortal, DisplayOrder = 11 },
             
             // مجموعة إدارة النظام (SuperAdmin فقط)
-            new() { Id = 12, Code = "admin", Name = "System Administration", NameAr = "إدارة النظام", Description = "صلاحيات مدير النظام الأعلى", Icon = "admin_panel_settings", SystemType = SystemType.All, DisplayOrder = 99 }
+            new() { Id = 12, Code = "admin", Name = "System Administration", NameAr = "إدارة النظام", Description = "صلاحيات مدير النظام الأعلى", Icon = "admin_panel_settings", SystemType = SystemType.All, DisplayOrder = 99 },
+
+            // مجموعة وكيل SAS
+            new() { Id = 13, Code = "sas_agent", Name = "SAS Agent", NameAr = "وكيل SAS", Description = "صلاحيات صفحة وكيل SAS", Icon = "router", SystemType = SystemType.SecondSystem, DisplayOrder = 13 }
         };
 
         await context.PermissionGroups.AddRangeAsync(permissionGroups);
@@ -158,6 +161,10 @@ public static class SeedData
             new() { Id = 93, PermissionGroupId = 12, Module = "admin", Action = "database", Code = "admin.database", Name = "Database Management", NameAr = "إدارة قاعدة البيانات", Description = "Database management", SystemType = SystemType.All, IsFirstSystem = true, IsSecondSystem = true, DisplayOrder = 93 },
             new() { Id = 94, PermissionGroupId = 12, Module = "admin", Action = "logs", Code = "admin.logs", Name = "View Logs", NameAr = "عرض السجلات", Description = "View system logs", SystemType = SystemType.All, IsFirstSystem = true, IsSecondSystem = true, DisplayOrder = 94 },
             new() { Id = 95, PermissionGroupId = 12, Module = "admin", Action = "citizen_portal", Code = "admin.citizen_portal", Name = "Citizen Portal Admin", NameAr = "إدارة نظام المواطن", Description = "Full citizen portal management", SystemType = SystemType.CitizenPortal, IsFirstSystem = false, IsSecondSystem = true, RequiresLinkedCompany = false, DisplayOrder = 95 },
+
+            // ==================== SAS Agent (Group 13) ====================
+            new() { Id = 96, PermissionGroupId = 13, Module = "sas_agent", Action = "view", Code = "sas_agent.view", Name = "View SAS Agent", NameAr = "عرض صفحة وكيل SAS", Description = "View SAS agent page", SystemType = SystemType.SecondSystem, IsFirstSystem = false, IsSecondSystem = true, DisplayOrder = 96 },
+            new() { Id = 97, PermissionGroupId = 13, Module = "sas_agent", Action = "manage", Code = "sas_agent.manage", Name = "Manage SAS Agent", NameAr = "إدارة صفحة وكيل SAS", Description = "Manage SAS accounts and settings", SystemType = SystemType.SecondSystem, IsFirstSystem = false, IsSecondSystem = true, DisplayOrder = 97 },
         };
 
         await context.Permissions.AddRangeAsync(permissions);

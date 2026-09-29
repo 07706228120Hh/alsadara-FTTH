@@ -160,6 +160,10 @@ public class SadaraDbContext : DbContext
     public DbSet<FtthSubscriberCache> FtthSubscriberCaches => Set<FtthSubscriberCache>();
     public DbSet<FtthSyncLog> FtthSyncLogs => Set<FtthSyncLog>();
 
+    // ==================== SAS Agent (وحدة وكيل SAS) ====================
+    public DbSet<SasAccount> SasAccounts => Set<SasAccount>();
+    public DbSet<CompanySasSettings> CompanySasSettings => Set<CompanySasSettings>();
+
     // ==================== Inventory System (نظام المخازن والمواد) ====================
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<InventoryCategory> InventoryCategories => Set<InventoryCategory>();
@@ -402,6 +406,24 @@ public class SadaraDbContext : DbContext
             .HasIndex(x => new { x.CompanyId, x.StartedAt });
         modelBuilder.Entity<FtthSyncLog>()
             .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+
+        // ==================== SAS Agent (وحدة وكيل SAS) ====================
+        // إعدادات الساس على مستوى الشركة (1‑1): فريدة لكل شركة، حذفها متسلسل مع الشركة.
+        modelBuilder.Entity<CompanySasSettings>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<CompanySasSettings>()
+            .HasIndex(x => x.CompanyId).IsUnique();
+        modelBuilder.Entity<CompanySasSettings>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+
+        // حسابات الساس المربوطة بالموظفين: فهرس مركّب (شركة + مالك) لسرعة الجلب المعزول.
+        // FK الشركة Cascade، وFK المالك Restrict لتفادي مسارات حذف متسلسلة متعددة (Company→User→SasAccount).
+        modelBuilder.Entity<SasAccount>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<SasAccount>()
+            .HasIndex(x => new { x.CompanyId, x.OwnerUserId });
+        modelBuilder.Entity<SasAccount>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SasAccount>()
+            .HasOne<User>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
 
         // Reminder Settings
         modelBuilder.Entity<ReminderSettings>()
