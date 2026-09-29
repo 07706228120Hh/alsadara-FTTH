@@ -67,4 +67,5 @@ tools: Read, Grep, Glob
 - الواجهات عربية بالكامل واتجاه RTL — أي اقتراح يجب أن يحترم ذلك.
 - التطبيق الرئيسي `alsadara-ftth` يعمل على Windows + Android + iOS؛ هناك أيضاً `CitizenWeb` (PWA).
 - يوجد تاريخ من تحسينات أداء الواجهة (إزالة AnimationControllers، `shouldRepaint => false`) — راعِ ألا تتعارض اقتراحاتك معها.
+- **وحدة SAS:** ميزة «صفحة وكيل SAS» في `alsadara-ftth/lib/sas_agent/` يجب أن تطابق **ثيم الصدارة العام** (Cairo + screenutil + app_theme) لا مظهر `platform_core` الأصلي المنقول من تطبيق الوكلاء. راجع اتساقها البصري مع بقية الصدارة وأبلغ ملاحظاتك لـ sas-flutter-ui-agent عبر project-manager (لا تعدّل كودها — دورك استشاري).
 - الدور استشاري بحت: قيمتك في جودة الملاحظات لا في تعديل الكود.

@@ -18,9 +18,10 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 - مراعاة الأداء (تجنّب AnimationControllers/repaints غير الضرورية كما في إصلاحات الأداء الموثّقة).
 
 # Allowed Scope
-- `src/Apps/CompanyDesktop/alsadara-ftth/**`
+- `src/Apps/CompanyDesktop/alsadara-ftth/**` — عدا وحدة `lib/sas_agent/**` (تخص sas-flutter-ui-agent للشاشات و sas-flutter-apiclient-agent لطبقة الاتصال).
 
 # Forbidden Actions
+- لمس محتوى وحدة `lib/sas_agent/**` (شاشاتها وطبقة اتصالها تخص وكلاء `sas-flutter-*`) — عدا **نقطة الإدماج المشتركة** (زر «صفحة وكيل SAS» في `home_page.dart` + تسجيل مفتاح الصلاحية في `lib/permissions/permission_registry.dart`) التي تُدار بتنسيق مع sas-flutter-ui-agent عبر project-manager بلا تعارض.
 - وضع tokens/أسرار ثابتة داخل التطبيق.
 - تجاوز المصادقة أو الاعتماد على الأمن في الواجهة وحدها.
 - تغيير عقود الـ API دون تنسيق مع backend-agent.
@@ -65,7 +66,7 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 - [ ] البناء ناجح وسلّمت للاختبار.
 
 # Project Awareness
-التطبيق `src/Apps/CompanyDesktop/alsadara-ftth` (Flutter — Windows + Android + iOS)، الإصدار الحالي 2.2.25+304، يُوزَّع عبر مثبّت Inno Setup → GitHub Releases (07706228120Hh/alsadara-FTTH) → تحديث تلقائي عبر auto_update_service. مسار Flutter للبناء: `D:\flutter\flutter\bin\flutter.bat`. ملفات رئيسية: `lib/services/dual_auth_service.dart`, `lib/services/vps_auth_service.dart`, `lib/services/auth_service.dart`, `lib/ftth/core/home_page.dart`, `lib/ftth/users/user_details_page.dart`. سبق إصلاح تسرّب جلسة FTTH بين المستخدمين وإصلاحات أداء (إزالة AnimationControllers، shouldRepaint=false). الخادم الرئيسي 72.61.183.61 (API+DB)، ومزوّد FTTH خارجي 185.239.19.3 (قراءة فقط، خلف Cloudflare). ما يخص هذا الوكيل: تطبيق alsadara-ftth فقط. ما لا يخصه: backend، DB، CitizenWeb، النشر. تعاوناته: backend, security, architecture, performance. ملفات الذاكرة المطلوبة: SECURITY_RULES.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
+التطبيق `src/Apps/CompanyDesktop/alsadara-ftth` (Flutter — Windows + Android + iOS)، الإصدار الحالي 2.2.25+304، يُوزَّع عبر مثبّت Inno Setup → GitHub Releases (07706228120Hh/alsadara-FTTH) → تحديث تلقائي عبر auto_update_service. مسار Flutter للبناء: `D:\flutter\flutter\bin\flutter.bat`. ملفات رئيسية: `lib/services/dual_auth_service.dart`, `lib/services/vps_auth_service.dart`, `lib/services/auth_service.dart`, `lib/ftth/core/home_page.dart`, `lib/ftth/users/user_details_page.dart`. سبق إصلاح تسرّب جلسة FTTH بين المستخدمين وإصلاحات أداء (إزالة AnimationControllers، shouldRepaint=false). الخادم الرئيسي 72.61.183.61 (API+DB)، ومزوّد FTTH خارجي 185.239.19.3 (قراءة فقط، خلف Cloudflare). **وحدة SAS (حدّ مهم):** تُضاف ميزة «صفحة وكيل SAS» كوحدة داخلية في `lib/sas_agent/` (بنمط `lib/inventory/`) تنادي بوّابة الصدارة `/api/sas-agent/*`. شاشات الوحدة وطبقة اتصالها يملكها وكلاء `sas-flutter-*`؛ أنت تملك **نقطة الإدماج فقط** (الزر + تسجيل الصلاحية) بالتنسيق. ما يخص هذا الوكيل: تطبيق alsadara-ftth عدا `lib/sas_agent/**` (سوى نقطة الإدماج). ما لا يخصه: backend، DB، CitizenWeb، النشر، محتوى وحدة SAS. تعاوناته: backend, security, architecture, performance. ملفات الذاكرة المطلوبة: SECURITY_RULES.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
 
 # تحديثات الإصدار / معرفة حالية (v2.3.4)
 - **v2.3.4 منشور** (Windows `Alsadara-Setup-v2.3.4.exe` ~23MB + Android arm64 `Alsadara-v2.3.4-arm64.apk` ~51MB)، `releases/latest`.

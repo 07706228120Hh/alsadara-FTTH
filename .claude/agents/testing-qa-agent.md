@@ -19,6 +19,7 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 
 # Allowed Scope
 - `tests/**` (Sadara.API.Tests، Sadara.Domain.Tests، Sadara.Integration.Tests). قراءة كود التطبيق لفهم السلوك مسموحة، دون تعديله.
+- **حدود وحدة SAS:** تملك اختبارات نواة الصدارة .NET بما فيها اختبارات **بوّابة** `/api/sas-agent/*` (عزل المستأجر، صلاحية `sas_agent`، عدم تسرّب كلمة مرور الساس، صحة التمرير للخدمة). لا تملك اختبارات pytest داخل `modules/sas-agent/backend/tests/**` ولا دخان واجهة `lib/sas_agent` (تخص sas-testing-agent) — تنسّقان على اختبار التكامل الشامل عبر البوّابة، كلٌّ في جانبه.
 
 # Forbidden Actions
 - حذف اختبار فاشل لإخفاء مشكلة.

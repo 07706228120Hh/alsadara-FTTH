@@ -77,7 +77,7 @@ User Request
 
 ## Agent Roster
 
-فريق الوكلاء التسعة عشر ومسؤولية كل منهم (ملفات التعريف في `.claude/agents/...`):
+فريق الوكلاء ومسؤولية كل منهم (ملفات التعريف في `.claude/agents/...`). ينقسم إلى **وكلاء نواة الصدارة** (.NET 9 + PostgreSQL + Flutter alsadara-ftth/CitizenWeb) و**وكلاء وحدة SAS** (بادئة `sas-`، يملكون حصراً `modules/sas-agent/**` و`alsadara-ftth/lib/sas_agent/**`):
 
 | Agent | المسؤولية | الملف |
 |-------|-----------|-------|
@@ -100,6 +100,20 @@ User Request
 | api-integration-tester-agent | اختبار واجهات API الداخلية والخارجية | `.claude/agents/api-integration-tester-agent.md` |
 | ui-ux-agent | تجربة المستخدم والواجهات العربية RTL | `.claude/agents/ui-ux-agent.md` |
 | release-manager-agent | إدارة الإصدارات (Inno Setup، GitHub Releases، auto-update) | `.claude/agents/release-manager-agent.md` |
+
+### وكلاء وحدة SAS (بادئة `sas-`) — ملكية حصرية في `modules/sas-agent/**` و`alsadara-ftth/lib/sas_agent/**`
+
+| Agent | المسؤولية | الملف |
+|-------|-----------|-------|
+| sas-backend-agent | باكند خدمة الساز (Python/FastAPI): routers/services/schemas/main داخل الوحدة | `.claude/agents/sas-backend-agent.md` |
+| sas-database-agent | بيانات الوحدة: SQLModel (models.py/database.py) + هجرات Alembic | `.claude/agents/sas-database-agent.md` |
+| sas-integration-agent | تكامل SAS4: عملاء sas_client/sas_user_client + تشفير AES متوافق OpenSSL | `.claude/agents/sas-integration-agent.md` |
+| sas-security-agent | أمن الخدمة الداخلية وعزلها (core/security, core/auth) تحت مظلة security-auditor-agent | `.claude/agents/sas-security-agent.md` |
+| sas-flutter-ui-agent | واجهة `lib/sas_agent/` بثيم الصدارة العام (Cairo/screenutil/app_theme) | `.claude/agents/sas-flutter-ui-agent.md` |
+| sas-flutter-apiclient-agent | طبقة اتصال الوحدة (تنادي بوّابة الصدارة `/api/sas-agent/*` فقط) | `.claude/agents/sas-flutter-apiclient-agent.md` |
+| sas-testing-agent | اختبارات الوحدة (pytest) + دخان واجهة `lib/sas_agent` | `.claude/agents/sas-testing-agent.md` |
+| sas-devops-agent | بناء/تشغيل خدمة الساز (venv/Docker/Alembic/systemd sas-service على 127.0.0.1) | `.claude/agents/sas-devops-agent.md` |
+| sas-olt-legacy-agent | وكيل خامل (محفوظ) لطبقة OLT/SNMP المؤجّلة في الوحدة — لا يُفعَّل بلا قرار صريح | `.claude/agents/sas-olt-legacy-agent.md` |
 
 > ملاحظة: المسارات أعلاه قياسية ضمن `.claude/agents/`؛ تحقق من الأسماء الفعلية للملفات قبل الإسناد إن لم تكن موجودة بالضبط.
 
@@ -126,6 +140,33 @@ User Request
 - **النشر**: SCP يدوي إلى VPS `72.61.183.61` + `systemctl restart sadara-api`؛ التطبيق عبر Inno Setup → GitHub Releases (`07706228120Hh/alsadara-FTTH`) → auto-update.
 - **CI/DevOps**: `.github/workflows/build-windows.yml`، Docker (`docker/Dockerfile` + `docker/docker-compose.yaml`).
 - **الأسرار**: `.env` (قيم حقيقية)، `secrets/`، `.secrets/`.
+
+---
+
+## وحدة «وكيل SAS» (Aluklaa المعزولة) والتصميم المدمج
+
+ميزة **«صفحة وكيل SAS»** تدمج تطبيق الوكلاء (Aluklaa) داخل الصدارة **كوحدة معزولة**، لا كجزء مبعثر في النواة.
+
+- **مصدر الوحدة**: `modules/sas-agent/` — تطبيق الوكلاء كاملاً معزولاً (باكند Python/FastAPI + SQLModel/Alembic + عملاء SAS4 + Flutter platform_core/frontend). خطة الدمج: `docs/SAS_AGENT_INTEGRATION_PLAN.md`. مرجع الوحدة: `modules/sas-agent/README.md`.
+- **الوحدة النهائية في الواجهة**: تُبنى في `src/Apps/CompanyDesktop/alsadara-ftth/lib/sas_agent/` بثيم الصدارة العام (Cairo + screenutil + app_theme) — لا مظهر platform_core الأصلي.
+- **التصميم المدمج (الخيار أ)**:
+
+  ```text
+  Flutter (alsadara-ftth / lib/sas_agent)
+      │  توكن الصدارة الموحّد (JWT + عزل الشركة + صلاحية sas_agent)
+      ▼
+  بوّابة الصدارة .NET  (/api/sas-agent/*)   ← تفرض: التوكن + العزل + الصلاحية
+      │  127.0.0.1 + X-Internal-Secret + اعتماد ساس مفكوك التشفير داخلياً
+      ▼
+  خدمة الساز Python (sas-service)  127.0.0.1:8100  ← غير مكشوفة للإنترنت
+      ▼
+  خادم SAS4 الخارجي لمزوّد الوكيل
+  ```
+
+- **قاعدة العزل الذهبية**: الواجهة تنادي الصدارة .NET فقط؛ الصدارة وحدها تفكّ تشفير اعتماد الساس وتنادي خدمة Python المحصورة على localhost. العزل ثلاثي: شركة (CompanyId ITenantScoped) + مستخدم (OwnerUserId) + نظام (فصل عن FTTH). اعتماد الساس مشفّر ولا يُعاد في أي استجابة.
+- **حدّ الملكية**: وكلاء النواة **لا يلمسون** `modules/sas-agent/**` ولا `lib/sas_agent/**`؛ وكلاء الوحدة (`sas-*`) **لا يلمسون** نواة الصدارة. التكامل عبر البوّابة `/api/sas-agent/*` فقط. جدول الحدود التفصيلي في `.claude/memory/AGENT_COLLABORATION_RULES.md`.
+- **الطبقة المحفوظة**: طبقة OLT/SNMP الموروثة من تطبيق الوكلاء محفوظة **خاملة** في الوحدة (خارج نطاق الدمج الحالي) ويحرسها `sas-olt-legacy-agent` بلا تفعيل.
+- **موافقات لازمة (قواعد الصدارة الذهبية)**: كيانات الساس (migration/tenancy)، الدخول الصامت للساس (auth)، صلاحية `sas_agent` (authorization) — كلها تحتاج موافقة بشرية صريحة وتمرّ على security-auditor-agent + database-postgres-agent + architecture-evolution-agent حسب الأثر.
 
 ---
 

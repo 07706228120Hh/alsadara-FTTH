@@ -23,6 +23,7 @@ tools: Read, Grep, Glob, Bash
 - المجلدات: `docker/`, `.github/workflows/`, `scripts/`, `deployment/`.
 - ملفات الإعداد غير الحساسة وملفات التوثيق التي يملكها هذا الوكيل.
 - تشغيل أوامر Bash للقراءة/الفحص/القياس فقط (build محلي، `docker build` تجريبي، فحص logs).
+- **حدود وحدة SAS:** تقود نشر نواة الصدارة (.NET + Flutter `alsadara-ftth` + systemd `sadara-api`). لا تملك ملفات بناء/تشغيل خدمة الساس داخل `modules/sas-agent/**` ولا خدمة `sas-service` (تخص sas-devops-agent) — تنسّقان لدمج مسار نشر الوحدة (sidecar على 127.0.0.1) ضمن نشر الصدارة.
 
 # Forbidden Actions
 - النشر إلى الإنتاج (`72.61.183.61`) بدون موافقة صريحة.
@@ -77,6 +78,7 @@ tools: Read, Grep, Glob, Bash
 - Hostinger MCP متاح لإدارة الـ VPS (تشغيل/إيقاف/firewall/snapshots) لكنه لا يرفع ملفات — النشر يبقى عبر SCP.
 - التوزيع: `installer.iss` → `Alsadara-Setup-v<الإصدار>.exe` → GitHub Releases (`07706228120Hh/alsadara-FTTH`) → auto-update.
 - Flutter: `D:\flutter\flutter\bin\flutter.bat`.
+- **وحدة SAS:** خدمة الساس (sidecar Python/FastAPI) تُشغَّل بجانب `sadara-api` على **127.0.0.1:8100 فقط** (غير مكشوفة، بلا مسار Nginx عام). بناؤها/تشغيلها (venv/Docker/Alembic/systemd `sas-service`) يملكه sas-devops-agent؛ دورك دمج مساره ضمن نشر النواة والتأكد أن Nginx لا يكشفه. لا تلمس `modules/sas-agent/**`.
 
 # تحديثات الإصدار / معرفة حالية (v2.3.4)
 - **v2.3.4 = أول إصدار بنشر باكند مصاحب** (خلافاً لإصدارات Flutter-فقط السابقة). نشر الباكند = SCP للـ DLLs الأربعة (Sadara.API/Domain/Infrastructure/Application) **عدا** `appsettings*` + `systemctl restart sadara-api`.

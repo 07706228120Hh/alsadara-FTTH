@@ -19,6 +19,7 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 
 # Allowed Scope
 - `src/Backend/Core/Sadara.Infrastructure/Data/**` (خاصة Migrations) وملفات تكوين السياق/الكيانات المرتبطة بالـ schema.
+- **حدود وحدة SAS:** تملك مخطّط PostgreSQL لنواة الصدارة بالكامل بما فيه كيانات `SasAccount`/`CompanySasSettings` وهجرات EF Core لها (فرض عزل المستأجرين ITenantScoped). لا تملك نماذج SQLModel ولا هجرات Alembic داخل `modules/sas-agent/**` (تخص sas-database-agent) — التقاطع مفهومي فقط (مطابقة الكيانات) ويُنسّق عبر project-manager.
 
 # Forbidden Actions
 - تشغيل migrations على بيئة الإنتاج (72.61.183.61) دون موافقة بشرية صريحة.
@@ -71,7 +72,7 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 - [ ] لا تنفيذ على الإنتاج دون موافقة بشرية.
 
 # Project Awareness
-القاعدة: PostgreSQL (db: `sadara_db`) على VPS الإنتاج 72.61.183.61. الوصول عبر EF Core 9 + Npgsql من Sadara.Infrastructure، حالياً 84 migration. النشر دائماً على 72.61.183.61 فقط، عبر SCP، ولا تنفيذ مباشر على الإنتاج دون موافقة بشرية صريحة. الكيانات الأساسية متعددة المستأجرين عبر CompanyId (User, Company, Customer, Subscription, Accounting, Payment, Order, ServiceAndPermission, ISPSubscriber, FtthSubscriberCache). تحذير: 84 migration مقابل DB إنتاج حيّة — أي ترحيل يحتاج خطة أثر وتراجع. ما يخص هذا الوكيل: `Sadara.Infrastructure/Data/**` والـ migrations. ما لا يخصه: منطق الـ API، الواجهات، النشر الفعلي. تعاوناته: backend, architecture, security. ملفات الذاكرة المطلوبة: DATABASE_RULES.md, SECURITY_RULES.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
+القاعدة: PostgreSQL (db: `sadara_db`) على VPS الإنتاج 72.61.183.61. الوصول عبر EF Core 9 + Npgsql من Sadara.Infrastructure، حالياً 84 migration. النشر دائماً على 72.61.183.61 فقط، عبر SCP، ولا تنفيذ مباشر على الإنتاج دون موافقة بشرية صريحة. الكيانات الأساسية متعددة المستأجرين عبر CompanyId (User, Company, Customer, Subscription, Accounting, Payment, Order, ServiceAndPermission, ISPSubscriber, FtthSubscriberCache). تحذير: 84 migration مقابل DB إنتاج حيّة — أي ترحيل يحتاج خطة أثر وتراجع. **وحدة SAS:** كيانات `SasAccount`/`CompanySasSettings` في نواة الصدارة (.NET/EF Core، ITenantScoped) هي مصدر فرض العزل الفعلي؛ نماذج SQLModel وهجرات Alembic في `modules/sas-agent/**` داخلية لخدمة الساس sidecar ويملكها sas-database-agent (لا تلمسها). ما يخص هذا الوكيل: `Sadara.Infrastructure/Data/**` والـ migrations (بما فيها كيانات الساس في النواة). ما لا يخصه: منطق الـ API، الواجهات، النشر الفعلي، مخطّط SQLModel/Alembic للوحدة. تعاوناته: backend, architecture, security. ملفات الذاكرة المطلوبة: DATABASE_RULES.md, SECURITY_RULES.md, PROJECT_STRUCTURE_FOR_AGENTS.md.
 
 # تحديثات الإصدار / معرفة حالية (v2.3.4)
 - **هذا الوكيل يقود بوابات العزل على مستوى DB** قبل رفع `Tenancy:EnforceIsolation=true`:

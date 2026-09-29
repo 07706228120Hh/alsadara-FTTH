@@ -12,11 +12,39 @@
 | نوع التعارض | الحاسم |
 |--------------|---------|
 | عام / أولويات / توزيع | `00-project-manager` |
-| أمني (secrets, auth, tenancy) | `security-auditor-agent` (كلمته نهائية) |
+| أمني (secrets, auth, tenancy) — على مستوى المنصة كلها بما فيها الوحدة | `security-auditor-agent` (كلمته نهائية) |
 | اختبار اختراق تطبيقي (نتائج pentest) | `security-auditor-agent` يحسم التصنيف، و`penetration-testing-agent` ينفّذ التحقّق ضمن بيئة مصرّح بها |
-| قاعدة بيانات (schema, migration, RLS) | `database-postgres-agent` |
-| معماري (طبقات، حدود، أنماط) | `02-architecture-evolution-agent` |
+| قاعدة بيانات النواة (schema, migration EF Core, RLS) | `database-postgres-agent` |
+| بيانات وحدة SAS (SQLModel, Alembic) | `sas-database-agent` |
+| معماري (طبقات، حدود، أنماط، حدّ النواة/الوحدة) | `02-architecture-evolution-agent` |
 | تعديل الوكلاء أنفسهم/قواعدهم | `01-agent-trainer-development-manager` |
+| حدود النواة ↔ وحدة SAS (من يملك ماذا) | `00-project-manager` (بمشورة `02-architecture-evolution-agent`) |
+
+## حدود الملكية: نواة الصدارة ↔ وحدة SAS
+
+المنصة الآن نواة (.NET 9 + PostgreSQL + Flutter `alsadara-ftth`) + **وحدة «وكيل SAS» معزولة** في `modules/sas-agent/` (خدمة Python/FastAPI sidecar). الملكية **حصرية ولا تتداخل**:
+
+- **وكلاء النواة** (بلا بادئة `sas-`): يملكون `src/**`, `.claude/**`, `.github/**`, `docker/**` وغيرها. **ممنوع** لمس `modules/sas-agent/**`، ويملكون داخل `alsadara-ftth` كل شيء **عدا** `lib/sas_agent/**`.
+- **وكلاء الوحدة** (بادئة `sas-`): يملكون **حصراً** `modules/sas-agent/**` و`src/Apps/CompanyDesktop/alsadara-ftth/lib/sas_agent/**`. **ممنوع** لمس نواة الصدارة (.NET، مخطّط PostgreSQL، هجرات EF Core، بقية `alsadara-ftth`).
+- **جدول الحدود التفصيلي:**
+
+| المجال | مالك النواة | مالك الوحدة |
+|--------|-------------|-------------|
+| بوّابة `/api/sas-agent/*` (.NET) + كيانات `SasAccount`/`CompanySasSettings` (EF/ITenantScoped) | backend-agent + database-postgres-agent | — |
+| خدمة الساز Python (routers/services/schemas) | — | sas-backend-agent |
+| نماذج SQLModel + هجرات Alembic للوحدة | — | sas-database-agent |
+| عملاء SAS4 + تشفير AES | — | sas-integration-agent |
+| أمن الخدمة الداخلية + العزل داخل الوحدة | security-auditor-agent (كلمة نهائية) | sas-security-agent |
+| واجهة `lib/sas_agent/` (شاشات) | — | sas-flutter-ui-agent |
+| طبقة اتصال `lib/sas_agent/services` | — | sas-flutter-apiclient-agent |
+| نقطة إدماج الزر + تسجيل صلاحية `sas_agent` في `home_page.dart`/permission_registry | mobile-agent | sas-flutter-ui-agent (بالتنسيق) |
+| اختبارات النواة .NET + بوّابة SAS | testing-qa-agent | — |
+| اختبارات pytest للوحدة + دخان `lib/sas_agent` | — | sas-testing-agent |
+| بناء/نشر النواة (systemd `sadara-api`) | devops-agent | — |
+| بناء/تشغيل خدمة `sas-service` (venv/Docker/Alembic/systemd، 127.0.0.1) | — (devops-agent يدمج المسار) | sas-devops-agent |
+| طبقة OLT/SNMP المحفوظة (خاملة) | — | sas-olt-legacy-agent (قراءة فقط، بلا تفعيل) |
+
+**التكامل بينهما عبر بوّابة الصدارة `/api/sas-agent/*` فقط** (والـ HTTP الداخلي 127.0.0.1 + `X-Internal-Secret`). أي عمل يمسّ الطرفين يبدأ من `00-project-manager` الذي يوزّعه على مالكَي الجانبين بلا أن يلمس أيٌّ منهما كود الآخر. **قاعدة الملف الواحد** سارية: لا وكيلان على نفس الملف بالتوازي.
 
 ## متى التصعيد
 - أي عملية تحتاج موافقة (نشر، migration إنتاج، push/release، مسّ أسرار) → تُصعّد لطلب موافقة المستخدم عبر project-manager.
