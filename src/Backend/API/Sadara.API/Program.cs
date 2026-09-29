@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -51,6 +52,22 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // عزل المستأجر: مزوّد الشركة الحالية (يقرأ company_id من التوكن؛ SuperAdmin يتجاوز)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentTenant, Sadara.API.Services.CurrentTenant>();
+
+// حماية الأسرار (Data Protection) — تشفير كلمات مرور حسابات الساس قبل الحفظ.
+// نحفظ مفاتيح التشفير على القرص لتبقى ثابتة بين عمليات إعادة النشر؛
+// المسار يُقرأ من الإعداد DataProtection:KeysPath (افتراضاً: مجلد "keys" تحت جذر المحتوى).
+// تحذير: تغيير هذا المسار (أو فقدان محتواه) = فقدان القدرة على فكّ تشفير الأسرار المخزّنة سابقاً.
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+    dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "keys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .SetApplicationName("Sadara");
+builder.Services.AddScoped<ISecretProtector, Sadara.Infrastructure.Services.Security.SecretProtector>();
+
+// عميل خدمة الساس الداخلية (typed HttpClient على 127.0.0.1:8100)
+builder.Services.AddHttpClient<ISasServiceClient, Sadara.Infrastructure.Services.Sas.SasServiceClient>();
 
 // Identity Services
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();

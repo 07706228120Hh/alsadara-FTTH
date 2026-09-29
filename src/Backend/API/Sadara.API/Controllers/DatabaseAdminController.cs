@@ -66,6 +66,34 @@ public class DatabaseAdminController : ControllerBase
         _logger = logger;
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // فلترة الأعمدة الحسّاسة (P0) — تُستبعد من أي إخراج ديناميكي/تصدير
+    // بحيث لا تُكشف أسرار مثل PasswordHash / *Encrypted / *Token عبر SELECT *
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>لاحقات/أسماء أعمدة تُعدّ حسّاسة ويجب استبعادها من الإخراج.</summary>
+    private static readonly string[] SensitiveColumnSuffixes = { "Encrypted", "Secret", "Token" };
+
+    /// <summary>أسماء أعمدة كاملة تُعدّ حسّاسة (مطابقة تامة، غير حسّاسة لحالة الأحرف).</summary>
+    private static readonly string[] SensitiveColumnExact = { "PasswordHash", "PlainPassword", "AttendanceSecurityCode" };
+
+    /// <summary>
+    /// يحدّد ما إذا كان اسم العمود حسّاساً (كلمات مرور/أسرار/توكنات) فيُستبعد من الإخراج.
+    /// المطابقة غير حسّاسة لحالة الأحرف.
+    /// </summary>
+    private static bool IsSensitiveColumn(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return false;
+
+        foreach (var exact in SensitiveColumnExact)
+            if (name.Equals(exact, StringComparison.OrdinalIgnoreCase)) return true;
+
+        foreach (var suffix in SensitiveColumnSuffixes)
+            if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) return true;
+
+        return false;
+    }
+
     /// <summary>
     /// الحصول على قائمة جميع الجداول المتاحة
     /// </summary>
@@ -545,13 +573,16 @@ public class DatabaseAdminController : ControllerBase
             var fullTableName = schema != null ? $"\"{schema}\".\"{actualTableName}\"" : $"\"{actualTableName}\"";
 
             var properties = entityType.GetProperties().ToList();
-            var columns = properties.Select(p => new {
-                name = p.GetColumnName(),
-                clrName = p.Name,
-                type = p.ClrType.Name,
-                isNullable = p.IsNullable,
-                isPrimaryKey = p.IsPrimaryKey()
-            }).ToList();
+            var columns = properties
+                // P0: استبعاد أعمدة الأسرار من بيانات الأعمدة الوصفية أيضاً
+                .Where(p => !IsSensitiveColumn(p.GetColumnName()) && !IsSensitiveColumn(p.Name))
+                .Select(p => new {
+                    name = p.GetColumnName(),
+                    clrName = p.Name,
+                    type = p.ClrType.Name,
+                    isNullable = p.IsNullable,
+                    isPrimaryKey = p.IsPrimaryKey()
+                }).ToList();
 
             var conn = _context.Database.GetDbConnection();
             if (conn.State != System.Data.ConnectionState.Open)
@@ -588,7 +619,10 @@ public class DatabaseAdminController : ControllerBase
                 var row = new Dictionary<string, object?>();
                 for (int i = 0; i < reader.FieldCount; i++)
                 {
-                    row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    var colName = reader.GetName(i);
+                    // P0: لا تُدرِج الأعمدة الحسّاسة في صفوف البيانات المُعادة
+                    if (IsSensitiveColumn(colName)) continue;
+                    row[colName] = reader.IsDBNull(i) ? null : reader.GetValue(i);
                 }
                 items.Add(row);
             }
@@ -1897,8 +1931,12 @@ public class DatabaseAdminController : ControllerBase
             return Task.CompletedTask;
         }
 
+        // P0: استبعاد أي عمود حسّاس (كلمات مرور/أسرار/توكنات) من التصدير
+        var props = typeof(T).GetProperties()
+            .Where(p => !IsSensitiveColumn(p.Name))
+            .ToArray();
+
         // Headers
-        var props = typeof(T).GetProperties();
         for (int i = 0; i < props.Length; i++)
         {
             var headerCell = ws.Cell(1, i + 1);
