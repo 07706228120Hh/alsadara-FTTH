@@ -81,26 +81,48 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 6.h),
+        Container(
+          margin: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 8.h),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(SasUi.radius.r),
+            boxShadow: SasUi.cardShadow(),
+          ),
           child: TextField(
             controller: _searchCtrl,
             onChanged: _onSearchChanged,
             onSubmitted: (_) => _load(),
-            style: GoogleFonts.cairo(),
+            style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
             decoration: InputDecoration(
               hintText: 'بحث عن مشترك…',
-              hintStyle: GoogleFonts.cairo(),
-              prefixIcon: const Icon(Icons.search_rounded),
+              hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
+              filled: true,
+              fillColor: Colors.white,
+              prefixIcon:
+                  Icon(Icons.search_rounded, color: AppTheme.primaryColor),
               suffixIcon: _searchCtrl.text.isEmpty
                   ? null
                   : IconButton(
-                      icon: const Icon(Icons.clear_rounded),
+                      icon: Icon(Icons.clear_rounded, color: Colors.grey[500]),
                       onPressed: () {
                         _searchCtrl.clear();
                         _load();
                       },
                     ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(SasUi.radius.r),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(SasUi.radius.r),
+                borderSide:
+                    BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(SasUi.radius.r),
+                borderSide:
+                    const BorderSide(color: AppTheme.primaryColor, width: 1.6),
+              ),
             ),
           ),
         ),
@@ -133,37 +155,42 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
     final statusColor = s.isActive ? AppTheme.successColor : AppTheme.errorColor;
     return Container(
       padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.22)),
-      ),
+      decoration: SasUi.card(),
       child: Row(
         children: [
           Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 42.w,
-                height: 42.w,
+                width: 44.w,
+                height: 44.w,
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
+                  gradient: LinearGradient(
+                    colors: [
+                      statusColor.withValues(alpha: 0.18),
+                      statusColor.withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   shape: BoxShape.circle,
+                  border:
+                      Border.all(color: statusColor.withValues(alpha: 0.22)),
                 ),
                 child: Icon(Icons.person_rounded,
-                    color: statusColor, size: 20.sp),
+                    color: statusColor, size: 21.sp),
               ),
               if (s.online)
                 Positioned(
                   right: -1,
                   bottom: -1,
                   child: Container(
-                    width: 12.w,
-                    height: 12.w,
+                    width: 13.w,
+                    height: 13.w,
                     decoration: BoxDecoration(
                       color: AppTheme.successColor,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: Colors.white, width: 2.2),
                     ),
                   ),
                 ),
@@ -178,34 +205,28 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
                   s.username.isEmpty ? '-' : s.username,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.cairo(
-                      fontSize: 14.sp, fontWeight: FontWeight.w800),
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF1A1A2E)),
                 ),
-                SizedBox(height: 2.h),
+                SizedBox(height: 3.h),
                 Text(
                   '${s.fullName.isEmpty ? '' : '${s.fullName} · '}باقة: ${s.profileLabel}'
                   '${s.expiration != null ? ' · انتهاء: ${s.expiration}' : ''}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.cairo(
-                      fontSize: 11.5.sp, color: Colors.grey[600]),
+                      fontSize: 11.5.sp,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500),
                 ),
               ],
             ),
           ),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20.r),
-            ),
-            child: Text(
-              s.isActive ? 'نشط' : 'موقوف',
-              style: GoogleFonts.cairo(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w700,
-                color: statusColor,
-              ),
-            ),
+          SizedBox(width: 8.w),
+          SasStatusBadge(
+            label: s.isActive ? 'نشط' : 'موقوف',
+            color: statusColor,
           ),
         ],
       ),

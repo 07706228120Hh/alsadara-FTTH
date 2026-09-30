@@ -92,36 +92,30 @@ class _SasSystemTabState extends State<SasSystemTab> {
       child: ListView(
         padding: EdgeInsets.all(14.w),
         children: [
-          _sectionTitle('صحّة النظام', Icons.health_and_safety_rounded),
-          SizedBox(height: 8.h),
+          const SasSectionHeader(
+            title: 'صحّة النظام',
+            icon: Icons.health_and_safety_rounded,
+            gradient: AppTheme.greenGradient,
+          ),
+          SizedBox(height: 10.h),
           _healthSection(),
-          SizedBox(height: 18.h),
-          _sectionTitle('الملخّص المالي', Icons.account_balance_wallet_rounded),
-          SizedBox(height: 8.h),
+          SizedBox(height: 20.h),
+          const SasSectionHeader(
+            title: 'الملخّص المالي',
+            icon: Icons.account_balance_wallet_rounded,
+            gradient: AppTheme.orangeGradient,
+          ),
+          SizedBox(height: 10.h),
           _financeSection(),
-          SizedBox(height: 18.h),
-          _sectionTitle('الباقات', Icons.inventory_2_rounded),
-          SizedBox(height: 8.h),
+          SizedBox(height: 20.h),
+          const SasSectionHeader(
+            title: 'الباقات',
+            icon: Icons.inventory_2_rounded,
+          ),
+          SizedBox(height: 10.h),
           _packagesSection(),
         ],
       ),
-    );
-  }
-
-  Widget _sectionTitle(String label, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 18.sp, color: AppTheme.primaryColor),
-        SizedBox(width: 8.w),
-        Text(
-          label,
-          style: GoogleFonts.cairo(
-            fontSize: 15.sp,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.primaryColor,
-          ),
-        ),
-      ],
     );
   }
 
@@ -181,22 +175,14 @@ class _SasSystemTabState extends State<SasSystemTab> {
     final speed = (p['speed'] ?? p['Speed'] ?? p['bandwidth'])?.toString();
     return Container(
       padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.22)),
-      ),
+      decoration: SasUi.card(),
       child: Row(
         children: [
-          Container(
-            width: 40.w,
-            height: 40.w,
-            decoration: BoxDecoration(
-              color: AppTheme.infoColor.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.wifi_tethering_rounded,
-                color: AppTheme.infoColor, size: 20.sp),
+          SasUi.gradientBadge(
+            icon: Icons.wifi_tethering_rounded,
+            colors: const [AppTheme.infoColor, AppTheme.secondaryColor],
+            size: 40,
+            iconSize: 20,
           ),
           SizedBox(width: 12.w),
           Expanded(
@@ -207,7 +193,9 @@ class _SasSystemTabState extends State<SasSystemTab> {
                   name.isEmpty ? '-' : name,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.cairo(
-                      fontSize: 14.sp, fontWeight: FontWeight.w800),
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF1A1A2E)),
                 ),
                 if (speed != null || price != null) ...[
                   SizedBox(height: 2.h),
@@ -239,24 +227,25 @@ class _SasSystemTabState extends State<SasSystemTab> {
       return _inlineEmpty('لا توجد تفاصيل قابلة للعرض');
     }
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.22)),
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+      decoration: SasUi.card(),
       child: Column(
         children: [
-          for (final e in entries)
+          for (int i = 0; i < entries.length; i++) ...[
+            if (i > 0)
+              Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Colors.grey.withValues(alpha: 0.10)),
             Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.h),
+              padding: EdgeInsets.symmetric(vertical: 10.h),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     flex: 2,
                     child: Text(
-                      _labelFor(e.key),
+                      _labelFor(entries[i].key),
                       style: GoogleFonts.cairo(
                         fontSize: 12.5.sp,
                         color: Colors.grey[700],
@@ -268,17 +257,19 @@ class _SasSystemTabState extends State<SasSystemTab> {
                   Expanded(
                     flex: 3,
                     child: Text(
-                      '${e.value}',
+                      '${entries[i].value}',
                       textAlign: TextAlign.end,
                       style: GoogleFonts.cairo(
                         fontSize: 13.sp,
                         fontWeight: FontWeight.w800,
+                        color: AppTheme.primaryColor,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
+          ],
         ],
       ),
     );

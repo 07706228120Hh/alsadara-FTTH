@@ -98,15 +98,19 @@ class _SasReportTabState extends State<SasReportTab> {
       child: ListView(
         padding: EdgeInsets.all(14.w),
         children: [
-          Text(
-            'التصريح الشهري — ${widget.account.displayName}',
-            style: GoogleFonts.cairo(
-                fontSize: 16.sp, fontWeight: FontWeight.w800),
-          ),
-          SizedBox(height: 12.h),
-          if (scalars.isNotEmpty) _summaryCard(scalars),
+          _reportBanner(),
+          SizedBox(height: 16.h),
+          if (scalars.isNotEmpty) ...[
+            const SasSectionHeader(
+              title: 'ملخّص التصريح',
+              icon: Icons.summarize_rounded,
+              gradient: AppTheme.orangeGradient,
+            ),
+            SizedBox(height: 10.h),
+            _summaryCard(scalars),
+          ],
           for (final entry in tables.entries) ...[
-            SizedBox(height: 16.h),
+            SizedBox(height: 18.h),
             _tableSection(entry.key, entry.value),
           ],
         ],
@@ -114,26 +118,84 @@ class _SasReportTabState extends State<SasReportTab> {
     );
   }
 
+  /// شريط علوي متدرّج بعنوان التصريح واسم الحساب.
+  Widget _reportBanner() {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: AppTheme.blueGradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(SasUi.radius.r),
+        boxShadow: SasUi.cardShadow(AppTheme.primaryColor),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46.w,
+            height: 46.w,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
+            ),
+            child: Icon(Icons.assignment_rounded,
+                color: Colors.white, size: 24.sp),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'التصريح الشهري',
+                  style: GoogleFonts.cairo(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  widget.account.displayName,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.cairo(
+                    fontSize: 11.5.sp,
+                    color: Colors.white.withValues(alpha: 0.80),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _summaryCard(List<MapEntry<String, dynamic>> scalars) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.22)),
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+      decoration: SasUi.card(),
       child: Column(
         children: [
-          for (final e in scalars)
+          for (int i = 0; i < scalars.length; i++) ...[
+            if (i > 0)
+              Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Colors.grey.withValues(alpha: 0.10)),
             Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.h),
+              padding: EdgeInsets.symmetric(vertical: 10.h),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     flex: 2,
                     child: Text(
-                      e.key,
+                      scalars[i].key,
                       style: GoogleFonts.cairo(
                         fontSize: 12.5.sp,
                         color: Colors.grey[700],
@@ -145,15 +207,18 @@ class _SasReportTabState extends State<SasReportTab> {
                   Expanded(
                     flex: 3,
                     child: Text(
-                      '${e.value}',
+                      '${scalars[i].value}',
                       textAlign: TextAlign.end,
                       style: GoogleFonts.cairo(
-                          fontSize: 13.sp, fontWeight: FontWeight.w800),
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primaryColor),
                     ),
                   ),
                 ],
               ),
             ),
+          ],
         ],
       ),
     );
@@ -169,37 +234,19 @@ class _SasReportTabState extends State<SasReportTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.table_rows_rounded,
-                size: 18.sp, color: AppTheme.primaryColor),
-            SizedBox(width: 8.w),
-            Text(
-              title,
-              style: GoogleFonts.cairo(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-            SizedBox(width: 6.w),
-            Text('(${rows.length})',
-                style: GoogleFonts.cairo(
-                    fontSize: 12.sp, color: Colors.grey[600])),
-          ],
+        SasSectionHeader(
+          title: title,
+          icon: Icons.table_rows_rounded,
+          trailingText: '${rows.length}',
         ),
-        SizedBox(height: 8.h),
+        SizedBox(height: 10.h),
         if (columns.isEmpty)
           Text('لا أعمدة قابلة للعرض',
               style: GoogleFonts.cairo(
                   fontSize: 12.sp, color: Colors.grey[500]))
         else
           Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.22)),
-            ),
+            decoration: SasUi.card(),
             clipBehavior: Clip.antiAlias,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,

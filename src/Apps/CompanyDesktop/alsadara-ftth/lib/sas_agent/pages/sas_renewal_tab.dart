@@ -313,11 +313,16 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
   }
 
   Widget _controls() {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 4.h),
+    return Container(
+      margin: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 6.h),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+      decoration: SasUi.card(),
       child: Row(
         children: [
-          Text('خلال:',
+          Icon(Icons.event_repeat_rounded,
+              size: 17.sp, color: AppTheme.primaryColor),
+          SizedBox(width: 6.w),
+          Text('قرب الانتهاء خلال:',
               style: GoogleFonts.cairo(
                   fontSize: 12.5.sp, fontWeight: FontWeight.w700)),
           SizedBox(width: 8.w),
@@ -392,20 +397,26 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
         decoration: BoxDecoration(
           color: checked
-              ? AppTheme.primaryColor.withValues(alpha: 0.06)
+              ? AppTheme.primaryColor.withValues(alpha: 0.05)
               : Colors.white,
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(SasUi.radius.r),
           border: Border.all(
             color: checked
                 ? AppTheme.primaryColor.withValues(alpha: 0.45)
-                : Colors.grey.withValues(alpha: 0.22),
+                : Colors.grey.withValues(alpha: 0.16),
             width: checked ? 1.6 : 1.2,
           ),
+          boxShadow: checked
+              ? SasUi.cardShadow(AppTheme.primaryColor)
+              : SasUi.cardShadow(),
         ),
         child: Row(
           children: [
             Checkbox(
               value: checked,
+              activeColor: AppTheme.primaryColor,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6.r)),
               onChanged: (v) => _toggle(c.id, v),
             ),
             Expanded(
@@ -416,7 +427,9 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
                     c.displayName,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.cairo(
-                        fontSize: 14.sp, fontWeight: FontWeight.w800),
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1A1A2E)),
                   ),
                   SizedBox(height: 2.h),
                   Text(
@@ -442,11 +455,22 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
   }
 
   Widget _bottomBar() {
-    return Material(
-      elevation: 8,
-      color: Colors.white,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(SasUi.radius.r)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 16,
+            spreadRadius: -2,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 10.h),
+        padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 12.h),
         child: Row(
           children: [
             Text('الأشهر:',
@@ -455,16 +479,31 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
             SizedBox(width: 6.w),
             _monthStepper(),
             const Spacer(),
-            Text(
-              'محدّد: ${_selected.length}',
-              style: GoogleFonts.cairo(
-                  fontSize: 12.5.sp, fontWeight: FontWeight.w700),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+              child: Text(
+                'محدّد: ${_selected.length}',
+                style: GoogleFonts.cairo(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primaryColor),
+              ),
             ),
             SizedBox(width: 10.w),
             FilledButton.icon(
               onPressed: (!_canManage || _busy || _selected.isEmpty)
                   ? null
                   : _startRenewal,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                disabledBackgroundColor:
+                    Colors.grey.withValues(alpha: 0.30),
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+              ),
               icon: _busy
                   ? SizedBox(
                       width: 16.w,
@@ -475,7 +514,7 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
                   : const Icon(Icons.autorenew_rounded),
               label: Text(
                 _canManage ? 'تجديد' : 'لا صلاحية',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w800),
               ),
             ),
           ],

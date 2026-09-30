@@ -97,16 +97,74 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
       child: ListView(
         padding: EdgeInsets.all(14.w),
         children: [
-          Text(
-            widget.account.displayName,
-            style: GoogleFonts.cairo(
-                fontSize: 16.sp, fontWeight: FontWeight.w800),
+          _accountBanner(),
+          SizedBox(height: 16.h),
+          const SasSectionHeader(
+            title: 'ملخّص الوكيل',
+            icon: Icons.insights_rounded,
           ),
           SizedBox(height: 12.h),
           Wrap(
             spacing: 10.w,
             runSpacing: 10.h,
             children: stats,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// شريط علوي متدرّج يعرّف بالحساب النشِط.
+  Widget _accountBanner() {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: AppTheme.blueGradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(SasUi.radius.r),
+        boxShadow: SasUi.cardShadow(AppTheme.primaryColor),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46.w,
+            height: 46.w,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
+            ),
+            child: Icon(Icons.dashboard_rounded,
+                color: Colors.white, size: 24.sp),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.account.displayName,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.cairo(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  'لوحة معلومات الحساب',
+                  style: GoogleFonts.cairo(
+                    fontSize: 11.5.sp,
+                    color: Colors.white.withValues(alpha: 0.80),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -157,76 +157,116 @@ class SasAccountsPageState extends State<SasAccountsPage> {
       return SasEmptyView(
         message: 'لا توجد حسابات ساس مربوطة بعد',
         icon: Icons.link_off_rounded,
-        action: _canManage
-            ? FilledButton.icon(
-                onPressed: () => _openForm(),
-                icon: const Icon(Icons.add_link_rounded),
-                label: Text('ربط حساب ساس', style: GoogleFonts.cairo()),
-              )
-            : null,
+        action: _canManage ? _addButton(large: true) : null,
       );
     }
 
     return RefreshIndicator(
       onRefresh: reload,
-      child: ListView.separated(
-        padding: EdgeInsets.all(12.w),
-        itemCount: _accounts.length + (_canManage ? 1 : 0),
-        separatorBuilder: (_, __) => SizedBox(height: 10.h),
-        itemBuilder: (context, index) {
-          if (_canManage && index == _accounts.length) {
-            return Padding(
-              padding: EdgeInsets.only(top: 6.h),
-              child: OutlinedButton.icon(
-                onPressed: () => _openForm(),
-                icon: const Icon(Icons.add_link_rounded),
-                label: Text('ربط حساب ساس جديد', style: GoogleFonts.cairo()),
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 20.h),
+        children: [
+          SasSectionHeader(
+            title: 'حسابات الساس',
+            icon: Icons.hub_rounded,
+            trailingText: '${_accounts.length}',
+          ),
+          SizedBox(height: 14.h),
+          for (int i = 0; i < _accounts.length; i++) ...[
+            _accountCard(_accounts[i], widget.selected?.id == _accounts[i].id),
+            SizedBox(height: 10.h),
+          ],
+          if (_canManage) ...[
+            SizedBox(height: 4.h),
+            _addButton(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// زر «ربط حساب ساس» بنمط المنصّة الأساسي (مملوء بتدرّج + ظل).
+  Widget _addButton({bool large = false}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openForm(),
+        borderRadius: BorderRadius.circular(14.r),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+              horizontal: 18.w, vertical: large ? 14.h : 13.h),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: AppTheme.blueGradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14.r),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryColor.withValues(alpha: 0.28),
+                blurRadius: 12,
+                spreadRadius: -2,
+                offset: const Offset(0, 5),
               ),
-            );
-          }
-          final acc = _accounts[index];
-          final isSelected = widget.selected?.id == acc.id;
-          return _accountCard(acc, isSelected);
-        },
+            ],
+          ),
+          child: Row(
+            mainAxisSize: large ? MainAxisSize.min : MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add_link_rounded, color: Colors.white, size: 19.sp),
+              SizedBox(width: 8.w),
+              Text(
+                large ? 'ربط حساب ساس' : 'ربط حساب ساس جديد',
+                style: GoogleFonts.cairo(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5.sp),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _accountCard(SasAccount acc, bool isSelected) {
+    final statusColor =
+        acc.isActive ? AppTheme.successColor : Colors.grey.shade500;
+    final badgeColors = acc.isActive
+        ? const [AppTheme.secondaryColor, AppTheme.primaryColor]
+        : [Colors.grey.shade500, Colors.grey.shade600];
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => widget.onSelect(acc),
-        borderRadius: BorderRadius.circular(14.r),
+        borderRadius: BorderRadius.circular(SasUi.radius.r),
         child: Container(
-          padding: EdgeInsets.all(14.w),
+          padding: EdgeInsets.all(13.w),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(14.r),
+            borderRadius: BorderRadius.circular(SasUi.radius.r),
             border: Border.all(
               color: isSelected
                   ? AppTheme.primaryColor
-                  : Colors.grey.withValues(alpha: 0.25),
-              width: isSelected ? 2 : 1.2,
+                  : Colors.grey.withValues(alpha: 0.16),
+              width: isSelected ? 1.8 : 1.2,
             ),
+            boxShadow: isSelected
+                ? SasUi.cardShadow(AppTheme.primaryColor)
+                : SasUi.cardShadow(),
           ),
           child: Row(
             children: [
-              Container(
-                width: 46.w,
-                height: 46.w,
-                decoration: BoxDecoration(
-                  color: (acc.isActive ? AppTheme.successColor : Colors.grey)
-                      .withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  acc.accountType == SasAccountType.sasManager
-                      ? Icons.supervisor_account_rounded
-                      : Icons.person_rounded,
-                  color: acc.isActive ? AppTheme.successColor : Colors.grey,
-                  size: 22.sp,
-                ),
+              SasUi.gradientBadge(
+                icon: acc.accountType == SasAccountType.sasManager
+                    ? Icons.supervisor_account_rounded
+                    : Icons.person_rounded,
+                colors: badgeColors,
+                size: 46,
+                iconSize: 23,
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -240,8 +280,9 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                             acc.displayName,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.cairo(
-                              fontSize: 15.sp,
+                              fontSize: 14.5.sp,
                               fontWeight: FontWeight.w800,
+                              color: const Color(0xFF1A1A2E),
                             ),
                           ),
                         ),
@@ -252,34 +293,43 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                         ],
                       ],
                     ),
-                    SizedBox(height: 3.h),
-                    Text(
-                      '${acc.accountType.labelAr} · ${acc.serverUrl}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
-                        fontSize: 11.5.sp,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    if (!acc.isActive)
-                      Padding(
-                        padding: EdgeInsets.only(top: 3.h),
-                        child: Text(
-                          'غير مفعّل',
-                          style: GoogleFonts.cairo(
-                            fontSize: 11.sp,
-                            color: AppTheme.warningColor,
-                            fontWeight: FontWeight.w700,
+                    SizedBox(height: 5.h),
+                    Row(
+                      children: [
+                        Icon(Icons.dns_rounded,
+                            size: 12.sp, color: Colors.grey[500]),
+                        SizedBox(width: 4.w),
+                        Expanded(
+                          child: Text(
+                            '${acc.accountType.labelAr} · ${acc.serverUrl}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.cairo(
+                              fontSize: 11.sp,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
+                    ),
+                    SizedBox(height: 7.h),
+                    SasStatusBadge(
+                      label: acc.isActive ? 'مفعّل' : 'غير مفعّل',
+                      color: statusColor,
+                      icon: acc.isActive
+                          ? Icons.check_circle_rounded
+                          : Icons.pause_circle_filled_rounded,
+                    ),
                   ],
                 ),
               ),
               if (_canManage)
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded),
+                  icon: Icon(Icons.more_vert_rounded,
+                      color: Colors.grey[500], size: 20.sp),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r)),
                   onSelected: (v) {
                     if (v == 'edit') _openForm(existing: acc);
                     if (v == 'delete') _confirmDelete(acc);
@@ -288,7 +338,8 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                     PopupMenuItem(
                       value: 'edit',
                       child: Row(children: [
-                        const Icon(Icons.edit_rounded, size: 18),
+                        Icon(Icons.edit_rounded,
+                            size: 18, color: AppTheme.primaryColor),
                         SizedBox(width: 8.w),
                         Text('تعديل', style: GoogleFonts.cairo()),
                       ]),

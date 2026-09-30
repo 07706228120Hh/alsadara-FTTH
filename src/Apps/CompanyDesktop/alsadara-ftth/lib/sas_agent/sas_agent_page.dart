@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../permissions/permission_gate.dart';
 import '../theme/app_theme.dart';
+import '../utils/responsive_helper.dart';
 import 'models/sas_account.dart';
 import 'pages/sas_accounts_page.dart';
 import 'pages/sas_dashboard_tab.dart';
@@ -74,11 +74,19 @@ class _SasAgentShellState extends State<_SasAgentShell>
 
   @override
   Widget build(BuildContext context) {
+    // أحجام ثابتة/مقيّدة لسطح المكتب — لا نعتمد على `.h/.w/.sp` المتضخّمة على
+    // النوافذ العريضة (designSize=375). الرأس أعلى من ارتفاع محتواه بهامش كافٍ
+    // فلا يتصادم مع شريط التبويبات أسفله، والتبويبات قابلة للتمرير فلا تُقطع.
+    const double toolbarH = 64;
+    const double tabBarH = 60;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
+        backgroundColor: SasUi.pageBg,
         appBar: AppBar(
+          elevation: 0,
+          toolbarHeight: toolbarH,
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -88,78 +96,99 @@ class _SasAgentShellState extends State<_SasAgentShell>
               ),
             ),
           ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text('صفحة وكيل الساس',
-                  style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.w800, fontSize: 17.sp)),
-              if (_selected != null)
-                Text(
-                  _selected!.displayName,
-                  style: GoogleFonts.cairo(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white70),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(11),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.30)),
                 ),
+                child: const Icon(Icons.hub_rounded,
+                    size: 20, color: Colors.white),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('وكيل الساس',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.w800, fontSize: 17)),
+                    Text(
+                      _selected?.displayName ?? 'إدارة حسابات الساس',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.cairo(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.75)),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-          bottom: TabBar(
-            controller: _tab,
-            isScrollable: true,
-            indicatorColor: Colors.white,
-            indicatorWeight: 3,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            labelStyle: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 13.sp),
-            unselectedLabelStyle: GoogleFonts.cairo(fontSize: 13.sp),
-            tabs: [
-              for (final t in _tabs)
-                Tab(
-                  height: 46.h,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(t.icon, size: 16.sp),
-                      SizedBox(width: 6.w),
-                      Text(t.label),
-                    ],
-                  ),
-                ),
-            ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(tabBarH),
+            child: _TabBarSurface(controller: _tab, tabs: _tabs),
           ),
         ),
         body: TabBarView(
           controller: _tab,
           children: [
             // 1) الحسابات
-            SasAccountsPage(selected: _selected, onSelect: _onSelect),
+            _framed(SasAccountsPage(selected: _selected, onSelect: _onSelect)),
             // 2) لوحة
-            _needsAccount(
-              (acc) => SasDashboardTab(account: acc, key: ValueKey('dash-${acc.id}')),
-            ),
+            _framed(_needsAccount(
+              (acc) =>
+                  SasDashboardTab(account: acc, key: ValueKey('dash-${acc.id}')),
+            )),
             // 3) مشتركون
-            _needsAccount(
-              (acc) => SasSubscribersTab(account: acc, key: ValueKey('subs-${acc.id}')),
-            ),
+            _framed(_needsAccount(
+              (acc) => SasSubscribersTab(
+                  account: acc, key: ValueKey('subs-${acc.id}')),
+            )),
             // 4) نظام الساس (باقات + مالية + صحّة)
-            _needsAccount(
-              (acc) => SasSystemTab(account: acc, key: ValueKey('sys-${acc.id}')),
-            ),
+            _framed(_needsAccount(
+              (acc) =>
+                  SasSystemTab(account: acc, key: ValueKey('sys-${acc.id}')),
+            )),
             // 5) تجديد (مرشّحون + معاينة dryRun → تنفيذ)
-            _needsAccount(
+            _framed(_needsAccount(
               (acc) =>
                   SasRenewalTab(account: acc, key: ValueKey('renew-${acc.id}')),
-            ),
+            )),
             // 6) تصريح/بلنك (تقرير الوكيل)
-            _needsAccount(
+            _framed(_needsAccount(
               (acc) =>
                   SasReportTab(account: acc, key: ValueKey('report-${acc.id}')),
-            ),
+            )),
             // 7) تذاكر (إعادة استخدام نظام الدعم القائم)
-            const SasTicketsTab(),
+            _framed(const SasTicketsTab()),
           ],
         ),
+      ),
+    );
+  }
+
+  /// يحصر عرض محتوى التبويب على الشاشات العريضة (سطح المكتب) ويوسّطه — بنفس
+  /// نمط `home_page.dart` (`ConstrainedBox(maxWidth: maxContentWidth)`) — فلا
+  /// يتمدّد المحتوى عبر ~1900px. على الهاتف/التابلت يبقى بعرض كامل.
+  Widget _framed(Widget child) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints:
+            BoxConstraints(maxWidth: context.responsive.maxContentWidth),
+        child: child,
       ),
     );
   }
@@ -171,10 +200,16 @@ class _SasAgentShellState extends State<_SasAgentShell>
       return SasEmptyView(
         message: 'اختر حساب ساس من تبويب «الحسابات» أولاً',
         icon: Icons.touch_app_rounded,
-        action: OutlinedButton.icon(
+        action: FilledButton.icon(
           onPressed: () => _tab.animateTo(0),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+          ),
           icon: const Icon(Icons.link_rounded),
-          label: Text('الذهاب للحسابات', style: GoogleFonts.cairo()),
+          label: Text('الذهاب للحسابات',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
         ),
       );
     }
@@ -186,4 +221,84 @@ class _TabDef {
   final String label;
   final IconData icon;
   const _TabDef(this.label, this.icon);
+}
+
+/// سطح شريط تبويبات أنيق يجلس أسفل رأس التطبيق:
+/// شريط أبيض بحواف مستديرة علوية وظل خفيف، مؤشّر متدرّج مدمج (pill) —
+/// يفصل التبويبات بصرياً عن رأس التطبيق فلا يتداخلان.
+class _TabBarSurface extends StatelessWidget {
+  final TabController controller;
+  final List<_TabDef> tabs;
+
+  const _TabBarSurface({required this.controller, required this.tabs});
+
+  @override
+  Widget build(BuildContext context) {
+    // مقاسات ثابتة معقولة لسطح المكتب — لا تعتمد على `.sp/.h/.w/.r` المتضخّمة
+    // على النوافذ العريضة. `isScrollable: true` يمنع قطع نصوص التبويبات السبعة.
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 12,
+            spreadRadius: -2,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TabBar(
+        controller: controller,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        dividerColor: Colors.transparent,
+        indicatorSize: TabBarIndicatorSize.tab,
+        splashBorderRadius: BorderRadius.circular(12),
+        indicator: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: AppTheme.blueGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryColor.withValues(alpha: 0.30),
+              blurRadius: 8,
+              spreadRadius: -2,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        labelColor: Colors.white,
+        unselectedLabelColor: const Color(0xFF64748B),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+        labelStyle:
+            GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 13),
+        unselectedLabelStyle:
+            GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 13),
+        tabs: [
+          for (final t in tabs)
+            Tab(
+              height: 40,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(t.icon, size: 16),
+                    const SizedBox(width: 6),
+                    Text(t.label),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
