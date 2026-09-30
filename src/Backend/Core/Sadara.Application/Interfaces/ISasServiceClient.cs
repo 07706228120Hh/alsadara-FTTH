@@ -247,6 +247,15 @@ public interface ISasServiceClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// ملخّص مشتركي الحساب من التخزين المحلي المعزول بـ accountId (POST /subscribers/summary) — بلا اعتماد ساس.
+    /// يعيد JSON خاماً <c>{ total, active, expired, online, expiry:{overdue,today,soon3,soon7}, last_sync }</c>. قراءة محلية.
+    /// </summary>
+    /// <param name="accountId">معرّف الحساب المملوك (عزل التخزين المحلي).</param>
+    Task<string> GetSubscribersSummaryAsync(
+        string accountId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// تقديم تصريح/بلنك شهري (POST /report/submit) معزول بـ accountId + companyId + ownerUserId.
     /// يعيد JSON خاماً (AgentReport). كتابة محلية.
     /// </summary>

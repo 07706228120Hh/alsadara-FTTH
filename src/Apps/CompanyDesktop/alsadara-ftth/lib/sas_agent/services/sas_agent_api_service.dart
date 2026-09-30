@@ -10,6 +10,7 @@ import '../models/sas_dashboard.dart';
 import '../models/sas_renewal.dart';
 import '../models/sas_report.dart';
 import '../models/sas_subscriber.dart';
+import '../models/sas_subscriber_summary.dart';
 import '../models/sas_ticket.dart';
 import '../premises/models/premises.dart';
 
@@ -220,6 +221,16 @@ class SasAgentApiService {
   Future<SasSyncResult> syncAccount(String id) async {
     final res = await _api.post('$_base/accounts/$id/sync', body: {});
     return SasSyncResult.fromJson(res);
+  }
+
+  /// ملخّص المشتركين المحلّي الموثوق — `GET accounts/{id}/subscribers/summary`.
+  ///
+  /// المصدر قاعدة الصدارة (بعد المزامنة) لا لوحة الساس الحيّة؛ الأرقام ثابتة
+  /// وموثوقة. يعيد `{total, active, expired, online, expiry{...}, last_sync}`
+  /// (قد يعود ملفوفاً بـ `data`؛ النموذج يقرأ بمرونة snake_case/camelCase).
+  Future<SasSubscriberSummary> getSubscribersSummary(String id) async {
+    final res = await _api.get('$_base/accounts/$id/subscribers/summary');
+    return SasSubscriberSummary.fromJson(res);
   }
 
   /// المشتركون المحليون (سريع، من قاعدة الصدارة بعد المزامنة) —

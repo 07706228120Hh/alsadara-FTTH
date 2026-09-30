@@ -321,6 +321,12 @@ public class SasServiceClient : ISasServiceClient
         => PostBodyForRawAsync("/subscribers/local",
             new { accountId, search, status, expiring, page, count }, cancellationToken);
 
+    public Task<string> GetSubscribersSummaryAsync(
+        string accountId,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/subscribers/summary",
+            new { accountId }, cancellationToken);
+
     public Task<string> SubmitReportAsync(
         string accountId,
         string companyId,

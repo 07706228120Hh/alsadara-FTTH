@@ -148,6 +148,60 @@ run.bat              # Windows
 
 ---
 
+### ملخّص مشتركين محلي رخيص — POST /subscribers/summary
+
+نقطة قراءة **بلا أي نداء SAS4** — تحسب الإحصاءات من `local_subscribers` (المزامَن مسبقاً) مباشرةً.
+آمنة للاستدعاء الدوري (auto-refresh).
+
+#### طلب /subscribers/summary
+
+```json
+POST /subscribers/summary
+X-Internal-Secret: <secret>
+
+{ "accountId": "uuid-of-sas-account" }
+```
+
+#### استجابة /subscribers/summary
+
+```json
+{
+  "total":   150,
+  "active":  120,
+  "expired": 30,
+  "online":  45,
+  "expiry": {
+    "overdue": 10,
+    "today":    3,
+    "soon3":    8,
+    "soon7":   18
+  },
+  "last_sync": "2026-10-01 09:45:00"
+}
+```
+
+حساب فارغ (لا مزامنة بعد أو `account_id` غير موجود) → كل الأصفار و `last_sync: null` بلا خطأ.
+
+#### مصادر الحسابات
+
+| الحقل | المصدر | الملاحظة |
+|---|---|---|
+| `total` | `COUNT(*)` من `local_subscribers WHERE account_id=?` | — |
+| `active` | `COUNT(status='active')` | كما في آخر مزامنة |
+| `expired` | `COUNT(status='expired')` | كما في آخر مزامنة |
+| `online` | `COUNT(online=1)` | كما في آخر مزامنة (ليس حيّاً) |
+| `expiry.*` | `_expiry_counts(expirations)` — نفس منطق `/sync` | تُعيد: overdue/today/soon3/soon7 |
+| `last_sync` | `MAX(synced_at)` من سجلّات الحساب | null إن لا سجلّات |
+
+#### أمان /subscribers/summary وعزله
+
+- **fail-closed:** يتطلّب `X-Internal-Secret` (مثل كل النقاط).
+- **عزل صارم:** الاستعلام `WHERE account_id = ?` — لا يمكن الوصول لبيانات حساب آخر.
+- **لا SASClient:** لا استيراد ولا نداء لأي عميل SAS — SQLite فقط.
+- منطق حساب `expiry` مُستخرَج في دالة مشتركة `_expiry_counts` ويُستدعى أيضاً من `/sync` و `/subscribers/local` — لا تكرار.
+
+---
+
 ### البروكسي العام المقيَّد بقائمة بيضاء
 
 | المسار | حقول إضافية | رد .NET | وصف |

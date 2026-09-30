@@ -432,6 +432,11 @@ class LocalSubscribersRequest(_LocalBase):
     count:    int = Field(default=50, ge=1, le=500)
 
 
+class SubscriberSummaryRequest(_LocalBase):
+    """ملخّص مشتركين محلي رخيص: POST /subscribers/summary"""
+    pass
+
+
 class ReportSubmitRequest(_LocalBase):
     """تقديم تصريح: POST /report/submit"""
     declared_total:  int = Field(..., ge=0, le=10_000_000)
@@ -998,6 +1003,74 @@ async def subscribers_local(body: LocalSubscribersRequest) -> Any:
         "total": total, "page": page, "count": count,
         "expiry": expiry,
         "subscribers": page_rows,
+    }
+
+
+@app.post("/subscribers/summary", tags=["local-storage"], dependencies=_DEP)
+async def subscribers_summary(body: SubscriberSummaryRequest) -> Any:
+    """
+    ملخّص مشتركين محلي رخيص — بلا أي نداء SAS4.
+
+    يحسب الإحصاءات من جدول local_subscribers (المزامَن مسبقاً) فقط.
+    آمن للاستدعاء الدوري (auto-refresh).
+
+    حساب فارغ (لا سجلّات) → كل الأصفار و last_sync=null (لا خطأ).
+
+    عقد .NET: POST /subscribers/summary  { accountId }
+    → {
+        "total": int,
+        "active": int,
+        "expired": int,
+        "online": int,
+        "expiry": {"overdue": int, "today": int, "soon3": int, "soon7": int},
+        "last_sync": "YYYY-MM-DD HH:MM:SS" | null
+      }
+    """
+    _guard_account_id(body.accountId)
+    account_id = body.accountId
+
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT status, online, expiration, synced_at "
+            "FROM local_subscribers WHERE account_id = ?",
+            (account_id,),
+        ).fetchall()
+
+    if not rows:
+        return {
+            "total":   0,
+            "active":  0,
+            "expired": 0,
+            "online":  0,
+            "expiry":  {"overdue": 0, "today": 0, "soon3": 0, "soon7": 0},
+            "last_sync": None,
+        }
+
+    total   = len(rows)
+    active  = sum(1 for r in rows if r["status"] == "active")
+    expired = sum(1 for r in rows if r["status"] == "expired")
+    online  = sum(1 for r in rows if r["online"] == 1)
+
+    # منطق الانتهاء: يُعيد استخدام _expiry_counts المشتركة (نفس منطق /sync)
+    expiry = _expiry_counts([r["expiration"] for r in rows])
+
+    # أحدث synced_at لهذا الحساب
+    last_sync = max(
+        (r["synced_at"] for r in rows if r["synced_at"]),
+        default=None,
+    )
+
+    logger.debug(
+        "[subscribers/summary] account=%s total=%d active=%d online=%d",
+        account_id[:8], total, active, online,
+    )
+    return {
+        "total":     total,
+        "active":    active,
+        "expired":   expired,
+        "online":    online,
+        "expiry":    expiry,
+        "last_sync": last_sync,
     }
 
 

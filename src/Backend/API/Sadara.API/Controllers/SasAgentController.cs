@@ -850,6 +850,17 @@ public class SasAgentController : ControllerBase
     }
 
     /// <summary>
+    /// ملخّص مشتركي الحساب من التخزين المحلي المعزول بـ accountId — قراءة (view). بلا اعتماد ساس (لا فكّ تشفير).
+    /// يمرّر <c>accountId = account.Id</c> فقط للخدمة المحلية، ويعيد ردّها خاماً
+    /// <c>{ total, active, expired, online, expiry:{overdue,today,soon3,soon7}, last_sync }</c> كما هو.
+    /// </summary>
+    [HttpGet("accounts/{id}/subscribers/summary")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetSubscribersSummary(Guid id, CancellationToken ct)
+        => LocalPassThroughAsync(id, (acc, token) =>
+            _sasClient.GetSubscribersSummaryAsync(acc.Id.ToString(), token), ct);
+
+    /// <summary>
     /// تقديم تصريح/بلنك شهري — كتابة محلية (manage). معزول بـ accountId + companyId + ownerUserId.
     /// يمرّر <c>accountId=account.Id</c> و<c>companyId=account.CompanyId</c> و<c>ownerUserId=account.OwnerUserId</c>.
     /// </summary>

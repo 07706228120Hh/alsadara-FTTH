@@ -116,6 +116,7 @@ public class SasAgentIsolationTests
         public Task<string> TestAccountAsync(string s, string u, string p, CancellationToken ct = default) => _Unreachable();
         public Task<string> SyncAccountAsync(string s, string u, string p, string accountId, CancellationToken ct = default) => _Unreachable();
         public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, bool? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetSubscribersSummaryAsync(string accountId, CancellationToken ct = default) => _Unreachable();
         public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => _Unreachable();
         public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => _Unreachable();
         public Task<string> GetReconciliationAsync(string accountId, string s, string u, string p, CancellationToken ct = default) => _Unreachable();

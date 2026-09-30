@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
@@ -7,8 +8,8 @@ import 'package:intl/intl.dart';
 
 import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
-import '../models/sas_dashboard.dart';
 import '../models/sas_report.dart';
+import '../models/sas_subscriber_summary.dart';
 import '../models/sas_ticket.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
@@ -18,14 +19,25 @@ import '../widgets/sas_state_views.dart';
 
 /// تبويب «لوحة» — لوحة الوكيل الغنيّة للحساب المحدد بثيم منصّة الصدارة.
 ///
-/// يجمع عدّة مصادر account-scoped بالتوازي:
-/// - [SasAgentApiService.getDashboard] ملخّص المشتركين (إجمالي/نشط/منتهٍ/متصل).
-/// - [SasAgentApiService.getFinance] المالية (رصيد/دخل/ديون) بتنسيق M/K.
-/// - [SasAgentApiService.syncAccount] عدّادات «قرب الانتهاء» + وقت آخر مزامنة.
+/// ## مصدر الأرقام الأساسية (موثوق)
+/// بطاقات «ملخّص المشتركين» و«قرب الانتهاء» و«توزيع الحالات» تُملأ من
+/// [SasAgentApiService.getSubscribersSummary] — **الملخّص المحلّي الموثوق**
+/// (قاعدة الصدارة بعد المزامنة) لا من لوحة الساس الحيّة. لذا لا تُعرَض «-»
+/// أبداً: رقم فعلي أو 0.
+///
+/// ## المصادر الثانوية (كلٌّ معزول — فشله لا يُسقط الباقي)
 /// - [SasAgentApiService.getReconciliation] حكم المقاطعة (البلنك).
+/// - [SasAgentApiService.getTicketsStats] إحصاءات التذاكر.
+/// - [SasAgentApiService.getFinance] المالية (رصيد/دخل/ديون) بتنسيق M/K.
 /// - [SasAgentApiService.listReports] آخر تصريح للوكيل.
 ///
-/// كلّ مصدر معزول: فشل أحدها لا يُسقط الباقي (يُعرَض جزئيًا بحالة فارغة أنيقة).
+/// ## المزامنة والتحديث
+/// - **المزامنة الكاملة** [SasAgentApiService.syncAccount] ثقيلة (تضرب SAS4):
+///   تُنفَّذ فقط (أ) عند أول تحميل إن لم توجد بيانات محلية (`last_sync == null`)،
+///   (ب) بزر «مزامنة» اليدوي. **لا تُستدعى في المؤقّت إطلاقاً.**
+/// - **تحديث تلقائي خفيف** كل 45 ثانية: ملخّص + مقاطعة + تذاكر + مالية فقط
+///   (بلا مزامنة). يُوقَف في [dispose] وعند تبديل الحساب، ولا يُحدّث بعد
+///   `!mounted`. يُعرَض سطر «آخر تحديث تلقائي» ومؤشّر خفيف بلا وميض للشاشة.
 class SasDashboardTab extends StatefulWidget {
   final SasAccount account;
 
@@ -46,19 +58,26 @@ class SasDashboardTab extends StatefulWidget {
 class _SasDashboardTabState extends State<SasDashboardTab> {
   final _api = SasAgentApiService.instance;
 
-  // ملخّص المشتركين (المصدر الأساسي — إن فشل تُعرض حالة خطأ عامة).
-  SasDashboard? _dash;
+  /// فترة التحديث التلقائي الخفيف.
+  static const _autoRefreshEvery = Duration(seconds: 45);
+
+  // المصدر الأساسي الموثوق: الملخّص المحلّي (إن فشل أوّل تحميل تُعرَض حالة خطأ).
+  SasSubscriberSummary? _summary;
   bool _loading = true;
   String? _error;
 
   // مصادر ثانوية (كل منها معزول — فشله لا يكسر اللوحة).
   Map<String, dynamic>? _finance;
-  SasSyncResult? _sync;
   SasReconciliation? _recon;
   SasAgentReport? _lastReport;
   SasTicketStats? _tickets;
 
-  bool _syncing = false;
+  bool _syncing = false; // مزامنة كاملة يدوية جارية
+  bool _autoRefreshing = false; // تحديث خفيف دوري جارٍ (مؤشّر لطيف)
+  DateTime? _lastAutoRefresh; // وقت آخر تحديث تلقائي ناجح
+  DateTime? _lastSyncAt; // وقت آخر مزامنة كاملة (من الملخّص/الحساب)
+
+  Timer? _timer;
 
   @override
   void initState() {
@@ -69,12 +88,48 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
   @override
   void didUpdateWidget(covariant SasDashboardTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.account.id != widget.account.id) _load();
+    // عند تبديل الحساب: أوقِف المؤقّت، صفّر الحالة، وأعِد التحميل من الصفر.
+    if (oldWidget.account.id != widget.account.id) {
+      _stopTimer();
+      _summary = null;
+      _finance = null;
+      _recon = null;
+      _lastReport = null;
+      _tickets = null;
+      _lastAutoRefresh = null;
+      _lastSyncAt = null;
+      _load();
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopTimer();
+    super.dispose();
   }
 
   String _clean(Object e) =>
       e.toString().replaceFirst('Exception: ', '').trim();
 
+  // ─────────────────────────── التحميل والتحديث ───────────────────────────
+
+  /// المؤقّت الدوري الخفيف (يُعاد ضبطه بأمان — يلغي أيّ مؤقّت سابق أولاً).
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_autoRefreshEvery, (_) => _refreshLight());
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  /// تحميل أوّلي كامل:
+  /// - يجلب الملخّص المحلّي الموثوق (المصدر الأساسي).
+  /// - إن لم توجد بيانات محلية (`last_sync == null`) يُشغّل مزامنة كاملة مرّة
+  ///   واحدة ثم يعيد قراءة الملخّص.
+  /// - يجلب المصادر الثانوية بالتوازي.
+  /// - يُشغّل المؤقّت الدوري الخفيف في النهاية.
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -83,58 +138,118 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
     final id = widget.account.id;
 
-    // المصدر الأساسي: ملخّص المشتركين.
+    // المصدر الأساسي: الملخّص المحلّي الموثوق.
     try {
-      final d = await _api.getDashboard(id);
+      var s = await _api.getSubscribersSummary(id);
+      // لا بيانات محلية بعد؟ مزامنة كاملة مرّة واحدة (أول تحميل فقط) ثم إعادة قراءة.
+      if (s.lastSync == null) {
+        try {
+          await _api.syncAccount(id);
+          if (!mounted) return;
+          s = await _api.getSubscribersSummary(id);
+        } catch (_) {
+          // فشل المزامنة الأولى لا يُسقط اللوحة — نعرض الملخّص كما هو (أصفار).
+        }
+      }
       if (!mounted) return;
-      setState(() => _dash = d);
+      setState(() {
+        _summary = s;
+        _lastSyncAt = s.lastSync;
+      });
     } catch (e) {
       if (mounted) setState(() => _error = _clean(e));
     }
 
     // المصادر الثانوية بالتوازي — كل نتيجة تُعالَج على حدة بلا إسقاط الباقي.
     // ملاحظة: إحصاءات التذاكر user-scoped (بلا account id) — تُحمَّل معها للعرض.
-    final results = await Future.wait<Object?>([
-      _api.getFinance(id).then<Object?>((v) => v).catchError((_) => null),
-      _api.syncAccount(id).then<Object?>((v) => v).catchError((_) => null),
-      _api.getReconciliation(id).then<Object?>((v) => v).catchError((_) => null),
-      _api.listReports(id).then<Object?>((v) => v).catchError((_) => null),
-      _api.getTicketsStats().then<Object?>((v) => v).catchError((_) => null),
-    ]);
+    await _fetchSecondary(id);
 
     if (!mounted) return;
+    setState(() => _loading = false);
+
+    // شغّل التحديث التلقائي الدوري بعد اكتمال أوّل تحميل.
+    _startTimer();
+  }
+
+  /// جلب المصادر الثانوية بالتوازي وتحديث الحالة (بلا لمس _loading).
+  Future<void> _fetchSecondary(String id) async {
+    final results = await Future.wait<Object?>([
+      _api.getReconciliation(id).then<Object?>((v) => v).catchError((_) => null),
+      _api.getTicketsStats().then<Object?>((v) => v).catchError((_) => null),
+      _api.getFinance(id).then<Object?>((v) => v).catchError((_) => null),
+      _api.listReports(id).then<Object?>((v) => v).catchError((_) => null),
+    ]);
+    if (!mounted) return;
     setState(() {
-      final fin = results[0];
-      _finance = fin is Map<String, dynamic> ? fin : null;
-      _sync = results[1] is SasSyncResult ? results[1] as SasSyncResult : null;
-      _recon = results[2] is SasReconciliation
-          ? results[2] as SasReconciliation
-          : null;
+      _recon = results[0] is SasReconciliation
+          ? results[0] as SasReconciliation
+          : _recon;
+      _tickets =
+          results[1] is SasTicketStats ? results[1] as SasTicketStats : _tickets;
+      final fin = results[2];
+      if (fin is Map<String, dynamic>) _finance = fin;
       final reports = results[3];
-      _lastReport = (reports is List<SasAgentReport> && reports.isNotEmpty)
-          ? reports.first
-          : null;
-      _tickets = results[4] is SasTicketStats
-          ? results[4] as SasTicketStats
-          : null;
-      _loading = false;
+      if (reports is List<SasAgentReport>) {
+        _lastReport = reports.isNotEmpty ? reports.first : null;
+      }
     });
   }
 
-  /// مزامنة سريعة تحدّث عدّادات الانتهاء وملخّص المشتركين ووقت آخر مزامنة.
-  Future<void> _sync_() async {
+  /// تحديث تلقائي **خفيف** (يستدعيه المؤقّت كل 45 ثانية):
+  /// الملخّص المحلّي + المقاطعة + التذاكر + المالية فقط. **لا مزامنة.**
+  ///
+  /// لا يعرض حالة تحميل كاملة ولا يومض الشاشة؛ يُحدّث القيم مكانها بسلاسة مع
+  /// مؤشّر صغير في الشريط العلوي.
+  Future<void> _refreshLight() async {
+    if (!mounted || _autoRefreshing || _syncing) return;
+    setState(() => _autoRefreshing = true);
+    final id = widget.account.id;
+    try {
+      // الملخّص الموثوق (بلا مزامنة — قراءة سريعة من قاعدة الصدارة).
+      final s = await _api
+          .getSubscribersSummary(id)
+          .then<SasSubscriberSummary?>((v) => v)
+          .catchError((_) => null);
+      if (!mounted) return;
+      if (s != null) {
+        setState(() {
+          _summary = s;
+          _lastSyncAt = s.lastSync ?? _lastSyncAt;
+        });
+      }
+      // المصادر الثانوية الخفيفة.
+      await _fetchSecondary(id);
+      if (!mounted) return;
+      setState(() => _lastAutoRefresh = DateTime.now());
+    } finally {
+      if (mounted) setState(() => _autoRefreshing = false);
+    }
+  }
+
+  /// مزامنة كاملة يدوية (زر «مزامنة») — ثقيلة، تضرب SAS4، تُنفَّذ بطلب المستخدم
+  /// فقط. بعدها تُحدَّث القيم من الملخّص المحلّي الموثوق.
+  Future<void> _syncManual() async {
     if (_syncing) return;
     setState(() => _syncing = true);
     try {
       final r = await _api.syncAccount(widget.account.id);
       if (!mounted) return;
-      setState(() => _sync = r);
       _snack('تمت مزامنة ${r.count} مشترك');
-      // حدّث ملخّص المشتركين بعد المزامنة (بلا إسقاط عند الفشل).
-      try {
-        final d = await _api.getDashboard(widget.account.id);
-        if (mounted) setState(() => _dash = d);
-      } catch (_) {}
+      // أعِد قراءة الملخّص الموثوق + المصادر الثانوية بعد المزامنة.
+      final s = await _api
+          .getSubscribersSummary(widget.account.id)
+          .then<SasSubscriberSummary?>((v) => v)
+          .catchError((_) => null);
+      if (!mounted) return;
+      if (s != null) {
+        setState(() {
+          _summary = s;
+          _lastSyncAt = s.lastSync ?? r.syncedAt ?? _lastSyncAt;
+        });
+      } else {
+        setState(() => _lastSyncAt = r.syncedAt ?? _lastSyncAt);
+      }
+      await _fetchSecondary(widget.account.id);
     } catch (e) {
       _snack(_clean(e), error: true);
     } finally {
@@ -154,17 +269,17 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading && _dash == null) {
+    if (_loading && _summary == null) {
       return const SasLoadingView(message: 'جاري جلب اللوحة…');
     }
-    if (_error != null && _dash == null) {
+    if (_error != null && _summary == null) {
       return SasErrorView(message: _error!, onRetry: _load);
     }
 
-    final d = _dash ?? const SasDashboard();
+    final s = _summary ?? SasSubscriberSummary.empty;
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: _refreshLight,
       child: LayoutBuilder(
         builder: (context, c) {
           // متجاوب سطح المكتب: عمودان للبطاقتين الكبيرتين على الشاشات العريضة.
@@ -172,66 +287,58 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
           return ListView(
             padding: EdgeInsets.all(14.w),
             children: [
+              // 0) بانر الحساب + آخر مزامنة/زر المزامنة + آخر تحديث تلقائي.
               _accountBanner(),
               SizedBox(height: 16.h),
 
-              // 1) ملخّص المشتركين.
+              // 1) ملخّص المشتركين (من الملخّص المحلّي الموثوق).
               SasSectionHeader(
                 title: 'ملخّص المشتركين',
                 icon: Icons.insights_rounded,
-                trailingText: d.total != null ? '${d.total}' : null,
+                trailingText: '${s.total}',
               ),
               SizedBox(height: 12.h),
-              _summaryStats(d),
+              _summaryStats(s),
 
               SizedBox(height: 20.h),
 
-              // 2) قرب الانتهاء (قابلة للنقر → تبويب مشتركون مفلتر).
+              // 2) قرب الانتهاء — التجديد (قابلة للنقر → تبويب مشتركون مفلتر).
               SasSectionHeader(
                 title: 'قرب الانتهاء — التجديد',
                 icon: Icons.event_repeat_rounded,
                 gradient: AppTheme.orangeGradient,
-                trailingText: 'اضغط للتصفية',
+                trailingText:
+                    widget.onOpenExpiring != null ? 'اضغط للتصفية' : null,
               ),
               SizedBox(height: 12.h),
-              _expiryCards(),
+              _expiryCards(s),
 
               SizedBox(height: 20.h),
 
-              // 3 + 4) المالية + التصريح/المقاطعة (عمودان على العريض).
+              // 3) المالية.
+              _financeBlock(),
+
+              SizedBox(height: 20.h),
+
+              // 4) التصريح والمقاطعة.
+              _reconBlock(),
+
+              SizedBox(height: 20.h),
+
+              // 5 + 6) توزيع الحالات (دونات) + التذاكر (عمودان على العريض).
               if (wide)
                 IntrinsicHeight(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: _financeBlock()),
-                      SizedBox(width: 14.w),
-                      Expanded(child: _reconBlock()),
-                    ],
-                  ),
-                )
-              else ...[
-                _financeBlock(),
-                SizedBox(height: 20.h),
-                _reconBlock(),
-              ],
-
-              SizedBox(height: 20.h),
-
-              // 6 + 7) توزيع الحالات (دونات) + التذاكر (عمودان على العريض).
-              if (wide)
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: _distributionBlock(d)),
+                      Expanded(child: _distributionBlock(s)),
                       SizedBox(width: 14.w),
                       Expanded(child: _ticketsBlock()),
                     ],
                   ),
                 )
               else ...[
-                _distributionBlock(d),
+                _distributionBlock(s),
                 SizedBox(height: 20.h),
                 _ticketsBlock(),
               ],
@@ -244,9 +351,9 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
   // ─────────────────────────── الشريط العلوي ───────────────────────────
 
-  /// شريط علوي متدرّج: تعريف الحساب + زر مزامنة + حالة آخر مزامنة.
+  /// شريط علوي متدرّج: تعريف الحساب + زر مزامنة + آخر مزامنة + آخر تحديث تلقائي.
   Widget _accountBanner() {
-    final syncedAt = _sync?.syncedAt ?? widget.account.lastSyncAt;
+    final syncedAt = _lastSyncAt ?? widget.account.lastSyncAt;
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
@@ -305,25 +412,74 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
             ],
           ),
           SizedBox(height: 12.h),
-          Row(
+          // سطر الحالة: آخر مزامنة (يمين) + آخر تحديث تلقائي/مؤشّر خفيف (يسار).
+          Wrap(
+            spacing: 14.w,
+            runSpacing: 6.h,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(Icons.schedule_rounded,
-                  size: 13.sp, color: Colors.white.withValues(alpha: 0.75)),
-              SizedBox(width: 5.w),
-              Text(
-                syncedAt != null
+              _bannerStatusChip(
+                icon: Icons.sync_rounded,
+                text: syncedAt != null
                     ? 'آخر مزامنة: ${_fmtDateTime(syncedAt)}'
                     : 'لم تُزامَن بعد',
-                style: GoogleFonts.cairo(
-                  fontSize: 11.sp,
-                  color: Colors.white.withValues(alpha: 0.80),
-                  fontWeight: FontWeight.w600,
-                ),
               ),
+              _autoRefreshChip(),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  /// شريحة حالة صغيرة داخل البانر (أيقونة + نص).
+  Widget _bannerStatusChip({required IconData icon, required String text}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13.sp, color: Colors.white.withValues(alpha: 0.75)),
+        SizedBox(width: 5.w),
+        Text(
+          text,
+          style: GoogleFonts.cairo(
+            fontSize: 11.sp,
+            color: Colors.white.withValues(alpha: 0.82),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// شريحة «آخر تحديث تلقائي: HH:mm:ss» مع مؤشّر خفيف أثناء التحديث (بلا وميض).
+  Widget _autoRefreshChip() {
+    final t = _lastAutoRefresh;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 13.sp,
+          height: 13.sp,
+          child: _autoRefreshing
+              ? CircularProgressIndicator(
+                  strokeWidth: 1.6,
+                  color: Colors.white.withValues(alpha: 0.85),
+                )
+              : Icon(Icons.autorenew_rounded,
+                  size: 13.sp, color: Colors.white.withValues(alpha: 0.75)),
+        ),
+        SizedBox(width: 5.w),
+        Text(
+          t != null
+              ? 'آخر تحديث تلقائي: ${_fmtTime(t)}'
+              : 'التحديث التلقائي مُفعَّل',
+          style: GoogleFonts.cairo(
+            fontSize: 11.sp,
+            color: Colors.white.withValues(alpha: 0.82),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 
@@ -333,7 +489,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
       borderRadius: BorderRadius.circular(SasUi.radiusPill.r),
       child: InkWell(
         borderRadius: BorderRadius.circular(SasUi.radiusPill.r),
-        onTap: _syncing ? null : _sync_,
+        onTap: _syncing ? null : _syncManual,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
           child: Row(
@@ -365,32 +521,34 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
   // ─────────────────────────── ملخّص المشتركين ───────────────────────────
 
-  Widget _summaryStats(SasDashboard d) {
+  /// بطاقات الملخّص من [SasSubscriberSummary] الموثوق — أرقام فعلية أو 0
+  /// (لا «-» أبداً).
+  Widget _summaryStats(SasSubscriberSummary s) {
     return Wrap(
       spacing: 10.w,
       runSpacing: 10.h,
       children: [
         SasStatCard(
           label: 'الإجمالي',
-          value: '${d.total ?? '-'}',
+          value: '${s.total}',
           color: AppTheme.primaryColor,
           icon: Icons.groups_rounded,
         ),
         SasStatCard(
           label: 'نشط',
-          value: '${d.active ?? '-'}',
+          value: '${s.active}',
           color: AppTheme.successColor,
           icon: Icons.check_circle_rounded,
         ),
         SasStatCard(
           label: 'منتهٍ',
-          value: '${d.expired ?? '-'}',
+          value: '${s.expired}',
           color: AppTheme.warningColor,
           icon: Icons.timer_off_rounded,
         ),
         SasStatCard(
           label: 'متصل الآن',
-          value: '${d.online ?? '-'}',
+          value: '${s.online}',
           color: AppTheme.infoColor,
           icon: Icons.wifi_rounded,
         ),
@@ -401,24 +559,17 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
   // ─────────────────────────── قرب الانتهاء ───────────────────────────
 
   /// بطاقات عدّادات الانتهاء القابلة للنقر (منتهٍ/اليوم/٣ أيام/أسبوع).
-  ///
-  /// المصدر: `syncAccount().expiry`؛ وعند غيابه نستنتج «منتهٍ» من ملخّص
-  /// المشتركين (expired) كحدٍّ أدنى مفيد.
-  Widget _expiryCards() {
-    final e = _sync?.expiry;
-    final overdue = e?.overdue ?? (_dash?.expired ?? 0);
-    final today = e?.today ?? 0;
-    final soon3 = e?.soon3 ?? 0;
-    final soon7 = e?.soon7 ?? 0;
-
+  /// المصدر: عدّادات الملخّص المحلّي الموثوق (`summary.expiry`).
+  Widget _expiryCards(SasSubscriberSummary s) {
+    final e = s.expiry;
     final defs = <_ExpiryDef>[
-      _ExpiryDef('overdue', 'منتهٍ', overdue, AppTheme.errorColor,
+      _ExpiryDef('overdue', 'منتهٍ', e.overdue, AppTheme.errorColor,
           Icons.event_busy_rounded),
-      _ExpiryDef('today', 'ينتهي اليوم', today, AppTheme.warningColor,
+      _ExpiryDef('today', 'ينتهي اليوم', e.today, AppTheme.warningColor,
           Icons.today_rounded),
-      _ExpiryDef('soon3', 'خلال ٣ أيام', soon3, const Color(0xFFF57C00),
+      _ExpiryDef('soon3', 'خلال ٣ أيام', e.soon3, const Color(0xFFF57C00),
           Icons.hourglass_bottom_rounded),
-      _ExpiryDef('soon7', 'خلال أسبوع', soon7, AppTheme.infoColor,
+      _ExpiryDef('soon7', 'خلال أسبوع', e.soon7, AppTheme.infoColor,
           Icons.date_range_rounded),
     ];
 
@@ -663,7 +814,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
   // ─────────────────────────── توزيع الحالات (دونات) ───────────────────────────
 
-  Widget _distributionBlock(SasDashboard d) {
+  Widget _distributionBlock(SasSubscriberSummary s) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -673,16 +824,16 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
           gradient: AppTheme.greenGradient,
         ),
         SizedBox(height: 12.h),
-        _distributionCard(d),
+        _distributionCard(s),
       ],
     );
   }
 
-  Widget _distributionCard(SasDashboard d) {
-    final active = d.active ?? 0;
-    final expired = d.expired ?? 0;
+  Widget _distributionCard(SasSubscriberSummary s) {
+    final active = s.active;
+    final expired = s.expired;
     // «أخرى» = الإجمالي ناقص (نشط + منتهٍ) إن كان موجبًا.
-    final total = d.total ?? (active + expired);
+    final total = s.total > 0 ? s.total : (active + expired);
     final other = math.max(0, total - active - expired);
     final sum = active + expired + other;
 
@@ -714,10 +865,10 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
                     centerSpaceRadius: 44.r,
                     startDegreeOffset: -90,
                     sections: [
-                      for (final s in segments)
+                      for (final seg in segments)
                         PieChartSectionData(
-                          value: s.value.toDouble(),
-                          color: s.color,
+                          value: seg.value.toDouble(),
+                          color: seg.color,
                           radius: 26.r,
                           showTitle: false,
                         ),
@@ -753,7 +904,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              for (final s in segments) _legendRow(s, sum),
+              for (final seg in segments) _legendRow(seg, sum),
             ],
           );
 
@@ -954,6 +1105,8 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
   String _fmtDateTime(DateTime dt) =>
       DateFormat('yyyy/MM/dd HH:mm').format(dt.toLocal());
+
+  String _fmtTime(DateTime dt) => DateFormat('HH:mm:ss').format(dt.toLocal());
 
   // تسميات/أيقونات/ألوان المالية — منسجمة مع تبويب «نظام الساس».
   String _financeLabel(String key) {
