@@ -110,6 +110,70 @@ public class SasServiceClient : ISasServiceClient
         CancellationToken cancellationToken = default)
         => PostForRawAsync("/report", serverUrl, username, password, query, cancellationToken);
 
+    public Task<string> GetPackagesAsync(
+        string serverUrl,
+        string username,
+        string password,
+        CancellationToken cancellationToken = default)
+        => PostForRawAsync("/packages", serverUrl, username, password, null, cancellationToken);
+
+    public Task<string> GetFinanceAsync(
+        string serverUrl,
+        string username,
+        string password,
+        CancellationToken cancellationToken = default)
+        => PostForRawAsync("/finance", serverUrl, username, password, null, cancellationToken);
+
+    public Task<string> GetHealthAsync(
+        string serverUrl,
+        string username,
+        string password,
+        CancellationToken cancellationToken = default)
+        // ملاحظة: مسار Python هو /system-health (لأن /health محجوز لفحص الحياة بلا مصادقة)
+        => PostForRawAsync("/system-health", serverUrl, username, password, null, cancellationToken);
+
+    public Task<string> GetRenewalCandidatesAsync(
+        string serverUrl,
+        string username,
+        string password,
+        int? days = null,
+        string? query = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync(
+            "/renewal/candidates",
+            new
+            {
+                serverUrl,
+                username,
+                password,
+                days,
+                query
+            },
+            cancellationToken);
+
+    public Task<string> BulkRenewAsync(
+        string serverUrl,
+        string username,
+        string password,
+        IEnumerable<string> subscriberIds,
+        int months,
+        string? profileId = null,
+        bool dryRun = false,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync(
+            "/renewal/bulk",
+            new
+            {
+                serverUrl,
+                username,
+                password,
+                subscriberIds = subscriberIds?.ToArray() ?? Array.Empty<string>(),
+                months,
+                profileId,
+                dryRun
+            },
+            cancellationToken);
+
     /// <summary>
     /// ينادي مسار خدمة الساس ممرِّراً الاعتماد + وسائط الاستعلام في الجسم، ويعيد JSON خاماً.
     /// عند فشل الاتصال يرمي <see cref="SasServiceUnavailableException"/> لتترجمها البوّابة إلى 502/503.
@@ -139,6 +203,42 @@ public class SasServiceClient : ISasServiceClient
             {
                 _logger.LogWarning("فشل نداء خدمة الساس {Path} (الحالة {Status})", path, (int)response.StatusCode);
                 throw new SasServiceUnavailableException("تعذّر جلب البيانات من خدمة الساس");
+            }
+
+            return body;
+        }
+        catch (SasServiceUnavailableException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ أثناء الاتصال بخدمة الساس {Path}", path);
+            throw new SasServiceUnavailableException("خدمة الساس غير متاحة حالياً");
+        }
+    }
+
+    /// <summary>
+    /// ينادي مسار خدمة الساس بجسم JSON مُخصّص (يتضمّن الاعتماد + وسائط العملية) ويعيد JSON خاماً.
+    /// يُستخدم للعمليات ذات الجسم غير النمطي (مرشّحو التجديد/التجديد الجماعي).
+    /// عند فشل الاتصال يرمي <see cref="SasServiceUnavailableException"/> لتترجمها البوّابة إلى 502/503.
+    /// ⚠️ أمن: الاعتماد ضمن الجسم يُرسَل إلى localhost فقط ولا يُسجَّل في أي log.
+    /// </summary>
+    private async Task<string> PostBodyForRawAsync(
+        string path,
+        object payload,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = BuildRequest(HttpMethod.Post, path, payload);
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("فشل نداء خدمة الساس {Path} (الحالة {Status})", path, (int)response.StatusCode);
+                throw new SasServiceUnavailableException("تعذّر تنفيذ العملية عبر خدمة الساس");
             }
 
             return body;

@@ -49,4 +49,55 @@ public interface ISasServiceClient
         string password,
         IDictionary<string, string?>? query = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>جلب باقات/بروفايلات الساس المتاحة للوكيل خاماً كـ JSON (تبويب الباقات).</summary>
+    Task<string> GetPackagesAsync(
+        string serverUrl,
+        string username,
+        string password,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>جلب ملخّص/تفاصيل المالية (الرصيد/الحركات) للوكيل خاماً كـ JSON (تبويب المالية).</summary>
+    Task<string> GetFinanceAsync(
+        string serverUrl,
+        string username,
+        string password,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>جلب حالة صحّة الاتصال/الحساب مع نظام الساس خاماً كـ JSON (تبويب الصحّة/الحالة).</summary>
+    Task<string> GetHealthAsync(
+        string serverUrl,
+        string username,
+        string password,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// جلب مرشّحي التجديد (المشتركون المنتهون/الأوشك على الانتهاء) خاماً كـ JSON.
+    /// </summary>
+    /// <param name="days">نافذة الأيام قبل/بعد الانتهاء لاعتبار المشترك مرشّحاً (اختياري).</param>
+    /// <param name="query">نص بحث اختياري لتصفية المرشّحين.</param>
+    Task<string> GetRenewalCandidatesAsync(
+        string serverUrl,
+        string username,
+        string password,
+        int? days = null,
+        string? query = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// تجديد جماعي لمشتركين محدّدين — عملية كتابية. تعيد نتيجة الخدمة خاماً كـ JSON.
+    /// </summary>
+    /// <param name="subscriberIds">معرّفات المشتركين المراد تجديدهم.</param>
+    /// <param name="months">عدد الأشهر للتجديد.</param>
+    /// <param name="profileId">معرّف البروفايل/الباقة الاختياري للتجديد.</param>
+    /// <param name="dryRun">إن true تُحاكى العملية بلا تنفيذ فعلي (معاينة).</param>
+    Task<string> BulkRenewAsync(
+        string serverUrl,
+        string username,
+        string password,
+        IEnumerable<string> subscriberIds,
+        int months,
+        string? profileId = null,
+        bool dryRun = false,
+        CancellationToken cancellationToken = default);
 }

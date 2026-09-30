@@ -54,6 +54,51 @@ run.bat              # Windows
 | `POST /dashboard` | `{serverUrl, username, password}` | لوحة الوكيل (subscribers + finance) | `GetDashboardAsync` |
 | `POST /subscribers` | `{serverUrl, username, password, query:{page,count,search,…}}` | قائمة مشتركي الوكيل | `GetSubscribersAsync` |
 | `POST /report` | `{serverUrl, username, password, query:{page,count,…}}` | تقرير الوكيل (المديرون/البلنك) | `GetReportAsync` |
+| `POST /packages` | `{serverUrl, username, password}` | قائمة باقات/بروفايلات SAS4 (JSON خام) | `GetPackagesAsync` |
+| `POST /finance` | `{serverUrl, username, password}` | ملخّص مالي `advancedDashboard/finance` (JSON خام) | `GetFinanceAsync` |
+| `POST /system-health` | `{serverUrl, username, password}` | صحّة النظام `advancedDashboard/systemHealth` (JSON خام) | `GetSystemHealthAsync` |
+| `POST /renewal/candidates` | `{serverUrl, username, password, days?:int=7, query?:{}}` | المشتركون المنتهي اشتراكهم خلال `days` يوماً — مرتَّبون تصاعدياً حسب الانتهاء — `[{id,username,name,expiry,profile}]` | `GetRenewalCandidatesAsync` |
+| `POST /renewal/bulk` | `{serverUrl, username, password, subscriberIds:[], months?:int, profileId?, dryRun?:bool=false}` | تجديد/تفعيل دفعة مشتركين (idempotent بـ uuid5) — `[{id,ok,message}]` | `BulkRenewAsync` |
+
+### تفاصيل نقطتَي التجديد
+
+#### `POST /renewal/candidates`
+
+```json
+// طلب
+{ "serverUrl": "sas.isp.iq", "username": "admin", "password": "***",
+  "days": 7, "query": {} }
+
+// رد  (مصفوفة — فارغة إن لا يوجد منتهٍ قريباً)
+[
+  { "id": 42, "username": "user1", "name": "أحمد علي",
+    "expiry": "2026-10-03 00:00:00", "profile": "10MB" }
+]
+```
+
+- يجلب كامل قائمة المشتركين عبر `iter_all("user")` (حتى 2000 سجل).
+- يُحلَّل حقل `expiration` (أو `expire`) بصيغ: `YYYY-MM-DDTHH:MM:SS` · `YYYY-MM-DD HH:MM:SS` · `YYYY-MM-DD`.
+- يُعيد المشتركين المنتهيين الآن + المنتهين خلال `days` يوماً.
+
+#### `POST /renewal/bulk`
+
+```json
+// طلب
+{ "serverUrl": "sas.isp.iq", "username": "admin", "password": "***",
+  "subscriberIds": [42, 43, 44],
+  "months": 1, "profileId": null, "dryRun": false }
+
+// رد
+[
+  { "id": 42, "ok": true,  "message": "تمّ" },
+  { "id": 43, "ok": false, "message": "SAS أعاد 404 على user/43/extend …" },
+  { "id": 44, "ok": true,  "message": "تمّ" }
+]
+```
+
+- **idempotency:** كل عملية تحمل `uuid5(NAMESPACE_URL, "{baseUrl}:{id}:{YYYYMMDDHHMM}")` — إعادة الطلب خلال نفس الدقيقة تُنتج نفس uuid فترفضها SAS4 دون تأثير.
+- **dryRun:** يعيد `[{id, ok:null, message:"[dryRun] سيُنفَّذ …"}]` دون أي نداء كتابي.
+- **فشل جزئي:** الخطأ في مشترك واحد يُسجَّل في نتيجته ولا يوقف الدفعة.
 
 ---
 
@@ -126,4 +171,4 @@ systemctl status sadara-sas-sidecar
 |---|---|
 | `/dashboard` يعيد `{subscribers, finance}` مُدمَجَين بدلاً من JSON واحد خام | الصدارة .NET تتوقّع `string` خاماً — إن احتاجت نشاطاً محدداً فالتوافق يستلزم تعديلاً في `SasServiceClient.cs` |
 | `/report` يعيد بيانات `index/manager` — ليس تقرير مالي مخصَّصاً | SAS4 لا يوفّر نقطة نهاية «تقرير وكيل» موحّدة؛ يُستكمل حين تُحدَّد البنية المطلوبة |
-| `SASUserClient` مستورد لكن غير مستخدم في نقاط النهاية الحالية | جاهز للاستخدام حين تُضاف نقاط بوابة المشترك |
+| `/renewal/bulk` يستخدم `/admin/api/` مباشرةً (SASClient) بدلاً من بوابة المشترك | SAS4 يمدّد المشترك عبر `/admin/api/user/{id}/extend` و`/activate` إداريّاً — هذا السلوك الصحيح للوكيل/المدير. `SASUserClient` متاح لو احتاجت نقاط بوابة المشترك في المستقبل |

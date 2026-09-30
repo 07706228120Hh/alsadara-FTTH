@@ -298,6 +298,112 @@ public class SasAgentController : ControllerBase
         => PassThroughAsync(id, (acc, pwd, token) =>
             _sasClient.GetReportAsync(acc.ServerUrl, acc.Username, pwd, CollectQuery(), token), null, ct);
 
+    /// <summary>جلب باقات/بروفايلات الساس المتاحة (تبويب الباقات) — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/packages")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetPackages(Guid id, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetPackagesAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
+
+    /// <summary>جلب ملخّص/تفاصيل المالية للوكيل (تبويب المالية) — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/finance")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetFinance(Guid id, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetFinanceAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
+
+    /// <summary>جلب حالة صحّة الاتصال/الحساب مع نظام الساس (تبويب الصحّة) — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/health")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetHealth(Guid id, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetHealthAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
+
+    /// <summary>
+    /// جلب مرشّحي التجديد (المنتهون/الأوشك على الانتهاء) — قراءة (view).
+    /// <c>days</c> نافذة الأيام (افتراضي 7)، <c>query</c> نص بحث اختياري.
+    /// </summary>
+    [HttpGet("accounts/{id}/renewal/candidates")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetRenewalCandidates(
+        Guid id,
+        [FromQuery] int days = 7,
+        [FromQuery] string? query = null,
+        CancellationToken ct = default)
+    {
+        // قصّ آمن للوسائط: أيام ضمن مدى معقول، وبحث محدود الطول.
+        var safeDays = Math.Clamp(days, 0, 365);
+        var safeQuery = string.IsNullOrWhiteSpace(query)
+            ? null
+            : (query.Length > MaxQueryValueLength ? query[..MaxQueryValueLength] : query);
+
+        return PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetRenewalCandidatesAsync(acc.ServerUrl, acc.Username, pwd, safeDays, safeQuery, token), null, ct);
+    }
+
+    /// <summary>
+    /// تجديد جماعي لمشتركين محدّدين — عملية كتابية (manage + failClosed).
+    /// يمرّ عبر <see cref="GetOwnedAccountAsync"/> للعزل الصارم؛ يُفكّ التشفير في الذاكرة فقط.
+    /// يدعم <c>dryRun</c> للمعاينة دون تنفيذ فعلي.
+    /// </summary>
+    [HttpPost("accounts/{id}/renewal/bulk")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> BulkRenew(Guid id, [FromBody] BulkRenewRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        if (request == null || request.SubscriberIds == null || request.SubscriberIds.Count == 0)
+            return BadRequest(new { success = false, message = "قائمة المشتركين مطلوبة" });
+
+        if (request.Months <= 0 || request.Months > 60)
+            return BadRequest(new { success = false, message = "عدد الأشهر غير صالح" });
+
+        // حدّ أعلى معقول لحجم الدفعة (حماية من الإساءة).
+        if (request.SubscriberIds.Count > 1000)
+            return BadRequest(new { success = false, message = "حجم الدفعة يتجاوز الحد المسموح" });
+
+        // تصفية معرّفات فارغة/مكرّرة قبل التمرير.
+        var subscriberIds = request.SubscriberIds
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (subscriberIds.Count == 0)
+            return BadRequest(new { success = false, message = "قائمة المشتركين مطلوبة" });
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            var password = _secretProtector.Unprotect(account.PasswordEncrypted); // في الذاكرة فقط
+            var raw = await _sasClient.BulkRenewAsync(
+                account.ServerUrl,
+                account.Username,
+                password,
+                subscriberIds,
+                request.Months,
+                string.IsNullOrWhiteSpace(request.ProfileId) ? null : request.ProfileId.Trim(),
+                request.DryRun ?? false,
+                ct);
+
+            return Content(raw, "application/json");
+        }
+        catch (SasServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "خدمة الساس غير متاحة أثناء التجديد الجماعي");
+            return StatusCode(503, new { success = false, message = "خدمة الساس غير متاحة حالياً" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في التجديد الجماعي عبر خدمة الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
     /// <summary>
     /// نمط تمرير موحّد: يحصر النطاق، يجلب الحساب بالمطابقة الصارمة، يفكّ التشفير في الذاكرة،
     /// ينادي خدمة الساس، ويعيد JSON خاماً — مع ترجمة تعذّر الخدمة إلى 503.
@@ -396,3 +502,10 @@ public record UpdateSasAccountRequest(
     string? Password,
     SasAccountType? AccountType,
     bool? IsActive);
+
+/// <summary>طلب تجديد جماعي — معرّفات المشتركين وعدد الأشهر وبروفايل اختياري ومعاينة (dryRun).</summary>
+public record BulkRenewRequest(
+    List<string> SubscriberIds,
+    int Months,
+    string? ProfileId,
+    bool? DryRun);
