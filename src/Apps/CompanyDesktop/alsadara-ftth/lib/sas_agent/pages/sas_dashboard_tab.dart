@@ -278,84 +278,214 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
     final s = _summary ?? SasSubscriberSummary.empty;
 
-    return RefreshIndicator(
-      onRefresh: _refreshLight,
-      child: LayoutBuilder(
-        builder: (context, c) {
-          // متجاوب سطح المكتب: عمودان للبطاقتين الكبيرتين على الشاشات العريضة.
-          final wide = c.maxWidth >= 760;
-          return ListView(
-            padding: EdgeInsets.all(14.w),
-            children: [
-              // 0) بانر الحساب + آخر مزامنة/زر المزامنة + آخر تحديث تلقائي.
-              _accountBanner(),
-              SizedBox(height: 16.h),
+    return LayoutBuilder(
+      builder: (context, c) {
+        // ── قرار التخطيط المتجاوب ──
+        // عريض (سطح المكتب) ⇐ العرض كافٍ لعمودين، وطويل ⇐ الارتفاع كافٍ
+        // لعرض كل شيء بلا تمرير. نُقدّر عتبة ارتفاع تكفي للتخطيط المضغوط
+        // ذي العمودين؛ دونها نتحوّل لخطة الأمان (تمرير) لمنع أي overflow.
+        final wide = c.maxWidth >= 1000;
+        final maxH = c.maxHeight;
+        // عتبة عملية: التخطيط المضغوط ذو العمودين يحتاج ~560 لوجيكال ارتفاعاً.
+        final tallEnough = maxH.isFinite && maxH >= 560;
 
-              // 1) ملخّص المشتركين (من الملخّص المحلّي الموثوق).
-              SasSectionHeader(
-                title: 'ملخّص المشتركين',
-                icon: Icons.insights_rounded,
-                trailingText: '${s.total}',
-              ),
-              SizedBox(height: 12.h),
-              _summaryStats(s),
+        // سطح المكتب العريض والطويل: شاشة واحدة تملأ الارتفاع بلا تمرير.
+        if (wide && tallEnough) {
+          return _singleScreenWide(s, maxH);
+        }
 
-              SizedBox(height: 20.h),
+        // خطة الأمان: ضيّق أو قصير ⇐ تمرير رأسي (يمنع overflow نهائياً).
+        return _scrollableFallback(s, wide);
+      },
+    );
+  }
 
-              // 2) قرب الانتهاء — التجديد (قابلة للنقر → تبويب مشتركون مفلتر).
-              SasSectionHeader(
-                title: 'قرب الانتهاء — التجديد',
-                icon: Icons.event_repeat_rounded,
-                gradient: AppTheme.orangeGradient,
-                trailingText:
-                    widget.onOpenExpiring != null ? 'اضغط للتصفية' : null,
-              ),
-              SizedBox(height: 12.h),
-              _expiryCards(s),
+  // ─────────────────────── تخطيط الشاشة الواحدة (عريض) ───────────────────────
 
-              SizedBox(height: 20.h),
-
-              // 3) المالية.
-              _financeBlock(),
-
-              SizedBox(height: 20.h),
-
-              // 4) التصريح والمقاطعة.
-              _reconBlock(),
-
-              SizedBox(height: 20.h),
-
-              // 5 + 6) توزيع الحالات (دونات) + التذاكر (عمودان على العريض).
-              if (wide)
-                IntrinsicHeight(
-                  child: Row(
+  /// تخطيط سطح المكتب: كل الأقسام في شاشة واحدة تملأ الارتفاع بلا تمرير.
+  ///
+  /// - أعلى: بانر حساب مضغوط بارتفاع ثابت صغير (سطر واحد).
+  /// - وسط ([Expanded]): صفّ عمودين متساويين:
+  ///   - يمين: «ملخّص المشتركين» فوق «قرب الانتهاء».
+  ///   - يسار: «المالية» + «التصريح والمقاطعة» + «التذاكر» مكدّسة.
+  ///
+  /// كل الحاويات الداخلية `Expanded`/مرنة فتتوزّع المساحة العمودية بلا فراغ ولا
+  /// تجاوز؛ والبطاقات تُلفّ بـ [FittedBox]/تمرير داخلي عند الضيق الشديد.
+  Widget _singleScreenWide(SasSubscriberSummary s, double maxH) {
+    // البانر المضغوط أقصر كلما ضاق الارتفاع (لإعطاء الأقسام مساحة أكبر).
+    return Padding(
+      padding: EdgeInsets.all(12.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _compactBanner(),
+          SizedBox(height: 12.h),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // العمود الأيمن (RTL يضعه أولاً): الملخّص + قرب الانتهاء.
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(child: _distributionBlock(s)),
-                      SizedBox(width: 14.w),
-                      Expanded(child: _ticketsBlock()),
+                      Expanded(
+                        flex: 5,
+                        child: _panel(
+                          title: 'ملخّص المشتركين',
+                          icon: Icons.insights_rounded,
+                          trailingText: '${s.total}',
+                          child: _summaryStatsCompact(s),
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      Expanded(
+                        flex: 5,
+                        child: _panel(
+                          title: 'قرب الانتهاء — التجديد',
+                          icon: Icons.event_repeat_rounded,
+                          gradient: AppTheme.orangeGradient,
+                          trailingText: widget.onOpenExpiring != null
+                              ? 'اضغط للتصفية'
+                              : null,
+                          child: _expiryCardsCompact(s),
+                        ),
+                      ),
                     ],
                   ),
-                )
-              else ...[
-                _distributionBlock(s),
-                SizedBox(height: 20.h),
-                _ticketsBlock(),
+                ),
+                SizedBox(width: 12.w),
+                // العمود الأيسر: المالية + التصريح/المقاطعة + التذاكر.
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: _panel(
+                          title: 'المالية',
+                          icon: Icons.account_balance_wallet_rounded,
+                          gradient: AppTheme.orangeGradient,
+                          child: _financeCardsCompact(),
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      Expanded(
+                        flex: 4,
+                        child: _panel(
+                          title: 'التصريح والمقاطعة',
+                          icon: Icons.assignment_turned_in_rounded,
+                          child: _reconContentCompact(),
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      Expanded(
+                        flex: 3,
+                        child: _panel(
+                          title: 'التذاكر',
+                          icon: Icons.confirmation_number_rounded,
+                          gradient: AppTheme.orangeGradient,
+                          child: _ticketsContentCompact(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
-            ],
-          );
-        },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// لوح موحّد: رأس قسم صغير + محتوى يملأ ما تبقّى (يمنع overflow بتقييد الطفل).
+  Widget _panel({
+    required String title,
+    required IconData icon,
+    required Widget child,
+    List<Color> gradient = AppTheme.blueGradient,
+    String? trailingText,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SasSectionHeader(
+          title: title,
+          icon: icon,
+          gradient: gradient,
+          trailingText: trailingText,
+        ),
+        SizedBox(height: 10.h),
+        // المحتوى يأخذ المتبقّي؛ ClipRect يحمي من أي فيض بصري لحظي عند التحجيم.
+        Expanded(child: ClipRect(child: child)),
+      ],
+    );
+  }
+
+  // ─────────────────────── خطة الأمان: تمرير رأسي ───────────────────────
+
+  /// نسخة قابلة للتمرير (نافذة صغيرة/قصيرة أو موبايل) — تحافظ على كل المعلومات
+  /// وتمنع overflow بالسماح بالتمرير عند شحّ الارتفاع.
+  Widget _scrollableFallback(SasSubscriberSummary s, bool wide) {
+    return RefreshIndicator(
+      onRefresh: _refreshLight,
+      child: ListView(
+        padding: EdgeInsets.all(14.w),
+        children: [
+          _compactBanner(),
+          SizedBox(height: 16.h),
+          SasSectionHeader(
+            title: 'ملخّص المشتركين',
+            icon: Icons.insights_rounded,
+            trailingText: '${s.total}',
+          ),
+          SizedBox(height: 12.h),
+          _summaryStats(s),
+          SizedBox(height: 20.h),
+          SasSectionHeader(
+            title: 'قرب الانتهاء — التجديد',
+            icon: Icons.event_repeat_rounded,
+            gradient: AppTheme.orangeGradient,
+            trailingText: widget.onOpenExpiring != null ? 'اضغط للتصفية' : null,
+          ),
+          SizedBox(height: 12.h),
+          _expiryCards(s),
+          SizedBox(height: 20.h),
+          _financeBlock(),
+          SizedBox(height: 20.h),
+          _reconBlock(),
+          SizedBox(height: 20.h),
+          if (wide)
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: _distributionBlock(s)),
+                  SizedBox(width: 14.w),
+                  Expanded(child: _ticketsBlock()),
+                ],
+              ),
+            )
+          else ...[
+            _distributionBlock(s),
+            SizedBox(height: 20.h),
+            _ticketsBlock(),
+          ],
+        ],
       ),
     );
   }
 
   // ─────────────────────────── الشريط العلوي ───────────────────────────
 
-  /// شريط علوي متدرّج: تعريف الحساب + زر مزامنة + آخر مزامنة + آخر تحديث تلقائي.
-  Widget _accountBanner() {
+  /// بانر حساب **مضغوط** بارتفاع ثابت صغير (سطر واحد): شارة + اسم الحساب + آخر
+  /// مزامنة + آخر تحديث تلقائي + زر مزامنة. يُلفّ سطر الحالة بـ [Flexible] +
+  /// قطع نصّي فلا يفيض أفقياً مهما ضاق العرض.
+  Widget _compactBanner() {
     final syncedAt = _lastSyncAt ?? widget.account.lastSyncAt;
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: AppTheme.blueGradient,
@@ -365,86 +495,78 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
         borderRadius: BorderRadius.circular(SasUi.radius.r),
         boxShadow: SasUi.cardShadow(AppTheme.primaryColor),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 46.w,
-                height: 46.w,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.30)),
+          Container(
+            width: 40.w,
+            height: 40.w,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
+            ),
+            child:
+                Icon(Icons.dashboard_rounded, color: Colors.white, size: 22.sp),
+          ),
+          SizedBox(width: 12.w),
+          // الاسم + سطر الحالة (آخر مزامنة/آخر تحديث) — كلها قابلة للقطع.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.account.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.cairo(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 ),
-                child: Icon(Icons.dashboard_rounded,
-                    color: Colors.white, size: 24.sp),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                SizedBox(height: 3.h),
+                Row(
                   children: [
-                    Text(
-                      widget.account.displayName,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                    Flexible(
+                      child: _bannerStatusChip(
+                        icon: Icons.sync_rounded,
+                        text: syncedAt != null
+                            ? 'آخر مزامنة: ${_fmtDateTime(syncedAt)}'
+                            : 'لم تُزامَن بعد',
                       ),
                     ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      'لوحة معلومات الحساب',
-                      style: GoogleFonts.cairo(
-                        fontSize: 11.5.sp,
-                        color: Colors.white.withValues(alpha: 0.80),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    SizedBox(width: 14.w),
+                    Flexible(child: _autoRefreshChip()),
                   ],
                 ),
-              ),
-              _syncButton(),
-            ],
+              ],
+            ),
           ),
-          SizedBox(height: 12.h),
-          // سطر الحالة: آخر مزامنة (يمين) + آخر تحديث تلقائي/مؤشّر خفيف (يسار).
-          Wrap(
-            spacing: 14.w,
-            runSpacing: 6.h,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              _bannerStatusChip(
-                icon: Icons.sync_rounded,
-                text: syncedAt != null
-                    ? 'آخر مزامنة: ${_fmtDateTime(syncedAt)}'
-                    : 'لم تُزامَن بعد',
-              ),
-              _autoRefreshChip(),
-            ],
-          ),
+          SizedBox(width: 10.w),
+          _syncButton(),
         ],
       ),
     );
   }
 
-  /// شريحة حالة صغيرة داخل البانر (أيقونة + نص).
+  /// شريحة حالة صغيرة داخل البانر (أيقونة + نص) — النص قابل للقطع فلا يفيض.
   Widget _bannerStatusChip({required IconData icon, required String text}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 13.sp, color: Colors.white.withValues(alpha: 0.75)),
         SizedBox(width: 5.w),
-        Text(
-          text,
-          style: GoogleFonts.cairo(
-            fontSize: 11.sp,
-            color: Colors.white.withValues(alpha: 0.82),
-            fontWeight: FontWeight.w600,
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.cairo(
+              fontSize: 11.sp,
+              color: Colors.white.withValues(alpha: 0.82),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -469,14 +591,18 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
                   size: 13.sp, color: Colors.white.withValues(alpha: 0.75)),
         ),
         SizedBox(width: 5.w),
-        Text(
-          t != null
-              ? 'آخر تحديث تلقائي: ${_fmtTime(t)}'
-              : 'التحديث التلقائي مُفعَّل',
-          style: GoogleFonts.cairo(
-            fontSize: 11.sp,
-            color: Colors.white.withValues(alpha: 0.82),
-            fontWeight: FontWeight.w600,
+        Flexible(
+          child: Text(
+            t != null
+                ? 'آخر تحديث تلقائي: ${_fmtTime(t)}'
+                : 'التحديث التلقائي مُفعَّل',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.cairo(
+              fontSize: 11.sp,
+              color: Colors.white.withValues(alpha: 0.82),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -1173,6 +1299,375 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
     }
     return AppTheme.primaryColor;
   }
+
+  // ════════════════════ محتويات مضغوطة لتخطيط الشاشة الواحدة ════════════════════
+  // بطاقات صغيرة مبنيّة بشبكة تملأ الارتفاع المتاح ([LayoutBuilder] لكل لوح)،
+  // بأحجام خط/حشوة تتناسب مع ارتفاع الخلية عبر [FittedBox] فلا يحدث overflow
+  // مهما ضاق اللوح. تحافظ على نفس البيانات والقابلية للنقر.
+
+  /// ملخّص المشتركين — شبكة 2×2 تملأ اللوح (الإجمالي/نشط/منتهٍ/متصل).
+  Widget _summaryStatsCompact(SasSubscriberSummary s) {
+    final cells = <_MiniStat>[
+      _MiniStat('الإجمالي', '${s.total}', AppTheme.primaryColor,
+          Icons.groups_rounded),
+      _MiniStat('نشط', '${s.active}', AppTheme.successColor,
+          Icons.check_circle_rounded),
+      _MiniStat('منتهٍ', '${s.expired}', AppTheme.warningColor,
+          Icons.timer_off_rounded),
+      _MiniStat('متصل الآن', '${s.online}', AppTheme.infoColor,
+          Icons.wifi_rounded),
+    ];
+    return _miniGrid(
+      count: cells.length,
+      builder: (i) => _miniStatCard(cells[i]),
+    );
+  }
+
+  /// قرب الانتهاء — شبكة 2×2 قابلة للنقر (منتهٍ/اليوم/٣ أيام/أسبوع).
+  Widget _expiryCardsCompact(SasSubscriberSummary s) {
+    final e = s.expiry;
+    final defs = <_ExpiryDef>[
+      _ExpiryDef('overdue', 'منتهٍ', e.overdue, AppTheme.errorColor,
+          Icons.event_busy_rounded),
+      _ExpiryDef('today', 'ينتهي اليوم', e.today, AppTheme.warningColor,
+          Icons.today_rounded),
+      _ExpiryDef('soon3', 'خلال ٣ أيام', e.soon3, const Color(0xFFF57C00),
+          Icons.hourglass_bottom_rounded),
+      _ExpiryDef('soon7', 'خلال أسبوع', e.soon7, AppTheme.infoColor,
+          Icons.date_range_rounded),
+    ];
+    return _miniGrid(
+      count: defs.length,
+      builder: (i) => _miniExpiryCard(defs[i]),
+    );
+  }
+
+  /// المالية — شبكة 2×2 (حتى 4 حقول) مضغوطة تملأ اللوح، أو حالة فراغ.
+  Widget _financeCardsCompact() {
+    final f = _finance;
+    if (f == null || f.isEmpty) {
+      return _emptyBox('لا يتوفّر ملخّص مالي');
+    }
+    final numeric = f.entries.where((e) => e.value is num).toList();
+    if (numeric.isEmpty) {
+      return _emptyBox('لا توجد تفاصيل مالية قابلة للعرض');
+    }
+    int rank(String k) {
+      final key = k.toLowerCase();
+      if (key.contains('balance') || key.contains('credit')) return 0;
+      if (key.contains('income') ||
+          key.contains('revenue') ||
+          key.contains('profit')) return 1;
+      if (key.contains('debt') || key.contains('expense')) return 2;
+      return 3;
+    }
+
+    numeric.sort((a, b) => rank(a.key).compareTo(rank(b.key)));
+    final show = numeric.take(4).toList();
+    return _miniGrid(
+      count: show.length,
+      // عمودان دائماً على اللوح الأيسر الضيّق نسبياً.
+      forceCols: show.length <= 2 ? show.length : 2,
+      builder: (i) => _miniStatCard(_MiniStat(
+        _financeLabel(show[i].key),
+        sasMoneyShort(show[i].key, show[i].value),
+        _financeColor(show[i].key),
+        _financeIcon(show[i].key),
+      )),
+    );
+  }
+
+  /// التصريح والمقاطعة — «آخر تصريح» مصغّر + حكم المقاطعة (بتمرير داخلي آمن).
+  Widget _reconContentCompact() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _lastReportStrip(),
+          SizedBox(height: 10.h),
+          if (_recon != null)
+            SasReconciliationCard(recon: _recon!)
+          else
+            _emptyBox('لا تتوفّر بيانات المقاطعة'),
+        ],
+      ),
+    );
+  }
+
+  /// التذاكر — صندوقان (مفتوحة/محلولة) + سطر إجمالي، يملأ اللوح بلا overflow.
+  Widget _ticketsContentCompact() {
+    final t = _tickets;
+    if (t == null) {
+      return _emptyBox('لا تتوفّر إحصاءات التذاكر');
+    }
+    final openColor = t.open > 0 ? AppTheme.errorColor : AppTheme.successColor;
+
+    Widget box(IconData icon, Color color, int n, String label) => Expanded(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(SasUi.radius.r),
+              border: Border.all(color: color.withValues(alpha: 0.22)),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: color, size: 20.sp),
+                  SizedBox(height: 6.h),
+                  Text(
+                    '$n',
+                    style: GoogleFonts.cairo(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w900,
+                      color: color,
+                      height: 1.05,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    label,
+                    style: GoogleFonts.cairo(
+                      fontSize: 11.sp,
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              box(Icons.mark_email_unread_rounded, openColor, t.open,
+                  'مفتوحة'),
+              SizedBox(width: 10.w),
+              box(Icons.check_circle_rounded, AppTheme.successColor, t.resolved,
+                  'محلولة'),
+            ],
+          ),
+        ),
+        SizedBox(height: 8.h),
+        Row(
+          children: [
+            Icon(Icons.summarize_rounded, size: 14.sp, color: Colors.grey[500]),
+            SizedBox(width: 6.w),
+            Expanded(
+              child: Text(
+                'إجمالي: ${t.total}'
+                '${t.inProgress > 0 ? ' · قيد المعالجة: ${t.inProgress}' : ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.cairo(
+                  fontSize: 11.sp,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ─────────────── بنية الشبكة المضغوطة + بطاقاتها الصغيرة ───────────────
+
+  /// شبكة تملأ الارتفاع/العرض المتاحين بلا تمرير: تُقسّم اللوح إلى صفوف/أعمدة
+  /// [Expanded] فتتوزّع خلاياها بالتساوي على المساحة (لا [GridView] مُمرِّر).
+  /// [forceCols] لتثبيت عدد الأعمدة (وإلا يُختار حسب العرض).
+  Widget _miniGrid({
+    required int count,
+    required Widget Function(int index) builder,
+    int? forceCols,
+  }) {
+    if (count == 0) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, c) {
+        final cols = forceCols ?? (c.maxWidth >= 360 ? 2 : 1);
+        final rows = (count / cols).ceil();
+        const gap = 10.0;
+        return Column(
+          children: [
+            for (var rIdx = 0; rIdx < rows; rIdx++) ...[
+              if (rIdx > 0) SizedBox(height: gap.h),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var cIdx = 0; cIdx < cols; cIdx++) ...[
+                      if (cIdx > 0) SizedBox(width: gap.w),
+                      Expanded(
+                        child: rIdx * cols + cIdx < count
+                            ? builder(rIdx * cols + cIdx)
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  /// بطاقة إحصائية صغيرة تملأ خليتها؛ [FittedBox] يضمن ألا يفيض المحتوى.
+  Widget _miniStatCard(_MiniStat m) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            m.color.withValues(alpha: 0.10),
+            m.color.withValues(alpha: 0.03),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(SasUi.radius.r),
+        border: Border.all(color: m.color.withValues(alpha: 0.25), width: 1.2),
+        boxShadow: SasUi.cardShadow(m.color),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38.w,
+            height: 38.w,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [m.color, m.color.withValues(alpha: 0.75)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(m.icon, color: Colors.white, size: 19.sp),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    m.value,
+                    style: GoogleFonts.cairo(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w900,
+                      color: m.color,
+                      height: 1.1,
+                    ),
+                  ),
+                  SizedBox(height: 1.h),
+                  Text(
+                    m.label,
+                    style: GoogleFonts.cairo(
+                      fontSize: 11.sp,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// بطاقة انتهاء صغيرة قابلة للنقر تملأ خليتها ([FittedBox] يمنع overflow).
+  Widget _miniExpiryCard(_ExpiryDef def) {
+    final enabled = widget.onOpenExpiring != null;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(SasUi.radius.r),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(SasUi.radius.r),
+        onTap: enabled ? () => widget.onOpenExpiring!(def.key) : null,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                def.color.withValues(alpha: 0.12),
+                def.color.withValues(alpha: 0.04),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(SasUi.radius.r),
+            border: Border.all(
+                color: def.color.withValues(alpha: 0.28), width: 1.3),
+            boxShadow: SasUi.cardShadow(def.color),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36.w,
+                height: 36.w,
+                decoration: BoxDecoration(
+                  color: def.color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(11.r),
+                ),
+                child: Icon(def.icon, color: def.color, size: 19.sp),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${def.count}',
+                        style: GoogleFonts.cairo(
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.w900,
+                          color: def.color,
+                          height: 1.05,
+                        ),
+                      ),
+                      SizedBox(height: 1.h),
+                      Text(
+                        def.label,
+                        style: GoogleFonts.cairo(
+                          fontSize: 11.sp,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (enabled)
+                Icon(Icons.chevron_left_rounded,
+                    size: 18.sp, color: def.color.withValues(alpha: 0.65)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// تعريف بطاقة انتهاء (مفتاح expiring + تسمية + عدد + لون + أيقونة).
@@ -1191,4 +1686,13 @@ class _Seg {
   final int value;
   final Color color;
   const _Seg(this.label, this.value, this.color);
+}
+
+/// بيانات بطاقة إحصائية صغيرة (تسمية + قيمة نصّية + لون + أيقونة) للتخطيط المضغوط.
+class _MiniStat {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+  const _MiniStat(this.label, this.value, this.color, this.icon);
 }
