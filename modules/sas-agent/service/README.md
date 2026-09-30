@@ -165,6 +165,64 @@ run.bat              # Windows
 
 ---
 
+## نقاط التذاكر المحلية (tickets) — تخزين SQLite بلا نداء SAS
+
+جميع النقاط:
+
+- POST فقط (جسم JSON).
+- تتطلب `X-Internal-Secret` (fail-closed مع بقية الخدمة).
+- لا اعتماد SAS — كل العمليات على SQLite المحلية فقط.
+- العزل الصارم: كل استعلام يحمل `WHERE company_id = ? AND owner_user_id = ?`.
+
+### جداول SQLite الجديدة
+
+#### tickets
+
+| العمود | النوع | وصف |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | معرّف التذكرة |
+| `company_id` | TEXT NOT NULL | معرّف الشركة |
+| `owner_user_id` | TEXT NOT NULL | معرّف الوكيل المالك |
+| `subscriber_ref` | TEXT | مرجع المشترك (اختياري) |
+| `subject` | TEXT NOT NULL | عنوان التذكرة |
+| `body` | TEXT | نصّ التذكرة |
+| `category` | TEXT | `complaint\|outage\|billing\|speed\|other` |
+| `priority` | TEXT | `low\|normal\|high\|urgent` |
+| `status` | TEXT | `open\|in_progress\|resolved\|closed` |
+| `created_by` | TEXT | اسم المُنشئ |
+| `created_at` | TEXT | ISO UTC |
+| `updated_at` | TEXT | ISO UTC (يُحدَّث عند كل رد أو تعديل) |
+
+#### ticket_replies
+
+| العمود | النوع | وصف |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | معرّف الرد |
+| `ticket_id` | INTEGER FK → tickets.id | التذكرة المرتبطة |
+| `body` | TEXT NOT NULL | نصّ الرد |
+| `is_internal` | INTEGER 0/1 | ردّ داخلي (لا يُعرض للمشترك) |
+| `author` | TEXT | اسم صاحب الرد |
+| `created_at` | TEXT | ISO UTC |
+
+### نقاط النهاية
+
+| المسار | جسم الطلب | الرد |
+|---|---|---|
+| `POST /tickets/stats` | `{companyId, ownerUserId}` | `{total, open, in_progress, resolved, closed}` |
+| `POST /tickets/list` | `{companyId, ownerUserId, status?, category?, search?, page?, count?}` | `{total, page, count, tickets:[…]}` |
+| `POST /tickets/create` | `{companyId, ownerUserId, subject, body?, category?, priority?, subscriber_ref?, created_by?}` | التذكرة المُنشأة |
+| `POST /tickets/get` | `{companyId, ownerUserId, ticket_id}` | التذكرة + ردودها (is_internal مخفية) |
+| `POST /tickets/reply` | `{companyId, ownerUserId, ticket_id, body, is_internal?, author?}` | `{id, ticket_id, status}` |
+| `POST /tickets/update` | `{companyId, ownerUserId, ticket_id, status?, priority?, category?}` | التذكرة المحدَّثة |
+
+### سلوكيات تلقائية
+
+- ردّ عام (`is_internal=false`) على تذكرة `open` ينقلها إلى `in_progress`.
+- `ticket_id` في get/reply/update يُتحقَّق منه مقابل `company_id + owner_user_id` — 404 إن لم يتطابق (لا 403 — لا يكشف وجود تذاكر آخرين).
+- الردود الداخلية (`is_internal=1`) لا تُعاد في `/tickets/get`.
+
+---
+
 ## _redact — حجب الأسرار
 
 كل استجابة SAS تمرّ عبر `_redact` قبل إعادتها. المفاتيح المطابقة للنمط التالي تُستبدل بـ `"***"`:

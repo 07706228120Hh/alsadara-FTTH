@@ -354,6 +354,91 @@ public class SasServiceClient : ISasServiceClient
         => PostBodyForRawAsync("/reconciliation",
             new { accountId, serverUrl, username, password }, cancellationToken);
 
+    // ==================== التذاكر (user-scoped) ====================
+    // كل الدوال أدناه تنادي نقاط /tickets/* في خدمة Python عبر PostBodyForRawAsync.
+    // الجسم الأساس {companyId, ownerUserId, ...} من سياق المستخدم (لا اعتماد ساس ولا فكّ تشفير).
+    // createdBy/author يأتيان من هوية المستخدم خادمياً (تدقيق).
+
+    public Task<string> GetTicketsStatsAsync(
+        string companyId,
+        string ownerUserId,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/tickets/stats",
+            new { companyId, ownerUserId }, cancellationToken);
+
+    public Task<string> GetTicketsListAsync(
+        string companyId,
+        string ownerUserId,
+        string? status = null,
+        string? category = null,
+        string? search = null,
+        int? page = null,
+        int? count = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/tickets/list",
+            new { companyId, ownerUserId, status, category, search, page, count }, cancellationToken);
+
+    public Task<string> GetTicketAsync(
+        string companyId,
+        string ownerUserId,
+        string ticketId,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/tickets/get",
+            new { companyId, ownerUserId, ticket_id = ticketId }, cancellationToken);
+
+    public Task<string> CreateTicketAsync(
+        string companyId,
+        string ownerUserId,
+        string subject,
+        string body,
+        string? category = null,
+        string? priority = null,
+        string? subscriberRef = null,
+        string? createdBy = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/tickets/create",
+            new
+            {
+                companyId,
+                ownerUserId,
+                subject,
+                body,
+                category,
+                priority,
+                subscriber_ref = subscriberRef,
+                created_by = createdBy
+            }, cancellationToken);
+
+    public Task<string> ReplyTicketAsync(
+        string companyId,
+        string ownerUserId,
+        string ticketId,
+        string body,
+        bool? isInternal = null,
+        string? author = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/tickets/reply",
+            new
+            {
+                companyId,
+                ownerUserId,
+                ticket_id = ticketId,
+                body,
+                is_internal = isInternal,
+                author
+            }, cancellationToken);
+
+    public Task<string> UpdateTicketAsync(
+        string companyId,
+        string ownerUserId,
+        string ticketId,
+        string? status = null,
+        string? priority = null,
+        string? category = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/tickets/update",
+            new { companyId, ownerUserId, ticket_id = ticketId, status, priority, category }, cancellationToken);
+
     /// <summary>
     /// ينادي مسار خدمة الساس ممرِّراً الاعتماد + وسائط الاستعلام في الجسم، ويعيد JSON خاماً.
     /// عند فشل الاتصال يرمي <see cref="SasServiceUnavailableException"/> لتترجمها البوّابة إلى 502/503.

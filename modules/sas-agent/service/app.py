@@ -130,6 +130,38 @@ def _init_db() -> None:
 
         CREATE INDEX IF NOT EXISTS idx_ar_account
             ON agent_reports (account_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS tickets (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id     TEXT    NOT NULL,
+            owner_user_id  TEXT    NOT NULL,
+            subscriber_ref TEXT    NOT NULL DEFAULT '',
+            subject        TEXT    NOT NULL,
+            body           TEXT    NOT NULL DEFAULT '',
+            category       TEXT    NOT NULL DEFAULT 'other',
+            priority       TEXT    NOT NULL DEFAULT 'normal',
+            status         TEXT    NOT NULL DEFAULT 'open',
+            created_by     TEXT    NOT NULL DEFAULT '',
+            created_at     TEXT    NOT NULL,
+            updated_at     TEXT    NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_tk_owner
+            ON tickets (company_id, owner_user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_tk_created
+            ON tickets (company_id, owner_user_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS ticket_replies (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_id   INTEGER NOT NULL REFERENCES tickets(id),
+            body        TEXT    NOT NULL,
+            is_internal INTEGER NOT NULL DEFAULT 0,
+            author      TEXT    NOT NULL DEFAULT '',
+            created_at  TEXT    NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_tr_ticket
+            ON ticket_replies (ticket_id, created_at);
         """)
     logger.info("[DB] قاعدة البيانات جاهزة: %s", _DB_PATH)
 
@@ -416,6 +448,75 @@ class ReconciliationRequest(_LocalBase):
     serverUrl: Optional[str] = None
     username:  Optional[str] = None
     password:  Optional[str] = None
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# نماذج Pydantic — التذاكر المحلية (tickets)
+# ═════════════════════════════════════════════════════════════════════════════
+
+_TK_CATEGORIES = ("complaint", "outage", "billing", "speed", "other")
+_TK_STATUSES   = ("open", "in_progress", "resolved", "closed")
+_TK_PRIORITIES = ("low", "normal", "high", "urgent")
+
+_TK_CATEGORY_AR = {
+    "complaint": "شكوى", "outage": "انقطاع",
+    "billing": "فوترة/رصيد", "speed": "بطء السرعة", "other": "أخرى",
+}
+_TK_STATUS_AR = {
+    "open": "مفتوحة", "in_progress": "قيد المعالجة",
+    "resolved": "محلولة", "closed": "مغلقة",
+}
+
+
+class _TkBase(BaseModel):
+    """الحقول الأساسية المشتركة لكل نقاط التذاكر."""
+    companyId:    str = Field(..., description="معرّف الشركة")
+    ownerUserId:  str = Field(..., description="معرّف مستخدم الوكيل (المالك)")
+
+
+class TicketStatsRequest(_TkBase):
+    """POST /tickets/stats"""
+    pass
+
+
+class TicketListRequest(_TkBase):
+    """POST /tickets/list"""
+    status:   Optional[str] = None
+    category: Optional[str] = None
+    search:   Optional[str] = None
+    page:     int = Field(default=1, ge=1)
+    count:    int = Field(default=50, ge=1, le=500)
+
+
+class TicketCreateRequest(_TkBase):
+    """POST /tickets/create"""
+    subject:        str = Field(..., min_length=3, max_length=200)
+    body:           str = Field(default="", max_length=4000)
+    category:       str = Field(default="other")
+    priority:       str = Field(default="normal")
+    subscriber_ref: str = Field(default="")
+    created_by:     str = Field(default="")
+
+
+class TicketGetRequest(_TkBase):
+    """POST /tickets/get"""
+    ticket_id: int
+
+
+class TicketReplyRequest(_TkBase):
+    """POST /tickets/reply"""
+    ticket_id:   int
+    body:        str  = Field(..., min_length=1, max_length=4000)
+    is_internal: bool = Field(default=False)
+    author:      str  = Field(default="")
+
+
+class TicketUpdateRequest(_TkBase):
+    """POST /tickets/update"""
+    ticket_id: int
+    status:    Optional[str] = None
+    priority:  Optional[str] = None
+    category:  Optional[str] = None
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1043,6 +1144,279 @@ async def reconciliation(body: ReconciliationRequest) -> Any:
         "source":          source,
         "last_report_ts":  last_report_ts,
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# نقاط التذاكر المحلية — POST /tickets/…
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _guard_ticket_owner(company_id: str, owner_user_id: str) -> None:
+    """يتحقّق أن company_id و owner_user_id غير فارغَين — يرمي 400 إن أخفق."""
+    if not (company_id or "").strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="companyId مطلوب")
+    if not (owner_user_id or "").strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="ownerUserId مطلوب")
+
+
+def _get_owned_ticket(conn: sqlite3.Connection,
+                      company_id: str, owner_user_id: str,
+                      ticket_id: int) -> sqlite3.Row:
+    """
+    يجلب التذكرة ويتحقّق ملكيتها (company_id + owner_user_id).
+    يرمي 404 إن لم توجد أو لم تخصّ هذا المالك — لا يكشف وجود تذاكر آخرين.
+    """
+    row = conn.execute(
+        "SELECT * FROM tickets WHERE id = ? AND company_id = ? AND owner_user_id = ?",
+        (ticket_id, company_id, owner_user_id),
+    ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="التذكرة غير موجودة")
+    return row
+
+
+def _ticket_to_dict(row: sqlite3.Row,
+                    replies: Optional[List[dict]] = None,
+                    hide_internal: bool = False) -> dict:
+    d = dict(row)
+    d["category_ar"] = _TK_CATEGORY_AR.get(d.get("category", ""), d.get("category", ""))
+    d["status_ar"]   = _TK_STATUS_AR.get(d.get("status", ""),   d.get("status", ""))
+    if replies is not None:
+        visible = [r for r in replies if not (hide_internal and r.get("is_internal"))]
+        d["replies"] = visible
+    return d
+
+
+@app.post("/tickets/stats", tags=["tickets"], dependencies=_DEP)
+async def tickets_stats(body: TicketStatsRequest) -> Any:
+    """
+    إحصاءات موجزة للوحة الوكيل.
+
+    عقد: POST /tickets/stats  { companyId, ownerUserId }
+    → { total, open, in_progress, resolved, closed }
+    """
+    _guard_ticket_owner(body.companyId, body.ownerUserId)
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT status FROM tickets WHERE company_id = ? AND owner_user_id = ?",
+            (body.companyId, body.ownerUserId),
+        ).fetchall()
+    counts: Dict[str, int] = {s: 0 for s in _TK_STATUSES}
+    for r in rows:
+        s = r[0] if r[0] in counts else "open"
+        counts[s] += 1
+    return {"total": len(rows), **counts}
+
+
+@app.post("/tickets/list", tags=["tickets"], dependencies=_DEP)
+async def tickets_list(body: TicketListRequest) -> Any:
+    """
+    قائمة مُرقَّمة بتذاكر الوكيل مع فلترة اختيارية.
+
+    عقد: POST /tickets/list  { companyId, ownerUserId, status?, category?, search?, page?, count? }
+    → { total, page, count, tickets:[…] }
+    """
+    _guard_ticket_owner(body.companyId, body.ownerUserId)
+    # العزل الصارم: كل استعلام يحمل company_id و owner_user_id
+    sql  = ("SELECT * FROM tickets "
+            "WHERE company_id = ? AND owner_user_id = ?")
+    args: list = [body.companyId, body.ownerUserId]
+
+    if body.status:
+        if body.status not in _TK_STATUSES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"حالة غير معروفة — المتاح: {', '.join(_TK_STATUSES)}")
+        sql  += " AND status = ?"
+        args.append(body.status)
+
+    if body.category:
+        if body.category not in _TK_CATEGORIES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"تصنيف غير معروف — المتاح: {', '.join(_TK_CATEGORIES)}")
+        sql  += " AND category = ?"
+        args.append(body.category)
+
+    sql += " ORDER BY created_at DESC"
+
+    with _db() as conn:
+        rows = [dict(r) for r in conn.execute(sql, args).fetchall()]
+
+    # البحث النصي
+    if body.search:
+        s = body.search.strip().lower()
+        rows = [r for r in rows if
+                s in (r.get("subject") or "").lower() or
+                s in (r.get("body") or "").lower() or
+                s in (r.get("subscriber_ref") or "").lower() or
+                s in (r.get("created_by") or "").lower()]
+
+    total = len(rows)
+    page  = max(1, body.page)
+    count = max(1, min(body.count, 500))
+    start = (page - 1) * count
+    page_rows = [_ticket_to_dict(r) for r in rows[start:start + count]]  # type: ignore[arg-type]
+
+    return {"total": total, "page": page, "count": count, "tickets": page_rows}
+
+
+@app.post("/tickets/create", tags=["tickets"], dependencies=_DEP)
+async def tickets_create(body: TicketCreateRequest) -> Any:
+    """
+    فتح تذكرة جديدة (تخزين محلي — بلا نداء SAS).
+
+    عقد: POST /tickets/create  { companyId, ownerUserId, subject, body, category?, priority?,
+                                   subscriber_ref?, created_by? }
+    → التذكرة المُنشأة
+    """
+    _guard_ticket_owner(body.companyId, body.ownerUserId)
+    if body.category not in _TK_CATEGORIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"تصنيف غير معروف — المتاح: {', '.join(_TK_CATEGORIES)}")
+    if body.priority not in _TK_PRIORITIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"أولوية غير معروفة — المتاح: {', '.join(_TK_PRIORITIES)}")
+
+    now = _utcnow_iso()
+    with _db() as conn:
+        cur = conn.execute("""
+            INSERT INTO tickets
+                (company_id, owner_user_id, subscriber_ref, subject, body,
+                 category, priority, status, created_by, created_at, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            body.companyId, body.ownerUserId,
+            body.subscriber_ref or "",
+            body.subject.strip(), body.body.strip(),
+            body.category, body.priority, "open",
+            body.created_by or "", now, now,
+        ))
+        row_id = cur.lastrowid
+        row = conn.execute(
+            "SELECT * FROM tickets WHERE id = ?", (row_id,)
+        ).fetchone()
+
+    logger.info("[tickets] تذكرة جديدة #%d لـ company=%s owner=%s",
+                row_id, body.companyId[:8], body.ownerUserId[:8])
+    return _ticket_to_dict(row, replies=[])
+
+
+@app.post("/tickets/get", tags=["tickets"], dependencies=_DEP)
+async def tickets_get(body: TicketGetRequest) -> Any:
+    """
+    تفاصيل تذكرة واحدة + ردودها (الردود الداخلية مخفية).
+
+    عقد: POST /tickets/get  { companyId, ownerUserId, ticket_id }
+    → التذكرة + قائمة الردود (is_internal محذوفة)
+    """
+    _guard_ticket_owner(body.companyId, body.ownerUserId)
+    with _db() as conn:
+        # التحقق من الملكية: company_id + owner_user_id (عزل صارم)
+        row = _get_owned_ticket(conn, body.companyId, body.ownerUserId, body.ticket_id)
+        replies_raw = conn.execute(
+            "SELECT * FROM ticket_replies WHERE ticket_id = ? ORDER BY created_at",
+            (body.ticket_id,),
+        ).fetchall()
+
+    replies = [dict(r) for r in replies_raw]
+    # إخفاء الردود الداخلية (is_internal=1) عند إرجاع البيانات للعميل
+    return _ticket_to_dict(row, replies=replies, hide_internal=True)
+
+
+@app.post("/tickets/reply", tags=["tickets"], dependencies=_DEP)
+async def tickets_reply(body: TicketReplyRequest) -> Any:
+    """
+    إضافة ردّ على تذكرة.
+
+    عقد: POST /tickets/reply  { companyId, ownerUserId, ticket_id, body, is_internal?, author? }
+    → { id, ticket_id, status }
+    """
+    _guard_ticket_owner(body.companyId, body.ownerUserId)
+    now = _utcnow_iso()
+    with _db() as conn:
+        # التحقق من الملكية قبل الكتابة
+        ticket_row = _get_owned_ticket(conn, body.companyId, body.ownerUserId, body.ticket_id)
+        cur = conn.execute("""
+            INSERT INTO ticket_replies (ticket_id, body, is_internal, author, created_at)
+            VALUES (?,?,?,?,?)
+        """, (
+            body.ticket_id,
+            body.body.strip(),
+            1 if body.is_internal else 0,
+            body.author or "",
+            now,
+        ))
+        reply_id = cur.lastrowid
+        # ردّ عام على تذكرة مفتوحة → تنتقل لـ in_progress تلقائياً
+        current_status = ticket_row["status"]
+        if not body.is_internal and current_status == "open":
+            current_status = "in_progress"
+            conn.execute(
+                "UPDATE tickets SET status = ?, updated_at = ? WHERE id = ?",
+                (current_status, now, body.ticket_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE tickets SET updated_at = ? WHERE id = ?",
+                (now, body.ticket_id),
+            )
+
+    logger.info("[tickets] ردّ #%d على تذكرة #%d (is_internal=%s)",
+                reply_id, body.ticket_id, body.is_internal)
+    return {"id": reply_id, "ticket_id": body.ticket_id, "status": current_status}
+
+
+@app.post("/tickets/update", tags=["tickets"], dependencies=_DEP)
+async def tickets_update(body: TicketUpdateRequest) -> Any:
+    """
+    تحديث حالة/أولوية/تصنيف تذكرة.
+
+    عقد: POST /tickets/update  { companyId, ownerUserId, ticket_id, status?, priority?, category? }
+    → التذكرة المحدَّثة
+    """
+    _guard_ticket_owner(body.companyId, body.ownerUserId)
+    if not any([body.status, body.priority, body.category]):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="لا تغييرات — أرسل status أو priority أو category")
+
+    if body.status is not None and body.status not in _TK_STATUSES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"حالة غير معروفة — المتاح: {', '.join(_TK_STATUSES)}")
+    if body.priority is not None and body.priority not in _TK_PRIORITIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"أولوية غير معروفة — المتاح: {', '.join(_TK_PRIORITIES)}")
+    if body.category is not None and body.category not in _TK_CATEGORIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"تصنيف غير معروف — المتاح: {', '.join(_TK_CATEGORIES)}")
+
+    now = _utcnow_iso()
+    with _db() as conn:
+        # التحقق من الملكية قبل التعديل
+        _get_owned_ticket(conn, body.companyId, body.ownerUserId, body.ticket_id)
+
+        parts = ["updated_at = ?"]
+        vals:  list = [now]
+        if body.status is not None:
+            parts.append("status = ?");   vals.append(body.status)
+        if body.priority is not None:
+            parts.append("priority = ?"); vals.append(body.priority)
+        if body.category is not None:
+            parts.append("category = ?"); vals.append(body.category)
+        # شرط العزل مُكرَّر في UPDATE أيضاً (دفاع في العمق)
+        vals.extend([body.ticket_id, body.companyId, body.ownerUserId])
+        conn.execute(
+            f"UPDATE tickets SET {', '.join(parts)} "
+            f"WHERE id = ? AND company_id = ? AND owner_user_id = ?",
+            vals,
+        )
+        row = conn.execute(
+            "SELECT * FROM tickets WHERE id = ?", (body.ticket_id,)
+        ).fetchone()
+
+    logger.info("[tickets] تحديث تذكرة #%d لـ company=%s",
+                body.ticket_id, body.companyId[:8])
+    return _ticket_to_dict(row)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

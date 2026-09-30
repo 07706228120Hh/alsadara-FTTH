@@ -700,6 +700,165 @@ public class SasAgentController : ControllerBase
         => PassThroughAsync(id, (acc, pwd, token) =>
             _sasClient.GetReconciliationAsync(acc.Id.ToString(), acc.ServerUrl, acc.Username, pwd, token), null, ct);
 
+    // ==================== التذاكر (user-scoped — تخصّ الوكيل لا حساب ساس) ====================
+    // على عكس نقاط الحساب أعلاه، هذه النقاط لا تمرّ عبر GetOwnedAccountAsync ولا تلمس أي حساب ساس.
+    // العزل يُشتق مباشرةً من التوكن عبر TryResolveScope:
+    //   companyId  = tenant.CompanyId (يرفض SuperAdmin/بلا شركة عبر Forbid)
+    //   ownerUserId= currentUserId (المستخدم المالك)
+    // لا يؤخذ companyId/ownerUserId من إدخال المستخدم إطلاقاً. لا اعتماد ساس ولا فكّ تشفير.
+    // القراءات: view · الكتابات: manage — كلها failClosed:true.
+
+    /// <summary>إحصاءات تذاكر الوكيل الحالي — قراءة (view). معزولة بـ company+owner من التوكن.</summary>
+    [HttpGet("tickets/stats")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetTicketsStats(CancellationToken ct)
+        => TicketsPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.GetTicketsStatsAsync(companyId, ownerUserId, token), ct);
+
+    /// <summary>قائمة تذاكر الوكيل الحالي (status/category/search/page/count) — قراءة (view).</summary>
+    [HttpGet("tickets")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetTickets(
+        [FromQuery] string? status = null,
+        [FromQuery] string? category = null,
+        [FromQuery] string? search = null,
+        [FromQuery] int? page = null,
+        [FromQuery] int? count = null,
+        CancellationToken ct = default)
+    {
+        // قصّ آمن للوسائط النصّية والعددية قبل التمرير.
+        var safeStatus = Trim(status);
+        var safeCategory = Trim(category);
+        var safeSearch = Trim(search);
+        var safePage = page.HasValue ? Math.Clamp(page.Value, 1, 100000) : (int?)null;
+        var safeCount = count.HasValue ? Math.Clamp(count.Value, 1, 1000) : (int?)null;
+
+        return TicketsPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.GetTicketsListAsync(
+                companyId, ownerUserId, safeStatus, safeCategory, safeSearch, safePage, safeCount, token), ct);
+    }
+
+    /// <summary>تفاصيل تذكرة محدّدة تخصّ الوكيل الحالي — قراءة (view).</summary>
+    [HttpGet("tickets/{ticketId}")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetTicket(string ticketId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(ticketId))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "معرّف التذكرة مطلوب" }));
+
+        var safeTicketId = ticketId.Trim();
+        return TicketsPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.GetTicketAsync(companyId, ownerUserId, safeTicketId, token), ct);
+    }
+
+    /// <summary>إنشاء تذكرة جديدة للوكيل الحالي — كتابة (manage). created_by من الهوية خادمياً.</summary>
+    [HttpPost("tickets")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> CreateTicket([FromBody] SasAgentCreateTicketRequest request, CancellationToken ct)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Subject) || string.IsNullOrWhiteSpace(request.Body))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "العنوان والنصّ مطلوبان" }));
+
+        var subject = request.Subject.Trim();
+        var body = request.Body.Trim();
+        var category = Trim(request.Category);
+        var priority = Trim(request.Priority);
+        var subscriberRef = Trim(request.SubscriberRef);
+
+        return TicketsPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.CreateTicketAsync(
+                companyId,
+                ownerUserId,
+                subject,
+                body,
+                category,
+                priority,
+                subscriberRef,
+                // created_by من هوية المستخدم الحالي (تدقيق) — لا من إدخال العميل.
+                ownerUserId,
+                token), ct);
+    }
+
+    /// <summary>إضافة ردّ على تذكرة تخصّ الوكيل الحالي — كتابة (manage). author من الهوية خادمياً.</summary>
+    [HttpPost("tickets/{ticketId}/reply")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> ReplyTicket(string ticketId, [FromBody] SasAgentReplyTicketRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(ticketId))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "معرّف التذكرة مطلوب" }));
+
+        if (request == null || string.IsNullOrWhiteSpace(request.Body))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "نصّ الردّ مطلوب" }));
+
+        var safeTicketId = ticketId.Trim();
+        var body = request.Body.Trim();
+
+        return TicketsPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.ReplyTicketAsync(
+                companyId,
+                ownerUserId,
+                safeTicketId,
+                body,
+                request.IsInternal,
+                // author من هوية المستخدم الحالي (تدقيق) — لا من إدخال العميل.
+                ownerUserId,
+                token), ct);
+    }
+
+    /// <summary>تحديث تذكرة تخصّ الوكيل الحالي (status/priority/category) — كتابة (manage).</summary>
+    [HttpPatch("tickets/{ticketId}")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> UpdateTicket(string ticketId, [FromBody] SasAgentUpdateTicketRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(ticketId))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "معرّف التذكرة مطلوب" }));
+
+        if (request == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "بيانات التحديث مطلوبة" }));
+
+        var safeTicketId = ticketId.Trim();
+        var status = Trim(request.Status);
+        var priority = Trim(request.Priority);
+        var category = Trim(request.Category);
+
+        if (status == null && priority == null && category == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "لا يوجد حقل للتحديث" }));
+
+        return TicketsPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.UpdateTicketAsync(
+                companyId, ownerUserId, safeTicketId, status, priority, category, token), ct);
+    }
+
+    /// <summary>
+    /// نمط تمرير التذاكر (user-scoped): يحصر النطاق عبر <see cref="TryResolveScope"/> فيمرّر
+    /// <c>companyId=tenant.CompanyId</c> و<c>ownerUserId=currentUserId</c> (من التوكن حصراً، لا من العميل)
+    /// إلى الدالة المزوَّدة، ثم يعيد JSON خاماً — مع ترجمة تعذّر الخدمة إلى 503.
+    /// لا يلمس أي حساب ساس ولا يفكّ أي تشفير.
+    /// </summary>
+    private async Task<IActionResult> TicketsPassThroughAsync(
+        Func<string, string, CancellationToken, Task<string>> call,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        try
+        {
+            var raw = await call(companyId.ToString(), userId.ToString(), ct);
+            return Content(raw, "application/json");
+        }
+        catch (SasServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "خدمة التذاكر غير متاحة أثناء التمرير");
+            return StatusCode(503, new { success = false, message = "خدمة التذاكر غير متاحة حالياً" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في التمرير لخدمة التذاكر");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
     /// <summary>قصّ آمن لقيمة نصّية اختيارية (تفريغ الفراغ + حدّ الطول) قبل التمرير للخدمة.</summary>
     private static string? Trim(string? value)
     {
@@ -912,3 +1071,31 @@ public record SubmitReportRequest(
     int DeclaredTotal,
     int DeclaredActive,
     string? Note);
+
+/// <summary>
+/// طلب إنشاء تذكرة وكيل — العنوان والنصّ مطلوبان؛ التصنيف/الأولوية/مرجع المشترك اختيارية.
+/// (companyId/ownerUserId/createdBy تُشتق خادمياً من التوكن — لا من العميل.)
+/// </summary>
+public record SasAgentCreateTicketRequest(
+    string Subject,
+    string Body,
+    string? Category,
+    string? Priority,
+    string? SubscriberRef);
+
+/// <summary>
+/// طلب إضافة ردّ على تذكرة وكيل — النصّ مطلوب؛ isInternal اختياري.
+/// (companyId/ownerUserId/author تُشتق خادمياً من التوكن — لا من العميل.)
+/// </summary>
+public record SasAgentReplyTicketRequest(
+    string Body,
+    bool? IsInternal);
+
+/// <summary>
+/// طلب تحديث تذكرة وكيل — كل الحقول اختيارية (status/priority/category)؛ يُرفض إن كانت كلها فارغة.
+/// (companyId/ownerUserId تُشتق خادمياً من التوكن — لا من العميل.)
+/// </summary>
+public record SasAgentUpdateTicketRequest(
+    string? Status,
+    string? Priority,
+    string? Category);

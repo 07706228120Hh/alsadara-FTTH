@@ -282,4 +282,103 @@ public interface ISasServiceClient
         string accountId,
         string serverUrl, string username, string password,
         CancellationToken cancellationToken = default);
+
+    // ==================== التذاكر (user-scoped — تخصّ الوكيل لا حساب ساس) ====================
+    // كل نقاط التذاكر معزولة بـ (companyId + ownerUserId) من سياق المستخدم المُصادَق مباشرةً،
+    // لا من حساب ساس ولا من إدخال المستخدم. لا اعتماد ساس ولا فكّ تشفير هنا إطلاقاً.
+    //  - companyId  = شركة المستخدم الحالي (عزل المستأجرين).
+    //  - ownerUserId= المستخدم المالك (الوكيل) — مفتاح ملكية التذكرة.
+    //  - createdBy/author = هوية المستخدم خادمياً (تدقيق) — لا من العميل.
+    // جميع الدوال تنادي نقاط Python عبر PostBodyForRawAsync وتعيد JSON خاماً.
+
+    /// <summary>إحصاءات تذاكر الوكيل (POST /tickets/stats + companyId + ownerUserId). قراءة.</summary>
+    Task<string> GetTicketsStatsAsync(
+        string companyId,
+        string ownerUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// قائمة تذاكر الوكيل (POST /tickets/list + companyId + ownerUserId + مرشّحات). قراءة.
+    /// </summary>
+    /// <param name="companyId">شركة المستخدم (عزل المستأجرين).</param>
+    /// <param name="ownerUserId">المستخدم المالك (الوكيل).</param>
+    /// <param name="status">تصفية بالحالة (اختياري).</param>
+    /// <param name="category">تصفية بالتصنيف (اختياري).</param>
+    /// <param name="search">نص بحث اختياري.</param>
+    /// <param name="page">رقم الصفحة (اختياري).</param>
+    /// <param name="count">حجم الصفحة (اختياري).</param>
+    Task<string> GetTicketsListAsync(
+        string companyId,
+        string ownerUserId,
+        string? status = null,
+        string? category = null,
+        string? search = null,
+        int? page = null,
+        int? count = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>تفاصيل تذكرة محدّدة (POST /tickets/get + companyId + ownerUserId + ticketId). قراءة.</summary>
+    Task<string> GetTicketAsync(
+        string companyId,
+        string ownerUserId,
+        string ticketId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// إنشاء تذكرة جديدة (POST /tickets/create + companyId + ownerUserId + محتوى). كتابة.
+    /// </summary>
+    /// <param name="companyId">شركة المستخدم (عزل المستأجرين).</param>
+    /// <param name="ownerUserId">المستخدم المالك (الوكيل).</param>
+    /// <param name="subject">عنوان التذكرة.</param>
+    /// <param name="body">نصّ التذكرة.</param>
+    /// <param name="category">تصنيف اختياري.</param>
+    /// <param name="priority">أولوية اختيارية.</param>
+    /// <param name="subscriberRef">مرجع مشترك اختياري.</param>
+    /// <param name="createdBy">من أنشأ التذكرة (من هوية المستخدم خادمياً — للتدقيق).</param>
+    Task<string> CreateTicketAsync(
+        string companyId,
+        string ownerUserId,
+        string subject,
+        string body,
+        string? category = null,
+        string? priority = null,
+        string? subscriberRef = null,
+        string? createdBy = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// إضافة ردّ على تذكرة (POST /tickets/reply + companyId + ownerUserId + ticketId + body). كتابة.
+    /// </summary>
+    /// <param name="companyId">شركة المستخدم (عزل المستأجرين).</param>
+    /// <param name="ownerUserId">المستخدم المالك (الوكيل).</param>
+    /// <param name="ticketId">معرّف التذكرة.</param>
+    /// <param name="body">نصّ الردّ.</param>
+    /// <param name="isInternal">هل الردّ داخلي (اختياري).</param>
+    /// <param name="author">كاتب الردّ (من هوية المستخدم خادمياً — للتدقيق).</param>
+    Task<string> ReplyTicketAsync(
+        string companyId,
+        string ownerUserId,
+        string ticketId,
+        string body,
+        bool? isInternal = null,
+        string? author = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// تحديث تذكرة (POST /tickets/update + companyId + ownerUserId + ticketId + حقول). كتابة.
+    /// </summary>
+    /// <param name="companyId">شركة المستخدم (عزل المستأجرين).</param>
+    /// <param name="ownerUserId">المستخدم المالك (الوكيل).</param>
+    /// <param name="ticketId">معرّف التذكرة.</param>
+    /// <param name="status">الحالة الجديدة (اختياري).</param>
+    /// <param name="priority">الأولوية الجديدة (اختياري).</param>
+    /// <param name="category">التصنيف الجديد (اختياري).</param>
+    Task<string> UpdateTicketAsync(
+        string companyId,
+        string ownerUserId,
+        string ticketId,
+        string? status = null,
+        string? priority = null,
+        string? category = null,
+        CancellationToken cancellationToken = default);
 }
