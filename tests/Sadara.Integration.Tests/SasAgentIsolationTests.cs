@@ -97,7 +97,7 @@ public class SasAgentIsolationTests
         private static Task<string> _Unreachable() => throw new InvalidOperationException("SasClient لا يجب أن يُستدعى في هذا الاختبار");
 
         public Task<string> GetUserDetailAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
-        public Task<string> GetUsersOverviewAsync(string s, string u, string p, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetUserOverviewAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
         public Task<string> GetUserHistoryAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
         public Task<string> GetUserExtendDataAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
         public Task<string> UserActionAsync(string s, string u, string p, string uid, string action, object? pms = null, CancellationToken ct = default) => _Unreachable();

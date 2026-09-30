@@ -367,9 +367,9 @@ class SasAgentApiService {
     return _asMap(res);
   }
 
-  /// نظرة عامة على المشتركين (رصيد/باقة/مرور متبقٍّ…) — تُعاد خام.
-  Future<Map<String, dynamic>> getUserOverview(String id) async {
-    final res = await _api.get('$_base/accounts/$id/users/overview');
+  /// نظرة عامة على مشترك محدّد (رصيد/باقة/مرور متبقٍّ…) — تُعاد خام.
+  Future<Map<String, dynamic>> getUserOverview(String id, String uid) async {
+    final res = await _api.get('$_base/accounts/$id/users/$uid/overview');
     return _asMap(res);
   }
 

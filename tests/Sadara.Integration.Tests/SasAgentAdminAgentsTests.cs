@@ -95,7 +95,7 @@ public class SasAgentAdminAgentsTests
         public Task<string> GetRenewalCandidatesAsync(string s, string u, string p, int? d = null, string? q = null, CancellationToken ct = default) => Nope();
         public Task<string> BulkRenewAsync(string s, string u, string p, IEnumerable<string> ids, int m, string? pid = null, bool dry = false, CancellationToken ct = default) => Nope();
         public Task<string> GetUserDetailAsync(string s, string u, string p, string uid, CancellationToken ct = default) => Nope();
-        public Task<string> GetUsersOverviewAsync(string s, string u, string p, CancellationToken ct = default) => Nope();
+        public Task<string> GetUserOverviewAsync(string s, string u, string p, string uid, CancellationToken ct = default) => Nope();
         public Task<string> GetUserHistoryAsync(string s, string u, string p, string uid, CancellationToken ct = default) => Nope();
         public Task<string> GetUserExtendDataAsync(string s, string u, string p, string uid, CancellationToken ct = default) => Nope();
         public Task<string> UserActionAsync(string s, string u, string p, string uid, string action, object? pms = null, CancellationToken ct = default) => Nope();

@@ -621,12 +621,12 @@ public class SasAgentController : ControllerBase
         => PassThroughAsync(id, (acc, pwd, token) =>
             _sasClient.GetUserDetailAsync(acc.ServerUrl, acc.Username, pwd, uid, token), null, ct);
 
-    /// <summary>نظرة عامة على المشتركين من خدمة الساس — قراءة (view).</summary>
-    [HttpGet("accounts/{id}/users/overview")]
+    /// <summary>نظرة عامة على مشترك محدّد من خدمة الساس — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/users/{uid}/overview")]
     [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
-    public Task<IActionResult> GetUsersOverview(Guid id, CancellationToken ct)
+    public Task<IActionResult> GetUserOverview(Guid id, string uid, CancellationToken ct)
         => PassThroughAsync(id, (acc, pwd, token) =>
-            _sasClient.GetUsersOverviewAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
+            _sasClient.GetUserOverviewAsync(acc.ServerUrl, acc.Username, pwd, uid, token), null, ct);
 
     /// <summary>سجل/تاريخ مشترك محدّد من خدمة الساس — قراءة (view).</summary>
     [HttpGet("accounts/{id}/users/{uid}/history")]

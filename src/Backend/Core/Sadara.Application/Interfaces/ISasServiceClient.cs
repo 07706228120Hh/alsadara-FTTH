@@ -112,10 +112,10 @@ public interface ISasServiceClient
         string serverUrl, string username, string password,
         string uid, CancellationToken cancellationToken = default);
 
-    /// <summary>نظرة عامة على المشتركين (POST /users/overview). قراءة.</summary>
-    Task<string> GetUsersOverviewAsync(
+    /// <summary>نظرة عامة على مشترك محدّد (POST /users/overview + uid). قراءة.</summary>
+    Task<string> GetUserOverviewAsync(
         string serverUrl, string username, string password,
-        CancellationToken cancellationToken = default);
+        string uid, CancellationToken cancellationToken = default);
 
     /// <summary>سجل/تاريخ مشترك محدّد (POST /users/history + uid). قراءة.</summary>
     Task<string> GetUserHistoryAsync(

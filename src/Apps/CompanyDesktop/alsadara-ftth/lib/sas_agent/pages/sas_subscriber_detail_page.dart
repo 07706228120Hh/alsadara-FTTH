@@ -81,7 +81,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       final detail = await _api.getUserDetail(_aid, _uid);
       Map<String, dynamic>? overview;
       try {
-        overview = await _api.getUserOverview(_aid);
+        overview = await _api.getUserOverview(_aid, _uid);
       } catch (_) {
         // النظرة العامة اختيارية — لا نُفشل الشاشة لو تعذّرت.
       }

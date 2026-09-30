@@ -186,11 +186,11 @@ public class SasServiceClient : ISasServiceClient
         => PostBodyForRawAsync("/users/detail",
             new { serverUrl, username, password, uid }, cancellationToken);
 
-    public Task<string> GetUsersOverviewAsync(
+    public Task<string> GetUserOverviewAsync(
         string serverUrl, string username, string password,
-        CancellationToken cancellationToken = default)
+        string uid, CancellationToken cancellationToken = default)
         => PostBodyForRawAsync("/users/overview",
-            new { serverUrl, username, password }, cancellationToken);
+            new { serverUrl, username, password, uid }, cancellationToken);
 
     public Task<string> GetUserHistoryAsync(
         string serverUrl, string username, string password,
