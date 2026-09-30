@@ -91,6 +91,52 @@ public class SasAgentIsolationTests
             => throw new InvalidOperationException("SasClient لا يجب أن يُستدعى في هذا الاختبار");
         public Task<string> BulkRenewAsync(string s, string u, string p, IEnumerable<string> ids, int m, string? pid = null, bool dry = false, CancellationToken ct = default)
             => throw new InvalidOperationException("SasClient لا يجب أن يُستدعى في هذا الاختبار");
+
+        // ── أعضاء الواجهة الموسّعة ─────────────────────────────────────────────
+        // الاختبارات القديمة لا تبلغ هذه النقاط؛ الإضافة لإرضاء المُجمِّع فقط.
+        private static Task<string> _Unreachable() => throw new InvalidOperationException("SasClient لا يجب أن يُستدعى في هذا الاختبار");
+
+        public Task<string> GetUserDetailAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetUsersOverviewAsync(string s, string u, string p, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetUserHistoryAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetUserExtendDataAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
+        public Task<string> UserActionAsync(string s, string u, string p, string uid, string action, object? pms = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> UsersBulkActionAsync(string s, string u, string p, IEnumerable<string> uids, string action, object? pms = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> CreateUserAsync(string s, string u, string p, object payload, CancellationToken ct = default) => _Unreachable();
+        public Task<string> UpdateUserAsync(string s, string u, string p, string uid, object payload, CancellationToken ct = default) => _Unreachable();
+        public Task<string> DeleteUserAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetUserRefundDataAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
+        public Task<string> RefundUserAsync(string s, string u, string p, string uid, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetOnlineAsync(string s, string u, string p, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetManagersAsync(string s, string u, string p, CancellationToken ct = default) => _Unreachable();
+        public Task<string> ManagerActionAsync(string s, string u, string p, string mid, string action, object? pms = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> DeleteManagerAsync(string s, string u, string p, string mid, CancellationToken ct = default) => _Unreachable();
+        public Task<string> SasGetAsync(string s, string u, string p, string path, CancellationToken ct = default) => _Unreachable();
+        public Task<string> SasPostAsync(string s, string u, string p, string path, object? payload = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> TestAccountAsync(string s, string u, string p, CancellationToken ct = default) => _Unreachable();
+        public Task<string> SyncAccountAsync(string s, string u, string p, string accountId, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, bool? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetReconciliationAsync(string accountId, string s, string u, string p, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetTicketsStatsAsync(string companyId, string ownerUserId, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetTicketsListAsync(string companyId, string ownerUserId, string? status = null, string? category = null, string? search = null, int? page = null, int? count = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetTicketAsync(string companyId, string ownerUserId, string ticketId, CancellationToken ct = default) => _Unreachable();
+        public Task<string> CreateTicketAsync(string companyId, string ownerUserId, string subject, string body, string? category = null, string? priority = null, string? subscriberRef = null, string? createdBy = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> ReplyTicketAsync(string companyId, string ownerUserId, string ticketId, string body, bool? isInternal = null, string? author = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> UpdateTicketAsync(string companyId, string ownerUserId, string ticketId, string? status = null, string? priority = null, string? category = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetPremisesListAsync(string companyId, string ownerUserId, string? search = null, string? ownership = null, string? ptype = null, int? page = null, int? count = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetPremisesAsync(string companyId, string ownerUserId, string premisesId, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetPremisesSubscribersAsync(string companyId, string ownerUserId, string premisesId, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetPremisesBySubscriberAsync(string companyId, string ownerUserId, string subscriberRef, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetPremisesLinkCandidatesAsync(string companyId, string ownerUserId, string? search = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> GetPremisesPhotoAsync(string companyId, string ownerUserId, string premisesId, CancellationToken ct = default) => _Unreachable();
+        public Task<string> CreatePremisesAsync(string companyId, string ownerUserId, string governorate, string area, string landmark, double? lat = null, double? lon = null, string? phone = null, string? ownership = null, string? ptype = null, string? createdBy = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> UpdatePremisesAsync(string companyId, string ownerUserId, string premisesId, string? governorate = null, string? area = null, string? landmark = null, double? lat = null, double? lon = null, string? phone = null, string? ownership = null, string? ptype = null, CancellationToken ct = default) => _Unreachable();
+        public Task<string> DeletePremisesAsync(string companyId, string ownerUserId, string premisesId, CancellationToken ct = default) => _Unreachable();
+        public Task<string> UploadPremisesPhotoAsync(string companyId, string ownerUserId, string premisesId, string imageBase64, string ext, CancellationToken ct = default) => _Unreachable();
+        public Task<string> LinkPremisesSubscriberAsync(string companyId, string ownerUserId, string premisesId, string subscriberRef, CancellationToken ct = default) => _Unreachable();
+        public Task<string> UnlinkPremisesSubscriberAsync(string companyId, string ownerUserId, string premisesId, string subscriberRef, CancellationToken ct = default) => _Unreachable();
     }
 
     // ── مساعدات البناء ─────────────────────────────────────────────────────────

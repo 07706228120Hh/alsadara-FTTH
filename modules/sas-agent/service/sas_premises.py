@@ -143,13 +143,16 @@ def _db() -> Iterator[sqlite3.Connection]:
 import secrets as _secrets_mod
 
 async def _verify_secret(request: Request) -> None:
-    if not _INTERNAL_SECRET:
+    # يُقرأ السرّ عند كل طلب (lazy) لا مرّة واحدة عند الاستيراد — لتفادي عدم الاتساق
+    # مع app.py إن تغيّر المتغيّر (PRODUCTION_BUG_1).
+    secret = os.environ.get("SADARA_SAS_INTERNAL_SECRET", "") or _INTERNAL_SECRET
+    if not secret:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="الخدمة غير مُهيّأة بأمان — تواصل مع المشرف",
         )
     incoming = request.headers.get("X-Internal-Secret", "")
-    if not _secrets_mod.compare_digest(incoming, _INTERNAL_SECRET):
+    if not _secrets_mod.compare_digest(incoming, secret):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="غير مصرّح")
 
 
@@ -386,9 +389,9 @@ class PremListRequest(_PremBase):
 
 class PremCreateRequest(_PremBase):
     """POST /premises/create"""
-    governorate:     str            = Field(default="")
+    governorate:     str            = Field(..., min_length=1)  # مطلوب (PRODUCTION_BUG_2)
     gov_code:        Optional[int]  = None
-    area:            str            = Field(default="")
+    area:            str            = Field(..., min_length=1)  # مطلوب (PRODUCTION_BUG_2)
     landmark:        str            = Field(default="")
     lat:             Optional[float]= None
     lon:             Optional[float]= None
@@ -423,7 +426,8 @@ class PremDeleteRequest(_PremBase):
 class PremPhotoUploadRequest(_PremBase):
     """POST /premises/photo/upload — صورة مُشفَّرة Base64"""
     premises_id: int
-    image_b64:   str  = Field(..., description="بيانات الصورة Base64")
+    image_b64:   str  = Field(..., min_length=1, max_length=8_000_000,
+                              description="بيانات الصورة Base64 (حدّ ~6MB قبل الفكّ — PRODUCTION_BUG_3)")
     ext:         str  = Field(default="jpg", description="امتداد الملف (jpg|png|webp)")
 
 
