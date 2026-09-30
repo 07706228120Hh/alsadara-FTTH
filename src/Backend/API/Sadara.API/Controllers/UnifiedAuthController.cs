@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.Infrastructure.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -26,15 +27,18 @@ namespace Sadara.API.Controllers;
 public class UnifiedAuthController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly SadaraDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly ILogger<UnifiedAuthController> _logger;
 
     public UnifiedAuthController(
         IUnitOfWork unitOfWork,
+        SadaraDbContext context,
         IConfiguration configuration,
         ILogger<UnifiedAuthController> logger)
     {
         _unitOfWork = unitOfWork;
+        _context = context;
         _configuration = configuration;
         _logger = logger;
     }
@@ -230,6 +234,10 @@ public class UnifiedAuthController : ControllerBase
 
             _logger.LogInformation("تسجيل دخول ناجح: {UserId} ({Role})", user.Id, user.Role);
 
+            // جلب حسابات الساس (SAS) الخاصة بالموظف — بلا أي سرّ (المرحلة 4)
+            // تُعرَض للواجهة لتقرير إظهار/توجيه تبويب «وكيل SAS».
+            var sasAccounts = await GetSasAccountsForUserAsync(user);
+
             return Ok(new UnifiedApiResponse<UnifiedLoginResponse>
             {
                 Success = true,
@@ -240,7 +248,8 @@ public class UnifiedAuthController : ControllerBase
                     Company = company != null ? MapToCompanyResponse(company) : null,
                     Token = token,
                     RefreshToken = refreshToken,
-                    ExpiresAt = DateTime.UtcNow.AddHours(24)
+                    ExpiresAt = DateTime.UtcNow.AddHours(24),
+                    SasAccounts = sasAccounts
                 }
             });
         }
@@ -1126,6 +1135,37 @@ public class UnifiedAuthController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// جلب حسابات الساس (SAS) الخاصّة بالموظّف — بلا أي سرّ.
+    /// معزول بالمستأجر عبر CompanyId ودفاع بالعمق عبر OwnerUserId.
+    /// يُعيد قائمة فارغة لمن لا ينتمي لشركة (مثل SuperAdmin) — الميزة لموظّفي الشركات.
+    /// ملاحظة: مرشّح !IsDeleted مطبّق عالمياً على SasAccount في DbContext؛ ونؤكّده صراحةً هنا كدفاع بالعمق.
+    /// </summary>
+    private async Task<List<SasAccountSummaryResponse>> GetSasAccountsForUserAsync(User user)
+    {
+        // من لا شركة له (SuperAdmin/مواطن) لا حسابات ساس له
+        if (user.CompanyId == null)
+            return new List<SasAccountSummaryResponse>();
+
+        var companyId = user.CompanyId.Value;
+
+        return await _context.SasAccounts
+            .AsNoTracking()
+            .Where(x => x.CompanyId == companyId
+                        && x.OwnerUserId == user.Id
+                        && !x.IsDeleted)
+            .OrderBy(x => x.Label)
+            .Select(x => new SasAccountSummaryResponse
+            {
+                Id = x.Id,
+                Label = x.Label,
+                AccountType = x.AccountType.ToString(),
+                AccountTypeId = (int)x.AccountType,
+                IsActive = x.IsActive
+            })
+            .ToListAsync();
+    }
+
     private static UnifiedUserResponse MapToUserResponse(User user)
     {
         return new UnifiedUserResponse
@@ -1204,6 +1244,35 @@ public class UnifiedLoginResponse
     public string Token { get; set; } = string.Empty;
     public string RefreshToken { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
+
+    /// <summary>
+    /// حسابات الساس (SAS) الخاصّة بالموظّف — بلا أي سرّ.
+    /// فارغة لمن لا ينتمي لشركة (SuperAdmin/مواطن).
+    /// تستخدمها الواجهة لإظهار/توجيه تبويب «وكيل SAS».
+    /// </summary>
+    public List<SasAccountSummaryResponse> SasAccounts { get; set; } = new();
+}
+
+/// <summary>
+/// ملخّص حساب ساس (SAS) للعرض في الواجهة — بلا أي سرّ.
+/// ⚠️ لا يحتوي إطلاقاً على PasswordEncrypted ولا Username ولا ServerUrl.
+/// </summary>
+public class SasAccountSummaryResponse
+{
+    /// <summary>معرّف الحساب</summary>
+    public Guid Id { get; set; }
+
+    /// <summary>تسمية الحساب الوصفية</summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>نوع الحساب كنص (SasManager / SasUser)</summary>
+    public string AccountType { get; set; } = string.Empty;
+
+    /// <summary>نوع الحساب كرقم enum (0 = SasManager, 1 = SasUser)</summary>
+    public int AccountTypeId { get; set; }
+
+    /// <summary>هل الحساب مفعّل؟</summary>
+    public bool IsActive { get; set; }
 }
 
 public class UnifiedUserResponse
