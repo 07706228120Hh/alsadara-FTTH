@@ -45,6 +45,14 @@ class _SasAgentShellState extends State<_SasAgentShell>
   /// الحساب المحدد الذي تعمل عليه بقية التبويبات.
   SasAccount? _selected;
 
+  /// فهرس تبويب «مشتركون» — للانتقال إليه من بطاقات «قرب الانتهاء» في اللوحة.
+  static const int _subscribersTabIndex = 2;
+
+  /// فلتر انتهاء مطلوب من اللوحة (overdue/today/soon3/soon7)؛ يُمرَّر لتبويب
+  /// «مشتركون» ثم يُصفَّر. يُغيَّر مفتاح الودجة عند كل طلب لإعادة تطبيقه بثبات.
+  String? _pendingExpiring;
+  int _expiryNavToken = 0;
+
   static const _tabs = <_TabDef>[
     _TabDef('الحسابات', Icons.link_rounded),
     _TabDef('لوحة', Icons.dashboard_rounded),
@@ -69,7 +77,19 @@ class _SasAgentShellState extends State<_SasAgentShell>
 
   void _onSelect(SasAccount acc) {
     if (_selected?.id == acc.id) return;
-    setState(() => _selected = acc);
+    setState(() {
+      _selected = acc;
+      _pendingExpiring = null; // فلتر اللوحة خاص بالحساب السابق.
+    });
+  }
+
+  /// ينتقل لتبويب «مشتركون» مفلترًا على نافذة الانتهاء المطلوبة من اللوحة.
+  void _openSubscribersExpiring(String expiring) {
+    setState(() {
+      _pendingExpiring = expiring;
+      _expiryNavToken++;
+    });
+    _tab.animateTo(_subscribersTabIndex);
   }
 
   @override
@@ -148,13 +168,21 @@ class _SasAgentShellState extends State<_SasAgentShell>
             _framed(SasAccountsPage(selected: _selected, onSelect: _onSelect)),
             // 2) لوحة
             _framed(_needsAccount(
-              (acc) =>
-                  SasDashboardTab(account: acc, key: ValueKey('dash-${acc.id}')),
+              (acc) => SasDashboardTab(
+                account: acc,
+                key: ValueKey('dash-${acc.id}'),
+                onOpenExpiring: _openSubscribersExpiring,
+              ),
             )),
             // 3) مشتركون
             _framed(_needsAccount(
               (acc) => SasSubscribersTab(
-                  account: acc, key: ValueKey('subs-${acc.id}')),
+                account: acc,
+                initialExpiring: _pendingExpiring,
+                // مفتاح يتضمّن رمز الطلب: يعيد بناء التبويب عند كل انتقال من
+                // اللوحة ليطبّق الفلتر الجديد بثبات حتى لو لم يتغيّر الحساب.
+                key: ValueKey('subs-${acc.id}-$_expiryNavToken'),
+              ),
             )),
             // 4) نظام الساس (باقات + مالية + صحّة)
             _framed(_needsAccount(

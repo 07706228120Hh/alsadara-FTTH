@@ -21,7 +21,16 @@ enum _Source { live, local }
 /// (من قاعدة الصدارة بعد المزامنة) مع شرائح عدّادات انتهاء قابلة للنقر للفلترة.
 class SasSubscribersTab extends StatefulWidget {
   final SasAccount account;
-  const SasSubscribersTab({super.key, required this.account});
+
+  /// فلتر انتهاء ابتدائي (overdue/today/soon3/soon7) — يُمرَّر عند القدوم من
+  /// بطاقات «قرب الانتهاء» في تبويب «لوحة». يفتح المصدر المحلي مباشرةً مفلترًا.
+  final String? initialExpiring;
+
+  const SasSubscribersTab({
+    super.key,
+    required this.account,
+    this.initialExpiring,
+  });
 
   @override
   State<SasSubscribersTab> createState() => _SasSubscribersTabState();
@@ -48,6 +57,11 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
   @override
   void initState() {
     super.initState();
+    // إن قدِمنا من بطاقة «قرب الانتهاء» في اللوحة: افتح المصدر المحلي مفلترًا.
+    if (widget.initialExpiring != null && widget.initialExpiring!.isNotEmpty) {
+      _source = _Source.local;
+      _expiring = widget.initialExpiring;
+    }
     _load();
   }
 
@@ -56,8 +70,18 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.account.id != widget.account.id) {
       _searchCtrl.clear();
-      _expiring = null;
-      _source = _Source.live;
+      _expiring = widget.initialExpiring;
+      _source = (widget.initialExpiring != null &&
+              widget.initialExpiring!.isNotEmpty)
+          ? _Source.local
+          : _Source.live;
+      _load();
+    } else if (oldWidget.initialExpiring != widget.initialExpiring &&
+        widget.initialExpiring != null &&
+        widget.initialExpiring!.isNotEmpty) {
+      // تغيّر الفلتر المطلوب من اللوحة لنفس الحساب — طبّقه فورًا.
+      _expiring = widget.initialExpiring;
+      _source = _Source.local;
       _load();
     }
   }
