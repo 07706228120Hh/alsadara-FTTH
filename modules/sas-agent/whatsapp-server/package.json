@@ -1,0 +1,19 @@
+{
+  "name": "aluklaa-whatsapp-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "خادم واتساب محلي لتطبيق الوكلاء (whatsapp-web.js) — إرسال جماعي آلي مجاني بعد مسح QR.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "qrcode": "^1.5.4",
+    "whatsapp-web.js": "^1.26.0"
+  }
+}

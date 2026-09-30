@@ -12,6 +12,7 @@ import 'pages/sas_report_tab.dart';
 import 'pages/sas_subscribers_tab.dart';
 import 'pages/sas_system_tab.dart';
 import 'pages/sas_tickets_tab.dart';
+import 'whatsapp/whatsapp.dart';
 import 'widgets/sas_state_views.dart';
 
 /// صفحة «وكيل الساس» — شل بتبويبات يعمل على بوّابة الصدارة `/api/sas-agent/*`.
@@ -156,6 +157,16 @@ class _SasAgentShellState extends State<_SasAgentShell>
               ),
             ],
           ),
+          actions: [
+            IconButton(
+              tooltip: 'إعدادات وقوالب الواتساب',
+              icon: const Icon(Icons.chat_rounded, color: Colors.white),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const WaSettingsScreen()),
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(tabBarH),
             child: _TabBarSurface(controller: _tab, tabs: _tabs),

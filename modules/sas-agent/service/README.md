@@ -223,6 +223,85 @@ run.bat              # Windows
 
 ---
 
+## نقاط العقارات المحلية (premises) — تخزين SQLite بلا نداء SAS
+
+جميع النقاط:
+
+- POST فقط (جسم JSON).
+- تتطلّب `X-Internal-Secret` (fail-closed مع بقية الخدمة).
+- لا اعتماد SAS — كل العمليات على SQLite المحلية فقط.
+- العزل الصارم: كل استعلام يحمل `WHERE company_id = ? AND owner_user_id = ?`.
+- تخصيص NPN ذرّي: `threading.Lock + commit` قبل تحرير القفل.
+- حمولة QR: `SADARA|NPN:…|PIN:…|GEO:…`
+
+### جداول SQLite — وحدة العقارات (premises)
+
+#### premises
+
+| العمود | النوع | وصف |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | معرّف العقار |
+| `company_id` | TEXT NOT NULL | معرّف الشركة (عزل) |
+| `owner_user_id` | TEXT NOT NULL | معرّف الوكيل المالك (عزل) |
+| `npn` | TEXT | رقم العقار الوطني (11 خانة) |
+| `npn_display` | TEXT | صيغة العرض GG-NNNN-NNNN-C |
+| `iqpin` | TEXT | رمز الموقع (10 رموز) |
+| `iqpin_display` | TEXT | صيغة العرض 3-3-4 |
+| `gov_code` | INTEGER | كود المحافظة |
+| `qr_payload` | TEXT | `SADARA\|NPN:…\|PIN:…\|GEO:…` |
+| `lat` / `lon` | REAL | إحداثيات |
+| `governorate` | TEXT | المحافظة |
+| `area` | TEXT | الحي/المنطقة |
+| `landmark` | TEXT | أقرب نقطة دالة |
+| `phone` / `phone_norm` | TEXT | الهاتف الخام والمطبَّع |
+| `ownership` | TEXT | `owned\|rent` |
+| `ptype` | TEXT | `residential\|commercial` |
+| `photo_path` | TEXT | مسار نسبي للصورة |
+| `created_at` / `updated_at` | TEXT | ISO UTC |
+
+#### premises_subscribers
+
+| العمود | النوع | وصف |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | — |
+| `premises_id` | INTEGER FK → premises.id | العقار |
+| `subscriber_ref` | TEXT UNIQUE | مرجع الاشتراك (username) — اشتراك لعقار واحد |
+| `linked_at` | TEXT | ISO UTC |
+
+#### npn_counter
+
+| العمود | النوع | وصف |
+|---|---|---|
+| `gov_code` | INTEGER PK | كود المحافظة |
+| `last_seq` | INTEGER | آخر تسلسل مُخصَّص (يُزاد ذرّياً) |
+
+### نقاط النهاية — وحدة العقارات
+
+| المسار | جسم الطلب | الرد |
+|---|---|---|
+| `POST /premises/list` | `{companyId, ownerUserId, search?, ownership?, ptype?, page?, count?}` | `{premises:[…], total, page, count}` |
+| `POST /premises/create` | `{companyId, ownerUserId, governorate, area, landmark, lat?, lon?, phone?, ownership?, ptype?}` | العقار المُنشأ |
+| `POST /premises/get` | `{companyId, ownerUserId, premises_id}` | العقار + subscribers |
+| `POST /premises/update` | `{companyId, ownerUserId, premises_id, governorate?, area?, …}` | العقار المحدَّث |
+| `POST /premises/delete` | `{companyId, ownerUserId, premises_id}` | `{ok, unlinked}` |
+| `POST /premises/photo/upload` | `{companyId, ownerUserId, premises_id, image_b64, ext}` | `{ok, has_photo}` |
+| `POST /premises/photo/get` | `{companyId, ownerUserId, premises_id}` | FileResponse (الصورة مباشرةً) |
+| `POST /premises/link` | `{companyId, ownerUserId, premises_id, subscriber_ref}` | `{ok, subscriber_count}` |
+| `POST /premises/unlink` | `{companyId, ownerUserId, premises_id, subscriber_ref}` | `{ok, subscriber_count}` |
+| `POST /premises/subscribers` | `{companyId, ownerUserId, premises_id}` | `{subscribers:[…], count}` |
+| `POST /premises/by-subscriber` | `{companyId, ownerUserId, subscriber_ref}` | `{premises:{…}\|null}` |
+| `POST /premises/link-candidates` | `{companyId, ownerUserId, search?, limit?}` | `{candidates:[…], count}` |
+
+### ملاحظات تصميمية
+
+- الصورة ترفع Base64 (لا multipart/form-data) — متوافق مع نمط JSON الموحّد في الخدمة.
+- `/premises/photo/get` يعيد `FileResponse` مباشرةً (محتوى الصورة) — يمكن استبداله بمسار نسبي حسب حاجة العميل.
+- عند تغيّر `lat`/`lon` في update: IQ-Pin وQR يُعادان حسابهما؛ NPN يبقى ثابتاً.
+- عند ربط اشتراك (`link`) مرتبط بعقار آخر: يُنقَل تلقائياً (UNIQUE على subscriber_ref).
+- `link-candidates` يبحث في `local_subscribers` (مزامَنة مسبقاً) — لا نداء SAS.
+
+---
+
 ## _redact — حجب الأسرار
 
 كل استجابة SAS تمرّ عبر `_redact` قبل إعادتها. المفاتيح المطابقة للنمط التالي تُستبدل بـ `"***"`:

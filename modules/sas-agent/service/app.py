@@ -39,6 +39,7 @@ if _BACKEND_APP not in sys.path:
 
 from integrations.sas_client import SASClient, SASError        # noqa: E402
 from integrations.sas_user_client import SASUserClient          # noqa: E402
+from premises import router as _premises_router, PREMISES_DDL  # noqa: E402
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, status  # noqa: E402
 from fastapi.responses import JSONResponse                                    # noqa: E402
@@ -89,6 +90,8 @@ def _init_db() -> None:
     """ينشئ الجداول إن لم تكن موجودة (idempotent)."""
     Path(_DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     with _db() as conn:
+        # جداول وحدة العقارات (premises + premises_subscribers + npn_counter)
+        conn.executescript(PREMISES_DDL)
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS local_subscribers (
             account_id   TEXT    NOT NULL,
@@ -557,6 +560,9 @@ app = FastAPI(
 )
 
 _DEP = [Depends(verify_internal_secret)]
+
+
+app.include_router(_premises_router)
 
 
 @app.on_event("startup")

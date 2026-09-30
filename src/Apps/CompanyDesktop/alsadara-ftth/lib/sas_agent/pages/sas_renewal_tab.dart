@@ -7,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
 import '../models/sas_renewal.dart';
 import '../services/sas_agent_api_service.dart';
+import '../whatsapp/whatsapp.dart';
 import '../widgets/sas_state_views.dart';
 
 /// تبويب «تجديد» — قائمة المشتركين قرب الانتهاء مع تحديد متعدّد وتجديد جماعي.
@@ -103,6 +104,81 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
       content: Text(msg, style: GoogleFonts.cairo()),
       backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
     ));
+  }
+
+  // ── واتساب: تذكير فردي وجماعي للمشتركين قرب الانتهاء ──
+
+  /// يبني مستلِم واتساب من مرشّح تجديد (يملأ متغيّرات القالب من بياناته).
+  WaRecipient _recipientOf(SasRenewalCandidate c) => WaRecipient(
+        name: c.displayName,
+        rawPhone: c.phone ?? '',
+        vars: {
+          'username': c.username,
+          if (c.profile != null) 'profile': c.profile!,
+          if (c.expiry != null) 'expiration': (c.expiry ?? '').split(' ').first,
+          'days': '$_days',
+        },
+      );
+
+  /// إرسال تذكير واتساب فردي: يبني الرسالة من قالب «تذكير» ويفتحها/يرسلها حسب النمط.
+  Future<void> _sendWhatsAppOne(SasRenewalCandidate c) async {
+    if (!c.hasPhone) {
+      _snack('لا يوجد رقم هاتف لهذا المشترك', error: true);
+      return;
+    }
+    final recipient = _recipientOf(c);
+    if (!recipient.sendable) {
+      _snack('رقم الهاتف غير صالح لواتساب (${c.phone})', error: true);
+      return;
+    }
+
+    final settings = await WaSettingsStore().load();
+    // نمط الخادم: شغّل الخادم المدمج تلقائياً قبل الإرسال.
+    if (settings.mode == WaMode.server) {
+      await WaServerLauncher.instance.ensureRunning(baseUrl: settings.serverUrl);
+    }
+    final tpl = await LocalTemplateStore().byId(WaTemplateIds.reminder);
+    final text = tpl?.render(recipient.templateVars) ??
+        renewalReminderMessage(
+          name: c.displayName,
+          username: c.username,
+          expiration: (c.expiry ?? '').split(' ').first,
+        );
+
+    final sender = settings.buildSender();
+    try {
+      final res = await sender.sendOne(
+        WaOutgoing(recipient: recipient, text: text),
+      );
+      if (!mounted) return;
+      if (res.ok) {
+        _snack(res.opened
+            ? 'فُتحت محادثة واتساب — اضغط «إرسال»'
+            : 'أُرسلت رسالة الواتساب بنجاح');
+      } else {
+        _snack(res.error ?? 'تعذّر إرسال الواتساب', error: true);
+      }
+    } finally {
+      sender.dispose();
+    }
+  }
+
+  /// إرسال واتساب جماعي للمحدَّدين عبر ورقة `wa_bulk_sheet`.
+  Future<void> _sendWhatsAppBulk() async {
+    if (_selected.isEmpty) {
+      _snack('اختر مشتركاً واحداً على الأقل', error: true);
+      return;
+    }
+    final recipients = _candidates
+        .where((c) => _selected.contains(c.id))
+        .map(_recipientOf)
+        .toList();
+    final withPhone = recipients.where((r) => r.rawPhone.trim().isNotEmpty).length;
+    if (withPhone == 0) {
+      _snack('لا يوجد أرقام هواتف للمشتركين المحدَّدين', error: true);
+      return;
+    }
+    await showWaBulkSheet(context, recipients);
   }
 
   /// الخطوة 1: معاينة (dryRun=true) ثم عرض حوار التأكيد؛ عند التأكيد → تنفيذ.
@@ -448,7 +524,44 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
                 ],
               ),
             ),
+            _whatsAppButton(c),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// زر واتساب فردي لكل مشترك — يرسل تذكير التجديد (يُعطَّل إن لا رقم هاتف).
+  Widget _whatsAppButton(SasRenewalCandidate c) {
+    final enabled = c.hasPhone;
+    const wa = Color(0xFF25D366);
+    return Tooltip(
+      message: enabled ? 'تذكير عبر واتساب' : 'لا يوجد رقم هاتف',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? () => _sendWhatsAppOne(c) : null,
+          borderRadius: BorderRadius.circular(10.r),
+          child: Container(
+            width: 38.w,
+            height: 38.w,
+            decoration: BoxDecoration(
+              color: enabled
+                  ? wa.withValues(alpha: 0.12)
+                  : Colors.grey.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10.r),
+              border: Border.all(
+                color: enabled
+                    ? wa.withValues(alpha: 0.35)
+                    : Colors.grey.withValues(alpha: 0.20),
+              ),
+            ),
+            child: Icon(
+              Icons.chat_rounded,
+              size: 18.sp,
+              color: enabled ? wa : Colors.grey.withValues(alpha: 0.55),
+            ),
+          ),
         ),
       ),
     );
@@ -492,6 +605,22 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
                     fontWeight: FontWeight.w800,
                     color: AppTheme.primaryColor),
               ),
+            ),
+            SizedBox(width: 10.w),
+            // إرسال تذكير واتساب جماعي للمحدَّدين.
+            OutlinedButton.icon(
+              onPressed:
+                  (_busy || _selected.isEmpty) ? null : _sendWhatsAppBulk,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF25D366),
+                side: BorderSide(
+                    color: const Color(0xFF25D366).withValues(alpha: 0.45)),
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+              ),
+              icon: Icon(Icons.chat_rounded, size: 18.sp),
+              label: Text('واتساب',
+                  style: GoogleFonts.cairo(
+                      fontWeight: FontWeight.w800, fontSize: 12.sp)),
             ),
             SizedBox(width: 10.w),
             FilledButton.icon(
