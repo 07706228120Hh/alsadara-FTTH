@@ -9,6 +9,8 @@ import '../models/sas_account.dart';
 import '../models/sas_subscriber.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_state_views.dart';
+import 'sas_subscriber_detail_page.dart';
+import 'sas_subscriber_form_page.dart';
 
 /// تبويب «مشتركون» — قائمة مشتركي الوكيل للحساب المحدد مع بحث.
 class SasSubscribersTab extends StatefulWidget {
@@ -77,53 +79,114 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
     _debounce = Timer(const Duration(milliseconds: 450), _load);
   }
 
+  /// يفتح تفاصيل مشترك؛ يعيد التحميل إن حُذف/عُدّل من الشاشة الداخلية.
+  Future<void> _openDetail(SasSubscriber s) async {
+    if (s.id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تعذّر فتح المشترك: معرّف غير متاح',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => SasSubscriberDetailPage(
+          account: widget.account,
+          userId: s.id,
+          username: s.username,
+        ),
+      ),
+    );
+    if (changed == true && mounted) _load();
+  }
+
+  /// يفتح نموذج إنشاء مشترك جديد؛ يعيد التحميل عند النجاح.
+  Future<void> _openCreate() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => SasSubscriberFormPage(account: widget.account),
+      ),
+    );
+    if (created == true && mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          margin: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 8.h),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(SasUi.radius.r),
-            boxShadow: SasUi.cardShadow(),
-          ),
-          child: TextField(
-            controller: _searchCtrl,
-            onChanged: _onSearchChanged,
-            onSubmitted: (_) => _load(),
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
-            decoration: InputDecoration(
-              hintText: 'بحث عن مشترك…',
-              hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
-              filled: true,
-              fillColor: Colors.white,
-              prefixIcon:
-                  Icon(Icons.search_rounded, color: AppTheme.primaryColor),
-              suffixIcon: _searchCtrl.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: Icon(Icons.clear_rounded, color: Colors.grey[500]),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        _load();
-                      },
+        Padding(
+          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 8.h),
+          child: Row(
+            children: [
+              Expanded(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(SasUi.radius.r),
+                    boxShadow: SasUi.cardShadow(),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: _onSearchChanged,
+                    onSubmitted: (_) => _load(),
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      hintText: 'بحث عن مشترك…',
+                      hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
+                      filled: true,
+                      fillColor: Colors.white,
+                      prefixIcon: Icon(Icons.search_rounded,
+                          color: AppTheme.primaryColor),
+                      suffixIcon: _searchCtrl.text.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: Icon(Icons.clear_rounded,
+                                  color: Colors.grey[500]),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                _load();
+                              },
+                            ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(SasUi.radius.r),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(SasUi.radius.r),
+                        borderSide: BorderSide(
+                            color: Colors.grey.withValues(alpha: 0.16)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(SasUi.radius.r),
+                        borderSide: const BorderSide(
+                            color: AppTheme.primaryColor, width: 1.6),
+                      ),
                     ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(SasUi.radius.r),
-                borderSide: BorderSide.none,
+                  ),
+                ),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(SasUi.radius.r),
-                borderSide:
-                    BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
+              SizedBox(width: 10.w),
+              SizedBox(
+                height: 50.h,
+                child: FilledButton.icon(
+                  onPressed: _openCreate,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(SasUi.radius.r)),
+                  ),
+                  icon: const Icon(Icons.person_add_rounded, size: 19),
+                  label: Text('إنشاء مشترك',
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.w800, fontSize: 13)),
+                ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(SasUi.radius.r),
-                borderSide:
-                    const BorderSide(color: AppTheme.primaryColor, width: 1.6),
-              ),
-            ),
+            ],
           ),
         ),
         Expanded(child: _body()),
@@ -153,11 +216,17 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
 
   Widget _subscriberCard(SasSubscriber s) {
     final statusColor = s.isActive ? AppTheme.successColor : AppTheme.errorColor;
-    return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: SasUi.card(),
-      child: Row(
-        children: [
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(SasUi.radius.r),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(SasUi.radius.r),
+        onTap: () => _openDetail(s),
+        child: Container(
+          padding: EdgeInsets.all(12.w),
+          decoration: SasUi.card(),
+          child: Row(
+            children: [
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -223,12 +292,14 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
               ],
             ),
           ),
-          SizedBox(width: 8.w),
-          SasStatusBadge(
-            label: s.isActive ? 'نشط' : 'موقوف',
-            color: statusColor,
+              SizedBox(width: 8.w),
+              SasStatusBadge(
+                label: s.isActive ? 'نشط' : 'موقوف',
+                color: statusColor,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

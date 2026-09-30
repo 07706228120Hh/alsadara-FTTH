@@ -25,6 +25,13 @@ class SasSubscriber {
     this.raw = const {},
   });
 
+  /// معرّف المشترك في نظام الساس (من الحقل الخام) — يُستخدم لفتح التفاصيل/الإجراءات.
+  /// يعيد نصاً فارغاً إن غاب المعرّف.
+  String get id {
+    final v = raw['id'] ?? raw['user_id'] ?? raw['userId'] ?? raw['Id'];
+    return v?.toString() ?? '';
+  }
+
   /// الاسم الكامل (قد يكون فارغاً).
   String get fullName => ('$firstName $lastName').trim();
 

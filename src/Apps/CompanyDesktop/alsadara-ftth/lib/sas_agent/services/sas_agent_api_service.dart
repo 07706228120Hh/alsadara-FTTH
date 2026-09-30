@@ -210,6 +210,171 @@ class SasAgentApiService {
     return list.map(SasRenewalResult.fromJson).toList();
   }
 
+  // ============================================================
+  //  مشترك واحد: تفاصيل · نظرة عامة · سجل · بيانات التمديد
+  //  (account-scoped قراءات تحت /accounts/{id}/users/...)
+  // ============================================================
+
+  /// تفاصيل مشترك كاملة — تُعاد خريطة الحقول (تُفكّ من غلاف `data` إن وُجد).
+  Future<Map<String, dynamic>> getUserDetail(String id, String uid) async {
+    final res = await _api.get('$_base/accounts/$id/users/$uid/detail');
+    return _asMap(res);
+  }
+
+  /// نظرة عامة على المشتركين (رصيد/باقة/مرور متبقٍّ…) — تُعاد خام.
+  Future<Map<String, dynamic>> getUserOverview(String id) async {
+    final res = await _api.get('$_base/accounts/$id/users/overview');
+    return _asMap(res);
+  }
+
+  /// سجل/تاريخ مشترك — قائمة أحداث.
+  Future<List<Map<String, dynamic>>> getUserHistory(String id, String uid) async {
+    final res = await _api.get('$_base/accounts/$id/users/$uid/history');
+    return _asMapList(res['data'] ?? res);
+  }
+
+  /// بيانات التمديد (وسائط + سعر…) — تُعاد خام؛ [profileId] اختياري (مُررّ كمسار بروكسي عند الحاجة).
+  Future<Map<String, dynamic>> getUserExtendData(String id, String uid,
+      {String? profileId}) async {
+    // البوّابة لا تستقبل profile_id على هذه النقطة؛ نُبقيه للتوافق ونستخدم البروكسي عند تمريره.
+    if (profileId != null && profileId.isNotEmpty) {
+      final res = await sasGet(id, 'allowedExtensions/$profileId');
+      return _asMap(res);
+    }
+    final res = await _api.get('$_base/accounts/$id/users/$uid/extend-data');
+    return _asMap(res);
+  }
+
+  // ============================================================
+  //  مشترك واحد: كتابات (إجراء · إنشاء · تعديل · حذف · استرداد)
+  // ============================================================
+
+  /// تنفيذ إجراء على مشترك: activate/extend/changeProfile/addTraffic/deposit/
+  /// withdraw/ping/rename — يُعاد الرد الخام. ⚠️ عملية كتابية (يؤكّدها المستدعي).
+  Future<Map<String, dynamic>> userAction(
+    String id,
+    String uid,
+    String action, {
+    Map<String, dynamic> params = const {},
+  }) async {
+    final res = await _api.post('$_base/accounts/$id/users/$uid/action', body: {
+      'action': action,
+      'params': params,
+    });
+    return _asMap(res);
+  }
+
+  /// إجراء جماعي على عدة مشتركين على الحساب نفسه.
+  Future<Map<String, dynamic>> usersBulkAction(
+    String id,
+    List<String> uids,
+    String action, {
+    Map<String, dynamic> params = const {},
+  }) async {
+    final res = await _api.post('$_base/accounts/$id/users/bulk-action', body: {
+      'uids': uids,
+      'action': action,
+      'params': params,
+    });
+    return _asMap(res);
+  }
+
+  /// إنشاء مشترك جديد — [payload] الحمولة الكاملة (بلا حقن هوية).
+  Future<Map<String, dynamic>> createUser(
+      String id, Map<String, dynamic> payload) async {
+    final res = await _api.post('$_base/accounts/$id/users/create', body: {
+      'payload': payload,
+    });
+    return _asMap(res);
+  }
+
+  /// تعديل مشترك — [payload] الحقول المُحدَّثة.
+  Future<Map<String, dynamic>> updateUser(
+      String id, String uid, Map<String, dynamic> payload) async {
+    final res = await _api.put('$_base/accounts/$id/users/$uid', body: {
+      'payload': payload,
+    });
+    return _asMap(res);
+  }
+
+  /// حذف مشترك نهائياً من نظام الساس.
+  Future<bool> deleteUser(String id, String uid) async {
+    final res = await _api.delete('$_base/accounts/$id/users/$uid');
+    return res['success'] != false; // البوّابة تعيد رد الساس الخام أو {success}
+  }
+
+  /// بيانات الاسترداد قبل التنفيذ (refund_amount/price/remaining_days) — تحضير كتابي.
+  Future<Map<String, dynamic>> getUserRefundData(String id, String uid) async {
+    final res =
+        await _api.post('$_base/accounts/$id/users/$uid/refund-data', body: {});
+    return _asMap(res);
+  }
+
+  /// تنفيذ الإلغاء والاسترداد — عملية مالية (يؤكّدها المستدعي).
+  Future<Map<String, dynamic>> refundUser(String id, String uid) async {
+    final res =
+        await _api.post('$_base/accounts/$id/users/$uid/refund', body: {});
+    return _asMap(res);
+  }
+
+  // ============================================================
+  //  المتصلون · الوكلاء/المدراء
+  // ============================================================
+
+  /// قائمة المتصلين حالياً — تُعاد خام كقائمة خرائط.
+  Future<List<Map<String, dynamic>>> getOnline(String id) async {
+    final res = await _api.get('$_base/accounts/$id/online');
+    return _asMapList(res['data'] ?? res['rows'] ?? res);
+  }
+
+  /// قائمة الوكلاء/المدراء — تُعاد خام كقائمة خرائط.
+  Future<List<Map<String, dynamic>>> getManagers(String id) async {
+    final res = await _api.get('$_base/accounts/$id/managers');
+    return _asMapList(res['data'] ?? res['rows'] ?? res);
+  }
+
+  /// تنفيذ إجراء على وكيل/مدير — عملية كتابية (يؤكّدها المستدعي).
+  Future<Map<String, dynamic>> managerAction(
+    String id,
+    String mid,
+    String action, {
+    Map<String, dynamic> params = const {},
+  }) async {
+    final res =
+        await _api.post('$_base/accounts/$id/managers/$mid/action', body: {
+      'action': action,
+      'params': params,
+    });
+    return _asMap(res);
+  }
+
+  /// حذف وكيل/مدير — عملية كتابية (يؤكّدها المستدعي).
+  Future<bool> deleteManager(String id, String mid) async {
+    final res = await _api.delete('$_base/accounts/$id/managers/$mid');
+    return res['success'] != false;
+  }
+
+  // ============================================================
+  //  البروكسي العام لـ SAS (مسارات index/* المسموحة)
+  // ============================================================
+
+  /// بروكسي GET عام لأي مسار ساس مسموح — يُعاد الرد الخام.
+  Future<dynamic> sasGet(String id, String path) async {
+    final res = await _api.get('$_base/accounts/$id/sas/get?path=$path');
+    return res;
+  }
+
+  /// بروكسي POST عام لأي مسار ساس مسموح (جلسات/فواتير/إيصالات/قيود/حصص/ترافيك) —
+  /// يُعاد الرد الخام. يُستخدم لتبويبات `index/*` القائمة على ترقيم.
+  Future<dynamic> sasPost(String id, String path,
+      {Map<String, dynamic> payload = const {}}) async {
+    final res = await _api.post('$_base/accounts/$id/sas/post', body: {
+      'path': path,
+      'payload': payload,
+    });
+    return res;
+  }
+
   /// أداة داخلية: تحويل استجابة مرنة إلى قائمة خرائط.
   List<Map<String, dynamic>> _asMapList(dynamic raw) {
     var list = raw;
@@ -224,4 +389,26 @@ class SasAgentApiService {
     }
     return const [];
   }
+
+  /// أداة داخلية: يفكّ غلاف `data` إن كان خريطة، وإلا يعيد الخريطة كما هي.
+  Map<String, dynamic> _asMap(dynamic raw) {
+    if (raw is Map) {
+      final data = raw['data'];
+      if (data is Map) return data.cast<String, dynamic>();
+      return raw.cast<String, dynamic>();
+    }
+    return <String, dynamic>{};
+  }
+}
+
+/// مساعد لاستخراج قائمة خرائط من رد ساس مرن (خارج الخدمة — للاستهلاك في الصفحات).
+List<Map<String, dynamic>> sasExtractList(dynamic raw) {
+  var list = raw;
+  if (list is Map) {
+    list = list['data'] ?? list['rows'] ?? list['items'];
+  }
+  if (list is List) {
+    return list.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+  }
+  return const [];
 }
