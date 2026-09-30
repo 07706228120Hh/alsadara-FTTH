@@ -1,6 +1,7 @@
 import '../../services/sadara_api_service.dart';
 import '../models/sas_account.dart';
 import '../models/sas_dashboard.dart';
+import '../models/sas_renewal.dart';
 import '../models/sas_subscriber.dart';
 
 /// خدمة API لوحدة «وكيل الساس» — تخاطب بوّابة الصدارة `/api/sas-agent/*`.
@@ -144,5 +145,83 @@ class SasAgentApiService {
     if (to != null && to.isNotEmpty) params.add('to=$to');
     final qs = params.isEmpty ? '' : '?${params.join('&')}';
     return await _api.get('$_base/accounts/$id/report$qs');
+  }
+
+  // ============================================================
+  //  نظام الساس: باقات · مالية · صحّة
+  // ============================================================
+
+  /// جلب باقات/بروفايلات الساس للحساب — تُعاد خاماً كقائمة خرائط.
+  ///
+  /// الاستجابة قد تكون قائمة مباشرة أو مغلّفة في data/rows/items.
+  Future<List<Map<String, dynamic>>> getPackages(String id) async {
+    final res = await _api.get('$_base/accounts/$id/packages');
+    return _asMapList(res['data'] ?? res['rows'] ?? res['items'] ?? res);
+  }
+
+  /// جلب الملخّص المالي للحساب — يُعاد خاماً للعرض.
+  Future<Map<String, dynamic>> getFinance(String id) async {
+    final res = await _api.get('$_base/accounts/$id/finance');
+    final data = res['data'];
+    if (data is Map) return data.cast<String, dynamic>();
+    return res;
+  }
+
+  /// جلب صحّة نظام الساس للحساب — يُعاد خاماً للعرض.
+  Future<Map<String, dynamic>> getHealth(String id) async {
+    final res = await _api.get('$_base/accounts/$id/health');
+    final data = res['data'];
+    if (data is Map) return data.cast<String, dynamic>();
+    return res;
+  }
+
+  // ============================================================
+  //  التجديد: مرشّحون + تجديد جماعي (معاينة/تنفيذ)
+  // ============================================================
+
+  /// جلب المشتركين قرب الانتهاء خلال [days] يوماً.
+  Future<List<SasRenewalCandidate>> getRenewalCandidates(
+    String id, {
+    int days = 7,
+  }) async {
+    final res = await _api.get('$_base/accounts/$id/renewal/candidates?days=$days');
+    final list = _asMapList(res['data'] ?? res['rows'] ?? res['items'] ?? res);
+    return list.map(SasRenewalCandidate.fromJson).toList();
+  }
+
+  /// تجديد جماعي — يجب أن يبدأ دائماً بـ [dryRun]=true للمعاينة ثم يُنفَّذ.
+  ///
+  /// [subscriberIds] معرّفات المشتركين · [months] عدد الأشهر (1..60)
+  /// · [profileId] بروفايل اختياري للترقية · [dryRun] معاينة بلا تنفيذ.
+  Future<List<SasRenewalResult>> renewalBulk(
+    String id, {
+    required List<String> subscriberIds,
+    required int months,
+    String? profileId,
+    required bool dryRun,
+  }) async {
+    final res = await _api.post('$_base/accounts/$id/renewal/bulk', body: {
+      'subscriberIds': subscriberIds,
+      'months': months,
+      if (profileId != null && profileId.isNotEmpty) 'profileId': profileId,
+      'dryRun': dryRun,
+    });
+    final list = _asMapList(res['data'] ?? res['results'] ?? res['rows'] ?? res);
+    return list.map(SasRenewalResult.fromJson).toList();
+  }
+
+  /// أداة داخلية: تحويل استجابة مرنة إلى قائمة خرائط.
+  List<Map<String, dynamic>> _asMapList(dynamic raw) {
+    var list = raw;
+    if (list is Map) {
+      list = list['data'] ?? list['rows'] ?? list['items'];
+    }
+    if (list is List) {
+      return list
+          .whereType<Map>()
+          .map((e) => e.cast<String, dynamic>())
+          .toList();
+    }
+    return const [];
   }
 }

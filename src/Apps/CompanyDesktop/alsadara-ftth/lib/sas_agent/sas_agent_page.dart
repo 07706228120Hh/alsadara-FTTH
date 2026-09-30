@@ -7,8 +7,11 @@ import '../theme/app_theme.dart';
 import 'models/sas_account.dart';
 import 'pages/sas_accounts_page.dart';
 import 'pages/sas_dashboard_tab.dart';
-import 'pages/sas_placeholder_tab.dart';
+import 'pages/sas_renewal_tab.dart';
+import 'pages/sas_report_tab.dart';
 import 'pages/sas_subscribers_tab.dart';
+import 'pages/sas_system_tab.dart';
+import 'pages/sas_tickets_tab.dart';
 import 'widgets/sas_state_views.dart';
 
 /// صفحة «وكيل الساس» — شل بتبويبات يعمل على بوّابة الصدارة `/api/sas-agent/*`.
@@ -139,27 +142,22 @@ class _SasAgentShellState extends State<_SasAgentShell>
             _needsAccount(
               (acc) => SasSubscribersTab(account: acc, key: ValueKey('subs-${acc.id}')),
             ),
-            // 4) نظام الساس (هيكلي)
-            const SasPlaceholderTab(
-              title: 'نظام الساس',
-              icon: Icons.dns_rounded,
-              note: 'واجهة نظام الساس للمستخدم قيد الإنشاء وسيتم ربطها قريباً.',
+            // 4) نظام الساس (باقات + مالية + صحّة)
+            _needsAccount(
+              (acc) => SasSystemTab(account: acc, key: ValueKey('sys-${acc.id}')),
             ),
-            // 5) تجديد (هيكلي)
-            const SasPlaceholderTab(
-              title: 'تجديد الاشتراكات',
-              icon: Icons.autorenew_rounded,
+            // 5) تجديد (مرشّحون + معاينة dryRun → تنفيذ)
+            _needsAccount(
+              (acc) =>
+                  SasRenewalTab(account: acc, key: ValueKey('renew-${acc.id}')),
             ),
-            // 6) تصريح/بلنك (هيكلي)
-            const SasPlaceholderTab(
-              title: 'التصريح الشهري (البلنك)',
-              icon: Icons.assignment_rounded,
+            // 6) تصريح/بلنك (تقرير الوكيل)
+            _needsAccount(
+              (acc) =>
+                  SasReportTab(account: acc, key: ValueKey('report-${acc.id}')),
             ),
-            // 7) تذاكر (هيكلي)
-            const SasPlaceholderTab(
-              title: 'تذاكر المشتركين',
-              icon: Icons.confirmation_number_rounded,
-            ),
+            // 7) تذاكر (إعادة استخدام نظام الدعم القائم)
+            const SasTicketsTab(),
           ],
         ),
       ),
