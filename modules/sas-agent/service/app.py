@@ -39,7 +39,7 @@ if _BACKEND_APP not in sys.path:
 
 from integrations.sas_client import SASClient, SASError        # noqa: E402
 from integrations.sas_user_client import SASUserClient          # noqa: E402
-from premises import router as _premises_router, PREMISES_DDL  # noqa: E402
+from sas_premises import router as _premises_router, PREMISES_DDL  # noqa: E402 — اسم فريد لتفادي تصادم حزمة backend/app/premises عبر sys.path
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, status  # noqa: E402
 from fastapi.responses import JSONResponse                                    # noqa: E402
