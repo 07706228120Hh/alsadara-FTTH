@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_theme.dart';
@@ -9,6 +8,7 @@ import '../models/sas_account.dart';
 import '../models/sas_report.dart';
 import '../models/sas_subscriber.dart';
 import '../services/sas_agent_api_service.dart';
+import '../widgets/sas_metrics.dart';
 import '../widgets/sas_report_widgets.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_subscriber_detail_page.dart';
