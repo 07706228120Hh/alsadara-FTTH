@@ -9,7 +9,6 @@ import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_explorer_page.dart';
 import 'sas_license_page.dart';
-import 'sas_reports_page.dart';
 import 'sas_system_managers.dart';
 import 'sas_system_online.dart';
 
@@ -82,7 +81,11 @@ class _SasSystemTabState extends State<SasSystemTab>
     );
   }
 
-  /// أزرار سريعة (تقارير · ترخيص · مستكشف) بتمرير أفقي فلا تُقطع.
+  /// أزرار سريعة (ترخيص · مستكشف) بتمرير أفقي فلا تُقطع.
+  ///
+  /// ملاحظة: التقارير المجمّعة والتفصيلية رُقّيت إلى تبويب «تقارير» مستقل في
+  /// الشل (مطابقةً لتطبيق الوكلاء)، فلم تعد تُكرَّر هنا. يبقى الترخيص والمستكشف
+  /// كاختصارَين سريعَين ضمن سياق نظام الساس.
   ///
   /// هامش علوي واضح يفصلها عن شريط تبويبات الشل أعلاه، وارتفاع كافٍ لظلال
   /// الرقائق فلا تُقطع بصرياً.
@@ -93,14 +96,6 @@ class _SasSystemTabState extends State<SasSystemTab>
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         children: [
-          _actionChip('التقارير', Icons.bar_chart_rounded,
-              AppTheme.blueGradient,
-              () => _open(SasReportsPage(account: widget.account))),
-          SizedBox(width: 8.w),
-          _actionChip('التقارير المجمّعة', Icons.insights_rounded,
-              AppTheme.greenGradient,
-              () => _open(SasAggregateReportsPage(account: widget.account))),
-          SizedBox(width: 8.w),
           _actionChip('الترخيص', Icons.verified_user_rounded,
               AppTheme.orangeGradient,
               () => _open(SasLicensePage(account: widget.account))),

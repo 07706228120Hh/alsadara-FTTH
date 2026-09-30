@@ -9,6 +9,8 @@ import 'pages/sas_accounts_page.dart';
 import 'pages/sas_dashboard_tab.dart';
 import 'pages/sas_renewal_tab.dart';
 import 'pages/sas_report_tab.dart';
+import 'pages/sas_reports_tab.dart';
+import 'pages/sas_settings_tab.dart';
 import 'pages/sas_subscribers_tab.dart';
 import 'pages/sas_system_tab.dart';
 import 'pages/sas_tickets_tab.dart';
@@ -18,7 +20,8 @@ import 'widgets/sas_state_views.dart';
 
 /// صفحة «وكيل الساس» — شل بتبويبات يعمل على بوّابة الصدارة `/api/sas-agent/*`.
 ///
-/// التبويبات: حسابات · لوحة · مشتركون · نظام الساس · تجديد · تصريح/بلنك · تذاكر.
+/// التبويبات (مطابقة لتطبيق الوكلاء): حسابات · لوحة · مشتركون · نظام الساس ·
+/// تقارير · تجديد · تصريح/بلنك · تذاكر · إعدادات.
 /// الظهور محكوم بصلاحية `sas_agent` عبر [PermissionGate.page].
 class SasAgentPage extends StatelessWidget {
   const SasAgentPage({super.key});
@@ -50,19 +53,28 @@ class _SasAgentShellState extends State<_SasAgentShell>
   /// فهرس تبويب «مشتركون» — للانتقال إليه من بطاقات «قرب الانتهاء» في اللوحة.
   static const int _subscribersTabIndex = 2;
 
+  /// فهرس تبويب «الحسابات» — للانتقال إليه من تبويب «الإعدادات».
+  static const int _accountsTabIndex = 0;
+
   /// فلتر انتهاء مطلوب من اللوحة (overdue/today/soon3/soon7)؛ يُمرَّر لتبويب
   /// «مشتركون» ثم يُصفَّر. يُغيَّر مفتاح الودجة عند كل طلب لإعادة تطبيقه بثبات.
   String? _pendingExpiring;
   int _expiryNavToken = 0;
 
+  // مجموعة أيقونات موحّدة (Material rounded بوزن بصري واحد) بترتيب مطابق
+  // لتطبيق الوكلاء المرجعي: حسابات · لوحة · مشتركون · نظام · تقارير · تجديد ·
+  // تصريح · تذاكر · إعدادات. لون المؤشّر للمحدّد متدرّج، ولون موحّد (Slate)
+  // لغير المحدّد — يُضبطان مركزياً في [_TabBarSurface].
   static const _tabs = <_TabDef>[
     _TabDef('الحسابات', Icons.link_rounded),
     _TabDef('لوحة', Icons.dashboard_rounded),
     _TabDef('مشتركون', Icons.people_rounded),
     _TabDef('نظام الساس', Icons.dns_rounded),
+    _TabDef('تقارير', Icons.bar_chart_rounded),
     _TabDef('تجديد', Icons.autorenew_rounded),
-    _TabDef('تصريح/بلنك', Icons.assignment_rounded),
+    _TabDef('تصريح/بلنك', Icons.balance_rounded),
     _TabDef('تذاكر', Icons.confirmation_number_rounded),
+    _TabDef('إعدادات', Icons.settings_rounded),
   ];
 
   @override
@@ -159,22 +171,22 @@ class _SasAgentShellState extends State<_SasAgentShell>
             ],
           ),
           actions: [
-            IconButton(
+            _headerAction(
               tooltip: 'العقارات (العنوان الوطني)',
-              icon: const Icon(Icons.maps_home_work_rounded,
-                  color: Colors.white),
+              icon: Icons.maps_home_work_rounded,
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const PremisesListScreen()),
               ),
             ),
-            IconButton(
+            const SizedBox(width: 6),
+            _headerAction(
               tooltip: 'إعدادات وقوالب الواتساب',
-              icon: const Icon(Icons.chat_rounded, color: Colors.white),
+              icon: Icons.chat_rounded,
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const WaSettingsScreen()),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 10),
           ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(tabBarH),
@@ -209,19 +221,58 @@ class _SasAgentShellState extends State<_SasAgentShell>
               (acc) =>
                   SasSystemTab(account: acc, key: ValueKey('sys-${acc.id}')),
             )),
-            // 5) تجديد (مرشّحون + معاينة dryRun → تنفيذ)
+            // 5) تقارير (تبويب مستقل — التقارير المجمّعة + العشرة التفصيلية + الترخيص)
+            _framed(_needsAccount(
+              (acc) => SasReportsTab(
+                  account: acc, key: ValueKey('reports-${acc.id}')),
+            )),
+            // 6) تجديد (مرشّحون + معاينة dryRun → تنفيذ)
             _framed(_needsAccount(
               (acc) =>
                   SasRenewalTab(account: acc, key: ValueKey('renew-${acc.id}')),
             )),
-            // 6) تصريح/بلنك (تقرير الوكيل)
+            // 7) تصريح/بلنك (تقرير الوكيل)
             _framed(_needsAccount(
               (acc) =>
                   SasReportTab(account: acc, key: ValueKey('report-${acc.id}')),
             )),
-            // 7) تذاكر (إعادة استخدام نظام الدعم القائم)
+            // 8) تذاكر (إعادة استخدام نظام الدعم القائم)
             _framed(const SasTicketsTab()),
+            // 9) إعدادات (الحساب · الخادم · الواتساب · أدوات · ميزات محفوظة)
+            _framed(SasSettingsTab(
+              selected: _selected,
+              onGoToAccounts: () => _tab.animateTo(_accountsTabIndex),
+            )),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// زر رأس موحّد النسق: أيقونة بيضاء داخل مربّع شفّاف بحواف مستديرة — نفس
+  /// أسلوب شارة العنوان في الرأس، فتتّسق أزرار الواتساب/العقارات بصرياً.
+  Widget _headerAction({
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(11),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(11),
+          onTap: onPressed,
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+            ),
+            child: Icon(icon, size: 19, color: Colors.white),
+          ),
         ),
       ),
     );
@@ -283,7 +334,8 @@ class _TabBarSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // مقاسات ثابتة معقولة لسطح المكتب — لا تعتمد على `.sp/.h/.w/.r` المتضخّمة
-    // على النوافذ العريضة. `isScrollable: true` يمنع قطع نصوص التبويبات السبعة.
+    // على النوافذ العريضة. `isScrollable: true` يمنع قطع نصوص التبويبات التسعة.
+    // لون موحّد للأيقونة والنص (أبيض للمحدّد فوق مؤشّر متدرّج، Slate لغيره).
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),

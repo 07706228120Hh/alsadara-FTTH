@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
 import '../models/sas_dashboard.dart';
 import '../models/sas_report.dart';
+import '../models/sas_ticket.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
 import '../widgets/sas_metrics.dart';
@@ -55,6 +56,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
   SasSyncResult? _sync;
   SasReconciliation? _recon;
   SasAgentReport? _lastReport;
+  SasTicketStats? _tickets;
 
   bool _syncing = false;
 
@@ -91,11 +93,13 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
     }
 
     // المصادر الثانوية بالتوازي — كل نتيجة تُعالَج على حدة بلا إسقاط الباقي.
+    // ملاحظة: إحصاءات التذاكر user-scoped (بلا account id) — تُحمَّل معها للعرض.
     final results = await Future.wait<Object?>([
       _api.getFinance(id).then<Object?>((v) => v).catchError((_) => null),
       _api.syncAccount(id).then<Object?>((v) => v).catchError((_) => null),
       _api.getReconciliation(id).then<Object?>((v) => v).catchError((_) => null),
       _api.listReports(id).then<Object?>((v) => v).catchError((_) => null),
+      _api.getTicketsStats().then<Object?>((v) => v).catchError((_) => null),
     ]);
 
     if (!mounted) return;
@@ -109,6 +113,9 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
       final reports = results[3];
       _lastReport = (reports is List<SasAgentReport> && reports.isNotEmpty)
           ? reports.first
+          : null;
+      _tickets = results[4] is SasTicketStats
+          ? results[4] as SasTicketStats
           : null;
       _loading = false;
     });
@@ -211,14 +218,23 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
               SizedBox(height: 20.h),
 
-              // 6) توزيع الحالات (دونات fl_chart).
-              SasSectionHeader(
-                title: 'توزيع الحالات',
-                icon: Icons.donut_large_rounded,
-                gradient: AppTheme.greenGradient,
-              ),
-              SizedBox(height: 12.h),
-              _distributionCard(d),
+              // 6 + 7) توزيع الحالات (دونات) + التذاكر (عمودان على العريض).
+              if (wide)
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: _distributionBlock(d)),
+                      SizedBox(width: 14.w),
+                      Expanded(child: _ticketsBlock()),
+                    ],
+                  ),
+                )
+              else ...[
+                _distributionBlock(d),
+                SizedBox(height: 20.h),
+                _ticketsBlock(),
+              ],
             ],
           );
         },
@@ -647,6 +663,21 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
   // ─────────────────────────── توزيع الحالات (دونات) ───────────────────────────
 
+  Widget _distributionBlock(SasDashboard d) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SasSectionHeader(
+          title: 'توزيع الحالات',
+          icon: Icons.donut_large_rounded,
+          gradient: AppTheme.greenGradient,
+        ),
+        SizedBox(height: 12.h),
+        _distributionCard(d),
+      ],
+    );
+  }
+
   Widget _distributionCard(SasDashboard d) {
     final active = d.active ?? 0;
     final expired = d.expired ?? 0;
@@ -744,6 +775,106 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  // ─────────────────────────── التذاكر ───────────────────────────
+
+  Widget _ticketsBlock() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SasSectionHeader(
+          title: 'التذاكر',
+          icon: Icons.confirmation_number_rounded,
+          gradient: AppTheme.orangeGradient,
+        ),
+        SizedBox(height: 12.h),
+        _ticketsCard(),
+      ],
+    );
+  }
+
+  Widget _ticketsCard() {
+    final t = _tickets;
+    if (t == null) {
+      return _emptyBox('لا تتوفّر إحصاءات التذاكر');
+    }
+    final openColor =
+        t.open > 0 ? AppTheme.errorColor : AppTheme.successColor;
+
+    Widget box(IconData icon, Color color, int n, String label) => Expanded(
+          child: Container(
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(SasUi.radius.r),
+              border: Border.all(color: color.withValues(alpha: 0.22)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, color: color, size: 22.sp),
+                SizedBox(height: 12.h),
+                Text(
+                  '$n',
+                  style: GoogleFonts.cairo(
+                    fontSize: 26.sp,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                    height: 1.05,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.cairo(
+                    fontSize: 11.5.sp,
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: SasUi.card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              box(Icons.mark_email_unread_rounded, openColor, t.open,
+                  'مفتوحة تحتاج معالجة'),
+              SizedBox(width: 10.w),
+              box(Icons.check_circle_rounded, AppTheme.successColor,
+                  t.resolved, 'محلولة'),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              Icon(Icons.summarize_rounded,
+                  size: 15.sp, color: Colors.grey[500]),
+              SizedBox(width: 6.w),
+              Text(
+                'إجمالي التذاكر: ${t.total}'
+                '${t.inProgress > 0 ? ' · قيد المعالجة: ${t.inProgress}' : ''}',
+                style: GoogleFonts.cairo(
+                  fontSize: 11.5.sp,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
