@@ -69,6 +69,12 @@ public class SasAgentExtendedTests
         public int CallCount { get; private set; }
         public List<string> RecordedCalls { get; } = [];
 
+        // ── دعم /admin/agents-summary (يُستهلك من GetAdminAgents) ──────────────────
+        /// <summary>ردّ JSON مخصّص لـ agents-summary؛ إن كان null استُخدم DefaultResponse.</summary>
+        public string? AgentsSummaryResponse { get; set; }
+        /// <summary>يلتقط (companyId, accountIds) لكل استدعاء لـ GetAgentsSummaryAsync.</summary>
+        public List<(string CompanyId, List<string> AccountIds)> AgentsSummaryCalls { get; } = [];
+
         private Task<string> Handle(string name)
         {
             CallCount++;
@@ -124,6 +130,17 @@ public class SasAgentExtendedTests
         public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => Handle("submit_report");
         public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => Handle("list_reports");
         public Task<string> GetReconciliationAsync(string accountId, string s, string u, string p, CancellationToken ct = default) => Handle("reconciliation");
+
+        // إدارة الوكلاء (ملخّص المقاطعة على مستوى الشركة)
+        public Task<string> GetAgentsSummaryAsync(string companyId, IEnumerable<string> accountIds, CancellationToken ct = default)
+        {
+            CallCount++;
+            RecordedCalls.Add("agents_summary");
+            AgentsSummaryCalls.Add((companyId, accountIds.ToList()));
+            if (ThrowUnavailable)
+                throw new SasServiceUnavailableException("unavailable");
+            return Task.FromResult(AgentsSummaryResponse ?? DefaultResponse);
+        }
 
         // التذاكر
         public Task<string> GetTicketsStatsAsync(string companyId, string ownerUserId, CancellationToken ct = default) => Handle("tickets_stats");
@@ -1517,6 +1534,7 @@ internal sealed class CapturingSasClient : ISasServiceClient
     public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => Empty();
     public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => Empty();
     public Task<string> GetReconciliationAsync(string accountId, string s, string u, string p, CancellationToken ct = default) => Empty();
+    public Task<string> GetAgentsSummaryAsync(string companyId, IEnumerable<string> accountIds, CancellationToken ct = default) => Empty();
 
     public Task<string> GetTicketsStatsAsync(string companyId, string ownerUserId, CancellationToken ct = default)
     {
