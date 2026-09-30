@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../permissions/permission_manager.dart';
 import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
+import '../models/sas_report.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_account_form_dialog.dart';
 import '../widgets/sas_state_views.dart';
@@ -34,6 +35,12 @@ class SasAccountsPageState extends State<SasAccountsPage> {
   List<SasAccount> _accounts = [];
   bool _loading = true;
   String? _error;
+
+  /// حالة انشغال «اختبار/مزامنة» لكل حساب (id → busy).
+  final Set<String> _busy = <String>{};
+
+  /// آخر نتيجة مزامنة لكل حساب (id → نتيجة) لعرض العدّادات/الوقت فوراً.
+  final Map<String, SasSyncResult> _lastSync = <String, SasSyncResult>{};
 
   bool get _canManage => PermissionManager.instance.canAdd('sas_agent');
 
@@ -148,6 +155,62 @@ class SasAccountsPageState extends State<SasAccountsPage> {
     }
   }
 
+  /// اختبار اتصال حساب — snackbar بالنجاح/الفشل مع العدد إن توفّر.
+  Future<void> _testAccount(SasAccount acc) async {
+    if (_busy.contains(acc.id)) return;
+    setState(() => _busy.add(acc.id));
+    try {
+      final r = await _api.testAccount(acc.id);
+      if (!mounted) return;
+      if (r.ok) {
+        final n = r.subscribersCount;
+        _snack(n != null
+            ? 'الاتصال ناجح — المشتركون: $n'
+            : (r.message.isEmpty ? 'الاتصال ناجح' : r.message));
+      } else {
+        _snack(r.message.isEmpty ? 'فشل الاتصال' : 'فشل الاتصال: ${r.message}',
+            error: true);
+      }
+    } catch (e) {
+      _snack(_clean(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy.remove(acc.id));
+    }
+  }
+
+  /// مزامنة محلية — يعرض العدد + عدّادات الانتهاء + وقت آخر مزامنة.
+  Future<void> _syncAccount(SasAccount acc) async {
+    if (_busy.contains(acc.id)) return;
+    setState(() => _busy.add(acc.id));
+    try {
+      final r = await _api.syncAccount(acc.id);
+      if (!mounted) return;
+      setState(() => _lastSync[acc.id] = r);
+      final e = r.expiry;
+      final tail = e.isEmpty
+          ? ''
+          : ' · منتهٍ ${e.overdue} · اليوم ${e.today} · ٣ أيام ${e.soon3} · أسبوع ${e.soon7}';
+      _snack('تمت مزامنة ${r.count} مشترك$tail');
+    } catch (e) {
+      _snack(_clean(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy.remove(acc.id));
+    }
+  }
+
+  /// نص «آخر مزامنة»: يُفضّل نتيجة الجلسة الحالية ثم `lastSyncAt` من الخادم.
+  String? _lastSyncLabel(SasAccount acc) {
+    final live = _lastSync[acc.id];
+    final ts = live?.syncedAt ?? acc.lastSyncAt;
+    if (ts == null) return null;
+    final l = ts.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final when =
+        '${l.year}/${two(l.month)}/${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
+    if (live != null) return 'آخر مزامنة: $when · ${live.count} مشترك';
+    return 'آخر مزامنة: $when';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const SasLoadingView(message: 'جاري تحميل الحسابات…');
@@ -229,6 +292,72 @@ class SasAccountsPageState extends State<SasAccountsPage> {
           ),
         ),
       ),
+    );
+  }
+
+  /// شارة عدد آخر مزامنة (تظهر فقط بعد مزامنة في الجلسة الحالية).
+  Widget? _syncCountBadge(SasAccount acc) {
+    final live = _lastSync[acc.id];
+    if (live == null) return null;
+    return SasStatusBadge(
+      label: '${live.count} مشترك',
+      color: AppTheme.infoColor,
+      icon: Icons.people_alt_rounded,
+    );
+  }
+
+  /// أزرار «اختبار اتصال» و«مزامنة» أسفل بطاقة الحساب.
+  Widget _accountActions(SasAccount acc) {
+    final busy = _busy.contains(acc.id);
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: busy ? null : () => _testAccount(acc),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.infoColor,
+              side: BorderSide(color: AppTheme.infoColor.withValues(alpha: 0.45)),
+              padding: EdgeInsets.symmetric(vertical: 9.h),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+            ),
+            icon: busy
+                ? SizedBox(
+                    width: 15.w,
+                    height: 15.w,
+                    child: const CircularProgressIndicator(
+                        strokeWidth: 2, color: AppTheme.infoColor),
+                  )
+                : Icon(Icons.wifi_tethering_rounded, size: 17.sp),
+            label: Text('اختبار اتصال',
+                style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.w700, fontSize: 12.sp)),
+          ),
+        ),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: busy ? null : () => _syncAccount(acc),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              padding: EdgeInsets.symmetric(vertical: 9.h),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+            ),
+            icon: busy
+                ? SizedBox(
+                    width: 15.w,
+                    height: 15.w,
+                    child: const CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : Icon(Icons.sync_rounded, size: 17.sp),
+            label: Text('مزامنة',
+                style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.w800, fontSize: 12.sp)),
+          ),
+        ),
+      ],
     );
   }
 
@@ -315,13 +444,45 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                       ],
                     ),
                     SizedBox(height: 7.h),
-                    SasStatusBadge(
-                      label: acc.isActive ? 'مفعّل' : 'غير مفعّل',
-                      color: statusColor,
-                      icon: acc.isActive
-                          ? Icons.check_circle_rounded
-                          : Icons.pause_circle_filled_rounded,
+                    Wrap(
+                      spacing: 6.w,
+                      runSpacing: 6.h,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        SasStatusBadge(
+                          label: acc.isActive ? 'مفعّل' : 'غير مفعّل',
+                          color: statusColor,
+                          icon: acc.isActive
+                              ? Icons.check_circle_rounded
+                              : Icons.pause_circle_filled_rounded,
+                        ),
+                        _syncCountBadge(acc),
+                      ].whereType<Widget>().toList(),
                     ),
+                    if (_lastSyncLabel(acc) != null) ...[
+                      SizedBox(height: 6.h),
+                      Row(
+                        children: [
+                          Icon(Icons.schedule_rounded,
+                              size: 12.sp, color: Colors.grey[500]),
+                          SizedBox(width: 4.w),
+                          Expanded(
+                            child: Text(
+                              _lastSyncLabel(acc)!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.cairo(
+                                fontSize: 10.5.sp,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    SizedBox(height: 9.h),
+                    _accountActions(acc),
                   ],
                 ),
               ),

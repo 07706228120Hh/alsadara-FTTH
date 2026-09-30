@@ -2,6 +2,7 @@ import '../../services/sadara_api_service.dart';
 import '../models/sas_account.dart';
 import '../models/sas_dashboard.dart';
 import '../models/sas_renewal.dart';
+import '../models/sas_report.dart';
 import '../models/sas_subscriber.dart';
 
 /// خدمة API لوحدة «وكيل الساس» — تخاطب بوّابة الصدارة `/api/sas-agent/*`.
@@ -145,6 +146,95 @@ class SasAgentApiService {
     if (to != null && to.isNotEmpty) params.add('to=$to');
     final qs = params.isEmpty ? '' : '?${params.join('&')}';
     return await _api.get('$_base/accounts/$id/report$qs');
+  }
+
+  // ============================================================
+  //  اختبار/مزامنة الحساب + المشتركون المحليون (سريع، بلا نداء ساس)
+  // ============================================================
+
+  /// اختبار الاتصال بحساب الساس — `POST accounts/{id}/test`.
+  /// يعيد `{ok, message, subscribers_count?}`.
+  Future<SasTestResult> testAccount(String id) async {
+    final res = await _api.post('$_base/accounts/$id/test', body: {});
+    return SasTestResult.fromJson(res);
+  }
+
+  /// مزامنة محلية للحساب — `POST accounts/{id}/sync`.
+  /// يعيد `{count, expiry:{overdue,today,soon3,soon7}, synced_at}`.
+  Future<SasSyncResult> syncAccount(String id) async {
+    final res = await _api.post('$_base/accounts/$id/sync', body: {});
+    return SasSyncResult.fromJson(res);
+  }
+
+  /// المشتركون المحليون (سريع، من قاعدة الصدارة بعد المزامنة) —
+  /// `GET accounts/{id}/subscribers-local`.
+  ///
+  /// [expiring] فلتر عدّاد الانتهاء: overdue/today/soon3/soon7 (اختياري).
+  Future<SasLocalSubscribersPage> getLocalSubscribers(
+    String id, {
+    String? search,
+    String? status,
+    String? expiring,
+    int? page,
+    int? count,
+  }) async {
+    final params = <String>[];
+    if (search != null && search.isNotEmpty) params.add('search=$search');
+    if (status != null && status.isNotEmpty) params.add('status=$status');
+    if (expiring != null && expiring.isNotEmpty) {
+      params.add('expiring=$expiring');
+    }
+    if (page != null) params.add('page=$page');
+    if (count != null) params.add('count=$count');
+    final qs = params.isEmpty ? '' : '?${params.join('&')}';
+    final res = await _api.get('$_base/accounts/$id/subscribers-local$qs');
+    return SasLocalSubscribersPage.fromJson(res);
+  }
+
+  // ============================================================
+  //  التصريح/البلنك: إرسال تصريح · سجل التصاريح · المقاطعة
+  // ============================================================
+
+  /// إرسال تصريح جديد — `POST accounts/{id}/report`.
+  /// يعيد التصريح المُنشأ (AgentReport).
+  Future<SasAgentReport?> submitReport(
+    String id, {
+    required int declaredTotal,
+    required int declaredActive,
+    String? note,
+  }) async {
+    final res = await _api.post('$_base/accounts/$id/report', body: {
+      'declaredTotal': declaredTotal,
+      'declaredActive': declaredActive,
+      if (note != null && note.isNotEmpty) 'note': note,
+    });
+    final data = res['data'];
+    if (data is Map) {
+      return SasAgentReport.fromJson(data.cast<String, dynamic>());
+    }
+    // بعض الردود تعيد الحقول في الجذر مباشرةً.
+    if (res.containsKey('declaredTotal') || res.containsKey('id')) {
+      return SasAgentReport.fromJson(res);
+    }
+    return null;
+  }
+
+  /// سجل تصاريح الحساب — `GET accounts/{id}/reports`.
+  Future<List<SasAgentReport>> listReports(String id) async {
+    final res = await _api.get('$_base/accounts/$id/reports');
+    final list = _asMapList(res['data'] ?? res['rows'] ?? res['items'] ?? res);
+    return list.map(SasAgentReport.fromJson).toList();
+  }
+
+  /// مقاطعة التصريح مقابل الفعلي — `GET accounts/{id}/reconciliation`.
+  /// يعيد `{declared, actual, diff, verdict, source}`.
+  Future<SasReconciliation> getReconciliation(String id) async {
+    final res = await _api.get('$_base/accounts/$id/reconciliation');
+    final data = res['data'];
+    if (data is Map) {
+      return SasReconciliation.fromJson(data.cast<String, dynamic>());
+    }
+    return SasReconciliation.fromJson(res);
   }
 
   // ============================================================
