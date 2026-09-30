@@ -121,6 +121,12 @@ class _SasAgentShellState extends State<_SasAgentShell>
         appBar: AppBar(
           elevation: 0,
           toolbarHeight: toolbarH,
+          // خلفية صلبة داكنة أسفل التدرّج + مقدّمة بيضاء صريحة (زر العودة/الأيقونات/العنوان)
+          // لضمان ظهورها دائماً حتى لو تعذّر رسم التدرّج (كانت بيضاء على خلفية فاتحة فتختفي).
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          iconTheme: const IconThemeData(color: Colors.white),
+          actionsIconTheme: const IconThemeData(color: Colors.white),
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
