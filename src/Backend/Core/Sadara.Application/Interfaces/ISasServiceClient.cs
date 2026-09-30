@@ -528,4 +528,22 @@ public interface ISasServiceClient
         string premisesId,
         string subscriberRef,
         CancellationToken cancellationToken = default);
+
+    // ==================== إدارة الوكلاء (للأدمن — company-scoped) ====================
+    // نقطة أدمن على مستوى الشركة: تجلب المقاطعة/الحكم لكل حسابات ساس الشركة دفعةً واحدة.
+    // على عكس نقاط الحساب المفردة، لا اعتماد ساس ولا فكّ تشفير هنا؛ الجسم {companyId, accountIds[]} فقط.
+    //  - companyId  = شركة الأدمن الحالي (عزل المستأجرين) — من التوكن حصراً لا من إدخال المستخدم.
+    //  - accountIds = كل معرّفات حسابات ساس ضمن الشركة (تُشتق خادمياً من قاعدة البيانات).
+    // تعيد JSON خاماً <c>{items:[{account_id, declared_total, declared_active, actual_total, actual_active, diff, verdict, last_sync}]}</c>.
+
+    /// <summary>
+    /// ملخّص مقاطعة الوكلاء للأدمن على مستوى الشركة (POST /admin/agents-summary + companyId + accountIds[]).
+    /// قراءة (لا تخزين، لا اعتماد ساس). تعيد لكل حساب المُصرَّح/الفعلي/الفرق/الحكم/آخر مزامنة.
+    /// </summary>
+    /// <param name="companyId">معرّف شركة الأدمن الحالي (عزل المستأجرين).</param>
+    /// <param name="accountIds">معرّفات حسابات ساس ضمن الشركة (خادمياً — لا من العميل).</param>
+    Task<string> GetAgentsSummaryAsync(
+        string companyId,
+        IEnumerable<string> accountIds,
+        CancellationToken cancellationToken = default);
 }

@@ -245,6 +245,208 @@ public class SasAgentController : ControllerBase
         }
     }
 
+    // ==================== إدارة الوكلاء (للأدمن — company-scoped، role-gated) ====================
+    // على عكس بقية النقاط (owner-scoped)، هذه النقطة تخصّ أدمن الشركة: يرى كل وكلاء شركته.
+    // العزل هنا: شركة (CompanyId من التوكن) + دور (CompanyAdmin فأعلى) — لا فلترة بالمالك.
+    //  - TryResolveScope للحصول على CompanyId (يرفض بلا شركة، ويرفض SuperAdmin/سياق النظام لأنها company-scoped).
+    //  - + فحص الدور: يجب أن يكون CompanyAdmin (role_id ≥ 20) فأعلى؛ غير الأدمن => Forbid.
+    // لا يُعاد أي سرّ (لا PasswordEncrypted). الصلاحية manage + failClosed:true.
+
+    /// <summary>
+    /// يقرأ الدور من التوكن (role_id أو ClaimTypes.Role) ويتحقّق أنّه CompanyAdmin فأعلى.
+    /// القيمة قد تكون رقم الدور (CompanyAdmin=20, SuperAdmin=99) أو اسمه ("CompanyAdmin"/"SuperAdmin").
+    /// ملاحظة: SuperAdmin بلا شركة يُرفض في <see cref="TryResolveScope"/> لأنّ النقطة company-scoped.
+    /// </summary>
+    private bool IsCompanyAdminOrAbove()
+    {
+        var roleClaim = User.FindFirst("role_id")?.Value
+                     ?? User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                     ?? User.FindFirst("role")?.Value;
+
+        if (string.IsNullOrWhiteSpace(roleClaim))
+            return false;
+
+        // رقم الدور: CompanyAdmin=20 فأعلى.
+        if (int.TryParse(roleClaim, out var roleInt))
+            return roleInt >= (int)UserRole.CompanyAdmin;
+
+        // اسم الدور.
+        return string.Equals(roleClaim, nameof(UserRole.CompanyAdmin), StringComparison.OrdinalIgnoreCase)
+            || string.Equals(roleClaim, nameof(UserRole.SuperAdmin), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// إدارة الوكلاء (للأدمن) — قائمة كل وكلاء الشركة مع حساباتهم ومقاطعتهم — قراءة (manage, failClosed).
+    ///
+    /// العزل + الصلاحية:
+    ///  - TryResolveScope: يرفض بلا شركة (SuperAdmin/سياق النظام => Forbid) — النقطة company-scoped.
+    ///  - IsCompanyAdminOrAbove: يجب أن يكون CompanyAdmin فأعلى، وإلا Forbid.
+    ///
+    /// التجميع:
+    ///  1) كل <c>SasAccount</c> حيث <c>CompanyId == tenant.CompanyId &amp;&amp; !IsDeleted</c> (كل الشركة، لا owner فقط).
+    ///  2) أسماء الملّاك من جدول <c>Users</c> (Id → FullName/Username) لمعرّفات الملّاك المميّزة فقط.
+    ///  3) <c>GetAgentsSummaryAsync(companyId, accountIds)</c> لكل معرّفات الحسابات (المقاطعة/الحكم).
+    ///  4) دمج: قائمة لكل وكيل = {userId, fullName, username, accounts:[...], totals:{...}} — بلا أي سرّ.
+    /// </summary>
+    [HttpGet("admin/agents")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetAdminAgents(CancellationToken ct)
+    {
+        // 1) النطاق: شركة صالحة (يرفض SuperAdmin/بلا شركة).
+        if (!TryResolveScope(out var companyId, out _, out var denied))
+            return denied!;
+
+        // 2) الدور: CompanyAdmin فأعلى فقط.
+        if (!IsCompanyAdminOrAbove())
+            return Forbid();
+
+        try
+        {
+            // 3) كل حسابات ساس ضمن الشركة (لا فلترة بالمالك) — بلا كلمات مرور.
+            var accounts = await _db.SasAccounts
+                .Where(x => x.CompanyId == companyId && !x.IsDeleted)
+                .OrderBy(x => x.Label)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.OwnerUserId,
+                    x.Label,
+                    x.ServerUrl,
+                    x.IsActive,
+                    x.LastSyncAt
+                })
+                .ToListAsync(ct);
+
+            if (accounts.Count == 0)
+                return Ok(new { success = true, data = Array.Empty<SasAgentAdminAgentDto>(), total = 0 });
+
+            // 4) أسماء الملّاك من جدول Users (معرّفات مميّزة فقط) ضمن الشركة نفسها (دفاع بالعمق).
+            var ownerIds = accounts.Select(a => a.OwnerUserId).Distinct().ToList();
+            var owners = await _db.Users
+                .Where(u => ownerIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.FullName, u.Username })
+                .ToDictionaryAsync(u => u.Id, ct);
+
+            // 5) المقاطعة/الحكم لكل الحسابات دفعةً واحدة عبر خدمة Python.
+            var accountIds = accounts.Select(a => a.Id.ToString()).ToList();
+            var reconByAccount = new Dictionary<string, SasAgentAdminReconciliationDto>(StringComparer.Ordinal);
+            try
+            {
+                var raw = await _sasClient.GetAgentsSummaryAsync(companyId.ToString(), accountIds, ct);
+                reconByAccount = ParseAgentsSummary(raw);
+            }
+            catch (SasServiceUnavailableException ex)
+            {
+                // تدهور رشيق: نُكمل بلا مقاطعة (reconciliation=null) بدل إسقاط الصفحة كلها.
+                _logger.LogWarning(ex, "خدمة الساس غير متاحة أثناء جلب ملخّص مقاطعة الوكلاء — يُعرَض بلا مقاطعة");
+            }
+
+            // 6) الدمج: تجميع الحسابات حسب المالك ثم بناء DTO لكل وكيل.
+            var agents = accounts
+                .GroupBy(a => a.OwnerUserId)
+                .Select(g =>
+                {
+                    owners.TryGetValue(g.Key, out var owner);
+
+                    var accountDtos = g.Select(a =>
+                    {
+                        reconByAccount.TryGetValue(a.Id.ToString(), out var recon);
+                        return new SasAgentAdminAccountDto(
+                            a.Id,
+                            a.Label,
+                            a.ServerUrl,
+                            a.IsActive,
+                            recon);
+                    }).ToList();
+
+                    var declaredTotal = accountDtos.Sum(a => a.Reconciliation?.DeclaredTotal ?? 0);
+                    var actualTotal = accountDtos.Sum(a => a.Reconciliation?.ActualTotal ?? 0);
+
+                    return new SasAgentAdminAgentDto(
+                        g.Key,
+                        owner?.FullName ?? string.Empty,
+                        owner?.Username,
+                        accountDtos,
+                        new SasAgentAdminTotalsDto(accountDtos.Count, declaredTotal, actualTotal));
+                })
+                .OrderBy(a => a.FullName)
+                .ToList();
+
+            return Ok(new { success = true, data = agents, total = agents.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب إدارة الوكلاء للأدمن");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// يحلّل JSON ملخّص المقاطعة من خدمة Python (<c>{items:[{account_id, ...}]}</c>) إلى قاموس بـ account_id.
+    /// أي عنصر بلا account_id أو غير صالح يُتجاهَل بأمان (لا يُسقط الباقي).
+    /// </summary>
+    private static Dictionary<string, SasAgentAdminReconciliationDto> ParseAgentsSummary(string raw)
+    {
+        var map = new Dictionary<string, SasAgentAdminReconciliationDto>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(raw))
+            return map;
+
+        using var doc = System.Text.Json.JsonDocument.Parse(raw);
+        if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object
+            || !doc.RootElement.TryGetProperty("items", out var items)
+            || items.ValueKind != System.Text.Json.JsonValueKind.Array)
+            return map;
+
+        foreach (var item in items.EnumerateArray())
+        {
+            if (item.ValueKind != System.Text.Json.JsonValueKind.Object)
+                continue;
+
+            var accountId = GetStringProp(item, "account_id");
+            if (string.IsNullOrWhiteSpace(accountId))
+                continue;
+
+            map[accountId] = new SasAgentAdminReconciliationDto(
+                GetIntProp(item, "declared_total"),
+                GetIntProp(item, "declared_active"),
+                GetIntProp(item, "actual_total"),
+                GetIntProp(item, "actual_active"),
+                GetIntProp(item, "diff"),
+                GetStringProp(item, "verdict"),
+                GetStringProp(item, "last_sync"));
+        }
+
+        return map;
+    }
+
+    /// <summary>يقرأ خاصيّة نصّية بأمان من عنصر JSON (يقبل string، ويحوّل الرقم/المنطقي لنصّ)؛ null إن غابت.</summary>
+    private static string? GetStringProp(System.Text.Json.JsonElement obj, string name)
+    {
+        if (!obj.TryGetProperty(name, out var el))
+            return null;
+        return el.ValueKind switch
+        {
+            System.Text.Json.JsonValueKind.String => el.GetString(),
+            System.Text.Json.JsonValueKind.Number => el.GetRawText(),
+            System.Text.Json.JsonValueKind.True => "true",
+            System.Text.Json.JsonValueKind.False => "false",
+            _ => null
+        };
+    }
+
+    /// <summary>يقرأ خاصيّة عددية صحيحة بأمان (يقبل الرقم أو نصّاً رقمياً)؛ 0 إن غابت/غير صالحة.</summary>
+    private static int GetIntProp(System.Text.Json.JsonElement obj, string name)
+    {
+        if (!obj.TryGetProperty(name, out var el))
+            return 0;
+        if (el.ValueKind == System.Text.Json.JsonValueKind.Number && el.TryGetInt32(out var n))
+            return n;
+        if (el.ValueKind == System.Text.Json.JsonValueKind.String
+            && int.TryParse(el.GetString(), out var s))
+            return s;
+        return 0;
+    }
+
     // ==================== نقاط التمرير لخدمة الساس ====================
 
     /// <summary>تسجيل دخول صامت لنظام الساس باعتماد الحساب (يُفكّ التشفير داخلياً فقط).</summary>
@@ -1464,3 +1666,40 @@ public record PremisesPhotoUploadRequest(
 /// <summary>طلب ربط/فكّ ربط مشترك بعقار — مرجع المشترك مطلوب. (premises_id من المسار.)</summary>
 public record PremisesLinkRequest(
     string? SubscriberRef);
+
+// ==================== DTOs إدارة الوكلاء (للأدمن — company-scoped) ====================
+// بادئة SasAgentAdmin لتفادي التصادم. ⚠️ بلا أي سرّ (لا PasswordEncrypted، لا Username لحساب الساس).
+
+/// <summary>
+/// مقاطعة/مطابقة حساب ساس واحد (المُصرَّح مقابل الفعلي) من خدمة Python — للعرض في لوحة الأدمن.
+/// </summary>
+public record SasAgentAdminReconciliationDto(
+    int DeclaredTotal,
+    int DeclaredActive,
+    int ActualTotal,
+    int ActualActive,
+    int Diff,
+    string? Verdict,
+    string? LastSync);
+
+/// <summary>حساب ساس واحد ضمن وكيل (بلا أسرار) + مقاطعته (قد تكون null إذا تعذّرت الخدمة).</summary>
+public record SasAgentAdminAccountDto(
+    Guid Id,
+    string Label,
+    string ServerUrl,
+    bool IsActive,
+    SasAgentAdminReconciliationDto? Reconciliation);
+
+/// <summary>مجاميع وكيل واحد: عدد الحسابات + مجموع المُصرَّح + مجموع الفعلي.</summary>
+public record SasAgentAdminTotalsDto(
+    int Accounts,
+    int Declared,
+    int Actual);
+
+/// <summary>وكيل واحد (مالك حسابات ساس) ضمن الشركة + حساباته + مجاميعه — للوحة الأدمن.</summary>
+public record SasAgentAdminAgentDto(
+    Guid UserId,
+    string FullName,
+    string? Username,
+    List<SasAgentAdminAccountDto> Accounts,
+    SasAgentAdminTotalsDto Totals);

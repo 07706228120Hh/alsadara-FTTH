@@ -1132,14 +1132,7 @@ async def reconciliation(body: ReconciliationRequest) -> Any:
     declared_active = rep_row[1]
     last_report_ts  = rep_row[2]
     diff           = declared - actual
-    threshold      = max(5, int(actual * 0.05))
-
-    if abs(diff) <= threshold:
-        verdict = "matched"
-    elif diff > 0:
-        verdict = "company_suspicious"   # الوكيل يدّعي أكثر مما تُظهره الشركة
-    else:
-        verdict = "agent_suspicious"     # الوكيل يُقلَّل (SAS تُظهر أكثر)
+    verdict        = _compute_verdict(declared, actual)
 
     return {
         "declared":        declared,
@@ -1150,6 +1143,197 @@ async def reconciliation(body: ReconciliationRequest) -> Any:
         "source":          source,
         "last_report_ts":  last_report_ts,
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ملخّص وكلاء الشركة (البلنك الموحّد) — POST /admin/agents-summary
+# ══════════════════════════════════════════════════════════════════════════════
+
+# الحدّ الأقصى لعدد accountIds في طلب واحد (حماية من الاستعلامات الضخمة)
+_AGENTS_SUMMARY_CAP = 500
+
+
+def _compute_verdict(declared: int, actual: int) -> str:
+    """
+    يحسب الحكم بناءً على الفارق بين التصريح والعدد الفعلي.
+
+    مُستخرَج من منطق /reconciliation لإعادة الاستخدام:
+      - matched: |diff| <= max(5, 5% من actual).
+      - company_suspicious: الوكيل يصرّح أكثر مما تُظهره الشركة (diff > 0).
+      - agent_suspicious: الوكيل يصرّح أقل (diff < 0 وخارج النطاق).
+    """
+    diff = declared - actual
+    threshold = max(5, int(actual * 0.05))
+    if abs(diff) <= threshold:
+        return "matched"
+    if diff > 0:
+        return "company_suspicious"
+    return "agent_suspicious"
+
+
+class AgentsSummaryRequest(BaseModel):
+    """
+    طلب ملخّص وكلاء الشركة.
+
+    companyId  : معرّف الشركة — يُستخدَم لعزل كل استعلام.
+    accountIds : قائمة معرّفات حسابات SAS تخصّ هذه الشركة (حدّ 500).
+    """
+    companyId:  str           = Field(..., min_length=1, max_length=128,
+                                      description="معرّف الشركة")
+    accountIds: List[str]     = Field(..., min_length=1,
+                                      description="قائمة account_id (GUID أو معرّف)")
+
+
+@app.post("/admin/agents-summary", tags=["admin"], dependencies=_DEP)
+async def agents_summary(body: AgentsSummaryRequest) -> Any:
+    """
+    ملخّص وكلاء الشركة (البلنك الموحّد).
+
+    لكل account_id في القائمة (المُقيَّدة بـ company_id):
+      - آخر تصريح (declared_total / declared_active) من agent_reports.
+      - العدد الفعلي = COUNT من local_subscribers لذلك الحساب.
+      - العدد النشط = COUNT WHERE status='active'.
+      - الفارق والحكم بنفس منطق /reconciliation.
+      - آخر وقت مزامنة (MAX synced_at).
+
+    العزل الصارم:
+      - كل استعلام يحمل WHERE company_id = ? AND account_id IN (...).
+      - أي account_id لا ينتمي لـ company_id يُتجاهَل تلقائياً (لا يظهر في النتائج).
+      - حدّ 500 حساب لكل طلب.
+
+    fail-closed: تتطلّب X-Internal-Secret (كبقية النقاط).
+
+    عقد: POST /admin/agents-summary  { companyId, accountIds:[…] }
+    → { items:[{account_id, declared_total, declared_active, actual_total,
+                actual_active, diff, verdict, last_sync}] }
+    """
+    company_id = (body.companyId or "").strip()
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="companyId مطلوب",
+        )
+
+    # تنظيف المعرّفات وإزالة المكرَّرات مع الحفاظ على الترتيب — ثم تطبيق السقف
+    seen: set = set()
+    clean_ids: List[str] = []
+    for aid in (body.accountIds or []):
+        aid = (aid or "").strip()
+        if aid and len(aid) <= 128 and aid not in seen:
+            seen.add(aid)
+            clean_ids.append(aid)
+        if len(clean_ids) >= _AGENTS_SUMMARY_CAP:
+            break
+
+    if not clean_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="accountIds لا تحتوي على معرّفات صالحة",
+        )
+
+    # ── استعلامات SQLite — جميعها مُقيَّدة بـ company_id ──────────────────────
+    placeholders = ",".join("?" * len(clean_ids))
+
+    with _db() as conn:
+        # 1) آخر تصريح لكل حساب ضمن الشركة (subquery يأخذ السجلّ الأحدث لكل account_id)
+        rep_rows = conn.execute(f"""
+            SELECT ar.account_id,
+                   ar.declared_total,
+                   ar.declared_active,
+                   ar.created_at  AS report_ts
+            FROM   agent_reports ar
+            JOIN   (
+                SELECT account_id, MAX(created_at) AS max_ts
+                FROM   agent_reports
+                WHERE  company_id  = ?
+                  AND  account_id  IN ({placeholders})
+                GROUP  BY account_id
+            ) latest
+              ON  ar.account_id = latest.account_id
+             AND  ar.created_at = latest.max_ts
+             AND  ar.company_id = ?
+        """, [company_id, *clean_ids, company_id]).fetchall()
+
+        # 2) عدد المشتركين الكلي والنشط لكل حساب ضمن الشركة
+        sub_rows = conn.execute(f"""
+            SELECT account_id,
+                   COUNT(*)                                          AS total,
+                   SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active,
+                   MAX(synced_at)                                    AS last_sync
+            FROM   local_subscribers
+            WHERE  company_id  = ?
+              AND  account_id  IN ({placeholders})
+            GROUP  BY account_id
+        """, [company_id, *clean_ids]).fetchall()
+
+    # ── بناء فهارس سريعة بدلاً من المسح المتكرّر ─────────────────────────────
+    rep_by_account: Dict[str, dict] = {
+        r["account_id"]: {
+            "declared_total":  r["declared_total"],
+            "declared_active": r["declared_active"],
+            "report_ts":       r["report_ts"],
+        }
+        for r in rep_rows
+    }
+
+    sub_by_account: Dict[str, dict] = {
+        r["account_id"]: {
+            "actual_total":  int(r["total"]  or 0),
+            "actual_active": int(r["active"] or 0),
+            "last_sync":     r["last_sync"],
+        }
+        for r in sub_rows
+    }
+
+    # ── تجميع النتائج — فقط الحسابات المطلوبة التي تخصّ الشركة ────────────────
+    # (أي account_id لم يرد في rep_by_account ولا sub_by_account = لا ينتمي
+    # للشركة أو غير مزامَن — يُدرَج بقيم افتراضية صفرية + حكم no_report)
+    items: List[Dict[str, Any]] = []
+    for aid in clean_ids:
+        rep = rep_by_account.get(aid)
+        sub = sub_by_account.get(aid, {"actual_total": 0, "actual_active": 0, "last_sync": None})
+
+        actual_total  = sub["actual_total"]
+        actual_active = sub["actual_active"]
+        last_sync     = sub["last_sync"]
+
+        if rep is None:
+            # لا تصريح — نُدرجه فقط إن كان للحساب سجلّات في local_subscribers
+            # (أي تمّت مزامنته وينتمي للشركة)؛ account_id بلا سجلّات = خارج الشركة → تجاهل
+            if sub["last_sync"] is None:
+                # لا سجلّات محلية = لا ينتمي للشركة أو لم يُزامَن قطّ → تجاهل
+                continue
+            items.append({
+                "account_id":      aid,
+                "declared_total":  None,
+                "declared_active": None,
+                "actual_total":    actual_total,
+                "actual_active":   actual_active,
+                "diff":            None,
+                "verdict":         "no_report",
+                "last_sync":       last_sync,
+            })
+        else:
+            declared_total  = rep["declared_total"]
+            declared_active = rep["declared_active"]
+            diff            = declared_total - actual_total
+            verdict         = _compute_verdict(declared_total, actual_total)
+            items.append({
+                "account_id":      aid,
+                "declared_total":  declared_total,
+                "declared_active": declared_active,
+                "actual_total":    actual_total,
+                "actual_active":   actual_active,
+                "diff":            diff,
+                "verdict":         verdict,
+                "last_sync":       last_sync,
+            })
+
+    logger.info(
+        "[agents-summary] company=%s requested=%d returned=%d",
+        company_id[:8], len(clean_ids), len(items),
+    )
+    return {"items": items}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../services/sadara_api_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../models/sas_account.dart';
+import '../models/sas_admin_agent.dart';
 import '../models/sas_dashboard.dart';
 import '../models/sas_renewal.dart';
 import '../models/sas_report.dart';
@@ -94,6 +95,54 @@ class SasAgentApiService {
   Future<bool> deleteAccount(String id) async {
     final res = await _api.delete('$_base/accounts/$id');
     return res['success'] == true;
+  }
+
+  // ============================================================
+  //  إدارة الوكلاء (للأدمن فقط) — البلنك الموحّد على مستوى الشركة
+  // ============================================================
+
+  /// إدارة الوكلاء للأدمن — `GET admin/agents`.
+  ///
+  /// يعيد وكلاء الشركة (ملّاك حسابات ساس) مع حساباتهم ومقاطعتها (البلنك
+  /// الموحّد). المقاطعة قد تكون `null` لكل حساب إذا تعذّرت خدمة الساس؛
+  /// النموذج يتحمّل ذلك (يُعرَض «تعذّر جلب المقاطعة»).
+  ///
+  /// - الحماية النهائية في الخادم: يرفض `403` غير الأدمن؛ نُطلق حينها
+  ///   [SasAdminForbiddenException] لتُعرَض حالة «للمشرفين فقط» بلا انهيار.
+  /// - لا نمرّر أي هوية هنا؛ العزل (شركة + دور) يفرضه الخادم.
+  Future<List<SasAdminAgent>> getAdminAgents() async {
+    final token = VpsAuthService.instance.accessToken;
+    final uri = Uri.parse('${SadaraApiService.baseUrl}$_base/admin/agents');
+    final res = await http.get(
+      uri,
+      headers: {
+        'Accept': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (res.statusCode == 403) {
+      throw const SasAdminForbiddenException();
+    }
+    if (res.statusCode == 401) {
+      throw Exception('انتهت صلاحية الجلسة - يرجى تسجيل الدخول مرة أخرى');
+    }
+
+    Map<String, dynamic> decoded;
+    try {
+      final d = json.decode(res.body);
+      decoded = d is Map ? d.cast<String, dynamic>() : <String, dynamic>{};
+    } on FormatException {
+      decoded = <String, dynamic>{};
+    }
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception(
+          decoded['message'] ?? 'خطأ غير معروف (${res.statusCode})');
+    }
+
+    final list = _asMapList(decoded['data'] ?? decoded);
+    return list.map(SasAdminAgent.fromJson).toList();
   }
 
   // ============================================================
@@ -771,6 +820,16 @@ class SasAgentApiService {
     }
     return <String, dynamic>{};
   }
+}
+
+/// استثناء «للمشرفين فقط» — يُطلَق عند رد الخادم `403` على نقطة إدارة الوكلاء.
+///
+/// تلتقطه الشاشة لعرض حالة صريحة بدل رسالة خطأ عامة (الحماية النهائية في
+/// الخادم؛ إخفاء المدخل في الواجهة تحسينٌ للتجربة لا حاجزٌ أمني).
+class SasAdminForbiddenException implements Exception {
+  const SasAdminForbiddenException();
+  @override
+  String toString() => 'SasAdminForbiddenException';
 }
 
 /// مساعد لاستخراج قائمة خرائط من رد ساس مرن (خارج الخدمة — للاستهلاك في الصفحات).

@@ -223,6 +223,79 @@ run.bat              # Windows
 
 ---
 
+## ملخّص وكلاء الشركة (البلنك الموحّد) — POST /admin/agents-summary
+
+نقطة **إدارية** مُجمِّعة تُعيد صورة شاملة لمجموعة حسابات تخصّ شركة واحدة.
+
+### الأمان والعزل
+
+- تتطلّب `X-Internal-Secret` (fail-closed مثل بقية الخدمة).
+- **العزل الصارم**: كل استعلام SQL يحمل `WHERE company_id = ? AND account_id IN (…)` — بيانات حساب خارج الشركة مستحيلة هيكلياً.
+- أي `account_id` في القائمة لا يملك سجلّات محلية أو تصاريح للشركة المُحدَّدة يُتجاهَل (لا يظهر في `items`).
+- حدّ 500 معرّف في الطلب الواحد — يتجاوزه يُقلَّص بصمت.
+
+### عقد الطلب
+
+```json
+POST /admin/agents-summary
+X-Internal-Secret: <secret>
+
+{
+  "companyId":  "uuid-or-id-of-company",
+  "accountIds": ["uuid-acc-1", "uuid-acc-2", "…"]
+}
+```
+
+### عقد الاستجابة
+
+```json
+{
+  "items": [
+    {
+      "account_id":      "uuid-acc-1",
+      "declared_total":  120,
+      "declared_active": 98,
+      "actual_total":    115,
+      "actual_active":   102,
+      "diff":            5,
+      "verdict":         "matched",
+      "last_sync":       "2026-09-30 14:22:00"
+    },
+    {
+      "account_id":      "uuid-acc-2",
+      "declared_total":  null,
+      "declared_active": null,
+      "actual_total":    80,
+      "actual_active":   70,
+      "diff":            null,
+      "verdict":         "no_report",
+      "last_sync":       "2026-09-28 09:10:00"
+    }
+  ]
+}
+```
+
+### منطق الحكم (مُشترَك مع /reconciliation)
+
+الحكم يُحسَب بدالة `_compute_verdict(declared, actual)` المُستخرَجة من `/reconciliation`:
+
+| الحكم | الشرط |
+|---|---|
+| `matched` | `\|diff\| <= max(5, 5% من actual)` |
+| `company_suspicious` | `diff > 0` — الوكيل يصرّح أكثر مما تُظهره السجلّات |
+| `agent_suspicious` | `diff < 0` — السجلّات أكثر من تصريح الوكيل |
+| `no_report` | لا تصريح مُقدَّم بعد |
+
+### مصادر البيانات
+
+| الحقل | المصدر |
+|---|---|
+| `declared_total` / `declared_active` | آخر صفّ في `agent_reports` للحساب ضمن الشركة |
+| `actual_total` / `actual_active` | `COUNT / SUM` من `local_subscribers` مع `company_id + account_id` |
+| `last_sync` | `MAX(synced_at)` من `local_subscribers` |
+
+---
+
 ## نقاط العقارات المحلية (premises) — تخزين SQLite بلا نداء SAS
 
 جميع النقاط:

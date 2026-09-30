@@ -597,6 +597,21 @@ public class SasServiceClient : ISasServiceClient
         => PostBodyForRawAsync("/premises/unlink",
             new { companyId, ownerUserId, premises_id = premisesId, subscriber_ref = subscriberRef }, cancellationToken);
 
+    // ==================== إدارة الوكلاء (للأدمن — company-scoped) ====================
+    // ينادي نقطة Python /admin/agents-summary عبر PostBodyForRawAsync. لا اعتماد ساس ولا فكّ تشفير.
+    // accountIds تُشتق خادمياً من قاعدة البيانات (كل حسابات الشركة)؛ companyId من سياق الأدمن.
+
+    public Task<string> GetAgentsSummaryAsync(
+        string companyId,
+        IEnumerable<string> accountIds,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/admin/agents-summary",
+            new
+            {
+                companyId,
+                accountIds = accountIds?.ToArray() ?? Array.Empty<string>()
+            }, cancellationToken);
+
     /// <summary>
     /// ينادي مسار خدمة الساس ممرِّراً الاعتماد + وسائط الاستعلام في الجسم، ويعيد JSON خاماً.
     /// عند فشل الاتصال يرمي <see cref="SasServiceUnavailableException"/> لتترجمها البوّابة إلى 502/503.

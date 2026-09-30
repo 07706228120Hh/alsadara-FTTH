@@ -9,6 +9,7 @@ import '../premises/ui/premises_list_screen.dart';
 import '../whatsapp/whatsapp.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
+import 'sas_admin_agents_page.dart';
 import 'sas_explorer_page.dart';
 
 /// تبويب «الإعدادات» — مركز إعداد وحدة «وكيل الساس» بثيم منصّة الصدارة.
@@ -46,6 +47,10 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
 
   bool? _healthOk;
   bool _checking = false;
+
+  /// هل المستخدم الحالي أدمن (CompanyAdmin/Admin/Manager)؟ لإظهار مدخل الإشراف.
+  /// إخفاء المدخل تحسينٌ للتجربة فقط؛ الحماية النهائية في الخادم (يرد 403 لغيرهم).
+  bool get _isAdmin => VpsAuthService.instance.currentUser?.isAdmin ?? false;
 
   @override
   void initState() {
@@ -131,6 +136,18 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
           ),
           SizedBox(height: 10.h),
           _toolsCard(),
+
+          // ── إدارة الوكلاء (للمشرفين) — تظهر للأدمن فقط ──
+          if (_isAdmin) ...[
+            SizedBox(height: 20.h),
+            const SasSectionHeader(
+              title: 'الإشراف',
+              icon: Icons.admin_panel_settings_rounded,
+              gradient: AppTheme.blueGradient,
+            ),
+            SizedBox(height: 10.h),
+            _adminCard(),
+          ],
 
           SizedBox(height: 20.h),
 
@@ -437,6 +454,23 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
             onTap: () => _open(const PremisesListScreen()),
           ),
         ],
+      ),
+    );
+  }
+
+  // ─────────────────────────── الإشراف (أدمن فقط) ───────────────────────────
+
+  Widget _adminCard() {
+    return Container(
+      decoration: SasUi.card(),
+      clipBehavior: Clip.antiAlias,
+      child: _tile(
+        icon: Icons.groups_2_rounded,
+        iconColor: AppTheme.primaryColor,
+        title: 'إدارة الوكلاء (للمشرفين)',
+        subtitle:
+            'البلنك الموحّد — وكلاء الشركة وحساباتهم ومقاطعتها (تصريح/فعلي/فارق/حكم)',
+        onTap: () => _open(const SasAdminAgentsPage()),
       ),
     );
   }
