@@ -1713,9 +1713,11 @@ def _parse_expiry(expiration: str) -> Optional[datetime]:
     s = (expiration or "").strip()
     if len(s) < 10:
         return None
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+    # ملاحظة: نمرّر طول الناتج الفعلي لا طول سلسلة التنسيق
+    # ("%Y-%m-%d %H:%M:%S" طوله 17 لكنه يُنتج 19 حرفاً) — القصّ بـ len(fmt) كان يكسر التحليل.
+    for fmt, n in (("%Y-%m-%d %H:%M:%S", 19), ("%Y-%m-%dT%H:%M:%S", 19), ("%Y-%m-%d", 10)):
         try:
-            return datetime.strptime(s[:len(fmt)], fmt)
+            return datetime.strptime(s[:n], fmt)
         except ValueError:
             continue
     return None

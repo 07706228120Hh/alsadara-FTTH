@@ -1123,6 +1123,16 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
       'credit': 'الائتمان',
       'expenses': 'المصاريف',
       'profit': 'الأرباح',
+      'registrations': 'التسجيلات',
+      'registration': 'التسجيلات',
+      'activations': 'التفعيلات',
+      'activation': 'التفعيلات',
+      'reward_points': 'نقاط المكافآت',
+      'reward points': 'نقاط المكافآت',
+      'rewardpoints': 'نقاط المكافآت',
+      'points': 'النقاط',
+      'cards': 'الكروت',
+      'vouchers': 'القسائم',
     };
     final k = key.toLowerCase();
     if (labels.containsKey(k)) return labels[k]!;
@@ -1130,6 +1140,9 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
     if (k.contains('income') || k.contains('revenue')) return 'الدخل';
     if (k.contains('debt')) return 'الديون';
     if (k.contains('credit')) return 'الائتمان';
+    if (k.contains('registration')) return 'التسجيلات';
+    if (k.contains('activation')) return 'التفعيلات';
+    if (k.contains('reward') || k.contains('point')) return 'نقاط المكافآت';
     return key.replaceAll('_', ' ');
   }
 
