@@ -829,9 +829,336 @@ public class SasAgentController : ControllerBase
                 companyId, ownerUserId, safeTicketId, status, priority, category, token), ct);
     }
 
+    // ==================== العقارات (Premises — user-scoped: شركة + مالك) ====================
+    // مثل التذاكر تماماً: لا تمرّ عبر GetOwnedAccountAsync ولا تلمس أي حساب ساس.
+    // العزل يُشتق مباشرةً من التوكن عبر UserScopedPassThroughAsync (الذي يستدعي TryResolveScope):
+    //   companyId  = tenant.CompanyId (يرفض SuperAdmin/بلا شركة عبر Forbid)
+    //   ownerUserId= currentUserId (المستخدم المالك)
+    // لا يؤخذ companyId/ownerUserId من إدخال المستخدم إطلاقاً. لا اعتماد ساس ولا فكّ تشفير.
+    // القراءات: view · الكتابات: manage — كلها failClosed:true. قصّ آمن للمدخلات قبل التمرير.
+
+    // ---------- العقارات: قراءات (view) ----------
+
+    /// <summary>قائمة عقارات الوكيل الحالي (search/ownership/ptype/page/count) — قراءة (view).</summary>
+    [HttpGet("premises")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetPremisesList(
+        [FromQuery] string? search = null,
+        [FromQuery] string? ownership = null,
+        [FromQuery] string? ptype = null,
+        [FromQuery] int? page = null,
+        [FromQuery] int? count = null,
+        CancellationToken ct = default)
+    {
+        // قصّ آمن للوسائط النصّية والعددية قبل التمرير.
+        var safeSearch = Trim(search);
+        var safeOwnership = Trim(ownership);
+        var safePtype = Trim(ptype);
+        var safePage = page.HasValue ? Math.Clamp(page.Value, 1, 100000) : (int?)null;
+        var safeCount = count.HasValue ? Math.Clamp(count.Value, 1, 1000) : (int?)null;
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.GetPremisesListAsync(
+                companyId, ownerUserId, safeSearch, safeOwnership, safePtype, safePage, safeCount, token), ct);
+    }
+
+    /// <summary>تفاصيل عقار محدّد يخصّ الوكيل الحالي — قراءة (view).</summary>
+    [HttpGet("premises/{pid}")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetPremises(string pid, CancellationToken ct)
+    {
+        if (!TryNormalizePremisesId(pid, out var safePid, out var bad))
+            return Task.FromResult(bad!);
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.GetPremisesAsync(companyId, ownerUserId, safePid, token), ct);
+    }
+
+    /// <summary>مشتركو عقار محدّد يخصّ الوكيل الحالي — قراءة (view).</summary>
+    [HttpGet("premises/{pid}/subscribers")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetPremisesSubscribers(string pid, CancellationToken ct)
+    {
+        if (!TryNormalizePremisesId(pid, out var safePid, out var bad))
+            return Task.FromResult(bad!);
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.GetPremisesSubscribersAsync(companyId, ownerUserId, safePid, token), ct);
+    }
+
+    /// <summary>العقار المرتبط بمشترك محدّد يخصّ الوكيل الحالي — قراءة (view).</summary>
+    [HttpGet("premises/by-subscriber/{sref}")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetPremisesBySubscriber(string sref, CancellationToken ct)
+    {
+        var safeRef = Trim(sref);
+        if (safeRef == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "مرجع المشترك مطلوب" }));
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.GetPremisesBySubscriberAsync(companyId, ownerUserId, safeRef, token), ct);
+    }
+
+    /// <summary>مرشّحو الربط (مشتركون قابلون للربط بعقار) للوكيل الحالي (search اختياري) — قراءة (view).</summary>
+    [HttpGet("premises/link-candidates")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetPremisesLinkCandidates([FromQuery] string? search = null, CancellationToken ct = default)
+    {
+        var safeSearch = Trim(search);
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.GetPremisesLinkCandidatesAsync(companyId, ownerUserId, safeSearch, token), ct);
+    }
+
+    /// <summary>صورة عقار محدّد يخصّ الوكيل الحالي — قراءة (view). يُمرَّر JSON خام (يتضمّن الصورة/ext) كما تعيده الخدمة.</summary>
+    [HttpGet("premises/{pid}/photo")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetPremisesPhoto(string pid, CancellationToken ct)
+    {
+        if (!TryNormalizePremisesId(pid, out var safePid, out var bad))
+            return Task.FromResult(bad!);
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.GetPremisesPhotoAsync(companyId, ownerUserId, safePid, token), ct);
+    }
+
+    // ---------- العقارات: كتابات (manage) ----------
+
+    /// <summary>إنشاء عقار جديد للوكيل الحالي — كتابة (manage). created_by من الهوية خادمياً.</summary>
+    [HttpPost("premises")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> CreatePremises([FromBody] PremisesCreateRequest request, CancellationToken ct)
+    {
+        if (request == null
+            || string.IsNullOrWhiteSpace(request.Governorate)
+            || string.IsNullOrWhiteSpace(request.Area)
+            || string.IsNullOrWhiteSpace(request.Landmark))
+            return Task.FromResult<IActionResult>(
+                BadRequest(new { success = false, message = "المحافظة والمنطقة والنقطة الدالّة مطلوبة" }));
+
+        if (!TryValidateCoordinates(request.Lat, request.Lon, out var coordError))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = coordError }));
+
+        var governorate = TrimRequired(request.Governorate);
+        var area = TrimRequired(request.Area);
+        var landmark = TrimRequired(request.Landmark);
+        var phone = Trim(request.Phone);
+        var ownership = Trim(request.Ownership);
+        var ptype = Trim(request.Ptype);
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.CreatePremisesAsync(
+                companyId,
+                ownerUserId,
+                governorate!,
+                area!,
+                landmark!,
+                request.Lat,
+                request.Lon,
+                phone,
+                ownership,
+                ptype,
+                // created_by من هوية المستخدم الحالي (تدقيق) — لا من إدخال العميل.
+                ownerUserId,
+                token), ct);
+    }
+
+    /// <summary>تعديل عقار يخصّ الوكيل الحالي — كتابة (manage). كل الحقول اختيارية؛ يُرفض إن كانت كلها فارغة.</summary>
+    [HttpPatch("premises/{pid}")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> UpdatePremises(string pid, [FromBody] PremisesUpdateRequest request, CancellationToken ct)
+    {
+        if (!TryNormalizePremisesId(pid, out var safePid, out var bad))
+            return Task.FromResult(bad!);
+
+        if (request == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "بيانات التحديث مطلوبة" }));
+
+        if (!TryValidateCoordinates(request.Lat, request.Lon, out var coordError))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = coordError }));
+
+        var governorate = Trim(request.Governorate);
+        var area = Trim(request.Area);
+        var landmark = Trim(request.Landmark);
+        var phone = Trim(request.Phone);
+        var ownership = Trim(request.Ownership);
+        var ptype = Trim(request.Ptype);
+
+        if (governorate == null && area == null && landmark == null && phone == null
+            && ownership == null && ptype == null
+            && !request.Lat.HasValue && !request.Lon.HasValue)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "لا يوجد حقل للتحديث" }));
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.UpdatePremisesAsync(
+                companyId, ownerUserId, safePid,
+                governorate, area, landmark, request.Lat, request.Lon, phone, ownership, ptype, token), ct);
+    }
+
+    /// <summary>حذف عقار يخصّ الوكيل الحالي — كتابة (manage).</summary>
+    [HttpDelete("premises/{pid}")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> DeletePremises(string pid, CancellationToken ct)
+    {
+        if (!TryNormalizePremisesId(pid, out var safePid, out var bad))
+            return Task.FromResult(bad!);
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.DeletePremisesAsync(companyId, ownerUserId, safePid, token), ct);
+    }
+
+    /// <summary>رفع صورة عقار (base64) يخصّ الوكيل الحالي — كتابة (manage). حدّ حجم معقول + امتداد مسموح.</summary>
+    [HttpPost("premises/{pid}/photo")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> UploadPremisesPhoto(string pid, [FromBody] PremisesPhotoUploadRequest request, CancellationToken ct)
+    {
+        if (!TryNormalizePremisesId(pid, out var safePid, out var bad))
+            return Task.FromResult(bad!);
+
+        if (request == null || string.IsNullOrWhiteSpace(request.ImageBase64))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "بيانات الصورة مطلوبة" }));
+
+        // تنظيف بادئة data URI إن وُجدت (data:image/png;base64,....) ثم إسقاط أي فراغات.
+        var raw = request.ImageBase64.Trim();
+        var commaIdx = raw.IndexOf(',');
+        if (raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase) && commaIdx >= 0)
+            raw = raw[(commaIdx + 1)..];
+        raw = raw.Replace("\r", string.Empty).Replace("\n", string.Empty).Replace(" ", string.Empty);
+
+        // حدّ حجم معقول على طول base64 (≈ 6.7MB بيانات خام عند 5MB base64 تقريباً).
+        if (raw.Length > MaxPhotoBase64Length)
+            return Task.FromResult<IActionResult>(
+                new ObjectResult(new { success = false, message = "حجم الصورة يتجاوز الحد المسموح" }) { StatusCode = 413 });
+
+        // تحقّق أنّ المحتوى base64 صالح فعلاً (يمنع تمرير حمولة عشوائية للخدمة).
+        if (!IsValidBase64(raw))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "ترميز الصورة غير صالح" }));
+
+        // امتداد مسموح فقط (قائمة سماح) — افتراضي jpg.
+        var ext = NormalizePhotoExt(request.Ext);
+        if (ext == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "امتداد الصورة غير مدعوم" }));
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.UploadPremisesPhotoAsync(companyId, ownerUserId, safePid, raw, ext, token), ct);
+    }
+
+    /// <summary>ربط مشترك بعقار يخصّ الوكيل الحالي — كتابة (manage).</summary>
+    [HttpPost("premises/{pid}/link")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> LinkPremisesSubscriber(string pid, [FromBody] PremisesLinkRequest request, CancellationToken ct)
+    {
+        if (!TryNormalizePremisesId(pid, out var safePid, out var bad))
+            return Task.FromResult(bad!);
+
+        var safeRef = Trim(request?.SubscriberRef);
+        if (safeRef == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "مرجع المشترك مطلوب" }));
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.LinkPremisesSubscriberAsync(companyId, ownerUserId, safePid, safeRef, token), ct);
+    }
+
+    /// <summary>فكّ ربط مشترك عن عقار يخصّ الوكيل الحالي — كتابة (manage).</summary>
+    [HttpPost("premises/{pid}/unlink")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> UnlinkPremisesSubscriber(string pid, [FromBody] PremisesLinkRequest request, CancellationToken ct)
+    {
+        if (!TryNormalizePremisesId(pid, out var safePid, out var bad))
+            return Task.FromResult(bad!);
+
+        var safeRef = Trim(request?.SubscriberRef);
+        if (safeRef == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "مرجع المشترك مطلوب" }));
+
+        return UserScopedPassThroughAsync((companyId, ownerUserId, token) =>
+            _sasClient.UnlinkPremisesSubscriberAsync(companyId, ownerUserId, safePid, safeRef, token), ct);
+    }
+
+    // ---------- مساعدات العقارات ----------
+
+    /// <summary>الحد الأقصى لطول سلسلة base64 لصورة العقار (حماية من الإساءة/استهلاك الذاكرة).</summary>
+    private const int MaxPhotoBase64Length = 5 * 1024 * 1024; // ~5MB base64 ≈ ~3.75MB بيانات
+
+    /// <summary>الحد الأقصى لطول معرّف العقار الممرَّر للخدمة.</summary>
+    private const int MaxPremisesIdLength = 128;
+
+    /// <summary>امتدادات الصور المسموح بها (قائمة سماح صارمة).</summary>
+    private static readonly HashSet<string> AllowedPhotoExts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "jpg", "jpeg", "png", "webp"
+    };
+
+    /// <summary>يقصّ ويتحقّق من معرّف العقار؛ يعيد false + BadRequest عند الفراغ.</summary>
+    private bool TryNormalizePremisesId(string? pid, out string safePid, out IActionResult? bad)
+    {
+        safePid = string.Empty;
+        bad = null;
+        var v = Trim(pid);
+        if (v == null)
+        {
+            bad = BadRequest(new { success = false, message = "معرّف العقار مطلوب" });
+            return false;
+        }
+        if (v.Length > MaxPremisesIdLength)
+            v = v[..MaxPremisesIdLength];
+        safePid = v;
+        return true;
+    }
+
+    /// <summary>قصّ لقيمة نصّية مطلوبة (بعد التحقّق من عدم الفراغ مسبقاً) مع حدّ الطول.</summary>
+    private static string? TrimRequired(string value)
+        => Trim(value);
+
+    /// <summary>تحقّق من صحّة الإحداثيات إن وُجدت (نطاق lat/lon المعياري).</summary>
+    private static bool TryValidateCoordinates(double? lat, double? lon, out string error)
+    {
+        error = string.Empty;
+        if (lat.HasValue && (double.IsNaN(lat.Value) || lat.Value < -90 || lat.Value > 90))
+        {
+            error = "خط العرض غير صالح";
+            return false;
+        }
+        if (lon.HasValue && (double.IsNaN(lon.Value) || lon.Value < -180 || lon.Value > 180))
+        {
+            error = "خط الطول غير صالح";
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>يطبّع امتداد الصورة إلى قيمة مسموحة (بلا نقطة، حروف صغيرة) أو null إن غير مدعوم.</summary>
+    private static string? NormalizePhotoExt(string? ext)
+    {
+        if (string.IsNullOrWhiteSpace(ext))
+            return "jpg"; // افتراضي آمن
+        var e = ext.Trim().TrimStart('.').ToLowerInvariant();
+        return AllowedPhotoExts.Contains(e) ? e : null;
+    }
+
+    /// <summary>يتحقّق أنّ السلسلة base64 صالحة الترميز دون تخصيص مصفوفة كبيرة (فكّ تجريبي).</summary>
+    private static bool IsValidBase64(string value)
+    {
+        if (string.IsNullOrEmpty(value) || (value.Length % 4) != 0)
+            return false;
+        // FromBase64String يرمي عند عدم الصلاحية؛ نتحقّق دون استخدام الناتج (مجرّد تحقّق شكلي).
+        var buffer = new byte[((value.Length * 3) + 3) / 4];
+        return Convert.TryFromBase64String(value, buffer, out _);
+    }
+
+    /// <summary>
+    /// نمط تمرير user-scoped عام: يحصر النطاق عبر <see cref="TryResolveScope"/> فيمرّر
+    /// <c>companyId=tenant.CompanyId</c> و<c>ownerUserId=currentUserId</c> (من التوكن حصراً، لا من العميل)
+    /// إلى الدالة المزوَّدة، ثم يعيد JSON خاماً — مع ترجمة تعذّر الخدمة إلى 503.
+    /// لا يلمس أي حساب ساس ولا يفكّ أي تشفير. يُستخدم للعقارات (وأي ميزة user-scoped مماثلة).
+    /// </summary>
+    private Task<IActionResult> UserScopedPassThroughAsync(
+        Func<string, string, CancellationToken, Task<string>> call,
+        CancellationToken ct)
+        => TicketsPassThroughAsync(call, ct);
+
     /// <summary>
     /// نمط تمرير التذاكر (user-scoped): يحصر النطاق عبر <see cref="TryResolveScope"/> فيمرّر
-    /// <c>companyId=tenant.CompanyId</c> و<c>ownerUserId=currentUserId</c> (من التوكن حصراً، لا من العميل)
+    /// <c>companyId=tenant.CompanyId</c> و<c>ownerUserId=currentUserId</c> (من التوكن حصراً, لا من العميل)
     /// إلى الدالة المزوَّدة، ثم يعيد JSON خاماً — مع ترجمة تعذّر الخدمة إلى 503.
     /// لا يلمس أي حساب ساس ولا يفكّ أي تشفير.
     /// </summary>
@@ -1099,3 +1426,41 @@ public record SasAgentUpdateTicketRequest(
     string? Status,
     string? Priority,
     string? Category);
+
+// ==================== DTOs العقارات (Premises) ====================
+// بادئة Premises لتفادي التصادم. companyId/ownerUserId/createdBy تُشتق خادمياً من التوكن — لا من العميل.
+
+/// <summary>
+/// طلب إنشاء عقار — المحافظة والمنطقة والنقطة الدالّة مطلوبة؛ الإحداثيات/الهاتف/الملكية/النوع اختيارية.
+/// </summary>
+public record PremisesCreateRequest(
+    string Governorate,
+    string Area,
+    string Landmark,
+    double? Lat,
+    double? Lon,
+    string? Phone,
+    string? Ownership,
+    string? Ptype);
+
+/// <summary>
+/// طلب تعديل عقار — كل الحقول اختيارية؛ يُرفض إن كانت كلها فارغة. (premises_id من المسار.)
+/// </summary>
+public record PremisesUpdateRequest(
+    string? Governorate,
+    string? Area,
+    string? Landmark,
+    double? Lat,
+    double? Lon,
+    string? Phone,
+    string? Ownership,
+    string? Ptype);
+
+/// <summary>طلب رفع صورة عقار — الصورة base64 (تُنظَّف بادئة data:) وامتداد اختياري (افتراضي jpg).</summary>
+public record PremisesPhotoUploadRequest(
+    string ImageBase64,
+    string? Ext);
+
+/// <summary>طلب ربط/فكّ ربط مشترك بعقار — مرجع المشترك مطلوب. (premises_id من المسار.)</summary>
+public record PremisesLinkRequest(
+    string? SubscriberRef);

@@ -439,6 +439,164 @@ public class SasServiceClient : ISasServiceClient
         => PostBodyForRawAsync("/tickets/update",
             new { companyId, ownerUserId, ticket_id = ticketId, status, priority, category }, cancellationToken);
 
+    // ==================== العقارات (Premises — user-scoped) ====================
+    // كل الدوال أدناه تنادي نقاط /premises/* في خدمة Python عبر PostBodyForRawAsync.
+    // الجسم الأساس {companyId, ownerUserId, ...} من سياق المستخدم (لا اعتماد ساس ولا فكّ تشفير).
+    // createdBy يأتي من هوية المستخدم خادمياً (تدقيق). أسماء الحقول snake_case لمطابقة عقد Python.
+
+    public Task<string> GetPremisesListAsync(
+        string companyId,
+        string ownerUserId,
+        string? search = null,
+        string? ownership = null,
+        string? ptype = null,
+        int? page = null,
+        int? count = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/list",
+            new { companyId, ownerUserId, search, ownership, ptype, page, count }, cancellationToken);
+
+    public Task<string> GetPremisesAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/get",
+            new { companyId, ownerUserId, premises_id = premisesId }, cancellationToken);
+
+    public Task<string> GetPremisesSubscribersAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/subscribers",
+            new { companyId, ownerUserId, premises_id = premisesId }, cancellationToken);
+
+    public Task<string> GetPremisesBySubscriberAsync(
+        string companyId,
+        string ownerUserId,
+        string subscriberRef,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/by-subscriber",
+            new { companyId, ownerUserId, subscriber_ref = subscriberRef }, cancellationToken);
+
+    public Task<string> GetPremisesLinkCandidatesAsync(
+        string companyId,
+        string ownerUserId,
+        string? search = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/link-candidates",
+            new { companyId, ownerUserId, search }, cancellationToken);
+
+    public Task<string> GetPremisesPhotoAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/photo/get",
+            new { companyId, ownerUserId, premises_id = premisesId }, cancellationToken);
+
+    public Task<string> CreatePremisesAsync(
+        string companyId,
+        string ownerUserId,
+        string governorate,
+        string area,
+        string landmark,
+        double? lat = null,
+        double? lon = null,
+        string? phone = null,
+        string? ownership = null,
+        string? ptype = null,
+        string? createdBy = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/create",
+            new
+            {
+                companyId,
+                ownerUserId,
+                governorate,
+                area,
+                landmark,
+                lat,
+                lon,
+                phone,
+                ownership,
+                ptype,
+                created_by = createdBy
+            }, cancellationToken);
+
+    public Task<string> UpdatePremisesAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        string? governorate = null,
+        string? area = null,
+        string? landmark = null,
+        double? lat = null,
+        double? lon = null,
+        string? phone = null,
+        string? ownership = null,
+        string? ptype = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/update",
+            new
+            {
+                companyId,
+                ownerUserId,
+                premises_id = premisesId,
+                governorate,
+                area,
+                landmark,
+                lat,
+                lon,
+                phone,
+                ownership,
+                ptype
+            }, cancellationToken);
+
+    public Task<string> DeletePremisesAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/delete",
+            new { companyId, ownerUserId, premises_id = premisesId }, cancellationToken);
+
+    public Task<string> UploadPremisesPhotoAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        string imageBase64,
+        string ext,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/photo/upload",
+            new
+            {
+                companyId,
+                ownerUserId,
+                premises_id = premisesId,
+                image_base64 = imageBase64,
+                ext
+            }, cancellationToken);
+
+    public Task<string> LinkPremisesSubscriberAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        string subscriberRef,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/link",
+            new { companyId, ownerUserId, premises_id = premisesId, subscriber_ref = subscriberRef }, cancellationToken);
+
+    public Task<string> UnlinkPremisesSubscriberAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        string subscriberRef,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/premises/unlink",
+            new { companyId, ownerUserId, premises_id = premisesId, subscriber_ref = subscriberRef }, cancellationToken);
+
     /// <summary>
     /// ينادي مسار خدمة الساس ممرِّراً الاعتماد + وسائط الاستعلام في الجسم، ويعيد JSON خاماً.
     /// عند فشل الاتصال يرمي <see cref="SasServiceUnavailableException"/> لتترجمها البوّابة إلى 502/503.

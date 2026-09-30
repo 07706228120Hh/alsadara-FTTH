@@ -12,6 +12,7 @@ import 'pages/sas_report_tab.dart';
 import 'pages/sas_subscribers_tab.dart';
 import 'pages/sas_system_tab.dart';
 import 'pages/sas_tickets_tab.dart';
+import 'premises/ui/premises_list_screen.dart';
 import 'whatsapp/whatsapp.dart';
 import 'widgets/sas_state_views.dart';
 
@@ -158,6 +159,14 @@ class _SasAgentShellState extends State<_SasAgentShell>
             ],
           ),
           actions: [
+            IconButton(
+              tooltip: 'العقارات (العنوان الوطني)',
+              icon: const Icon(Icons.maps_home_work_rounded,
+                  color: Colors.white),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PremisesListScreen()),
+              ),
+            ),
             IconButton(
               tooltip: 'إعدادات وقوالب الواتساب',
               icon: const Icon(Icons.chat_rounded, color: Colors.white),

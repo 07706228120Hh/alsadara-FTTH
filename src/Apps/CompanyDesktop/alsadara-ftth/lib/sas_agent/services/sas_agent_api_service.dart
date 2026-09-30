@@ -10,6 +10,7 @@ import '../models/sas_renewal.dart';
 import '../models/sas_report.dart';
 import '../models/sas_subscriber.dart';
 import '../models/sas_ticket.dart';
+import '../premises/models/premises.dart';
 
 /// خدمة API لوحدة «وكيل الساس» — تخاطب بوّابة الصدارة `/api/sas-agent/*`.
 ///
@@ -469,6 +470,142 @@ class SasAgentApiService {
       'payload': payload,
     });
     return res;
+  }
+
+  // ============================================================
+  //  العقارات (Premises · user-scoped · بلا account id)
+  //  تحت /api/sas-agent/premises — العزل (شركة + مالك) يفرضه الخادم.
+  //  ⚠️ صورة الدار تُرسَل base64 (JSON) لا multipart.
+  // ============================================================
+
+  /// قائمة عقارات مُرقّمة/مُفلترة — `GET premises?search=&ownership=&ptype=&page=&count=`.
+  Future<List<Premises>> getPremises({
+    String? search,
+    String? ownership,
+    String? propertyType,
+    int page = 1,
+    int count = 50,
+  }) async {
+    final params = <String>['page=$page', 'count=$count'];
+    if (search != null && search.isNotEmpty) {
+      params.add('search=${Uri.encodeQueryComponent(search)}');
+    }
+    if (ownership != null && ownership.isNotEmpty) {
+      params.add('ownership=$ownership');
+    }
+    if (propertyType != null && propertyType.isNotEmpty) {
+      params.add('ptype=$propertyType');
+    }
+    final res = await _api.get('$_base/premises?${params.join('&')}');
+    final list = _asMapList(
+        res['premises'] ?? res['data'] ?? res['rows'] ?? res['items'] ?? res);
+    return list.map(Premises.fromJson).toList();
+  }
+
+  /// عقار واحد بتفاصيله (يتضمّن اشتراكاته) — `GET premises/{pid}`.
+  Future<Premises> getPremise(int pid) async {
+    final res = await _api.get('$_base/premises/$pid');
+    return Premises.fromJson(_asMap(res));
+  }
+
+  /// إنشاء عقار — `POST premises`. يعيد العقار المُنشأ.
+  Future<Premises?> createPremise(Map<String, dynamic> body) async {
+    final res = await _api.post('$_base/premises', body: body);
+    final data = res['data'] ?? res['premises'];
+    if (data is Map) return Premises.fromJson(data.cast<String, dynamic>());
+    if (res.containsKey('id')) return Premises.fromJson(res);
+    return null;
+  }
+
+  /// تعديل عقار — `PATCH premises/{pid}`. يعيد العقار المُحدَّث.
+  Future<Premises?> updatePremise(int pid, Map<String, dynamic> body) async {
+    final res = await _patch('$_base/premises/$pid', body);
+    final data = res['data'] ?? res['premises'];
+    if (data is Map) return Premises.fromJson(data.cast<String, dynamic>());
+    if (res.containsKey('id')) return Premises.fromJson(res);
+    return null;
+  }
+
+  /// حذف عقار — `DELETE premises/{pid}` (يفكّ ربط اشتراكاته ولا يحذفها).
+  Future<bool> deletePremise(int pid) async {
+    final res = await _api.delete('$_base/premises/$pid');
+    return res['success'] != false;
+  }
+
+  /// رفع صورة الدار (base64) — `POST premises/{pid}/photo`.
+  ///
+  /// [bytes] بايتات الصورة (JPEG/PNG)؛ تُشفَّر base64 وتُرسَل في الجسم.
+  /// لا تُخزَّن الصورة محلياً ولا تُطبَع في السجل.
+  Future<bool> uploadPremisePhoto(
+    int pid,
+    List<int> bytes, {
+    String contentType = 'image/jpeg',
+  }) async {
+    final res = await _api.post('$_base/premises/$pid/photo', body: {
+      'contentType': contentType,
+      'data': base64Encode(bytes),
+    });
+    return res['success'] != false;
+  }
+
+  /// جلب صورة الدار (bytes) — `GET premises/{pid}/photo`.
+  /// يعيد null عند غياب الصورة.
+  Future<List<int>?> getPremisePhoto(int pid) async {
+    try {
+      final bytes = await _api.getBytes('$_base/premises/$pid/photo');
+      return bytes.isEmpty ? null : bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// اشتراكات مرتبطة بعقار — `GET premises/{pid}/subscribers`.
+  Future<List<PremisesSub>> getPremiseSubscribers(int pid) async {
+    final res = await _api.get('$_base/premises/$pid/subscribers');
+    final list = _asMapList(
+        res['subscribers'] ?? res['data'] ?? res['rows'] ?? res['items'] ?? res);
+    return list.map(PremisesSub.fromJson).toList();
+  }
+
+  /// العقار المرتبط بمرجع اشتراك — `GET premises/by-subscriber/{sref}`.
+  /// يعيد null إن لم يكن الاشتراك مرتبطاً بأي عقار.
+  Future<Premises?> premiseBySubscriber(String subscriberRef) async {
+    final res = await _api.get(
+        '$_base/premises/by-subscriber/${Uri.encodeComponent(subscriberRef)}');
+    final data = res['premises'] ?? res['data'];
+    if (data is Map) return Premises.fromJson(data.cast<String, dynamic>());
+    if (res.containsKey('id')) return Premises.fromJson(res);
+    return null;
+  }
+
+  /// مرشّحو الربط (اشتراكات ضمن النطاق) — `GET premises/link-candidates?search=`.
+  /// كل عنصر: `{ref/id, username, name, phone, premises_id?}`.
+  Future<List<Map<String, dynamic>>> premiseLinkCandidates({
+    String search = '',
+  }) async {
+    final qs =
+        search.isEmpty ? '' : '?search=${Uri.encodeQueryComponent(search)}';
+    final res = await _api.get('$_base/premises/link-candidates$qs');
+    return _asMapList(
+        res['candidates'] ?? res['data'] ?? res['rows'] ?? res['items'] ?? res);
+  }
+
+  /// ربط اشتراكات بعقار — `POST premises/{pid}/link`.
+  Future<bool> linkPremiseSubscribers(
+      int pid, List<String> subscriberRefs) async {
+    final res = await _api.post('$_base/premises/$pid/link', body: {
+      'subscriberRefs': subscriberRefs,
+    });
+    return res['success'] != false;
+  }
+
+  /// فكّ ربط اشتراكات عن عقار — `POST premises/{pid}/unlink`.
+  Future<bool> unlinkPremiseSubscribers(
+      int pid, List<String> subscriberRefs) async {
+    final res = await _api.post('$_base/premises/$pid/unlink', body: {
+      'subscriberRefs': subscriberRefs,
+    });
+    return res['success'] != false;
   }
 
   // ============================================================

@@ -381,4 +381,151 @@ public interface ISasServiceClient
         string? priority = null,
         string? category = null,
         CancellationToken cancellationToken = default);
+
+    // ==================== العقارات (Premises — user-scoped: شركة + مالك) ====================
+    // كل نقاط العقارات معزولة بـ (companyId + ownerUserId) من سياق المستخدم المُصادَق مباشرةً،
+    // لا من حساب ساس ولا من إدخال المستخدم. لا اعتماد ساس ولا فكّ تشفير هنا إطلاقاً.
+    //  - companyId  = شركة المستخدم الحالي (عزل المستأجرين).
+    //  - ownerUserId= المستخدم المالك — مفتاح ملكية العقار.
+    // جميع الدوال تنادي نقاط Python (/premises/*) عبر PostBodyForRawAsync وتعيد JSON خاماً.
+
+    /// <summary>
+    /// قائمة عقارات الوكيل (POST /premises/list + companyId + ownerUserId + مرشّحات). قراءة.
+    /// </summary>
+    /// <param name="companyId">شركة المستخدم (عزل المستأجرين).</param>
+    /// <param name="ownerUserId">المستخدم المالك.</param>
+    /// <param name="search">نص بحث اختياري.</param>
+    /// <param name="ownership">تصفية بنوع الملكية (اختياري).</param>
+    /// <param name="ptype">تصفية بنوع العقار (اختياري).</param>
+    /// <param name="page">رقم الصفحة (اختياري).</param>
+    /// <param name="count">حجم الصفحة (اختياري).</param>
+    Task<string> GetPremisesListAsync(
+        string companyId,
+        string ownerUserId,
+        string? search = null,
+        string? ownership = null,
+        string? ptype = null,
+        int? page = null,
+        int? count = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>تفاصيل عقار محدّد (POST /premises/get + companyId + ownerUserId + premises_id). قراءة.</summary>
+    Task<string> GetPremisesAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>مشتركو عقار محدّد (POST /premises/subscribers + companyId + ownerUserId + premises_id). قراءة.</summary>
+    Task<string> GetPremisesSubscribersAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>عقار مرتبط بمشترك (POST /premises/by-subscriber + companyId + ownerUserId + subscriber_ref). قراءة.</summary>
+    Task<string> GetPremisesBySubscriberAsync(
+        string companyId,
+        string ownerUserId,
+        string subscriberRef,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>مرشّحو الربط (مشتركون قابلون للربط بعقار) (POST /premises/link-candidates + companyId + ownerUserId + search?). قراءة.</summary>
+    Task<string> GetPremisesLinkCandidatesAsync(
+        string companyId,
+        string ownerUserId,
+        string? search = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>صورة عقار محدّد (POST /premises/photo/get + companyId + ownerUserId + premises_id). قراءة.</summary>
+    Task<string> GetPremisesPhotoAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// إنشاء عقار جديد (POST /premises/create + companyId + ownerUserId + حقول). كتابة.
+    /// </summary>
+    /// <param name="companyId">شركة المستخدم (عزل المستأجرين).</param>
+    /// <param name="ownerUserId">المستخدم المالك.</param>
+    /// <param name="governorate">المحافظة.</param>
+    /// <param name="area">المنطقة.</param>
+    /// <param name="landmark">أقرب نقطة دالّة.</param>
+    /// <param name="lat">خط العرض (اختياري).</param>
+    /// <param name="lon">خط الطول (اختياري).</param>
+    /// <param name="phone">هاتف اختياري.</param>
+    /// <param name="ownership">نوع الملكية (اختياري).</param>
+    /// <param name="ptype">نوع العقار (اختياري).</param>
+    /// <param name="createdBy">من أنشأ العقار (من هوية المستخدم خادمياً — للتدقيق).</param>
+    Task<string> CreatePremisesAsync(
+        string companyId,
+        string ownerUserId,
+        string governorate,
+        string area,
+        string landmark,
+        double? lat = null,
+        double? lon = null,
+        string? phone = null,
+        string? ownership = null,
+        string? ptype = null,
+        string? createdBy = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// تعديل عقار (POST /premises/update + companyId + ownerUserId + premises_id + حقول). كتابة.
+    /// كل الحقول اختيارية؛ يُحدَّث ما أُرسل فقط.
+    /// </summary>
+    Task<string> UpdatePremisesAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        string? governorate = null,
+        string? area = null,
+        string? landmark = null,
+        double? lat = null,
+        double? lon = null,
+        string? phone = null,
+        string? ownership = null,
+        string? ptype = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>حذف عقار (POST /premises/delete + companyId + ownerUserId + premises_id). كتابة.</summary>
+    Task<string> DeletePremisesAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// رفع صورة عقار (POST /premises/photo/upload + companyId + ownerUserId + premises_id + image_base64 + ext). كتابة.
+    /// </summary>
+    /// <param name="companyId">شركة المستخدم (عزل المستأجرين).</param>
+    /// <param name="ownerUserId">المستخدم المالك.</param>
+    /// <param name="premisesId">معرّف العقار.</param>
+    /// <param name="imageBase64">الصورة مُرمَّزة base64 (بلا بادئة data:).</param>
+    /// <param name="ext">امتداد الصورة (jpg/png/webp…).</param>
+    Task<string> UploadPremisesPhotoAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        string imageBase64,
+        string ext,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>ربط مشترك بعقار (POST /premises/link + companyId + ownerUserId + premises_id + subscriber_ref). كتابة.</summary>
+    Task<string> LinkPremisesSubscriberAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        string subscriberRef,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>فكّ ربط مشترك عن عقار (POST /premises/unlink + companyId + ownerUserId + premises_id + subscriber_ref). كتابة.</summary>
+    Task<string> UnlinkPremisesSubscriberAsync(
+        string companyId,
+        string ownerUserId,
+        string premisesId,
+        string subscriberRef,
+        CancellationToken cancellationToken = default);
 }
