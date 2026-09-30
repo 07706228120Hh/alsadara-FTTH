@@ -13,6 +13,7 @@ import '../models/sas_subscriber_summary.dart';
 import '../models/sas_ticket.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
+import '../widgets/sas_metric_card.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_report_widgets.dart';
 import '../widgets/sas_state_views.dart';
@@ -648,36 +649,35 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
   // ─────────────────────────── ملخّص المشتركين ───────────────────────────
 
   /// بطاقات الملخّص من [SasSubscriberSummary] الموثوق — أرقام فعلية أو 0
-  /// (لا «-» أبداً).
+  /// (لا «-» أبداً). عدّادات فاخرة بعرض ثابت مريح في وضع التمرير.
   Widget _summaryStats(SasSubscriberSummary s) {
+    final cells = <_Metric>[
+      _Metric('الإجمالي', s.total, AppTheme.primaryColor, Icons.groups_rounded),
+      _Metric('نشط', s.active, AppTheme.successColor,
+          Icons.check_circle_rounded),
+      _Metric('منتهٍ', s.expired, AppTheme.warningColor,
+          Icons.timer_off_rounded),
+      _Metric('متصل الآن', s.online, AppTheme.infoColor, Icons.wifi_rounded),
+    ];
+    return _metricWrap([
+      for (final m in cells)
+        SasMetricCard(
+          value: m.value,
+          label: m.label,
+          color: m.color,
+          icon: m.icon,
+        ),
+    ]);
+  }
+
+  /// يلفّ بطاقات العدّاد الفاخرة في وضع التمرير بعرض ثابت مريح (بلا overflow:
+  /// [Wrap] ينقل البطاقات لأسطر جديدة عند ضيق العرض).
+  Widget _metricWrap(List<Widget> cards) {
     return Wrap(
-      spacing: 10.w,
-      runSpacing: 10.h,
+      spacing: 12.w,
+      runSpacing: 12.h,
       children: [
-        SasStatCard(
-          label: 'الإجمالي',
-          value: '${s.total}',
-          color: AppTheme.primaryColor,
-          icon: Icons.groups_rounded,
-        ),
-        SasStatCard(
-          label: 'نشط',
-          value: '${s.active}',
-          color: AppTheme.successColor,
-          icon: Icons.check_circle_rounded,
-        ),
-        SasStatCard(
-          label: 'منتهٍ',
-          value: '${s.expired}',
-          color: AppTheme.warningColor,
-          icon: Icons.timer_off_rounded,
-        ),
-        SasStatCard(
-          label: 'متصل الآن',
-          value: '${s.online}',
-          color: AppTheme.infoColor,
-          icon: Icons.wifi_rounded,
-        ),
+        for (final c in cards) SizedBox(width: 168.w, child: c),
       ],
     );
   }
@@ -699,94 +699,34 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
           Icons.date_range_rounded),
     ];
 
+    final enabled = widget.onOpenExpiring != null;
     return LayoutBuilder(
       builder: (context, c) {
         // شبكة متجاوبة: 4 أعمدة على العريض، عمودان على الضيّق.
         final cols = c.maxWidth >= 720 ? 4 : 2;
-        final spacing = 10.w;
+        final spacing = 12.w;
         final itemW = (c.maxWidth - spacing * (cols - 1)) / cols;
         return Wrap(
           spacing: spacing,
-          runSpacing: 10.h,
+          runSpacing: 12.h,
           children: [
             for (final def in defs)
-              SizedBox(width: itemW, child: _expiryCard(def)),
+              SizedBox(
+                width: itemW,
+                child: SasMetricCard(
+                  value: def.count,
+                  label: def.label,
+                  color: def.color,
+                  icon: def.icon,
+                  // في وضع التمرير الأوسع نُظهرها عموديّة (رقم بارز أعلى التسمية).
+                  horizontal: false,
+                  onTap:
+                      enabled ? () => widget.onOpenExpiring!(def.key) : null,
+                ),
+              ),
           ],
         );
       },
-    );
-  }
-
-  Widget _expiryCard(_ExpiryDef def) {
-    final enabled = widget.onOpenExpiring != null;
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(SasUi.radius.r),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        onTap: enabled ? () => widget.onOpenExpiring!(def.key) : null,
-        child: Container(
-          padding: EdgeInsets.all(14.w),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                def.color.withValues(alpha: 0.12),
-                def.color.withValues(alpha: 0.04),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(SasUi.radius.r),
-            border:
-                Border.all(color: def.color.withValues(alpha: 0.28), width: 1.3),
-            boxShadow: SasUi.cardShadow(def.color),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 38.w,
-                    height: 38.w,
-                    decoration: BoxDecoration(
-                      color: def.color.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(11.r),
-                    ),
-                    child: Icon(def.icon, color: def.color, size: 20.sp),
-                  ),
-                  const Spacer(),
-                  if (enabled)
-                    Icon(Icons.chevron_left_rounded,
-                        size: 18.sp,
-                        color: def.color.withValues(alpha: 0.65)),
-                ],
-              ),
-              SizedBox(height: 10.h),
-              Text(
-                '${def.count}',
-                style: GoogleFonts.cairo(
-                  fontSize: 22.sp,
-                  fontWeight: FontWeight.w900,
-                  color: def.color,
-                  height: 1.05,
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                def.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
-                  fontSize: 11.5.sp,
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -833,19 +773,17 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
     numeric.sort((a, b) => rank(a.key).compareTo(rank(b.key)));
     final show = numeric.take(4).toList();
 
-    return Wrap(
-      spacing: 10.w,
-      runSpacing: 10.h,
-      children: [
-        for (final e in show)
-          SasKpiCard(
-            label: _financeLabel(e.key),
-            value: sasMoneyShort(e.key, e.value),
-            icon: _financeIcon(e.key),
-            color: _financeColor(e.key),
-          ),
-      ],
-    );
+    return _metricWrap([
+      for (final e in show)
+        SasMetricCard(
+          value: e.value as num,
+          label: _financeLabel(e.key),
+          color: _financeColor(e.key),
+          icon: _financeIcon(e.key),
+          horizontal: false,
+          formatter: (v) => sasMoneyShort(e.key, v),
+        ),
+    ]);
   }
 
   // ─────────────────────────── التصريح / المقاطعة ───────────────────────────
@@ -1305,25 +1243,30 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
   // بأحجام خط/حشوة تتناسب مع ارتفاع الخلية عبر [FittedBox] فلا يحدث overflow
   // مهما ضاق اللوح. تحافظ على نفس البيانات والقابلية للنقر.
 
-  /// ملخّص المشتركين — شبكة 2×2 تملأ اللوح (الإجمالي/نشط/منتهٍ/متصل).
+  /// ملخّص المشتركين — شبكة 2×2 تملأ اللوح (الإجمالي/نشط/منتهٍ/متصل)
+  /// ببطاقات عدّاد فاخرة (count-up + تدرّج + glow + hover).
   Widget _summaryStatsCompact(SasSubscriberSummary s) {
-    final cells = <_MiniStat>[
-      _MiniStat('الإجمالي', '${s.total}', AppTheme.primaryColor,
-          Icons.groups_rounded),
-      _MiniStat('نشط', '${s.active}', AppTheme.successColor,
+    final cells = <_Metric>[
+      _Metric('الإجمالي', s.total, AppTheme.primaryColor, Icons.groups_rounded),
+      _Metric('نشط', s.active, AppTheme.successColor,
           Icons.check_circle_rounded),
-      _MiniStat('منتهٍ', '${s.expired}', AppTheme.warningColor,
+      _Metric('منتهٍ', s.expired, AppTheme.warningColor,
           Icons.timer_off_rounded),
-      _MiniStat('متصل الآن', '${s.online}', AppTheme.infoColor,
-          Icons.wifi_rounded),
+      _Metric('متصل الآن', s.online, AppTheme.infoColor, Icons.wifi_rounded),
     ];
     return _miniGrid(
       count: cells.length,
-      builder: (i) => _miniStatCard(cells[i]),
+      builder: (i) => SasMetricCard(
+        value: cells[i].value,
+        label: cells[i].label,
+        color: cells[i].color,
+        icon: cells[i].icon,
+      ),
     );
   }
 
-  /// قرب الانتهاء — شبكة 2×2 قابلة للنقر (منتهٍ/اليوم/٣ أيام/أسبوع).
+  /// قرب الانتهاء — شبكة 2×2 قابلة للنقر (منتهٍ/اليوم/٣ أيام/أسبوع)
+  /// ببطاقات عدّاد فاخرة (count-up + تدرّج + glow + hover).
   Widget _expiryCardsCompact(SasSubscriberSummary s) {
     final e = s.expiry;
     final defs = <_ExpiryDef>[
@@ -1336,13 +1279,21 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
       _ExpiryDef('soon7', 'خلال أسبوع', e.soon7, AppTheme.infoColor,
           Icons.date_range_rounded),
     ];
+    final enabled = widget.onOpenExpiring != null;
     return _miniGrid(
       count: defs.length,
-      builder: (i) => _miniExpiryCard(defs[i]),
+      builder: (i) => SasMetricCard(
+        value: defs[i].count,
+        label: defs[i].label,
+        color: defs[i].color,
+        icon: defs[i].icon,
+        onTap: enabled ? () => widget.onOpenExpiring!(defs[i].key) : null,
+      ),
     );
   }
 
-  /// المالية — شبكة 2×2 (حتى 4 حقول) مضغوطة تملأ اللوح، أو حالة فراغ.
+  /// المالية — شبكة 2×2 (حتى 4 حقول) بعدّادات فاخرة، أو حالة فراغ.
+  /// count-up يحرّك الرقم الخام ويعرضه بتنسيق M/K عبر [sasMoneyShort].
   Widget _financeCardsCompact() {
     final f = _finance;
     if (f == null || f.isEmpty) {
@@ -1368,12 +1319,18 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
       count: show.length,
       // عمودان دائماً على اللوح الأيسر الضيّق نسبياً.
       forceCols: show.length <= 2 ? show.length : 2,
-      builder: (i) => _miniStatCard(_MiniStat(
-        _financeLabel(show[i].key),
-        sasMoneyShort(show[i].key, show[i].value),
-        _financeColor(show[i].key),
-        _financeIcon(show[i].key),
-      )),
+      builder: (i) {
+        final key = show[i].key;
+        final raw = (show[i].value as num);
+        return SasMetricCard(
+          value: raw,
+          label: _financeLabel(key),
+          color: _financeColor(key),
+          icon: _financeIcon(key),
+          // حرّك الرقم الخام واعرضه بتنسيق M/K المتوافق مع بقية اللوحة.
+          formatter: (v) => sasMoneyShort(key, v),
+        );
+      },
     );
   }
 
@@ -1524,150 +1481,6 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
     );
   }
 
-  /// بطاقة إحصائية صغيرة تملأ خليتها؛ [FittedBox] يضمن ألا يفيض المحتوى.
-  Widget _miniStatCard(_MiniStat m) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            m.color.withValues(alpha: 0.10),
-            m.color.withValues(alpha: 0.03),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        border: Border.all(color: m.color.withValues(alpha: 0.25), width: 1.2),
-        boxShadow: SasUi.cardShadow(m.color),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38.w,
-            height: 38.w,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [m.color, m.color.withValues(alpha: 0.75)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(m.icon, color: Colors.white, size: 19.sp),
-          ),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: AlignmentDirectional.centerStart,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    m.value,
-                    style: GoogleFonts.cairo(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w900,
-                      color: m.color,
-                      height: 1.1,
-                    ),
-                  ),
-                  SizedBox(height: 1.h),
-                  Text(
-                    m.label,
-                    style: GoogleFonts.cairo(
-                      fontSize: 11.sp,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// بطاقة انتهاء صغيرة قابلة للنقر تملأ خليتها ([FittedBox] يمنع overflow).
-  Widget _miniExpiryCard(_ExpiryDef def) {
-    final enabled = widget.onOpenExpiring != null;
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(SasUi.radius.r),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        onTap: enabled ? () => widget.onOpenExpiring!(def.key) : null,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                def.color.withValues(alpha: 0.12),
-                def.color.withValues(alpha: 0.04),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(SasUi.radius.r),
-            border: Border.all(
-                color: def.color.withValues(alpha: 0.28), width: 1.3),
-            boxShadow: SasUi.cardShadow(def.color),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36.w,
-                height: 36.w,
-                decoration: BoxDecoration(
-                  color: def.color.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(11.r),
-                ),
-                child: Icon(def.icon, color: def.color, size: 19.sp),
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${def.count}',
-                        style: GoogleFonts.cairo(
-                          fontSize: 20.sp,
-                          fontWeight: FontWeight.w900,
-                          color: def.color,
-                          height: 1.05,
-                        ),
-                      ),
-                      SizedBox(height: 1.h),
-                      Text(
-                        def.label,
-                        style: GoogleFonts.cairo(
-                          fontSize: 11.sp,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (enabled)
-                Icon(Icons.chevron_left_rounded,
-                    size: 18.sp, color: def.color.withValues(alpha: 0.65)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// تعريف بطاقة انتهاء (مفتاح expiring + تسمية + عدد + لون + أيقونة).
@@ -1688,11 +1501,11 @@ class _Seg {
   const _Seg(this.label, this.value, this.color);
 }
 
-/// بيانات بطاقة إحصائية صغيرة (تسمية + قيمة نصّية + لون + أيقونة) للتخطيط المضغوط.
-class _MiniStat {
+/// بيانات عدّاد فاخر (تسمية + قيمة عددية + لون + أيقونة) لبطاقات [SasMetricCard].
+class _Metric {
   final String label;
-  final String value;
+  final num value;
   final Color color;
   final IconData icon;
-  const _MiniStat(this.label, this.value, this.color, this.icon);
+  const _Metric(this.label, this.value, this.color, this.icon);
 }
