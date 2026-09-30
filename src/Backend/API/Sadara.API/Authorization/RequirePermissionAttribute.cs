@@ -16,18 +16,26 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
     private readonly string _permissionKey;
     private readonly string _action;
     private readonly PermissionSystem _system;
+    private readonly bool _failClosed;
 
     /// <param name="permissionKey">المفتاح (مثل "accounting.journals" أو "hr.salaries")</param>
     /// <param name="action">الإجراء المطلوب (view, add, edit, delete, export, import, print, send)</param>
     /// <param name="system">النظام (First أو Second)</param>
+    /// <param name="failClosed">
+    /// عند true: إذا كان عمود صلاحيات V2 فارغاً ⇒ يُرفَض الوصول (fail-closed).
+    /// عند false (الافتراضي): يُبقى السلوك القديم fail-open (سماح عند فراغ الصلاحيات) لعدم حظر المستخدمين القدامى.
+    /// يُستخدم failClosed:true للميزات الحسّاسة فقط (مثل sas_agent) بلا أثر على بقية المنصّة.
+    /// </param>
     public RequirePermissionAttribute(
         string permissionKey,
         string action = "view",
-        PermissionSystem system = PermissionSystem.First)
+        PermissionSystem system = PermissionSystem.First,
+        bool failClosed = false)
     {
         _permissionKey = permissionKey;
         _action = action;
         _system = system;
+        _failClosed = failClosed;
     }
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
@@ -85,7 +93,7 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
             ? dbUser.FirstSystemPermissionsV2
             : dbUser.SecondSystemPermissionsV2;
 
-        if (HasPermission(permJson, _permissionKey, _action))
+        if (HasPermission(permJson, _permissionKey, _action, _failClosed))
         {
             return; // مسموح
         }
@@ -105,10 +113,16 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
     /// <summary>
     /// فحص هرمي: يدعم parent.child وينظر للأب إذا الابن غير موجود
     /// </summary>
-    public static bool HasPermission(string? jsonPermissions, string key, string action)
+    /// <param name="failClosed">
+    /// عند true: فراغ صلاحيات V2 ⇒ رفض (false). عند false (الافتراضي): فراغها ⇒ سماح (السلوك القديم fail-open).
+    /// المعامل اختياري في النهاية حفاظاً على توافق كل الاستدعاءات القائمة بثلاثة معاملات.
+    /// </param>
+    public static bool HasPermission(string? jsonPermissions, string key, string action, bool failClosed = false)
     {
-        // إذا لم يتم تعيين صلاحيات V2 بعد → السماح (لعدم حظر المستخدمين القدامى)
-        if (string.IsNullOrEmpty(jsonPermissions)) return true;
+        // إذا لم يتم تعيين صلاحيات V2 بعد:
+        //  - failClosed=false ⇒ السماح (سلوك قديم لعدم حظر المستخدمين القدامى في بقية الميزات).
+        //  - failClosed=true  ⇒ الرفض (بوابة حسّاسة كـ sas_agent يجب ألا تُفتح عند فراغ الصلاحيات).
+        if (string.IsNullOrEmpty(jsonPermissions)) return !failClosed;
 
         try
         {

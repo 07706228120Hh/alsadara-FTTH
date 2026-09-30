@@ -26,7 +26,7 @@ namespace Sadara.API.Controllers;
 [ApiController]
 [Route("api/sas-agent")]
 [Authorize]
-[RequirePermission("sas_agent", "view", PermissionSystem.Second)]
+[RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
 [Tags("SAS Agent")]
 public class SasAgentController : ControllerBase
 {
@@ -138,7 +138,7 @@ public class SasAgentController : ControllerBase
 
     /// <summary>ربط حساب ساس جديد — يشفّر كلمة المرور ويختم الشركة والمالك.</summary>
     [HttpPost("accounts")]
-    [RequirePermission("sas_agent", "manage", PermissionSystem.Second)]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
     public async Task<IActionResult> CreateAccount([FromBody] CreateSasAccountRequest request, CancellationToken ct)
     {
         if (!TryResolveScope(out var companyId, out var userId, out var denied))
@@ -181,7 +181,7 @@ public class SasAgentController : ControllerBase
 
     /// <summary>تعديل حساب ساس — يعيد التشفير فقط إن أُرسلت كلمة مرور جديدة.</summary>
     [HttpPut("accounts/{id}")]
-    [RequirePermission("sas_agent", "manage", PermissionSystem.Second)]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
     public async Task<IActionResult> UpdateAccount(Guid id, [FromBody] UpdateSasAccountRequest request, CancellationToken ct)
     {
         if (!TryResolveScope(out var companyId, out var userId, out var denied))
@@ -218,7 +218,7 @@ public class SasAgentController : ControllerBase
 
     /// <summary>حذف حساب ساس (حذف ناعم) بعد المطابقة الصارمة.</summary>
     [HttpDelete("accounts/{id}")]
-    [RequirePermission("sas_agent", "manage", PermissionSystem.Second)]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
     public async Task<IActionResult> DeleteAccount(Guid id, CancellationToken ct)
     {
         if (!TryResolveScope(out var companyId, out var userId, out var denied))

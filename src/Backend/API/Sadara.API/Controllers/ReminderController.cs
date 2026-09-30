@@ -31,7 +31,9 @@ public class ReminderController : ControllerBase
     private bool ValidateApiKey()
     {
         var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        var configKey = _configuration["Security:InternalApiKey"] ?? "";
+        var configKey = _configuration["Security:InternalApiKey"]
+            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
+            ?? ""; // fail-closed: يُقرأ من متغيّر البيئة بعد إزالة القيمة المكشوفة من appsettings
         return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
     }
 
