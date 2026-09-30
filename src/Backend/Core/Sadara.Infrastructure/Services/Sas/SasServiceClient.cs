@@ -293,6 +293,67 @@ public class SasServiceClient : ISasServiceClient
         => PostBodyForRawAsync("/sas/post",
             new { serverUrl, username, password, path, payload }, cancellationToken);
 
+    // ==================== البلنك/التصريح + المزامنة المحلية + المقاطعة + اختبار الاتصال ====================
+    // كل الدوال أدناه تنادي نقاط خدمة Python (127.0.0.1:8100) عبر PostBodyForRawAsync.
+    // accountId يُمرَّر من الحساب المملوك (لا من إدخال المستخدم)؛ companyId/ownerUserId من السياق.
+    // نقاط التخزين المحلي (subscribers/local, report/list) لا تمرّر اعتماد ساس إطلاقاً.
+
+    public Task<string> TestAccountAsync(
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/account/test",
+            new { serverUrl, username, password }, cancellationToken);
+
+    public Task<string> SyncAccountAsync(
+        string serverUrl, string username, string password,
+        string accountId, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/sync",
+            new { serverUrl, username, password, accountId }, cancellationToken);
+
+    public Task<string> GetLocalSubscribersAsync(
+        string accountId,
+        string? search = null,
+        string? status = null,
+        bool? expiring = null,
+        int? page = null,
+        int? count = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/subscribers/local",
+            new { accountId, search, status, expiring, page, count }, cancellationToken);
+
+    public Task<string> SubmitReportAsync(
+        string accountId,
+        string companyId,
+        string ownerUserId,
+        int declaredTotal,
+        int declaredActive,
+        string? note = null,
+        string? submittedBy = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/report/submit",
+            new
+            {
+                accountId,
+                companyId,
+                ownerUserId,
+                declared_total = declaredTotal,
+                declared_active = declaredActive,
+                note,
+                submitted_by = submittedBy
+            }, cancellationToken);
+
+    public Task<string> ListReportsAsync(
+        string accountId, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/report/list",
+            new { accountId }, cancellationToken);
+
+    public Task<string> GetReconciliationAsync(
+        string accountId,
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/reconciliation",
+            new { accountId, serverUrl, username, password }, cancellationToken);
+
     /// <summary>
     /// ينادي مسار خدمة الساس ممرِّراً الاعتماد + وسائط الاستعلام في الجسم، ويعيد JSON خاماً.
     /// عند فشل الاتصال يرمي <see cref="SasServiceUnavailableException"/> لتترجمها البوّابة إلى 502/503.

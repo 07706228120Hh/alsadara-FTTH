@@ -202,4 +202,84 @@ public interface ISasServiceClient
     Task<string> SasPostAsync(
         string serverUrl, string username, string password,
         string path, object? payload = null, CancellationToken cancellationToken = default);
+
+    // ==================== البلنك/التصريح + المزامنة المحلية + المقاطعة + اختبار الاتصال ====================
+    // نقاط بوّابة «وكيل الساس» المحلية (خدمة Python 127.0.0.1:8100). على عكس نقاط الساس الخام أعلاه،
+    // هذه النقاط تعتمد على تخزين محلي معزول بـ account_id (وبعضها companyId/ownerUserId):
+    //  - accountId  = معرّف SasAccount المملوك (لا من إدخال المستخدم) — مفتاح عزل التخزين المحلي.
+    //  - companyId  = شركة المستخدم الحالي (عزل المستأجرين).
+    //  - ownerUserId= المستخدم المالك للحساب (دفاع بالعمق).
+    // ⚠️ أمن: الاعتماد (username/password) يُمرَّر بعد فكّ التشفير في الذاكرة فقط ولا يُسجَّل أبداً.
+
+    /// <summary>
+    /// اختبار اتصال الحساب بنظام الساس (POST /account/test باعتماد فقط).
+    /// يعيد JSON خاماً <c>{ok, message, subscribers_count?}</c>. قراءة (لا تخزين).
+    /// </summary>
+    Task<string> TestAccountAsync(
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// مزامنة محلية لمشتركي الحساب من الساس إلى التخزين المحلي (POST /sync باعتماد + accountId).
+    /// يعيد JSON خاماً <c>{count, expiry, synced_at}</c>. كتابة محلية.
+    /// </summary>
+    Task<string> SyncAccountAsync(
+        string serverUrl, string username, string password,
+        string accountId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// جلب المشتركين من التخزين المحلي المعزول بـ accountId (POST /subscribers/local) — بلا اعتماد ساس.
+    /// يعيد JSON خاماً (قائمة). قراءة محلية.
+    /// </summary>
+    /// <param name="accountId">معرّف الحساب المملوك (عزل التخزين المحلي).</param>
+    /// <param name="search">نص بحث اختياري.</param>
+    /// <param name="status">تصفية بالحالة (اختياري).</param>
+    /// <param name="expiring">تصفية المنتهين/الأوشك على الانتهاء (اختياري).</param>
+    /// <param name="page">رقم الصفحة (اختياري).</param>
+    /// <param name="count">حجم الصفحة (اختياري).</param>
+    Task<string> GetLocalSubscribersAsync(
+        string accountId,
+        string? search = null,
+        string? status = null,
+        bool? expiring = null,
+        int? page = null,
+        int? count = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// تقديم تصريح/بلنك شهري (POST /report/submit) معزول بـ accountId + companyId + ownerUserId.
+    /// يعيد JSON خاماً (AgentReport). كتابة محلية.
+    /// </summary>
+    /// <param name="accountId">معرّف الحساب المملوك.</param>
+    /// <param name="companyId">معرّف شركة المستخدم (عزل المستأجرين).</param>
+    /// <param name="ownerUserId">معرّف المستخدم المالك.</param>
+    /// <param name="declaredTotal">إجمالي المشتركين المُصرَّح به.</param>
+    /// <param name="declaredActive">المشتركون الفعّالون المُصرَّح بهم.</param>
+    /// <param name="note">ملاحظة اختيارية.</param>
+    /// <param name="submittedBy">من قدّم التصريح (اختياري — للتدقيق).</param>
+    Task<string> SubmitReportAsync(
+        string accountId,
+        string companyId,
+        string ownerUserId,
+        int declaredTotal,
+        int declaredActive,
+        string? note = null,
+        string? submittedBy = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// قائمة تصاريح/بلنكات الحساب من التخزين المحلي المعزول بـ accountId (POST /report/list) — بلا اعتماد.
+    /// يعيد JSON خاماً (قائمة). قراءة محلية.
+    /// </summary>
+    Task<string> ListReportsAsync(
+        string accountId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// المقاطعة/المطابقة بين المُصرَّح والفعلي (POST /reconciliation + accountId + اعتماد اختياري).
+    /// يعيد JSON خاماً <c>{declared, actual, diff, verdict}</c>. قراءة (قد تستدعي الساس للفعلي).
+    /// </summary>
+    Task<string> GetReconciliationAsync(
+        string accountId,
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default);
 }

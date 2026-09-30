@@ -594,6 +594,121 @@ public class SasAgentController : ControllerBase
     /// <summary>الحد الأقصى لطول مسار البروكسي العام الممرَّر لخدمة الساس.</summary>
     private const int MaxSasPathLength = 512;
 
+    // ==================== البلنك/التصريح + المزامنة المحلية + المقاطعة + اختبار الاتصال ====================
+    // كل النقاط أدناه account-scoped، تمرّ عبر GetOwnedAccountAsync للعزل الثلاثي (شركة + مالك + غير محذوف).
+    // accountId المُمرَّر للخدمة = account.Id (الحساب المملوك، لا من إدخال المستخدم).
+    // companyId = account.CompanyId، ownerUserId = account.OwnerUserId — لعزل التخزين المحلي بـ account_id.
+    // النقاط التي تحتاج ساس (test/sync/reconciliation) تفكّ التشفير في الذاكرة فقط؛ نقاط التخزين المحلي
+    // (subscribers-local/reports) لا تفكّ التشفير ولا تمرّر اعتماداً إطلاقاً. كلها failClosed:true.
+
+    /// <summary>
+    /// اختبار اتصال الحساب بنظام الساس — قراءة (view). يفكّ التشفير في الذاكرة فقط ويمرّره للخدمة.
+    /// يعيد <c>{ok, message, subscribers_count?}</c> خاماً. لا تخزين محلي.
+    /// </summary>
+    [HttpPost("accounts/{id}/test")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> TestAccount(Guid id, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.TestAccountAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
+
+    /// <summary>
+    /// مزامنة محلية لمشتركي الحساب من الساس إلى التخزين المحلي — كتابة محلية (manage).
+    /// يمرّر <c>accountId = account.Id</c> لعزل التخزين المحلي. يعيد <c>{count, expiry, synced_at}</c> خاماً.
+    /// </summary>
+    [HttpPost("accounts/{id}/sync")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> SyncAccount(Guid id, CancellationToken ct)
+        => PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.SyncAccountAsync(acc.ServerUrl, acc.Username, pwd, acc.Id.ToString(), token), ct);
+
+    /// <summary>
+    /// جلب المشتركين من التخزين المحلي المعزول بـ accountId — قراءة (view). بلا اعتماد ساس (لا فكّ تشفير).
+    /// يمرّر <c>accountId = account.Id</c> فقط للخدمة المحلية.
+    /// </summary>
+    [HttpGet("accounts/{id}/subscribers-local")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetLocalSubscribers(
+        Guid id,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] bool? expiring = null,
+        [FromQuery] int? page = null,
+        [FromQuery] int? count = null,
+        CancellationToken ct = default)
+    {
+        // قصّ آمن للوسائط النصّية والعددية قبل التمرير.
+        var safeSearch = Trim(search);
+        var safeStatus = Trim(status);
+        var safePage = page.HasValue ? Math.Clamp(page.Value, 1, 100000) : (int?)null;
+        var safeCount = count.HasValue ? Math.Clamp(count.Value, 1, 1000) : (int?)null;
+
+        return LocalPassThroughAsync(id, (acc, token) =>
+            _sasClient.GetLocalSubscribersAsync(
+                acc.Id.ToString(), safeSearch, safeStatus, expiring, safePage, safeCount, token), ct);
+    }
+
+    /// <summary>
+    /// تقديم تصريح/بلنك شهري — كتابة محلية (manage). معزول بـ accountId + companyId + ownerUserId.
+    /// يمرّر <c>accountId=account.Id</c> و<c>companyId=account.CompanyId</c> و<c>ownerUserId=account.OwnerUserId</c>.
+    /// </summary>
+    [HttpPost("accounts/{id}/report")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> SubmitReport(Guid id, [FromBody] SubmitReportRequest request, CancellationToken ct)
+    {
+        if (request == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "بيانات التصريح مطلوبة" }));
+
+        if (request.DeclaredTotal < 0 || request.DeclaredActive < 0)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "قيم التصريح غير صالحة" }));
+
+        if (request.DeclaredActive > request.DeclaredTotal)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "الفعّالون لا يتجاوزون الإجمالي" }));
+
+        var note = Trim(request.Note);
+
+        // submittedBy من هوية المستخدم الحالي (تدقيق) — لا من إدخال العميل.
+        var submittedBy = GetCurrentUserId().ToString();
+
+        return LocalPassThroughAsync(id, (acc, token) =>
+            _sasClient.SubmitReportAsync(
+                acc.Id.ToString(),
+                acc.CompanyId.ToString(),
+                acc.OwnerUserId.ToString(),
+                request.DeclaredTotal,
+                request.DeclaredActive,
+                note,
+                submittedBy,
+                token), ct);
+    }
+
+    /// <summary>
+    /// قائمة تصاريح/بلنكات الحساب من التخزين المحلي المعزول بـ accountId — قراءة (view). بلا اعتماد.
+    /// </summary>
+    [HttpGet("accounts/{id}/reports")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> ListReports(Guid id, CancellationToken ct)
+        => LocalPassThroughAsync(id, (acc, token) =>
+            _sasClient.ListReportsAsync(acc.Id.ToString(), token), ct);
+
+    /// <summary>
+    /// المقاطعة/المطابقة بين المُصرَّح والفعلي — قراءة (view). تفكّ التشفير في الذاكرة فقط لجلب الفعلي.
+    /// يمرّر <c>accountId=account.Id</c> + الاعتماد. يعيد <c>{declared, actual, diff, verdict}</c> خاماً.
+    /// </summary>
+    [HttpGet("accounts/{id}/reconciliation")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetReconciliation(Guid id, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetReconciliationAsync(acc.Id.ToString(), acc.ServerUrl, acc.Username, pwd, token), null, ct);
+
+    /// <summary>قصّ آمن لقيمة نصّية اختيارية (تفريغ الفراغ + حدّ الطول) قبل التمرير للخدمة.</summary>
+    private static string? Trim(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        var v = value.Trim();
+        return v.Length > MaxQueryValueLength ? v[..MaxQueryValueLength] : v;
+    }
+
     /// <summary>
     /// نمط تمرير موحّد: يحصر النطاق، يجلب الحساب بالمطابقة الصارمة، يفكّ التشفير في الذاكرة،
     /// ينادي خدمة الساس، ويعيد JSON خاماً — مع ترجمة تعذّر الخدمة إلى 503.
@@ -660,6 +775,40 @@ public class SasAgentController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في عملية الكتابة عبر خدمة الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// نمط تمرير محلي: يحصر النطاق ويجلب الحساب بالمطابقة الصارمة، ثم ينادي الخدمة المحلية
+    /// دون فكّ أي تشفير ودون تمرير اعتماد ساس (نقاط التخزين المحلي: subscribers-local/report/reports).
+    /// العزل مضمون عبر <see cref="GetOwnedAccountAsync"/>؛ accountId يُشتق من الحساب المملوك فقط.
+    /// </summary>
+    private async Task<IActionResult> LocalPassThroughAsync(
+        Guid id,
+        Func<SasAccount, CancellationToken, Task<string>> call,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            var raw = await call(account, ct);
+            return Content(raw, "application/json");
+        }
+        catch (SasServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "خدمة الساس غير متاحة أثناء عملية محلية");
+            return StatusCode(503, new { success = false, message = "خدمة الساس غير متاحة حالياً" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في عملية محلية عبر خدمة الساس");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
@@ -754,3 +903,12 @@ public record SasPayloadRequest(
 public record SasProxyPostRequest(
     string Path,
     System.Text.Json.JsonElement? Payload);
+
+/// <summary>
+/// طلب تقديم تصريح/بلنك شهري — الإجمالي والفعّالون المُصرَّح بهم وملاحظة اختيارية.
+/// (accountId/companyId/ownerUserId/submittedBy تُشتق خادمياً من الحساب المملوك والهوية — لا من العميل.)
+/// </summary>
+public record SubmitReportRequest(
+    int DeclaredTotal,
+    int DeclaredActive,
+    string? Note);

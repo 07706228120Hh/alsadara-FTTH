@@ -1,34 +1,38 @@
 """
 خدمة الساس الداخلية (SAS Sidecar) — FastAPI على 127.0.0.1:8100
 ================================================================
-خدمة نحيلة بلا حالة. تستقبل اعتماد SAS4 من بوّابة الصدارة .NET
-في كل طلب، تناديه مباشرةً، وتعيد JSON خاماً.
+خدمة نحيلة تجمع وضعين:
+  1. بروكسي بلا حالة (النقاط الأصلية): تستقبل اعتماد SAS4 وتناديه مباشرةً.
+  2. طبقة تخزين محلية (النقاط الجديدة): تخزّن مشتركي كل حساب في SQLite محلية
+     وتوفّر قراءة/تصريح/مقاطعة بلا نداء SAS.
 
 الأمان:
-  - تستمع على 127.0.0.1 فقط (loopback — غير قابلة للوصول من الإنترنت).
+  - تستمع على 127.0.0.1 فقط (loopback).
   - fail-closed: كل طلب يحمل X-Internal-Secret مطابقاً لـ SADARA_SAS_INTERNAL_SECRET.
   - مقارنة بزمن ثابت (secrets.compare_digest) لمنع هجمات التوقيت.
   - لا تُسجَّل أسرار أو كلمات مرور في أي log.
-  - بلا حالة: الاعتماد يُستخدم لحظة الطلب فقط، لا يُخزَّن.
+  - العزل الصارم بـ account_id: كل استعلام مُقيَّد به (لا تُرجع بيانات account آخر).
 
-استيراد العملاء:
-  يضبط sys.path ليشمل backend/app قبل الاستيراد. هذا أنظف من نسخ
-  الملفين، إذ يبقى مصدر الحقيقة واحداً ولا تتشعّب التعديلات المستقبلية.
+قاعدة البيانات:
+  - SQLite في service/data/sas.db (مسار يُضبط بـ SADARA_SAS_DB_PATH).
+  - تُنشأ تلقائياً عند أول تشغيل (DDL في _init_db).
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
 import secrets
+import sqlite3
 import sys
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from contextlib import contextmanager
+from datetime import date, datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, Iterator, List, Optional
 
 # ── ضبط مسار الاستيراد ────────────────────────────────────────────────────────
-# نضيف backend/app إلى sys.path كي يُحلّ `from integrations.sas_client import …`
-# دون تعديل هيكل الحزمة القائمة.
 _BACKEND_APP = os.path.join(os.path.dirname(__file__), "..", "backend", "app")
 if _BACKEND_APP not in sys.path:
     sys.path.insert(0, os.path.abspath(_BACKEND_APP))
@@ -50,7 +54,87 @@ logger = logging.getLogger("sas_sidecar")
 # ── السرّ الداخلي ─────────────────────────────────────────────────────────────
 _INTERNAL_SECRET: str = os.environ.get("SADARA_SAS_INTERNAL_SECRET", "")
 
-# ── قوائم بيضاء للبروكسي العام (منقولة حرفياً من sas_panel.py) ───────────────
+# ── قاعدة البيانات المحلية ────────────────────────────────────────────────────
+_DEFAULT_DB = os.path.join(os.path.dirname(__file__), "data", "sas.db")
+_DB_PATH: str = os.environ.get("SADARA_SAS_DB_PATH", _DEFAULT_DB)
+
+# سقف المشتركين في كل مزامنة (يتطابق مع sas_subscriber_cap في backend)
+_SUBSCRIBER_CAP = 50_000
+
+
+def _get_conn() -> sqlite3.Connection:
+    """يفتح اتصالاً بـ SQLite مع WAL للأداء."""
+    conn = sqlite3.connect(_DB_PATH, check_same_thread=False, timeout=15)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+@contextmanager
+def _db() -> Iterator[sqlite3.Connection]:
+    """Context manager يمنح اتصالاً يُغلق تلقائياً."""
+    conn = _get_conn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _init_db() -> None:
+    """ينشئ الجداول إن لم تكن موجودة (idempotent)."""
+    Path(_DB_PATH).parent.mkdir(parents=True, exist_ok=True)
+    with _db() as conn:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS local_subscribers (
+            account_id   TEXT    NOT NULL,
+            sub_id       INTEGER NOT NULL,
+            username     TEXT    NOT NULL DEFAULT '',
+            name         TEXT    NOT NULL DEFAULT '',
+            profile      TEXT    NOT NULL DEFAULT '',
+            status       TEXT    NOT NULL DEFAULT '',
+            online       INTEGER NOT NULL DEFAULT 0,
+            enabled      INTEGER NOT NULL DEFAULT 1,
+            expiration   TEXT    NOT NULL DEFAULT '',
+            phone        TEXT    NOT NULL DEFAULT '',
+            city         TEXT    NOT NULL DEFAULT '',
+            company_id   TEXT    NOT NULL DEFAULT '',
+            owner_user_id TEXT   NOT NULL DEFAULT '',
+            raw_json     TEXT    NOT NULL DEFAULT '{}',
+            synced_at    TEXT    NOT NULL,
+            PRIMARY KEY (account_id, sub_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_ls_account
+            ON local_subscribers (account_id);
+        CREATE INDEX IF NOT EXISTS idx_ls_expiration
+            ON local_subscribers (account_id, expiration);
+        CREATE INDEX IF NOT EXISTS idx_ls_status
+            ON local_subscribers (account_id, status);
+
+        CREATE TABLE IF NOT EXISTS agent_reports (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id      TEXT    NOT NULL,
+            company_id      TEXT    NOT NULL DEFAULT '',
+            owner_user_id   TEXT    NOT NULL DEFAULT '',
+            declared_total  INTEGER NOT NULL,
+            declared_active INTEGER NOT NULL DEFAULT 0,
+            note            TEXT    NOT NULL DEFAULT '',
+            submitted_by    TEXT    NOT NULL DEFAULT '',
+            created_at      TEXT    NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_ar_account
+            ON agent_reports (account_id, created_at DESC);
+        """)
+    logger.info("[DB] قاعدة البيانات جاهزة: %s", _DB_PATH)
+
+
+# ── قوائم بيضاء للبروكسي العام ────────────────────────────────────────────────
 _GET_ALLOW = [
     r"auth",
     r"user/\d+",
@@ -101,7 +185,6 @@ _POST_ALLOW = [
 _GET_ALLOW_RE  = [re.compile(f"^{p}$") for p in _GET_ALLOW]
 _POST_ALLOW_RE = [re.compile(f"^{p}$") for p in _POST_ALLOW]
 
-# حقول الوكلاء المسموح بها (قائمة بيضاء لإجراءات manager)
 _MANAGER_ACTIONS: Dict[str, str] = {
     "deposit":           "manager/deposit",
     "withdraw":          "manager/withdraw",
@@ -113,7 +196,6 @@ _MANAGER_ACTIONS: Dict[str, str] = {
     "rename":            "manager/{mid}",
 }
 
-# حقول المشتركين القابلة للتعديل (قائمة بيضاء من sas_panel.py)
 _UPDATABLE = {
     "enabled", "profile_id", "site_id", "mac_auth", "allowed_macs", "firstname",
     "lastname", "company", "email", "phone", "city", "address", "apartment", "street",
@@ -127,7 +209,6 @@ _UPDATE_BASE = [
     "expiration", "simultaneous_sessions", "static_ip", "auto_renew", "user_type",
 ]
 
-# إجراءات المشترك المفردة (قائمة بيضاء من sas_panel.py)
 _USER_ACTIONS: Dict[str, str] = {
     "activate":      "user/activate",
     "extend":        "user/extend",
@@ -139,16 +220,22 @@ _USER_ACTIONS: Dict[str, str] = {
     "rename":        "user/rename/{uid}",
 }
 
-_BULK_CAP = 300   # سقف أمان لعدد المشتركين في العملية الجماعية الواحدة
+_BULK_CAP = 300
 
-# ── نماذج Pydantic للطلبات ────────────────────────────────────────────────────
+# ── مفاتيح الأسرار للحجب ──────────────────────────────────────────────────────
+_SECRET_KEYS = re.compile(
+    r"(password|secret|api_password|snmp_community|nas_details|\bpin\b)", re.I
+)
 
+
+# ═════════════════════════════════════════════════════════════════════════════
+# نماذج Pydantic — النقاط الأصلية
+# ═════════════════════════════════════════════════════════════════════════════
 
 class _Creds(BaseModel):
-    """حقول الاعتماد المشتركة في كل الطلبات."""
-    serverUrl: str = Field(..., description="عنوان خادم SAS (host أو URL كامل)")
+    serverUrl: str = Field(..., description="عنوان خادم SAS")
     username:  str = Field(..., description="اسم مستخدم المدير/الوكيل في SAS")
-    password:  str = Field(..., description="كلمة المرور — لا تُسجَّل أبداً")
+    password:  str = Field(..., description="كلمة المرور — لا تُسجَّل")
 
 
 class LoginRequest(_Creds):
@@ -180,21 +267,19 @@ class SystemHealthRequest(_Creds):
 
 
 class RenewalCandidatesRequest(_Creds):
-    days:        int                 = Field(default=7, ge=1, le=365)
-    query:       Dict[str, Any]      = Field(default_factory=dict)
+    days:        int            = Field(default=7, ge=1, le=365)
+    query:       Dict[str, Any] = Field(default_factory=dict)
 
 
 class RenewalBulkRequest(_Creds):
-    subscriberIds: List[int]         = Field(...)
-    months:        Optional[int]     = Field(default=None, ge=1, le=24)
-    profileId:     Optional[Any]     = Field(default=None)
-    dryRun:        bool              = Field(default=False)
+    subscriberIds: List[int]        = Field(...)
+    months:        Optional[int]    = Field(default=None, ge=1, le=24)
+    profileId:     Optional[Any]    = Field(default=None)
+    dryRun:        bool             = Field(default=False)
 
-
-# ── نماذج النقاط الجديدة ──────────────────────────────────────────────────────
 
 class UserDetailRequest(_Creds):
-    uid: int = Field(..., description="معرّف المشترك في SAS")
+    uid: int
 
 
 class UserOverviewRequest(_Creds):
@@ -203,11 +288,11 @@ class UserOverviewRequest(_Creds):
 
 class UserHistoryRequest(_Creds):
     uid:       int
-    page:      int            = Field(default=1, ge=1)
-    count:     int            = Field(default=50, ge=1, le=500)
-    sortBy:    str            = Field(default="id")
-    direction: str            = Field(default="desc")
-    search:    str            = Field(default="")
+    page:      int = Field(default=1, ge=1)
+    count:     int = Field(default=50, ge=1, le=500)
+    sortBy:    str = Field(default="id")
+    direction: str = Field(default="desc")
+    search:    str = Field(default="")
 
 
 class UserExtendDataRequest(_Creds):
@@ -275,43 +360,97 @@ class SasPostRequest(_Creds):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
-# ── التحقّق من رأس X-Internal-Secret (fail-closed) ───────────────────────────
+# ═════════════════════════════════════════════════════════════════════════════
+# نماذج Pydantic — النقاط الجديدة (التخزين المحلي)
+# ═════════════════════════════════════════════════════════════════════════════
+
+class _LocalBase(BaseModel):
+    """الحقول الأساسية المشتركة في كل طلبات التخزين المحلي."""
+    accountId:    str = Field(..., description="GUID حساب الساس في الصدارة")
+    companyId:    str = Field(default="", description="معرّف الشركة (اختياري)")
+    ownerUserId:  str = Field(default="", description="معرّف مستخدم الوكيل (اختياري)")
+
+
+class _LocalCreds(_LocalBase):
+    """كريدنشيال SAS مضافة للطلبات التي تحتاج نداء حيّاً."""
+    serverUrl: str = Field(..., description="عنوان خادم SAS")
+    username:  str = Field(..., description="اسم مستخدم SAS")
+    password:  str = Field(..., description="كلمة المرور — لا تُسجَّل")
+
+
+class AccountTestRequest(_LocalCreds):
+    """اختبار اتصال: POST /account/test"""
+    pass
+
+
+class SyncRequest(_LocalCreds):
+    """مزامنة مشتركي الحساب: POST /sync"""
+    pass
+
+
+class LocalSubscribersRequest(_LocalBase):
+    """استعلام محلي سريع: POST /subscribers/local"""
+    search:   Optional[str] = None
+    status:   Optional[str] = None   # active | expired | manual
+    expiring: Optional[str] = None   # overdue | today | soon3 | soon7
+    page:     int = Field(default=1, ge=1)
+    count:    int = Field(default=50, ge=1, le=500)
+
+
+class ReportSubmitRequest(_LocalBase):
+    """تقديم تصريح: POST /report/submit"""
+    declared_total:  int = Field(..., ge=0, le=10_000_000)
+    declared_active: int = Field(default=0, ge=0)
+    note:            str = Field(default="")
+    submitted_by:    str = Field(default="")
+
+
+class ReportListRequest(_LocalBase):
+    """قائمة التصاريح: POST /report/list"""
+    pass
+
+
+class ReconciliationRequest(_LocalBase):
+    """مقاطعة: POST /reconciliation — يمكن تمرير creds لجلب عدد حيّ من SAS"""
+    # حقول الاعتماد اختيارية: إن غابت يُستخدم العدد المحلي
+    serverUrl: Optional[str] = None
+    username:  Optional[str] = None
+    password:  Optional[str] = None
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Dependency: التحقّق من السرّ (fail-closed)
+# ═════════════════════════════════════════════════════════════════════════════
 
 async def verify_internal_secret(request: Request) -> None:
     """
-    Dependency يُطبَّق على كل نقطة نهاية.
-
     fail-closed:
-      - إن كان SADARA_SAS_INTERNAL_SECRET غير مضبوط → 503 (الخدمة غير مُهيّأة بأمان).
-      - إن غاب الرأس أو لم يطابق → 401.
-      - المقارنة بـ secrets.compare_digest لمنع timing attack.
+      - SADARA_SAS_INTERNAL_SECRET غير مضبوط → 503.
+      - رأس غائب أو غير مطابق → 401.
+      - مقارنة بزمن ثابت لمنع timing attack.
     """
     if not _INTERNAL_SECRET:
-        logger.error(
-            "SADARA_SAS_INTERNAL_SECRET غير مضبوط — الخدمة ترفض كل الطلبات (fail-closed)"
-        )
+        logger.error("SADARA_SAS_INTERNAL_SECRET غير مضبوط — الخدمة ترفض كل الطلبات")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="الخدمة غير مُهيّأة بأمان — تواصل مع المشرف",
         )
-
     incoming = request.headers.get("X-Internal-Secret", "")
     if not secrets.compare_digest(incoming, _INTERNAL_SECRET):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="غير مصرّح",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="غير مصرّح")
 
 
-# ── التطبيق ───────────────────────────────────────────────────────────────────
+# ═════════════════════════════════════════════════════════════════════════════
+# التطبيق
+# ═════════════════════════════════════════════════════════════════════════════
 
 app = FastAPI(
     title="Sadara SAS Sidecar",
     description=(
-        "خدمة داخلية بلا حالة على 127.0.0.1:8100. "
+        "خدمة داخلية على 127.0.0.1:8100 — بروكسي بلا حالة + طبقة تخزين SQLite محلية. "
         "تُنادى حصراً من بوّابة الصدارة .NET عبر X-Internal-Secret."
     ),
-    version="2.0.0",
+    version="3.0.0",
     docs_url="/docs" if os.environ.get("SADARA_SAS_DOCS", "0") == "1" else None,
     redoc_url=None,
 )
@@ -319,26 +458,26 @@ app = FastAPI(
 _DEP = [Depends(verify_internal_secret)]
 
 
-# ── Health check (بلا مصادقة) ─────────────────────────────────────────────────
+@app.on_event("startup")
+def _startup() -> None:
+    _init_db()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Health
+# ═════════════════════════════════════════════════════════════════════════════
 
 @app.get("/health", tags=["internal"])
 async def health() -> Dict[str, str]:
-    """فحص سريع: يعيد 200 + {"status": "ok"}."""
     return {"status": "ok"}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# نقاط النهاية الأصلية
+# النقاط الأصلية (بروكسي بلا حالة)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @app.post("/login", tags=["sas"], dependencies=_DEP)
 async def login(body: LoginRequest) -> Any:
-    """
-    تسجيل دخول صامت لنظام SAS4 الإداري.
-
-    عقد .NET: POST /login  { serverUrl, username, password }
-    → { success, sessionHandle, message }
-    """
     try:
         async with SASClient(body.serverUrl, body.username, body.password) as sas:
             token_preview = (sas._token or "")[:4] + "…" if sas._token else "(none)"
@@ -359,84 +498,38 @@ async def login(body: LoginRequest) -> Any:
 
 @app.post("/dashboard", tags=["sas"], dependencies=_DEP)
 async def dashboard(body: DashboardRequest) -> Any:
-    """
-    لوحة الوكيل: subscribers + finance.
-
-    عقد .NET: POST /dashboard  { serverUrl, username, password }
-    → { subscribers: {...}, finance: {...} }
-    """
-    return await _call_sas(body.serverUrl, body.username, body.password,
-                           _fetch_dashboard)
+    return await _call_sas(body.serverUrl, body.username, body.password, _fetch_dashboard)
 
 
 @app.post("/subscribers", tags=["sas"], dependencies=_DEP)
 async def subscribers(body: SubscribersRequest) -> Any:
-    """
-    قائمة مشتركي الوكيل مع وسائط استعلام.
-
-    عقد .NET: POST /subscribers  { serverUrl, username, password, query:{page,count,search,…} }
-    → JSON خام (SAS index/user)
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_subscribers, query=body.query)
 
 
 @app.post("/report", tags=["sas"], dependencies=_DEP)
 async def report(body: ReportRequest) -> Any:
-    """
-    تقرير الوكيل (المديرون/البلنك).
-
-    عقد .NET: POST /report  { serverUrl, username, password, query:{} }
-    → JSON خام (SAS index/manager)
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_report, query=body.query)
 
 
 @app.post("/packages", tags=["sas"], dependencies=_DEP)
 async def packages(body: PackagesRequest) -> Any:
-    """
-    قائمة باقات/بروفايلات SAS4.
-
-    عقد .NET: POST /packages  { serverUrl, username, password }
-    → JSON خام (مصفوفة [{id, name, …}])
-    """
-    return await _call_sas(body.serverUrl, body.username, body.password,
-                           _fetch_packages)
+    return await _call_sas(body.serverUrl, body.username, body.password, _fetch_packages)
 
 
 @app.post("/finance", tags=["sas"], dependencies=_DEP)
 async def finance(body: FinanceRequest) -> Any:
-    """
-    ملخّص مالي من advancedDashboard/finance.
-
-    عقد .NET: POST /finance  { serverUrl, username, password }
-    → JSON خام
-    """
-    return await _call_sas(body.serverUrl, body.username, body.password,
-                           _fetch_finance)
+    return await _call_sas(body.serverUrl, body.username, body.password, _fetch_finance)
 
 
 @app.post("/system-health", tags=["sas"], dependencies=_DEP)
 async def system_health(body: SystemHealthRequest) -> Any:
-    """
-    صحّة النظام من advancedDashboard/systemHealth.
-
-    عقد .NET: POST /system-health  { serverUrl, username, password }
-    → JSON خام
-    """
-    return await _call_sas(body.serverUrl, body.username, body.password,
-                           _fetch_system_health)
+    return await _call_sas(body.serverUrl, body.username, body.password, _fetch_system_health)
 
 
 @app.post("/renewal/candidates", tags=["sas"], dependencies=_DEP)
 async def renewal_candidates(body: RenewalCandidatesRequest) -> Any:
-    """
-    المشتركون الأقرب انتهاءً خلال `days` يوماً.
-
-    عقد .NET: POST /renewal/candidates  { serverUrl, username, password, days?, query? }
-    → [{ id, username, name, expiry, profile }]
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_renewal_candidates,
                            days=body.days, extra_query=body.query)
@@ -444,13 +537,6 @@ async def renewal_candidates(body: RenewalCandidatesRequest) -> Any:
 
 @app.post("/renewal/bulk", tags=["sas"], dependencies=_DEP)
 async def renewal_bulk(body: RenewalBulkRequest) -> Any:
-    """
-    تجديد/تفعيل مجموعة مشتركين دفعةً (idempotent بـ uuid5، فشل جزئي).
-
-    عقد .NET: POST /renewal/bulk  { serverUrl, username, password,
-                                    subscriberIds:[], months?, profileId?, dryRun? }
-    → [{ id, ok, message }]
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _execute_renewal_bulk,
                            subscriber_ids=body.subscriberIds,
@@ -459,43 +545,20 @@ async def renewal_bulk(body: RenewalBulkRequest) -> Any:
                            dry_run=body.dryRun)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# تفاصيل المشترك (قراءة)
-# ══════════════════════════════════════════════════════════════════════════════
-
 @app.post("/users/detail", tags=["sas-users"], dependencies=_DEP)
 async def user_detail(body: UserDetailRequest) -> Any:
-    """
-    كل بيانات مشترك (GET user/{id}).
-
-    عقد .NET: POST /users/detail  { serverUrl, username, password, uid }
-    → JSON خام المشترك (مُنقَّى من كلمات المرور/أسرار NAS)
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_user_detail, uid=body.uid)
 
 
 @app.post("/users/overview", tags=["sas-users"], dependencies=_DEP)
 async def user_overview(body: UserOverviewRequest) -> Any:
-    """
-    نظرة عامة على مشترك (GET user/overview/{id}).
-
-    عقد .NET: POST /users/overview  { serverUrl, username, password, uid }
-    → JSON خام (مُنقَّى)
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_user_overview, uid=body.uid)
 
 
 @app.post("/users/history", tags=["sas-users"], dependencies=_DEP)
 async def user_history(body: UserHistoryRequest) -> Any:
-    """
-    سجلّ المشترك (POST index/UserHistory/{id}).
-
-    عقد .NET: POST /users/history  { serverUrl, username, password, uid,
-                                     page?, count?, sortBy?, direction?, search? }
-    → JSON خام (بيانات الصفحة)
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_user_history,
                            uid=body.uid, page=body.page, count=body.count,
@@ -505,33 +568,13 @@ async def user_history(body: UserHistoryRequest) -> Any:
 
 @app.post("/users/extend-data", tags=["sas-users"], dependencies=_DEP)
 async def user_extend_data(body: UserExtendDataRequest) -> Any:
-    """
-    بيانات التمديد + الباقات المسموحة (لملء نموذج التجديد).
-
-    عقد .NET: POST /users/extend-data  { serverUrl, username, password, uid, profile_id? }
-    → { extension: {...}, allowed_extensions: {...}|null }
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_user_extend_data,
                            uid=body.uid, profile_id=body.profile_id)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# إجراءات المشترك المفردة والجماعية (كتابة)
-# ══════════════════════════════════════════════════════════════════════════════
-
 @app.post("/users/action", tags=["sas-users"], dependencies=_DEP)
 async def user_action(body: UserActionRequest) -> Any:
-    """
-    تنفيذ إجراء SAS على مشترك واحد.
-
-    الإجراءات المسموحة: activate · extend · changeProfile · addTraffic ·
-                        deposit · withdraw · ping · rename
-
-    عقد .NET: POST /users/action  { serverUrl, username, password,
-                                    uid, action, payload? }
-    → JSON خام من SAS
-    """
     route = _USER_ACTIONS.get(body.action)
     if not route:
         raise HTTPException(
@@ -545,16 +588,6 @@ async def user_action(body: UserActionRequest) -> Any:
 
 @app.post("/users/bulk-action", tags=["sas-users"], dependencies=_DEP)
 async def user_bulk_action(body: UserBulkActionRequest) -> Any:
-    """
-    تنفيذ إجراء واحد على عدة مشتركين دفعةً (حدّ أقصى 300).
-
-    - كل مشترك يحصل على transaction_id فريد (idempotent).
-    - فشل جزئي: لا يوقف الدفعة.
-
-    عقد .NET: POST /users/bulk-action  { serverUrl, username, password,
-                                         action, user_ids:[], payload? }
-    → { action, total, ok, failed, results:[{user_id, ok, error?}] }
-    """
     route = _USER_ACTIONS.get(body.action)
     if not route:
         raise HTTPException(
@@ -571,18 +604,8 @@ async def user_bulk_action(body: UserBulkActionRequest) -> Any:
                            ids=ids, payload=body.payload)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# إنشاء / تعديل / حذف / استرداد المشترك
-# ══════════════════════════════════════════════════════════════════════════════
-
 @app.post("/users/create", tags=["sas-users"], dependencies=_DEP)
 async def user_create(body: UserCreateRequest) -> Any:
-    """
-    إنشاء مشترك جديد (POST user).
-
-    عقد .NET: POST /users/create  { serverUrl, username, password, payload:{…} }
-    → JSON خام من SAS
-    """
     p = dict(body.payload or {})
     if not str(p.get("username") or "").strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -597,14 +620,6 @@ async def user_create(body: UserCreateRequest) -> Any:
 
 @app.post("/users/update", tags=["sas-users"], dependencies=_DEP)
 async def user_update(body: UserUpdateRequest) -> Any:
-    """
-    تعديل مشترك عبر «تحميل-دمج-حفظ» (الحقول المسموحة فقط).
-
-    يجلب البيانات الحالية أولاً لمنع مسح الحقول غير المُغيَّرة.
-
-    عقد .NET: POST /users/update  { serverUrl, username, password, uid, changes:{…} }
-    → JSON خام من SAS
-    """
     bad = set(body.changes) - _UPDATABLE
     if bad:
         raise HTTPException(
@@ -620,82 +635,36 @@ async def user_update(body: UserUpdateRequest) -> Any:
 
 @app.post("/users/delete", tags=["sas-users"], dependencies=_DEP)
 async def user_delete(body: UserDeleteRequest) -> Any:
-    """
-    حذف مشترك (DELETE user/{id}).
-
-    عقد .NET: POST /users/delete  { serverUrl, username, password, uid }
-    → JSON خام من SAS
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _exec_user_delete, uid=body.uid)
 
 
 @app.post("/users/refund-data", tags=["sas-users"], dependencies=_DEP)
 async def user_refund_data(body: UserRefundDataRequest) -> Any:
-    """
-    بيانات الإلغاء/الاسترداد قبل التنفيذ (GET user/refundData/{id}).
-
-    عقد .NET: POST /users/refund-data  { serverUrl, username, password, uid }
-    → JSON خام (مُنقَّى)
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_user_refund_data, uid=body.uid)
 
 
 @app.post("/users/refund", tags=["sas-users"], dependencies=_DEP)
 async def user_refund(body: UserRefundRequest) -> Any:
-    """
-    تنفيذ الإلغاء والاسترداد (GET user/refund/{id}).
-
-    عقد .NET: POST /users/refund  { serverUrl, username, password, uid }
-    → JSON خام من SAS
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _exec_user_refund, uid=body.uid)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# المتصلون الآن
-# ══════════════════════════════════════════════════════════════════════════════
-
 @app.post("/online", tags=["sas"], dependencies=_DEP)
 async def online(body: OnlineRequest) -> Any:
-    """
-    الجلسات المتصلة الآن (index/online).
-
-    عقد .NET: POST /online  { serverUrl, username, password, query:{page,count,search,…} }
-    → JSON خام (مُنقَّى)
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_online, query=body.query)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# الوكلاء (managers)
-# ══════════════════════════════════════════════════════════════════════════════
-
 @app.post("/managers", tags=["sas-managers"], dependencies=_DEP)
 async def managers(body: ManagersRequest) -> Any:
-    """
-    قائمة الوكلاء الكاملة (POST index/manager).
-
-    عقد .NET: POST /managers  { serverUrl, username, password, query:{page,count,search,…} }
-    → JSON خام { data:[…], total }
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_managers, query=body.query)
 
 
 @app.post("/managers/action", tags=["sas-managers"], dependencies=_DEP)
 async def manager_action(body: ManagerActionRequest) -> Any:
-    """
-    إجراء على وكيل: deposit · withdraw · addRewardPoints · deductRewardPoints ·
-                    payDebt · add · edit · rename.
-
-    عقد .NET: POST /managers/action  { serverUrl, username, password,
-                                       mid, action, payload? }
-    → JSON خام من SAS
-    """
     route_tmpl = _MANAGER_ACTIONS.get(body.action)
     if not route_tmpl:
         raise HTTPException(
@@ -704,7 +673,7 @@ async def manager_action(body: ManagerActionRequest) -> Any:
         )
     route = route_tmpl.format(mid=body.mid)
     p = dict(body.payload or {})
-    if body.action != "add":   # الإضافة إنشاء جديد بلا manager_id
+    if body.action != "add":
         p.setdefault("manager_id", body.mid)
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _exec_manager_action, route=route, payload=p)
@@ -712,30 +681,12 @@ async def manager_action(body: ManagerActionRequest) -> Any:
 
 @app.post("/managers/delete", tags=["sas-managers"], dependencies=_DEP)
 async def manager_delete(body: ManagerDeleteRequest) -> Any:
-    """
-    حذف وكيل (DELETE manager/{id}).
-
-    عقد .NET: POST /managers/delete  { serverUrl, username, password, mid }
-    → JSON خام من SAS
-    """
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _exec_manager_delete, mid=body.mid)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# البروكسي العام المقيَّد بقائمة بيضاء
-# ══════════════════════════════════════════════════════════════════════════════
-
 @app.post("/sas/get", tags=["sas-proxy"], dependencies=_DEP)
 async def sas_proxy_get(body: SasGetRequest) -> Any:
-    """
-    بروكسي GET مُقيَّد بـ _GET_ALLOW.
-
-    عقد .NET: POST /sas/get  { serverUrl, username, password, path }
-    → JSON خام (مُنقَّى)
-
-    يرفض أي مسار خارج القائمة البيضاء بـ 400.
-    """
     p = (body.path or "").strip().strip("/")
     if not any(rx.match(p) for rx in _GET_ALLOW_RE):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -746,14 +697,6 @@ async def sas_proxy_get(body: SasGetRequest) -> Any:
 
 @app.post("/sas/post", tags=["sas-proxy"], dependencies=_DEP)
 async def sas_proxy_post(body: SasPostRequest) -> Any:
-    """
-    بروكسي POST مُقيَّد بـ _POST_ALLOW.
-
-    عقد .NET: POST /sas/post  { serverUrl, username, password, path, payload? }
-    → JSON خام (مُنقَّى)
-
-    يرفض أي مسار خارج القائمة البيضاء بـ 400.
-    """
     p = (body.path or "").strip().strip("/")
     if not any(rx.match(p) for rx in _POST_ALLOW_RE):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -763,15 +706,450 @@ async def sas_proxy_post(body: SasPostRequest) -> Any:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# دوال مساعدة داخلية
+# النقاط الجديدة — طبقة التخزين المحلي
 # ══════════════════════════════════════════════════════════════════════════════
+
+@app.post("/account/test", tags=["local-storage"], dependencies=_DEP)
+async def account_test(body: AccountTestRequest) -> Any:
+    """
+    اختبار اتصال: يسجّل الدخول ويجلب ملخّص المشتركين.
+
+    عقد .NET: POST /account/test  { serverUrl, username, password, accountId, … }
+    → { ok, message, subscribers_count? }
+    """
+    _guard_account_id(body.accountId)
+    try:
+        async with SASClient(body.serverUrl, body.username, body.password) as sas:
+            res = await sas.dashboard_subscribers()
+            data = res.get("data", res) if isinstance(res, dict) else {}
+            total = _int(data.get("total"))
+            return {"ok": True, "message": "الاتصال ناجح", "subscribers_count": total}
+    except SASError as exc:
+        logger.warning("[test] فشل اختبار الحساب %s: %s",
+                       body.accountId[:8], _safe_msg(exc))
+        return {"ok": False, "message": "تعذّر الاتصال بنظام الساس"}
+    except Exception as exc:
+        logger.error("[test] خطأ غير متوقّع للحساب %s: %s",
+                     body.accountId[:8], _safe_msg(exc))
+        return {"ok": False, "message": "خطأ داخلي — راجع السجلّ"}
+
+
+@app.post("/sync", tags=["local-storage"], dependencies=_DEP)
+async def sync(body: SyncRequest) -> Any:
+    """
+    مزامنة مشتركي الحساب من SAS → local_subscribers.
+
+    الاستراتيجية: حذف سجلّات الحساب ثم إدراج (delete+insert أنظف من upsert للـ raw_json).
+    يُعيد { count, expiry:{overdue,today,soon3,soon7}, synced_at }.
+
+    عقد .NET: POST /sync  { serverUrl, username, password, accountId, companyId?, ownerUserId? }
+    """
+    _guard_account_id(body.accountId)
+    account_id   = body.accountId
+    company_id   = body.companyId   or ""
+    owner_user_id = body.ownerUserId or ""
+
+    # جلب المشتركين من SAS
+    rows: List[dict] = []
+    try:
+        async with SASClient(body.serverUrl, body.username, body.password) as sas:
+            async for row in sas.iter_users(count=1000):
+                rows.append(row)
+                if len(rows) >= _SUBSCRIBER_CAP:
+                    logger.warning("[sync] الحساب %s تجاوز سقف %d مشترك",
+                                   account_id[:8], _SUBSCRIBER_CAP)
+                    break
+    except SASError as exc:
+        logger.warning("[sync] فشل جلب مشتركي الحساب %s: %s",
+                       account_id[:8], _safe_msg(exc))
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail="تعذّر جلب المشتركين من نظام الساس")
+    except Exception as exc:
+        logger.error("[sync] خطأ غير متوقّع للحساب %s: %s",
+                     account_id[:8], _safe_msg(exc))
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail="خدمة الساس غير متاحة حالياً")
+
+    synced_at = _utcnow_iso()
+
+    with _db() as conn:
+        # حذف القديم أولاً (معزول بـ account_id)
+        conn.execute("DELETE FROM local_subscribers WHERE account_id = ?", (account_id,))
+        # إدراج الجديد
+        for u in rows:
+            uid = _int(u.get("id"))
+            if not uid:
+                continue
+            name = " ".join(filter(None, [
+                str(u.get("firstname") or ""),
+                str(u.get("lastname") or ""),
+            ])).strip() or str(u.get("username") or "")
+            profile = ""
+            pdet = u.get("profile_details") or {}
+            if isinstance(pdet, dict):
+                profile = str(pdet.get("name") or u.get("profile") or "")
+            else:
+                profile = str(u.get("profile") or "")
+            _st = u.get("status")
+            if isinstance(_st, dict):
+                sub_status = "active" if _st.get("status") else "expired"
+            else:
+                sub_status = "active" if str(_st or "").strip().lower() in (
+                    "active", "1", "true") else "expired"
+            online  = 1 if str(u.get("online_status") or "").lower() in (
+                "online", "1", "true") else 0
+            enabled = 1 if bool(u.get("enabled", True)) else 0
+            # حجب الأسرار في raw_json قبل التخزين
+            safe_raw = json.dumps(_redact(u), ensure_ascii=False)
+            conn.execute("""
+                INSERT INTO local_subscribers
+                    (account_id, sub_id, username, name, profile, status,
+                     online, enabled, expiration, phone, city,
+                     company_id, owner_user_id, raw_json, synced_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                account_id, uid,
+                str(u.get("username") or ""),
+                name, profile, sub_status,
+                online, enabled,
+                str(u.get("expiration") or ""),
+                str(u.get("phone") or ""),
+                str(u.get("city") or ""),
+                company_id, owner_user_id,
+                safe_raw, synced_at,
+            ))
+
+    # حساب عدّادات الانتهاء من السجلّات المُخزَّنة (بلا نداء SAS)
+    with _db() as conn:
+        cur = conn.execute(
+            "SELECT expiration FROM local_subscribers WHERE account_id = ?",
+            (account_id,))
+        expiry = _expiry_counts([r[0] for r in cur.fetchall()])
+
+    logger.info("[sync] الحساب %s: %d مشترك مُزامَن", account_id[:8], len(rows))
+    return {"count": len(rows), "expiry": expiry, "synced_at": synced_at}
+
+
+@app.post("/subscribers/local", tags=["local-storage"], dependencies=_DEP)
+async def subscribers_local(body: LocalSubscribersRequest) -> Any:
+    """
+    استعلام محلي سريع (بلا نداء SAS) مع فلترة + بحث + ترقيم.
+
+    يُعيد:
+      { total, page, count, expiry:{…}, subscribers:[…] }
+
+    عقد .NET: POST /subscribers/local
+      { accountId, search?, status?, expiring?, page?, count? }
+    """
+    _guard_account_id(body.accountId)
+    account_id = body.accountId
+
+    with _db() as conn:
+        # بناء الاستعلام الأساسي مع فلتر account_id (عزل صارم)
+        sql  = "SELECT * FROM local_subscribers WHERE account_id = ?"
+        args: list = [account_id]
+
+        if body.status:
+            sql += " AND status = ?"
+            args.append(body.status)
+
+        rows_raw = conn.execute(sql, args).fetchall()
+
+    rows = [dict(r) for r in rows_raw]
+
+    # البحث النصي (بعد الجلب — SQLite بلا FTS هنا)
+    if body.search:
+        s = body.search.strip().lower()
+        rows = [r for r in rows if
+                s in (r.get("username") or "").lower() or
+                s in (r.get("name") or "").lower() or
+                s in (r.get("phone") or "").lower()]
+
+    # فلتر الانتهاء
+    if body.expiring:
+        win = body.expiring.strip()
+        today = datetime.now(timezone.utc).date()
+        rows = [r for r in rows if _in_window(_days_left(r.get("expiration", ""), today), win)]
+        rows.sort(key=lambda r: (_days_left(r.get("expiration", ""), today) or 9999))
+
+    total = len(rows)
+
+    # ترقيم
+    page  = max(1, body.page)
+    count = max(1, min(body.count, 500))
+    start = (page - 1) * count
+    page_rows = rows[start:start + count]
+
+    # عدّادات الانتهاء من كل سجلّات الحساب (ليست من الصفحة فقط)
+    expiry = _expiry_counts([r.get("expiration", "") for r in rows])
+
+    # إزالة raw_json من المخرجات (لا يُعاد للعميل)
+    for r in page_rows:
+        r.pop("raw_json", None)
+
+    return {
+        "total": total, "page": page, "count": count,
+        "expiry": expiry,
+        "subscribers": page_rows,
+    }
+
+
+@app.post("/report/submit", tags=["local-storage"], dependencies=_DEP)
+async def report_submit(body: ReportSubmitRequest) -> Any:
+    """
+    تخزين تصريح الوكيل (البلنك).
+
+    يُعيد السجلّ المُنشأ.
+
+    عقد .NET: POST /report/submit
+      { accountId, companyId?, ownerUserId?, declared_total, declared_active, note?, submitted_by? }
+    """
+    _guard_account_id(body.accountId)
+    if body.declared_active > body.declared_total:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="declared_active يجب أن يكون <= declared_total",
+        )
+    created_at = _utcnow_iso()
+    with _db() as conn:
+        cur = conn.execute("""
+            INSERT INTO agent_reports
+                (account_id, company_id, owner_user_id,
+                 declared_total, declared_active, note, submitted_by, created_at)
+            VALUES (?,?,?,?,?,?,?,?)
+        """, (
+            body.accountId,
+            body.companyId or "",
+            body.ownerUserId or "",
+            body.declared_total,
+            body.declared_active,
+            body.note or "",
+            body.submitted_by or "",
+            created_at,
+        ))
+        row_id = cur.lastrowid
+        rec = dict(conn.execute(
+            "SELECT * FROM agent_reports WHERE id = ?", (row_id,)
+        ).fetchone())
+    logger.info("[report] تصريح جديد للحساب %s: total=%d",
+                body.accountId[:8], body.declared_total)
+    return rec
+
+
+@app.post("/report/list", tags=["local-storage"], dependencies=_DEP)
+async def report_list(body: ReportListRequest) -> Any:
+    """
+    آخر تصاريح الحساب (ترتيب زمني تنازلي).
+
+    عقد .NET: POST /report/list  { accountId }
+    → { reports:[…], count }
+    """
+    _guard_account_id(body.accountId)
+    with _db() as conn:
+        rows = conn.execute("""
+            SELECT * FROM agent_reports
+            WHERE account_id = ?
+            ORDER BY created_at DESC
+            LIMIT 100
+        """, (body.accountId,)).fetchall()
+    return {"reports": [dict(r) for r in rows], "count": len(rows)}
+
+
+@app.post("/reconciliation", tags=["local-storage"], dependencies=_DEP)
+async def reconciliation(body: ReconciliationRequest) -> Any:
+    """
+    مقاطعة تصريح الوكيل مقابل عدد المشتركين الفعلي.
+
+    منطق الحكم (مُطابَق من companies.py):
+      - no_report: لا تصريح.
+      - matched: |diff| <= max(5, 5% من actual).
+      - company_suspicious: الوكيل يصرّح أكثر مما تُظهره الشركة (diff > 0).
+      - agent_suspicious: الوكيل يصرّح أقل (diff < 0).
+
+    مصدر العدد الفعلي:
+      - إن أُرسلت creds → جلب حيّ من SAS.
+      - وإلا → عدّ المشتركين المحليين.
+
+    عقد .NET: POST /reconciliation  { accountId, serverUrl?, username?, password? }
+    → { declared, actual, diff, verdict, source }
+    """
+    _guard_account_id(body.accountId)
+
+    # مصدر العدد الفعلي
+    source = "local"
+    actual: Optional[int] = None
+
+    has_creds = bool(body.serverUrl and body.username and body.password)
+
+    if has_creds:
+        try:
+            async with SASClient(body.serverUrl, body.username, body.password) as sas:
+                res = await sas.dashboard_subscribers()
+                data = res.get("data", res) if isinstance(res, dict) else {}
+                actual = _int(data.get("total"))
+                source = "live_sas"
+        except Exception as exc:
+            logger.warning("[reconciliation] فشل الجلب الحيّ للحساب %s — تراجع للمحلي: %s",
+                           body.accountId[:8], _safe_msg(exc))
+            # تراجع للعدّ المحلي
+
+    if actual is None:
+        with _db() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM local_subscribers WHERE account_id = ?",
+                (body.accountId,),
+            ).fetchone()
+            actual = row[0] if row else 0
+
+    # آخر تصريح
+    with _db() as conn:
+        rep_row = conn.execute("""
+            SELECT declared_total, declared_active, created_at
+            FROM agent_reports
+            WHERE account_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, (body.accountId,)).fetchone()
+
+    if rep_row is None:
+        return {
+            "declared": None,
+            "actual": actual,
+            "diff": None,
+            "verdict": "no_report",
+            "source": source,
+            "last_report_ts": None,
+        }
+
+    declared       = rep_row[0]
+    declared_active = rep_row[1]
+    last_report_ts  = rep_row[2]
+    diff           = declared - actual
+    threshold      = max(5, int(actual * 0.05))
+
+    if abs(diff) <= threshold:
+        verdict = "matched"
+    elif diff > 0:
+        verdict = "company_suspicious"   # الوكيل يدّعي أكثر مما تُظهره الشركة
+    else:
+        verdict = "agent_suspicious"     # الوكيل يُقلَّل (SAS تُظهر أكثر)
+
+    return {
+        "declared":        declared,
+        "declared_active": declared_active,
+        "actual":          actual,
+        "diff":            diff,
+        "verdict":         verdict,
+        "source":          source,
+        "last_report_ts":  last_report_ts,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# دوال مساعدة مشتركة
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _guard_account_id(account_id: str) -> None:
+    """يتحقّق من صحّة account_id (غير فارغ، طول معقول) — يرمي 400 إن أخفق."""
+    aid = (account_id or "").strip()
+    if not aid or len(aid) > 128:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="accountId غير صالح — يجب أن يكون GUID أو معرّفاً غير فارغ",
+        )
+
+
+def _utcnow_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _int(v: Any, d: int = 0) -> int:
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return d
+
+
+# ── منطق الانتهاء (مُقتبَس من expiry.py) ─────────────────────────────────────
+
+def _parse_expiry(expiration: str) -> Optional[datetime]:
+    s = (expiration or "").strip()
+    if len(s) < 10:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(s[:len(fmt)], fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _days_left(expiration: str, today: Optional[date] = None) -> Optional[int]:
+    dt = _parse_expiry(expiration)
+    if dt is None:
+        return None
+    today = today or datetime.now(timezone.utc).date()
+    return (dt.date() - today).days
+
+
+def _in_window(dl: Optional[int], window: str) -> bool:
+    if dl is None:
+        return False
+    if window == "overdue":
+        return dl < 0
+    if window == "today":
+        return dl == 0
+    if window == "soon3":
+        return 0 <= dl <= 3
+    if window == "soon7":
+        return 0 <= dl <= 7
+    return True
+
+
+def _expiry_counts(expirations: List[str]) -> dict:
+    today = datetime.now(timezone.utc).date()
+    c = {"overdue": 0, "today": 0, "soon3": 0, "soon7": 0}
+    for e in expirations:
+        dl = _days_left(e, today)
+        if dl is None:
+            continue
+        if dl < 0:
+            c["overdue"] += 1
+        elif dl == 0:
+            c["today"]  += 1
+            c["soon3"]  += 1
+            c["soon7"]  += 1
+        elif dl <= 3:
+            c["soon3"]  += 1
+            c["soon7"]  += 1
+        elif dl <= 7:
+            c["soon7"]  += 1
+    return c
+
+
+# ── حجب الأسرار ───────────────────────────────────────────────────────────────
+
+def _redact(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: ("***" if _SECRET_KEYS.search(str(k)) else _redact(v))
+                for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_redact(x) for x in obj]
+    return obj
+
+
+def _safe_msg(exc: Exception) -> str:
+    msg = str(exc)
+    for kw in ("password", "كلمة المرور", "token", "secret"):
+        if kw.lower() in msg.lower():
+            return "[رسالة محجوبة لاحتوائها كلمة محجوبة]"
+    return msg[:300]
+
+
+# ── غلاف SAS المشترك ──────────────────────────────────────────────────────────
 
 async def _call_sas(server_url: str, username: str, password: str,
                     fetcher, **kwargs) -> Any:
-    """
-    غلاف مشترك: يفتح SASClient ويُفوّض لـ fetcher، يُترجم SASError إلى 502.
-    لا يُسجَّل username/password — يُسجَّل المسار فقط.
-    """
     try:
         async with SASClient(server_url, username, password) as sas:
             return await fetcher(sas, **kwargs)
@@ -785,31 +1163,6 @@ async def _call_sas(server_url: str, username: str, password: str,
         logger.error("خطأ غير متوقّع في نداء SAS: %s", _safe_msg(exc))
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
                             detail="خدمة الساس غير متاحة حالياً")
-
-
-# ── حجب الأسرار (منقول حرفياً من sas_panel.py) ───────────────────────────────
-_SECRET_KEYS = re.compile(
-    r"(password|secret|api_password|snmp_community|nas_details|\bpin\b)", re.I
-)
-
-
-def _redact(obj: Any) -> Any:
-    """يستبدل قيم المفاتيح الحسّاسة بـ '***' بشكل متكرّر على أي بنية JSON."""
-    if isinstance(obj, dict):
-        return {k: ("***" if _SECRET_KEYS.search(str(k)) else _redact(v))
-                for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_redact(x) for x in obj]
-    return obj
-
-
-def _safe_msg(exc: Exception) -> str:
-    """يعيد رسالة الخطأ بعد تنظيف أي تسريب محتمل للاعتماد."""
-    msg = str(exc)
-    for kw in ("password", "كلمة المرور", "token", "secret"):
-        if kw.lower() in msg.lower():
-            return "[رسالة محجوبة لاحتوائها كلمة محجوبة]"
-    return msg[:300]
 
 
 # ── Fetchers الأصليون ──────────────────────────────────────────────────────────
@@ -866,7 +1219,7 @@ async def _fetch_renewal_candidates(
     async for row in sas.iter_all("user", count=200, **extra_query):
         fetched += 1
         if fetched > MAX_RECORDS:
-            logger.warning("renewal/candidates: تجاوز حدّ %d سجل — إيقاف الجلب", MAX_RECORDS)
+            logger.warning("renewal/candidates: تجاوز حدّ %d — إيقاف الجلب", MAX_RECORDS)
             break
         raw_exp = row.get("expiration") or row.get("expire") or ""
         if not raw_exp:
@@ -918,8 +1271,8 @@ async def _execute_renewal_bulk(
                 "ok":      None,
                 "message": (
                     f"[dryRun] سيُنفَّذ {action} — uuid={op_uuid}"
-                    + (f" — months={months}"       if months      else "")
-                    + (f" — profileId={profile_id}" if profile_id else "")
+                    + (f" — months={months}"        if months      else "")
+                    + (f" — profileId={profile_id}" if profile_id  else "")
                 ),
             })
         return results
@@ -937,27 +1290,20 @@ async def _execute_renewal_bulk(
 
             ok = True
             if isinstance(resp, dict):
-                status_code = resp.get("status") or resp.get("statusCode")
-                if status_code is not None and int(status_code) >= 400:
+                sc = resp.get("status") or resp.get("statusCode")
+                if sc is not None and int(sc) >= 400:
                     ok = False
                 elif resp.get("success") is False:
                     ok = False
-            msg = ""
-            if isinstance(resp, dict):
-                msg = str(resp.get("message") or resp.get("msg") or "تمّ")
+            msg = str(resp.get("message") or resp.get("msg") or "تمّ") if isinstance(resp, dict) else ""
             results.append({"id": sub_id, "ok": ok, "message": msg})
-
         except SASError as exc:
-            logger.warning("renewal/bulk: فشل المشترك %d: %s", sub_id, _safe_msg(exc))
             results.append({"id": sub_id, "ok": False, "message": _safe_msg(exc)})
         except Exception as exc:
-            logger.error("renewal/bulk: خطأ غير متوقّع للمشترك %d: %s", sub_id, _safe_msg(exc))
             results.append({"id": sub_id, "ok": False, "message": "خطأ داخلي"})
 
     return results
 
-
-# ── Fetchers/Executors الجديدة ─────────────────────────────────────────────────
 
 async def _fetch_user_detail(sas: SASClient, uid: int) -> Any:
     res  = await sas.user(uid)
