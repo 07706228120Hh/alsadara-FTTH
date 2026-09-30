@@ -404,6 +404,196 @@ public class SasAgentController : ControllerBase
         }
     }
 
+    // ==================== العقد الموحّد الكامل: عمليات الساس account-scoped ====================
+    // كل النقاط أدناه تحت /api/sas-agent/accounts/{id}/... وتمرّ عبر GetOwnedAccountAsync للعزل الثلاثي.
+    // القراءات: RequirePermission("sas_agent","view",...,failClosed:true).
+    // الكتابات: RequirePermission("sas_agent","manage",...,failClosed:true).
+    // فكّ التشفير في الذاكرة فقط داخل PassThroughAsync/PassThroughWriteAsync؛ لا سرّ يُعاد أو يُسجَّل.
+
+    // ---------- المشتركون: قراءات (view) ----------
+
+    /// <summary>تفاصيل مشترك محدّد من خدمة الساس — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/users/{uid}/detail")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetUserDetail(Guid id, string uid, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetUserDetailAsync(acc.ServerUrl, acc.Username, pwd, uid, token), null, ct);
+
+    /// <summary>نظرة عامة على المشتركين من خدمة الساس — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/users/overview")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetUsersOverview(Guid id, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetUsersOverviewAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
+
+    /// <summary>سجل/تاريخ مشترك محدّد من خدمة الساس — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/users/{uid}/history")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetUserHistory(Guid id, string uid, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetUserHistoryAsync(acc.ServerUrl, acc.Username, pwd, uid, token), null, ct);
+
+    /// <summary>بيانات تمديد/إضافة رصيد لمشترك — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/users/{uid}/extend-data")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetUserExtendData(Guid id, string uid, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetUserExtendDataAsync(acc.ServerUrl, acc.Username, pwd, uid, token), null, ct);
+
+    // ---------- المشتركون: كتابات (manage) ----------
+
+    /// <summary>تنفيذ إجراء على مشترك — كتابة (manage).</summary>
+    [HttpPost("accounts/{id}/users/{uid}/action")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> UserAction(Guid id, string uid, [FromBody] SasActionRequest request, CancellationToken ct)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Action))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "الإجراء مطلوب" }));
+
+        return PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.UserActionAsync(acc.ServerUrl, acc.Username, pwd, uid, request.Action.Trim(), request.Params, token), ct);
+    }
+
+    /// <summary>تنفيذ إجراء جماعي على مشتركين — كتابة (manage).</summary>
+    [HttpPost("accounts/{id}/users/bulk-action")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> UsersBulkAction(Guid id, [FromBody] SasBulkActionRequest request, CancellationToken ct)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Action))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "الإجراء مطلوب" }));
+
+        if (request.Uids == null || request.Uids.Count == 0)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "قائمة المشتركين مطلوبة" }));
+
+        if (request.Uids.Count > 1000)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "حجم الدفعة يتجاوز الحد المسموح" }));
+
+        var uids = request.Uids
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (uids.Count == 0)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "قائمة المشتركين مطلوبة" }));
+
+        return PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.UsersBulkActionAsync(acc.ServerUrl, acc.Username, pwd, uids, request.Action.Trim(), request.Params, token), ct);
+    }
+
+    /// <summary>إنشاء مشترك جديد — كتابة (manage).</summary>
+    [HttpPost("accounts/{id}/users/create")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> CreateUser(Guid id, [FromBody] SasPayloadRequest request, CancellationToken ct)
+    {
+        if (request?.Payload == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "بيانات المشترك مطلوبة" }));
+
+        return PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.CreateUserAsync(acc.ServerUrl, acc.Username, pwd, request.Payload.Value, token), ct);
+    }
+
+    /// <summary>تعديل مشترك — كتابة (manage).</summary>
+    [HttpPut("accounts/{id}/users/{uid}")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> UpdateUser(Guid id, string uid, [FromBody] SasPayloadRequest request, CancellationToken ct)
+    {
+        if (request?.Payload == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "بيانات التعديل مطلوبة" }));
+
+        return PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.UpdateUserAsync(acc.ServerUrl, acc.Username, pwd, uid, request.Payload.Value, token), ct);
+    }
+
+    /// <summary>حذف مشترك — كتابة (manage).</summary>
+    [HttpDelete("accounts/{id}/users/{uid}")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> DeleteUser(Guid id, string uid, CancellationToken ct)
+        => PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.DeleteUserAsync(acc.ServerUrl, acc.Username, pwd, uid, token), ct);
+
+    /// <summary>بيانات استرداد رصيد/داتا لمشترك (تحضير) — كتابة (manage).</summary>
+    [HttpPost("accounts/{id}/users/{uid}/refund-data")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetUserRefundData(Guid id, string uid, CancellationToken ct)
+        => PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.GetUserRefundDataAsync(acc.ServerUrl, acc.Username, pwd, uid, token), ct);
+
+    /// <summary>تنفيذ استرداد لمشترك — كتابة (manage).</summary>
+    [HttpPost("accounts/{id}/users/{uid}/refund")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> RefundUser(Guid id, string uid, CancellationToken ct)
+        => PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.RefundUserAsync(acc.ServerUrl, acc.Username, pwd, uid, token), ct);
+
+    // ---------- المتصلون: قراءة (view) ----------
+
+    /// <summary>قائمة المتصلين حالياً من خدمة الساس — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/online")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetOnline(Guid id, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetOnlineAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
+
+    // ---------- الوكلاء/المدراء ----------
+
+    /// <summary>قائمة الوكلاء/المدراء من خدمة الساس — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/managers")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> GetManagers(Guid id, CancellationToken ct)
+        => PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.GetManagersAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
+
+    /// <summary>تنفيذ إجراء على وكيل/مدير — كتابة (manage).</summary>
+    [HttpPost("accounts/{id}/managers/{mid}/action")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> ManagerAction(Guid id, string mid, [FromBody] SasActionRequest request, CancellationToken ct)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Action))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "الإجراء مطلوب" }));
+
+        return PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.ManagerActionAsync(acc.ServerUrl, acc.Username, pwd, mid, request.Action.Trim(), request.Params, token), ct);
+    }
+
+    /// <summary>حذف وكيل/مدير — كتابة (manage).</summary>
+    [HttpDelete("accounts/{id}/managers/{mid}")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> DeleteManager(Guid id, string mid, CancellationToken ct)
+        => PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.DeleteManagerAsync(acc.ServerUrl, acc.Username, pwd, mid, token), ct);
+
+    // ---------- البروكسي العام لـ SAS ----------
+
+    /// <summary>بروكسي عام GET لأي مسار ساس (path في الاستعلام) — قراءة (view).</summary>
+    [HttpGet("accounts/{id}/sas/get")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> SasGet(Guid id, [FromQuery] string path, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "المسار مطلوب" }));
+
+        var safePath = path.Length > MaxSasPathLength ? path[..MaxSasPathLength] : path;
+        return PassThroughAsync(id, (acc, pwd, token) =>
+            _sasClient.SasGetAsync(acc.ServerUrl, acc.Username, pwd, safePath.Trim(), token), null, ct);
+    }
+
+    /// <summary>بروكسي عام POST لأي مسار ساس — كتابة (manage).</summary>
+    [HttpPost("accounts/{id}/sas/post")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public Task<IActionResult> SasPost(Guid id, [FromBody] SasProxyPostRequest request, CancellationToken ct)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Path))
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "المسار مطلوب" }));
+
+        var safePath = request.Path.Length > MaxSasPathLength ? request.Path[..MaxSasPathLength] : request.Path;
+        return PassThroughWriteAsync(id, (acc, pwd, token) =>
+            _sasClient.SasPostAsync(acc.ServerUrl, acc.Username, pwd, safePath.Trim(), request.Payload, token), ct);
+    }
+
+    /// <summary>الحد الأقصى لطول مسار البروكسي العام الممرَّر لخدمة الساس.</summary>
+    private const int MaxSasPathLength = 512;
+
     /// <summary>
     /// نمط تمرير موحّد: يحصر النطاق، يجلب الحساب بالمطابقة الصارمة، يفكّ التشفير في الذاكرة،
     /// ينادي خدمة الساس، ويعيد JSON خاماً — مع ترجمة تعذّر الخدمة إلى 503.
@@ -435,6 +625,41 @@ public class SasAgentController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في التمرير لخدمة الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// نمط تمرير الكتابة الموحّد: مطابق لـ <see cref="PassThroughAsync"/> في العزل وفكّ التشفير
+    /// والإرجاع الخام، ويُستخدم لنقاط الكتابة (manage). الفصل لأجل وضوح السياق في السجلّات
+    /// (لا يُسجَّل أي اعتماد/سرّ). كل النقاط الكتابية تفرض [RequirePermission(..,"manage"..)] فوقه.
+    /// </summary>
+    private async Task<IActionResult> PassThroughWriteAsync(
+        Guid id,
+        Func<SasAccount, string, CancellationToken, Task<string>> call,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            var password = _secretProtector.Unprotect(account.PasswordEncrypted); // في الذاكرة فقط
+            var raw = await call(account, password, ct);
+            return Content(raw, "application/json");
+        }
+        catch (SasServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "خدمة الساس غير متاحة أثناء عملية الكتابة");
+            return StatusCode(503, new { success = false, message = "خدمة الساس غير متاحة حالياً" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في عملية الكتابة عبر خدمة الساس");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
@@ -509,3 +734,23 @@ public record BulkRenewRequest(
     int Months,
     string? ProfileId,
     bool? DryRun);
+
+/// <summary>طلب إجراء على مشترك/مدير — اسم الإجراء + وسائط حرّة (JSON) تُمرَّر كما هي لخدمة الساس.</summary>
+public record SasActionRequest(
+    string Action,
+    System.Text.Json.JsonElement? Params);
+
+/// <summary>طلب إجراء جماعي — معرّفات + اسم الإجراء + وسائط حرّة (JSON).</summary>
+public record SasBulkActionRequest(
+    List<string> Uids,
+    string Action,
+    System.Text.Json.JsonElement? Params);
+
+/// <summary>طلب يحمل حمولة JSON حرّة (إنشاء/تعديل مشترك) تُمرَّر كما هي لخدمة الساس.</summary>
+public record SasPayloadRequest(
+    System.Text.Json.JsonElement? Payload);
+
+/// <summary>طلب بروكسي عام POST — مسار ساس + حمولة JSON حرّة اختيارية.</summary>
+public record SasProxyPostRequest(
+    string Path,
+    System.Text.Json.JsonElement? Payload);

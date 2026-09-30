@@ -100,4 +100,106 @@ public interface ISasServiceClient
         string? profileId = null,
         bool dryRun = false,
         CancellationToken cancellationToken = default);
+
+    // ==================== العقد الموحّد الكامل لعمليات الساس (خدمة Python 127.0.0.1:8100) ====================
+    // كل الدوال أدناه تمرّر الاعتماد (serverUrl/username/password) + الوسائط في جسم POST وتعيد JSON خاماً.
+    // ⚠️ أمن: الاعتماد يُمرَّر بعد فكّ التشفير في الذاكرة فقط، ولا يُسجَّل أبداً.
+
+    // ---------- المشتركون: قراءات ----------
+
+    /// <summary>تفاصيل مشترك محدّد (POST /users/detail + uid). قراءة.</summary>
+    Task<string> GetUserDetailAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default);
+
+    /// <summary>نظرة عامة على المشتركين (POST /users/overview). قراءة.</summary>
+    Task<string> GetUsersOverviewAsync(
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>سجل/تاريخ مشترك محدّد (POST /users/history + uid). قراءة.</summary>
+    Task<string> GetUserHistoryAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default);
+
+    /// <summary>بيانات تمديد/إضافة رصيد لمشترك (POST /users/extend-data + uid). قراءة.</summary>
+    Task<string> GetUserExtendDataAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default);
+
+    // ---------- المشتركون: كتابات ----------
+
+    /// <summary>تنفيذ إجراء على مشترك (POST /users/action + uid + action + params). كتابة.</summary>
+    Task<string> UserActionAsync(
+        string serverUrl, string username, string password,
+        string uid, string action, object? parameters = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>تنفيذ إجراء جماعي على مشتركين (POST /users/bulk-action + uids[] + action + params). كتابة.</summary>
+    Task<string> UsersBulkActionAsync(
+        string serverUrl, string username, string password,
+        IEnumerable<string> uids, string action, object? parameters = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>إنشاء مشترك جديد (POST /users/create + payload). كتابة.</summary>
+    Task<string> CreateUserAsync(
+        string serverUrl, string username, string password,
+        object payload, CancellationToken cancellationToken = default);
+
+    /// <summary>تعديل مشترك (POST /users/update + uid + payload). كتابة.</summary>
+    Task<string> UpdateUserAsync(
+        string serverUrl, string username, string password,
+        string uid, object payload, CancellationToken cancellationToken = default);
+
+    /// <summary>حذف مشترك (POST /users/delete + uid). كتابة.</summary>
+    Task<string> DeleteUserAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default);
+
+    /// <summary>بيانات استرداد رصيد/داتا لمشترك (POST /users/refund-data + uid). كتابة (تحضير عملية).</summary>
+    Task<string> GetUserRefundDataAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default);
+
+    /// <summary>تنفيذ استرداد لمشترك (POST /users/refund + uid). كتابة.</summary>
+    Task<string> RefundUserAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default);
+
+    // ---------- المتصلون ----------
+
+    /// <summary>قائمة المتصلين حالياً (POST /online). قراءة.</summary>
+    Task<string> GetOnlineAsync(
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default);
+
+    // ---------- الوكلاء/المدراء ----------
+
+    /// <summary>قائمة الوكلاء/المدراء (POST /managers). قراءة.</summary>
+    Task<string> GetManagersAsync(
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>تنفيذ إجراء على وكيل/مدير (POST /managers/action + mid + action + params). كتابة.</summary>
+    Task<string> ManagerActionAsync(
+        string serverUrl, string username, string password,
+        string mid, string action, object? parameters = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>حذف وكيل/مدير (POST /managers/delete + mid). كتابة.</summary>
+    Task<string> DeleteManagerAsync(
+        string serverUrl, string username, string password,
+        string mid, CancellationToken cancellationToken = default);
+
+    // ---------- البروكسي العام لـ SAS ----------
+
+    /// <summary>بروكسي عام GET لأي مسار ساس (POST /sas/get + path). قراءة.</summary>
+    Task<string> SasGetAsync(
+        string serverUrl, string username, string password,
+        string path, CancellationToken cancellationToken = default);
+
+    /// <summary>بروكسي عام POST لأي مسار ساس (POST /sas/post + path + payload). كتابة.</summary>
+    Task<string> SasPostAsync(
+        string serverUrl, string username, string password,
+        string path, object? payload = null, CancellationToken cancellationToken = default);
 }

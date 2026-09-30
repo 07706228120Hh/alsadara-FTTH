@@ -174,6 +174,125 @@ public class SasServiceClient : ISasServiceClient
             },
             cancellationToken);
 
+    // ==================== العقد الموحّد الكامل لعمليات الساس ====================
+    // جميع الدوال أدناه تنادي نقاط خدمة Python المقابلة عبر PostBodyForRawAsync
+    // (تمرّر الاعتماد + الوسائط في الجسم، وتعيد JSON خاماً). لا تُسجَّل الأسرار.
+
+    // ---------- المشتركون: قراءات ----------
+
+    public Task<string> GetUserDetailAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/detail",
+            new { serverUrl, username, password, uid }, cancellationToken);
+
+    public Task<string> GetUsersOverviewAsync(
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/overview",
+            new { serverUrl, username, password }, cancellationToken);
+
+    public Task<string> GetUserHistoryAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/history",
+            new { serverUrl, username, password, uid }, cancellationToken);
+
+    public Task<string> GetUserExtendDataAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/extend-data",
+            new { serverUrl, username, password, uid }, cancellationToken);
+
+    // ---------- المشتركون: كتابات ----------
+
+    public Task<string> UserActionAsync(
+        string serverUrl, string username, string password,
+        string uid, string action, object? parameters = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/action",
+            new { serverUrl, username, password, uid, action, @params = parameters }, cancellationToken);
+
+    public Task<string> UsersBulkActionAsync(
+        string serverUrl, string username, string password,
+        IEnumerable<string> uids, string action, object? parameters = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/bulk-action",
+            new { serverUrl, username, password, uids = uids?.ToArray() ?? Array.Empty<string>(), action, @params = parameters }, cancellationToken);
+
+    public Task<string> CreateUserAsync(
+        string serverUrl, string username, string password,
+        object payload, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/create",
+            new { serverUrl, username, password, payload }, cancellationToken);
+
+    public Task<string> UpdateUserAsync(
+        string serverUrl, string username, string password,
+        string uid, object payload, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/update",
+            new { serverUrl, username, password, uid, payload }, cancellationToken);
+
+    public Task<string> DeleteUserAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/delete",
+            new { serverUrl, username, password, uid }, cancellationToken);
+
+    public Task<string> GetUserRefundDataAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/refund-data",
+            new { serverUrl, username, password, uid }, cancellationToken);
+
+    public Task<string> RefundUserAsync(
+        string serverUrl, string username, string password,
+        string uid, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/users/refund",
+            new { serverUrl, username, password, uid }, cancellationToken);
+
+    // ---------- المتصلون ----------
+
+    public Task<string> GetOnlineAsync(
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/online",
+            new { serverUrl, username, password }, cancellationToken);
+
+    // ---------- الوكلاء/المدراء ----------
+
+    public Task<string> GetManagersAsync(
+        string serverUrl, string username, string password,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/managers",
+            new { serverUrl, username, password }, cancellationToken);
+
+    public Task<string> ManagerActionAsync(
+        string serverUrl, string username, string password,
+        string mid, string action, object? parameters = null,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/managers/action",
+            new { serverUrl, username, password, mid, action, @params = parameters }, cancellationToken);
+
+    public Task<string> DeleteManagerAsync(
+        string serverUrl, string username, string password,
+        string mid, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/managers/delete",
+            new { serverUrl, username, password, mid }, cancellationToken);
+
+    // ---------- البروكسي العام لـ SAS ----------
+
+    public Task<string> SasGetAsync(
+        string serverUrl, string username, string password,
+        string path, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/sas/get",
+            new { serverUrl, username, password, path }, cancellationToken);
+
+    public Task<string> SasPostAsync(
+        string serverUrl, string username, string password,
+        string path, object? payload = null, CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/sas/post",
+            new { serverUrl, username, password, path, payload }, cancellationToken);
+
     /// <summary>
     /// ينادي مسار خدمة الساس ممرِّراً الاعتماد + وسائط الاستعلام في الجسم، ويعيد JSON خاماً.
     /// عند فشل الاتصال يرمي <see cref="SasServiceUnavailableException"/> لتترجمها البوّابة إلى 502/503.

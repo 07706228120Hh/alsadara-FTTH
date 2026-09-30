@@ -43,90 +43,188 @@ run.bat              # Windows
 
 ---
 
-## نقاط النهاية
+## الأمان (fail-closed)
 
-كل النقاط تتطلّب رأس `X-Internal-Secret` مطابقاً للمتغيّر البيئي.
+كل نقطة نهاية (عدا `/health`) تتطلّب رأس `X-Internal-Secret`.
 
-| المسار | الفعل | الوصف | مطابق لـ .NET |
+- **SADARA_SAS_INTERNAL_SECRET غير مضبوط** → 503 (الخدمة ترفض كل الطلبات).
+- **الرأس غائب أو خاطئ** → 401.
+- المقارنة بـ `secrets.compare_digest` (زمن ثابت — لا timing attack).
+- كلمات المرور/التوكنات لا تظهر في السجلات. كل استجابة SAS تمرّ عبر `_redact` قبل إعادتها.
+- بلا حالة: لا توكنات SAS مخزَّنة — كل طلب يُنشئ جلسة مستقلّة.
+
+---
+
+## جسم الطلب الأساسي
+
+كل النقاط (عدا `/health`) تتقبّل جسم JSON يحمل دائماً:
+
+```json
+{
+  "serverUrl": "sas.isp.iq",
+  "username":  "admin",
+  "password":  "***"
+}
+```
+
+---
+
+## نقاط النهاية الكاملة
+
+### داخلي
+
+| المسار | الفعل | الوصف |
+|---|---|---|
+| `GET /health` | — | فحص الإقلاع (بلا مصادقة) |
+
+---
+
+### لوحة الوكيل والعمليات العامة
+
+| المسار | حقول إضافية | رد .NET | وصف |
 |---|---|---|---|
-| `GET /health` | — | فحص الإقلاع (بلا مصادقة) | — |
-| `POST /login` | `{serverUrl, username, password}` | تسجيل دخول SAS4 | `LoginAsync` |
-| `POST /dashboard` | `{serverUrl, username, password}` | لوحة الوكيل (subscribers + finance) | `GetDashboardAsync` |
-| `POST /subscribers` | `{serverUrl, username, password, query:{page,count,search,…}}` | قائمة مشتركي الوكيل | `GetSubscribersAsync` |
-| `POST /report` | `{serverUrl, username, password, query:{page,count,…}}` | تقرير الوكيل (المديرون/البلنك) | `GetReportAsync` |
-| `POST /packages` | `{serverUrl, username, password}` | قائمة باقات/بروفايلات SAS4 (JSON خام) | `GetPackagesAsync` |
-| `POST /finance` | `{serverUrl, username, password}` | ملخّص مالي `advancedDashboard/finance` (JSON خام) | `GetFinanceAsync` |
-| `POST /system-health` | `{serverUrl, username, password}` | صحّة النظام `advancedDashboard/systemHealth` (JSON خام) | `GetSystemHealthAsync` |
-| `POST /renewal/candidates` | `{serverUrl, username, password, days?:int=7, query?:{}}` | المشتركون المنتهي اشتراكهم خلال `days` يوماً — مرتَّبون تصاعدياً حسب الانتهاء — `[{id,username,name,expiry,profile}]` | `GetRenewalCandidatesAsync` |
-| `POST /renewal/bulk` | `{serverUrl, username, password, subscriberIds:[], months?:int, profileId?, dryRun?:bool=false}` | تجديد/تفعيل دفعة مشتركين (idempotent بـ uuid5) — `[{id,ok,message}]` | `BulkRenewAsync` |
+| `POST /login` | — | `{success, sessionHandle, message}` | تسجيل دخول SAS4 |
+| `POST /dashboard` | — | `{subscribers:{…}, finance:{…}}` | لوحة الوكيل |
+| `POST /subscribers` | `query:{page,count,search,sortBy,direction}` | JSON خام (index/user) | قائمة المشتركين |
+| `POST /report` | `query:{page,count,search}` | JSON خام (index/manager) | تقرير الوكيل |
+| `POST /packages` | — | JSON خام (list/profile/0) | قائمة الباقات |
+| `POST /finance` | — | JSON خام (advancedDashboard/finance) | ملخّص مالي |
+| `POST /system-health` | — | JSON خام (advancedDashboard/systemHealth) | صحّة النظام |
+| `POST /renewal/candidates` | `days?:int=7, query?:{}` | `[{id,username,name,expiry,profile}]` | مشتركون قريبو الانتهاء |
+| `POST /renewal/bulk` | `subscriberIds:[], months?, profileId?, dryRun?` | `[{id,ok,message}]` | تجديد/تفعيل دفعة |
+| `POST /online` | `query:{page,count,search}` | `{data,total,page,count}` مُنقَّى | المتصلون الآن |
 
-### تفاصيل نقطتَي التجديد
+---
 
-#### `POST /renewal/candidates`
+### تفاصيل المشترك (قراءة)
+
+| المسار | حقول إضافية | رد .NET | وصف |
+|---|---|---|---|
+| `POST /users/detail` | `uid:int` | JSON خام مُنقَّى (GET user/{id}) | كل بيانات مشترك |
+| `POST /users/overview` | `uid:int` | JSON خام مُنقَّى (GET user/overview/{id}) | نظرة عامة |
+| `POST /users/history` | `uid:int, page?, count?, sortBy?, direction?, search?` | JSON خام (POST index/UserHistory/{id}) | سجلّ المشترك |
+| `POST /users/extend-data` | `uid:int, profile_id?:int` | `{extension:{…}, allowed_extensions:{…}\|null}` | بيانات التمديد |
+
+---
+
+### إجراءات المشترك (كتابة)
+
+| المسار | حقول إضافية | رد .NET | وصف |
+|---|---|---|---|
+| `POST /users/action` | `uid:int, action:str, payload?:{}` | JSON خام من SAS | إجراء مفرد |
+| `POST /users/bulk-action` | `action:str, user_ids:[int], payload?:{}` | `{action,total,ok,failed,results}` | إجراء جماعي (حدّ 300) |
+
+الإجراءات المسموحة في `action`: `activate` · `extend` · `changeProfile` · `addTraffic` · `deposit` · `withdraw` · `ping` · `rename`
+
+كل عنصر في `results` يحمل `{user_id, ok, error?}`.
+
+---
+
+### إنشاء / تعديل / حذف / استرداد
+
+| المسار | حقول إضافية | رد .NET | وصف |
+|---|---|---|---|
+| `POST /users/create` | `payload:{username,password,…}` | JSON خام من SAS | إنشاء مشترك |
+| `POST /users/update` | `uid:int, changes:{حقل:قيمة}` | JSON خام من SAS | تعديل مشترك (تحميل-دمج-حفظ) |
+| `POST /users/delete` | `uid:int` | JSON خام من SAS | حذف مشترك |
+| `POST /users/refund-data` | `uid:int` | JSON خام مُنقَّى | بيانات الاسترداد |
+| `POST /users/refund` | `uid:int` | JSON خام من SAS | تنفيذ الاسترداد |
+
+الحقول القابلة للتعديل في `/users/update`:
+`enabled` · `profile_id` · `site_id` · `mac_auth` · `allowed_macs` · `firstname` · `lastname` · `company` · `email` · `phone` · `city` · `address` · `apartment` · `street` · `contract_id` · `national_id` · `notes` · `simultaneous_sessions` · `static_ip` · `auto_renew` · `user_type` · `expiration` · `password`
+
+---
+
+### الوكلاء (managers)
+
+| المسار | حقول إضافية | رد .NET | وصف |
+|---|---|---|---|
+| `POST /managers` | `query:{page,count,search}` | `{data,total,page,count}` | قائمة الوكلاء |
+| `POST /managers/action` | `mid:int, action:str, payload?:{}` | JSON خام من SAS | إجراء على وكيل |
+| `POST /managers/delete` | `mid:int` | JSON خام من SAS | حذف وكيل |
+
+الإجراءات المسموحة في `/managers/action`:
+`deposit` · `withdraw` · `addRewardPoints` · `deductRewardPoints` · `payDebt` · `add` · `edit` · `rename`
+
+---
+
+### البروكسي العام المقيَّد بقائمة بيضاء
+
+| المسار | حقول إضافية | رد .NET | وصف |
+|---|---|---|---|
+| `POST /sas/get` | `path:str` | JSON خام مُنقَّى | GET مقيَّد بـ `_GET_ALLOW` |
+| `POST /sas/post` | `path:str, payload?:{}` | JSON خام مُنقَّى | POST مقيَّد بـ `_POST_ALLOW` |
+
+أي مسار خارج القائمة يُرفض بـ 400.
+
+#### _GET_ALLOW (قراءة)
+`auth` · `user/{id}` · `user/overview/{id}` · `user/activationData/{id}` · `user/extensionData/{id}` · `user/refundData/{id}` · `user/refund/{id}` · `allowedExtensions/{id}` · `mac/{id}` · `customRadiusAttribute/user/{id}` · `list/profile/{id}` · `site` · `manager/tree` · `usersReport/summary` · `usersReport/perManager` · `usersReport/map` · `syslog/events` · `resources/menu` · `resources/languages` · `resources/language/{lang}` · `advancedDashboard/(subscribers|finance|systemHealth|CpuUsage|MemoryUsage|DiskUsage)`
+
+#### _POST_ALLOW (قوائم بترقيم/تقارير)
+`index/UserHistory/{id}` · `index/UserJournal/{id}` · `index/UserSessions[/{id}]` · `index/UserInvoices[/{id}]` · `index/UserReceipts/{id}` · `index/UserDocuments/{id}` · `index/Quota/{id}` · `user/traffic` · `userNetworksTraffic` · `index/activations` · `index/ManagerInvoices[/{id}]` · `index/ManagerReceipts[/{id}]` · `index/ManagerJournal[/{id}]` · `index/ManagerDebtsJournal` · `index/dataExportJob` · `report/depodrawal` · `report/activations` · `report/profits` · `usersReport/registration` · `usersReport/perProfile` · `index/userauthlog` · `index/syslog`
+
+---
+
+## _redact — حجب الأسرار
+
+كل استجابة SAS تمرّ عبر `_redact` قبل إعادتها. المفاتيح المطابقة للنمط التالي تُستبدل بـ `"***"`:
+
+```
+password | secret | api_password | snmp_community | nas_details | pin
+```
+
+التطبيق: متكرّر على dict/list بأي عمق.
+
+---
+
+## تفاصيل نقاط التجديد
+
+### `POST /renewal/candidates`
 
 ```json
 // طلب
 { "serverUrl": "sas.isp.iq", "username": "admin", "password": "***",
   "days": 7, "query": {} }
 
-// رد  (مصفوفة — فارغة إن لا يوجد منتهٍ قريباً)
+// رد
 [
   { "id": 42, "username": "user1", "name": "أحمد علي",
     "expiry": "2026-10-03 00:00:00", "profile": "10MB" }
 ]
 ```
 
-- يجلب كامل قائمة المشتركين عبر `iter_all("user")` (حتى 2000 سجل).
-- يُحلَّل حقل `expiration` (أو `expire`) بصيغ: `YYYY-MM-DDTHH:MM:SS` · `YYYY-MM-DD HH:MM:SS` · `YYYY-MM-DD`.
-- يُعيد المشتركين المنتهيين الآن + المنتهين خلال `days` يوماً.
-
-#### `POST /renewal/bulk`
+### `POST /renewal/bulk`
 
 ```json
 // طلب
 { "serverUrl": "sas.isp.iq", "username": "admin", "password": "***",
-  "subscriberIds": [42, 43, 44],
-  "months": 1, "profileId": null, "dryRun": false }
+  "subscriberIds": [42, 43, 44], "months": 1, "dryRun": false }
 
 // رد
 [
   { "id": 42, "ok": true,  "message": "تمّ" },
-  { "id": 43, "ok": false, "message": "SAS أعاد 404 على user/43/extend …" },
-  { "id": 44, "ok": true,  "message": "تمّ" }
+  { "id": 43, "ok": false, "message": "SAS أعاد 404 …" }
 ]
 ```
 
-- **idempotency:** كل عملية تحمل `uuid5(NAMESPACE_URL, "{baseUrl}:{id}:{YYYYMMDDHHMM}")` — إعادة الطلب خلال نفس الدقيقة تُنتج نفس uuid فترفضها SAS4 دون تأثير.
-- **dryRun:** يعيد `[{id, ok:null, message:"[dryRun] سيُنفَّذ …"}]` دون أي نداء كتابي.
-- **فشل جزئي:** الخطأ في مشترك واحد يُسجَّل في نتيجته ولا يوقف الدفعة.
-
----
-
-## الأمان
-
-- **loopback only:** uvicorn يُقيَّد بـ `--host 127.0.0.1` — لا يقبل اتصالاً خارجياً.
-- **X-Internal-Secret:** مقارنة بـ `secrets.compare_digest` (زمن ثابت — لا timing attack).
-- **بلا تسجيل اعتماد:** كلمات المرور والتوكنات لا تظهر في السجلات أبداً.
-- **بلا حالة:** لا توكنات SAS مخزَّنة — كل طلب يُنشئ جلسة SAS مستقلّة ويُغلقها.
+- **idempotency:** `uuid5(NAMESPACE_URL, "{baseUrl}:{id}:{YYYYMMDDHHMM}")` — إعادة الطلب خلال الدقيقة ذاتها تُنتج نفس uuid.
+- **dryRun:** لا نداء كتابي — يعيد `{ok:null, message:"[dryRun] سيُنفَّذ …"}`.
+- **فشل جزئي:** الخطأ في مشترك واحد مُسجَّل في نتيجته ولا يوقف الدفعة.
 
 ---
 
 ## استيراد العملاء
-
-بدلاً من نسخ الملفين، تضبط `app.py` مسار `sys.path` لتشمل
-`../backend/app` وتستورد منه مباشرةً:
 
 ```python
 from integrations.sas_client import SASClient, SASError
 from integrations.sas_user_client import SASUserClient
 ```
 
-**لماذا هذا أنظف من النسخ:** مصدر الحقيقة واحد — أي تعديل على عملاء SAS
-يُطبَّق تلقائياً على الخدمة دون تزامن يدوي.
+`app.py` يضبط `sys.path` لتشمل `../backend/app` — مصدر الحقيقة واحد.
 
 ---
 
-## النشر بـ systemd (للإنتاج — خطوات فقط، لا تنفيذ فعلي هنا)
+## النشر بـ systemd
 
 ```ini
 # /etc/systemd/system/sadara-sas-sidecar.service
@@ -142,33 +240,9 @@ EnvironmentFile=/etc/sadara/sas-sidecar.env
 ExecStart=/opt/sadara/venv/bin/python -m uvicorn app:app --host 127.0.0.1 --port 8100
 Restart=on-failure
 RestartSec=5
-# منع الوصول لخارج loopback على مستوى systemd (طبقة دفاع إضافية)
 IPAddressAllow=127.0.0.0/8
 IPAddressDeny=any
 
 [Install]
 WantedBy=multi-user.target
 ```
-
-```bash
-# ملف البيئة (محمي بـ chmod 600 + chown sadara)
-# /etc/sadara/sas-sidecar.env
-SADARA_SAS_INTERNAL_SECRET=<سرّ قوي مولَّد بـ secrets.token_hex(32)>
-```
-
-```bash
-# تفعيل وتشغيل
-systemctl daemon-reload
-systemctl enable --now sadara-sas-sidecar
-systemctl status sadara-sas-sidecar
-```
-
----
-
-## فجوات العقد المتبقية
-
-| البند | الوضع |
-|---|---|
-| `/dashboard` يعيد `{subscribers, finance}` مُدمَجَين بدلاً من JSON واحد خام | الصدارة .NET تتوقّع `string` خاماً — إن احتاجت نشاطاً محدداً فالتوافق يستلزم تعديلاً في `SasServiceClient.cs` |
-| `/report` يعيد بيانات `index/manager` — ليس تقرير مالي مخصَّصاً | SAS4 لا يوفّر نقطة نهاية «تقرير وكيل» موحّدة؛ يُستكمل حين تُحدَّد البنية المطلوبة |
-| `/renewal/bulk` يستخدم `/admin/api/` مباشرةً (SASClient) بدلاً من بوابة المشترك | SAS4 يمدّد المشترك عبر `/admin/api/user/{id}/extend` و`/activate` إداريّاً — هذا السلوك الصحيح للوكيل/المدير. `SASUserClient` متاح لو احتاجت نقاط بوابة المشترك في المستقبل |

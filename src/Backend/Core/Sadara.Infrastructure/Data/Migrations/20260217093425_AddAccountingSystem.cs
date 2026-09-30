@@ -12,18 +12,10 @@ namespace Sadara.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<decimal>(
-                name: "Salary",
-                table: "Users",
-                type: "numeric(18,2)",
-                precision: 18,
-                scale: 2,
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "text",
-                oldPrecision: 18,
-                oldScale: 2,
-                oldNullable: true);
+            // إصلاح توافق: تحويل text -> numeric في Postgres يتطلّب USING صريحاً (خطأ 42804 بدونه).
+            // الجدول فارغ عند التطبيق الأولي على قاعدة جديدة، والإنتاج طبّق هذه الهجرة مسبقاً فلن تُعاد؛
+            // النتيجة النهائية numeric(18,2) بلا تغيير للمخطّط. NULLIF لمعالجة القيم النصية الفارغة بأمان.
+            migrationBuilder.Sql(@"ALTER TABLE ""Users"" ALTER COLUMN ""Salary"" TYPE numeric(18,2) USING NULLIF(""Salary"", '')::numeric(18,2);");
 
             migrationBuilder.AddColumn<Guid>(
                 name: "CompanyId",
