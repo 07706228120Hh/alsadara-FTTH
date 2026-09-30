@@ -1,9 +1,15 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
 import '../../services/sadara_api_service.dart';
+import '../../services/vps_auth_service.dart';
 import '../models/sas_account.dart';
 import '../models/sas_dashboard.dart';
 import '../models/sas_renewal.dart';
 import '../models/sas_report.dart';
 import '../models/sas_subscriber.dart';
+import '../models/sas_ticket.dart';
 
 /// خدمة API لوحدة «وكيل الساس» — تخاطب بوّابة الصدارة `/api/sas-agent/*`.
 ///
@@ -463,6 +469,145 @@ class SasAgentApiService {
       'payload': payload,
     });
     return res;
+  }
+
+  // ============================================================
+  //  التذاكر (نظام تذاكر أصلي · user-scoped · بلا account id)
+  //  تحت /api/sas-agent/tickets — العزل يفرضه الخادم.
+  // ============================================================
+
+  /// إحصاءات التذاكر — `GET tickets/stats`.
+  /// يعيد `{total, open, in_progress, resolved, closed}`.
+  Future<SasTicketStats> getTicketsStats() async {
+    final res = await _api.get('$_base/tickets/stats');
+    final data = res['data'];
+    if (data is Map) {
+      return SasTicketStats.fromJson(data.cast<String, dynamic>());
+    }
+    return SasTicketStats.fromJson(res);
+  }
+
+  /// قائمة تذاكر مُرقّمة — `GET tickets?status=&category=&search=&page=&count=`.
+  Future<SasTicketsPage> getTickets({
+    String? status,
+    String? category,
+    String? search,
+    int page = 1,
+    int count = 20,
+  }) async {
+    final params = <String>[
+      'page=$page',
+      'count=$count',
+    ];
+    if (status != null && status.isNotEmpty) params.add('status=$status');
+    if (category != null && category.isNotEmpty) {
+      params.add('category=$category');
+    }
+    if (search != null && search.isNotEmpty) {
+      params.add('search=${Uri.encodeQueryComponent(search)}');
+    }
+    final res = await _api.get('$_base/tickets?${params.join('&')}');
+    return SasTicketsPage.fromJson(res);
+  }
+
+  /// تذكرة واحدة + ردودها — `GET tickets/{ticketId}`.
+  Future<SasTicket> getTicket(String ticketId) async {
+    final res = await _api.get('$_base/tickets/$ticketId');
+    return SasTicket.fromJson(_asMap(res));
+  }
+
+  /// إنشاء تذكرة — `POST tickets`.
+  /// يعيد التذكرة المُنشأة عند توفّرها.
+  Future<SasTicket?> createTicket({
+    required String subject,
+    required String body,
+    String? category,
+    String? priority,
+    String? subscriberRef,
+  }) async {
+    final res = await _api.post('$_base/tickets', body: {
+      'subject': subject,
+      'body': body,
+      if (category != null && category.isNotEmpty) 'category': category,
+      if (priority != null && priority.isNotEmpty) 'priority': priority,
+      if (subscriberRef != null && subscriberRef.isNotEmpty)
+        'subscriberRef': subscriberRef,
+    });
+    final data = res['data'];
+    if (data is Map) {
+      return SasTicket.fromJson(data.cast<String, dynamic>());
+    }
+    if (res.containsKey('id') || res.containsKey('_id')) {
+      return SasTicket.fromJson(res);
+    }
+    return null;
+  }
+
+  /// رد على تذكرة — `POST tickets/{ticketId}/reply`.
+  /// [isInternal] ملاحظة داخلية لا تظهر للمشترك.
+  Future<bool> replyTicket(
+    String ticketId, {
+    required String body,
+    bool isInternal = false,
+  }) async {
+    final res = await _api.post('$_base/tickets/$ticketId/reply', body: {
+      'body': body,
+      'isInternal': isInternal,
+    });
+    return res['success'] != false;
+  }
+
+  /// تحديث تذكرة (حالة/أولوية/تصنيف) — `PATCH tickets/{ticketId}`.
+  /// عملية كتابية (يحكمها `canAdd('sas_agent')` في الواجهة، والخادم نهائياً).
+  Future<SasTicket?> updateTicket(
+    String ticketId, {
+    String? status,
+    String? priority,
+    String? category,
+  }) async {
+    final res = await _patch('$_base/tickets/$ticketId', {
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (priority != null && priority.isNotEmpty) 'priority': priority,
+      if (category != null && category.isNotEmpty) 'category': category,
+    });
+    final data = res['data'];
+    if (data is Map) {
+      return SasTicket.fromJson(data.cast<String, dynamic>());
+    }
+    if (res.containsKey('id') || res.containsKey('_id')) {
+      return SasTicket.fromJson(res);
+    }
+    return null;
+  }
+
+  /// طلب PATCH — [SadaraApiService] لا يعرض `patch` عاماً، فننفّذه هنا
+  /// بإعادة استخدام نفس القاعدة والتوكن الحيّ من [VpsAuthService] (بلا تخزين
+  /// توكن ثابت، وبنفس عزل الجلسة الذي تعتمده بقية الخدمة).
+  Future<Map<String, dynamic>> _patch(
+      String endpoint, Map<String, dynamic> body) async {
+    final token = VpsAuthService.instance.accessToken;
+    final uri = Uri.parse('${SadaraApiService.baseUrl}$endpoint');
+    final res = await http.patch(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      },
+      body: json.encode(body),
+    );
+    if (res.statusCode == 401 || res.statusCode == 403) {
+      throw Exception('انتهت صلاحية الجلسة - يرجى تسجيل الدخول مرة أخرى');
+    }
+    Map<String, dynamic> decoded;
+    try {
+      final d = json.decode(res.body);
+      decoded = d is Map ? d.cast<String, dynamic>() : <String, dynamic>{};
+    } on FormatException {
+      decoded = <String, dynamic>{};
+    }
+    if (res.statusCode >= 200 && res.statusCode < 300) return decoded;
+    throw Exception(decoded['message'] ?? 'خطأ غير معروف (${res.statusCode})');
   }
 
   /// أداة داخلية: تحويل استجابة مرنة إلى قائمة خرائط.
