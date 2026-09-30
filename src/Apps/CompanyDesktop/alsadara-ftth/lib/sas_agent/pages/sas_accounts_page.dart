@@ -8,6 +8,7 @@ import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_account_form_dialog.dart';
 import '../widgets/sas_state_views.dart';
+import 'sas_explorer_page.dart';
 
 /// إدارة حسابات الساس: قائمة + ربط + تعديل + حذف + تحديد الحساب الفعّال.
 class SasAccountsPage extends StatefulWidget {
@@ -324,17 +325,30 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                   ],
                 ),
               ),
-              if (_canManage)
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert_rounded,
-                      color: Colors.grey[500], size: 20.sp),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r)),
-                  onSelected: (v) {
-                    if (v == 'edit') _openForm(existing: acc);
-                    if (v == 'delete') _confirmDelete(acc);
-                  },
-                  itemBuilder: (_) => [
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert_rounded,
+                    color: Colors.grey[500], size: 20.sp),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r)),
+                onSelected: (v) {
+                  if (v == 'explorer') {
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => SasExplorerPage(account: acc)));
+                  }
+                  if (v == 'edit') _openForm(existing: acc);
+                  if (v == 'delete') _confirmDelete(acc);
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'explorer',
+                    child: Row(children: [
+                      Icon(Icons.travel_explore_rounded,
+                          size: 18, color: AppTheme.infoColor),
+                      SizedBox(width: 8.w),
+                      Text('مستكشف الساس', style: GoogleFonts.cairo()),
+                    ]),
+                  ),
+                  if (_canManage) ...[
                     PopupMenuItem(
                       value: 'edit',
                       child: Row(children: [
@@ -351,11 +365,13 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                             size: 18, color: AppTheme.errorColor),
                         SizedBox(width: 8.w),
                         Text('حذف',
-                            style: GoogleFonts.cairo(color: AppTheme.errorColor)),
+                            style:
+                                GoogleFonts.cairo(color: AppTheme.errorColor)),
                       ]),
                     ),
                   ],
-                ),
+                ],
+              ),
             ],
           ),
         ),
