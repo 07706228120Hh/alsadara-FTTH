@@ -1042,6 +1042,18 @@ class PermissionRegistry {
       category: 'الوكلاء',
     ),
 
+    // ─── صفحة وكيل الساس (بوّابة /api/sas-agent) ───
+    PermissionEntry(
+      key: 'sas_agent',
+      labelAr: 'صفحة وكيل الساس',
+      description:
+          'إدارة حسابات الساس ولوحة الوكيل والمشتركين عبر بوّابة الصدارة',
+      icon: Icons.dns_rounded,
+      category: 'الوكلاء',
+      // view: عرض الصفحة والحسابات · add/edit/delete: إدارة الحسابات (manage في الخادم)
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+
     // ─── واتساب ───
     PermissionEntry(
       key: 'whatsapp',

@@ -1,0 +1,214 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../theme/app_theme.dart';
+import '../models/sas_account.dart';
+import '../models/sas_subscriber.dart';
+import '../services/sas_agent_api_service.dart';
+import '../widgets/sas_state_views.dart';
+
+/// تبويب «مشتركون» — قائمة مشتركي الوكيل للحساب المحدد مع بحث.
+class SasSubscribersTab extends StatefulWidget {
+  final SasAccount account;
+  const SasSubscribersTab({super.key, required this.account});
+
+  @override
+  State<SasSubscribersTab> createState() => _SasSubscribersTabState();
+}
+
+class _SasSubscribersTabState extends State<SasSubscribersTab> {
+  final _api = SasAgentApiService.instance;
+  final _searchCtrl = TextEditingController();
+  Timer? _debounce;
+
+  List<SasSubscriber> _rows = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant SasSubscribersTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.account.id != widget.account.id) {
+      _searchCtrl.clear();
+      _load();
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final rows = await _api.getSubscribers(
+        widget.account.id,
+        search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+        pageSize: 100,
+      );
+      if (mounted) setState(() => _rows = rows);
+    } catch (e) {
+      if (mounted) {
+        setState(() =>
+            _error = e.toString().replaceFirst('Exception: ', '').trim());
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _onSearchChanged(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 450), _load);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 6.h),
+          child: TextField(
+            controller: _searchCtrl,
+            onChanged: _onSearchChanged,
+            onSubmitted: (_) => _load(),
+            style: GoogleFonts.cairo(),
+            decoration: InputDecoration(
+              hintText: 'بحث عن مشترك…',
+              hintStyle: GoogleFonts.cairo(),
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _searchCtrl.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear_rounded),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        _load();
+                      },
+                    ),
+            ),
+          ),
+        ),
+        Expanded(child: _body()),
+      ],
+    );
+  }
+
+  Widget _body() {
+    if (_loading) return const SasLoadingView(message: 'جاري جلب المشتركين…');
+    if (_error != null) return SasErrorView(message: _error!, onRetry: _load);
+    if (_rows.isEmpty) {
+      return const SasEmptyView(
+        message: 'لا يوجد مشتركون لعرضهم',
+        icon: Icons.people_outline_rounded,
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.separated(
+        padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 12.h),
+        itemCount: _rows.length,
+        separatorBuilder: (_, __) => SizedBox(height: 8.h),
+        itemBuilder: (_, i) => _subscriberCard(_rows[i]),
+      ),
+    );
+  }
+
+  Widget _subscriberCard(SasSubscriber s) {
+    final statusColor = s.isActive ? AppTheme.successColor : AppTheme.errorColor;
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 42.w,
+                height: 42.w,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.person_rounded,
+                    color: statusColor, size: 20.sp),
+              ),
+              if (s.online)
+                Positioned(
+                  right: -1,
+                  bottom: -1,
+                  child: Container(
+                    width: 12.w,
+                    height: 12.w,
+                    decoration: BoxDecoration(
+                      color: AppTheme.successColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.username.isEmpty ? '-' : s.username,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.cairo(
+                      fontSize: 14.sp, fontWeight: FontWeight.w800),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  '${s.fullName.isEmpty ? '' : '${s.fullName} · '}باقة: ${s.profileLabel}'
+                  '${s.expiration != null ? ' · انتهاء: ${s.expiration}' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.cairo(
+                      fontSize: 11.5.sp, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20.r),
+            ),
+            child: Text(
+              s.isActive ? 'نشط' : 'موقوف',
+              style: GoogleFonts.cairo(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w700,
+                color: statusColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -40,6 +40,7 @@ import 'settings/ftth_sync_settings_page.dart'; // إعدادات مزامنة F
 import 'super_admin/sadara_portal_page.dart'; // منصة الصدارة
 import 'accounting/accounting_dashboard_page.dart'; // نظام المحاسبة
 import '../inventory/inventory_page.dart'; // نظام المخازن
+import '../sas_agent/sas_agent_page.dart'; // صفحة وكيل الساس (بوّابة /api/sas-agent)
 import '../task/follow_up_page.dart'; // صفحة المتابعة
 // import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق — مخفي حالياً
 // شاشتي - معاملات الفني
@@ -2638,6 +2639,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 companyId: widget.tenantId,
               ),
             )),
+          ),
+          // 8b) صفحة وكيل الساس — بوّابة /api/sas-agent
+          _buildEnhancedMenuItem(
+            title: 'صفحة وكيل الساس',
+            subtitle: 'حسابات الساس ولوحة الوكيل والمشتركين',
+            icon: Icons.dns_rounded,
+            gradient: [const Color(0xFF00695C), const Color(0xFF00897B)],
+            permissionKey: 'sas_agent',
+            onTap: () => _navigateTo(const SasAgentPage()),
           ),
           // 9) المتابعة والتقييم
           _buildEnhancedMenuItem(
