@@ -33,7 +33,8 @@ public static class SummaryTestHarness
             fcmService: null!,
             taskHubNotifier: null!,
             db: db,
-            tenant: tenant);
+            tenant: tenant,
+            configuration: null!);
 
         var claims = new List<Claim>();
         if (userId.HasValue)

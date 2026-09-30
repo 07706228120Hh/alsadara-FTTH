@@ -29,6 +29,7 @@ public class TenantIsolationTests
         public bool IsSuperAdmin { get; init; }
         public bool BypassTenantFilter { get; init; }
         public Guid? DefaultCompanyId { get; init; }
+        public bool EnforceIsolation { get; init; }
     }
 
     // سياق نظام يتجاوز الفلتر — يُستخدم للزرع والتحقّق المحايد.

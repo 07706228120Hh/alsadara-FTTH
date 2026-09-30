@@ -100,4 +100,5 @@ public sealed class TestTenant : ICurrentTenant
     public bool IsSuperAdmin { get; init; }
     public bool BypassTenantFilter { get; init; }
     public Guid? DefaultCompanyId { get; init; }
+    public bool EnforceIsolation { get; init; }
 }
