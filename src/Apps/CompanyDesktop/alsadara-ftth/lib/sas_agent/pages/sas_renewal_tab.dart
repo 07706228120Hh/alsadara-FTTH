@@ -405,12 +405,16 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
                     SizedBox(height: 6.h),
                     Wrap(
                       spacing: 8.w,
+                      runSpacing: 8.h,
                       children: [
                         _collectionChip('cash', 'نقد', collectionType,
                             (v) => setLocal(() => collectionType = v)),
-                        _collectionChip('credit', 'أجل', collectionType,
+                        _collectionChip('credit', 'أجل المشغّل', collectionType,
                             (v) => setLocal(() => collectionType = v)),
                         _collectionChip('agent', 'وكيل', collectionType,
+                            (v) => setLocal(() => collectionType = v)),
+                        _collectionChip('citizen', 'آجل (ذمة المواطن)',
+                            collectionType,
                             (v) => setLocal(() => collectionType = v)),
                       ],
                     ),

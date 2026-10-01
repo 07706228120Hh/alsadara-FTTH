@@ -10,7 +10,9 @@ import '../whatsapp/whatsapp.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_admin_agents_page.dart';
+import 'sas_debtors_page.dart';
 import 'sas_explorer_page.dart';
+import 'sas_package_prices_page.dart';
 
 /// تبويب «الإعدادات» — مركز إعداد وحدة «وكيل الساس» بثيم منصّة الصدارة.
 ///
@@ -114,6 +116,17 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
           ),
           SizedBox(height: 10.h),
           _sasAccountsCard(),
+
+          SizedBox(height: 20.h),
+
+          // ── التسعير والمحاسبة ──
+          const SasSectionHeader(
+            title: 'التسعير والمحاسبة',
+            icon: Icons.point_of_sale_rounded,
+            gradient: AppTheme.orangeGradient,
+          ),
+          SizedBox(height: 10.h),
+          _accountingCard(),
 
           SizedBox(height: 20.h),
 
@@ -391,6 +404,43 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
             title: 'إدارة حسابات الساس',
             subtitle: 'ربط · تعديل · حذف · اختبار · مزامنة · تحديد الحساب الفعّال',
             onTap: widget.onGoToAccounts,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────── التسعير والمحاسبة ───────────────────────────
+
+  Widget _accountingCard() {
+    final acc = widget.selected;
+    final disabledHint =
+        acc == null ? 'حدّد حساب ساس أولاً من تبويب «الحسابات»' : null;
+    return Container(
+      decoration: SasUi.card(),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          _tile(
+            icon: Icons.sell_rounded,
+            iconColor: AppTheme.warningColor,
+            title: 'أسعار الباقات',
+            subtitle: disabledHint ??
+                'تسعير كل باقة: الكلفة · سعر البيع · الربح المحسوب · التفعيل',
+            onTap: acc == null
+                ? null
+                : () => _open(SasPackagePricesPage(account: acc)),
+          ),
+          const Divider(height: 1),
+          _tile(
+            icon: Icons.account_balance_wallet_rounded,
+            iconColor: AppTheme.errorColor,
+            title: 'المدينون (ذمم المواطنين)',
+            subtitle: disabledHint ??
+                'المشتركون المدينون بالآجل — الرصيد المستحق وكشف الحساب والتسديد',
+            onTap: acc == null
+                ? null
+                : () => _open(SasDebtorsPage(account: acc)),
           ),
         ],
       ),

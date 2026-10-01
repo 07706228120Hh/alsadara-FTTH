@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../services/sadara_api_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../models/sas_account.dart';
+import '../models/sas_accounting.dart';
 import '../models/sas_admin_agent.dart';
 import '../models/sas_dashboard.dart';
 import '../models/sas_renewal.dart';
@@ -425,6 +426,81 @@ class SasAgentApiService {
     final res =
         await _api.get('$_base/accounts/$id/transactions?limit=$limit&offset=$offset');
     return SasTransactionsPage.fromJson(_asMapKeepTop(res));
+  }
+
+  // ============================================================
+  //  النظام المحاسبي (المرحلة 5): تسعير · معلومات مواطن · كشف · ذمم
+  // ============================================================
+
+  /// جلب أسعار الباقات (كلفة/بيع/ربح/مفعّل) — `GET accounts/{id}/package-prices`.
+  ///
+  /// يُملأ تلقائياً من باقات الساس في الخادم إن لم تُسعَّر بعد؛ الربح محسوب للعرض.
+  Future<List<SasPackagePrice>> getPackagePrices(String id) async {
+    final res = await _api.get('$_base/accounts/$id/package-prices');
+    final list = _asMapList(res['data'] ?? res['rows'] ?? res['items'] ?? res);
+    return list.map(SasPackagePrice.fromJson).toList();
+  }
+
+  /// حفظ أسعار الباقات — `PUT accounts/{id}/package-prices`.
+  /// نُرسل الكلفة/البيع/المفعّل فقط (الربح يُحسب خادمياً).
+  Future<bool> savePackagePrices(
+      String id, List<SasPackagePrice> items) async {
+    final res = await _api.put('$_base/accounts/$id/package-prices', body: {
+      'items': items.map((e) => e.toSaveJson()).toList(),
+    });
+    return res['success'] != false;
+  }
+
+  /// جلب معلومات المواطن الموسّعة — `GET accounts/{id}/users/{uid}/profile`.
+  Future<SasSubscriberProfile> getSubscriberProfile(
+      String id, String uid) async {
+    final res = await _api.get('$_base/accounts/$id/users/$uid/profile');
+    return SasSubscriberProfile.fromJson(_asMap(res));
+  }
+
+  /// حفظ معلومات المواطن الموسّعة — `PUT accounts/{id}/users/{uid}/profile`.
+  Future<bool> saveSubscriberProfile(
+      String id, String uid, SasSubscriberProfile fields) async {
+    final res = await _api.put(
+      '$_base/accounts/$id/users/$uid/profile',
+      body: fields.toSaveJson(),
+    );
+    return res['success'] != false;
+  }
+
+  /// كشف حساب المواطن (شحنات + تسديدات + رصيد مستحق) —
+  /// `GET accounts/{id}/users/{uid}/statement`.
+  Future<SasCitizenStatement> getStatement(String id, String uid) async {
+    final res = await _api.get('$_base/accounts/$id/users/$uid/statement');
+    return SasCitizenStatement.fromJson(_asMapKeepTop(res));
+  }
+
+  /// تسجيل تسديد على ذمّة المواطن — `POST accounts/{id}/users/{uid}/payment`.
+  /// ⚠️ عملية مالية (يؤكّدها المستدعي). [method] أحد: `cash` · `master`.
+  Future<SasPaymentResult> recordCitizenPayment(
+    String id,
+    String uid, {
+    required num amount,
+    required String method,
+    String? note,
+  }) async {
+    final res = await _api.post(
+      '$_base/accounts/$id/users/$uid/payment',
+      body: {
+        'amount': amount,
+        'method': method,
+        if (note != null && note.isNotEmpty) 'note': note,
+      },
+    );
+    return SasPaymentResult.fromJson(_asMapKeepTop(res));
+  }
+
+  /// قائمة المشتركين المدينين (الاسم/المعرّف + الرصيد) —
+  /// `GET accounts/{id}/debtors`.
+  Future<List<SasDebtor>> getDebtors(String id) async {
+    final res = await _api.get('$_base/accounts/$id/debtors');
+    final list = _asMapList(res['data'] ?? res['rows'] ?? res['items'] ?? res);
+    return list.map(SasDebtor.fromJson).toList();
   }
 
   // ============================================================

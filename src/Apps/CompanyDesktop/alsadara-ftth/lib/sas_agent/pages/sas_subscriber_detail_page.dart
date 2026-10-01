@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../permissions/permission_manager.dart';
 import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
+import '../models/sas_accounting.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_billing_post_actions.dart';
+import '../widgets/sas_citizen_statement.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_subscriber_form_page.dart';
@@ -61,7 +64,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
   @override
   void initState() {
     super.initState();
-    _innerTabs = TabController(length: 7, vsync: this);
+    _innerTabs = TabController(length: 9, vsync: this);
     _loadMain();
   }
 
@@ -579,6 +582,8 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
               unselectedLabelStyle:
                   GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 12.5),
               tabs: const [
+                Tab(text: 'معلومات المواطن'),
+                Tab(text: 'كشف الحساب'),
                 Tab(text: 'السجل'),
                 Tab(text: 'الجلسات'),
                 Tab(text: 'الفواتير'),
@@ -594,6 +599,12 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
             child: TabBarView(
               controller: _innerTabs,
               children: [
+                _CitizenInfoTab(aid: _aid, uid: _uid),
+                SasCitizenStatementView(
+                  accountId: _aid,
+                  userId: _uid,
+                  subscriberName: _subscriberFullName(),
+                ),
                 _HistoryTab(aid: _aid, uid: _uid),
                 _IndexListTab(
                   aid: _aid,
@@ -1181,12 +1192,17 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 8,
+                        runSpacing: 8,
                         children: [
                           _collectionChip('cash', 'نقد', collectionType,
                               (v) => setLocal(() => collectionType = v)),
-                          _collectionChip('credit', 'أجل', collectionType,
+                          _collectionChip('credit', 'أجل المشغّل',
+                              collectionType,
                               (v) => setLocal(() => collectionType = v)),
                           _collectionChip('agent', 'وكيل', collectionType,
+                              (v) => setLocal(() => collectionType = v)),
+                          _collectionChip('citizen', 'آجل (ذمة المواطن)',
+                              collectionType,
                               (v) => setLocal(() => collectionType = v)),
                         ],
                       ),
@@ -1552,6 +1568,311 @@ class _HistoryTabState extends State<_HistoryTab> {
                   fontSize: 10.5, color: Colors.grey[500])),
         );
       },
+    );
+  }
+}
+
+// ─── تبويب «معلومات المواطن» الموسّعة (11 حقلاً: هوية · تواصل · موقع) ───
+
+/// نموذج منظّم بمجموعات لعرض/تحرير حقول المواطن الإضافية عبر
+/// get/saveSubscriberProfile. منفصل عن تفاصيل الساس (يبقى عبر المزامنة).
+class _CitizenInfoTab extends StatefulWidget {
+  final String aid;
+  final String uid;
+  const _CitizenInfoTab({required this.aid, required this.uid});
+
+  @override
+  State<_CitizenInfoTab> createState() => _CitizenInfoTabState();
+}
+
+class _CitizenInfoTabState extends State<_CitizenInfoTab> {
+  final _api = SasAgentApiService.instance;
+
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+  // متحكّمات الحقول الـ11.
+  final _nationalId = TextEditingController();
+  final _fullNameQuad = TextEditingController();
+  final _birthDate = TextEditingController();
+  final _altPhone = TextEditingController();
+  final _whatsapp = TextEditingController();
+  final _email = TextEditingController();
+  final _address = TextEditingController();
+  final _latitude = TextEditingController();
+  final _longitude = TextEditingController();
+  final _propertyType = TextEditingController();
+  final _landmark = TextEditingController();
+  String _gender = '';
+
+  bool get _canManage => PermissionManager.instance.canAdd('sas_agent');
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    for (final c in [
+      _nationalId,
+      _fullNameQuad,
+      _birthDate,
+      _altPhone,
+      _whatsapp,
+      _email,
+      _address,
+      _latitude,
+      _longitude,
+      _propertyType,
+      _landmark,
+    ]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  String _clean(Object e) => e.toString().replaceFirst('Exception: ', '').trim();
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final p = await _api.getSubscriberProfile(widget.aid, widget.uid);
+      if (!mounted) return;
+      _nationalId.text = p.nationalId;
+      _fullNameQuad.text = p.fullNameQuad;
+      _birthDate.text = p.birthDate;
+      _altPhone.text = p.altPhone;
+      _whatsapp.text = p.whatsappNumber;
+      _email.text = p.email;
+      _address.text = p.addressDetail;
+      _latitude.text = p.latitude;
+      _longitude.text = p.longitude;
+      _propertyType.text = p.propertyType;
+      _landmark.text = p.landmark;
+      setState(() {
+        _gender = p.gender;
+        _loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = _clean(e);
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _save() async {
+    if (!_canManage) return;
+    setState(() => _saving = true);
+    final fields = SasSubscriberProfile(
+      nationalId: _nationalId.text.trim(),
+      fullNameQuad: _fullNameQuad.text.trim(),
+      birthDate: _birthDate.text.trim(),
+      gender: _gender,
+      altPhone: _altPhone.text.trim(),
+      whatsappNumber: _whatsapp.text.trim(),
+      email: _email.text.trim(),
+      addressDetail: _address.text.trim(),
+      latitude: _latitude.text.trim(),
+      longitude: _longitude.text.trim(),
+      propertyType: _propertyType.text.trim(),
+      landmark: _landmark.text.trim(),
+    );
+    try {
+      final ok =
+          await _api.saveSubscriberProfile(widget.aid, widget.uid, fields);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ok ? 'تم حفظ معلومات المواطن' : 'تعذّر الحفظ',
+            style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+        backgroundColor: ok ? AppTheme.successColor : AppTheme.errorColor,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('فشل: ${_clean(e)}',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const SasLoadingView(message: 'جاري جلب معلومات المواطن…');
+    }
+    if (_error != null) {
+      return SasErrorView(message: _error!, onRetry: _load);
+    }
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 12.h),
+            children: [
+              _group('الهوية', Icons.badge_rounded, AppTheme.blueGradient, [
+                _field(_fullNameQuad, 'الاسم الرباعي'),
+                _field(_nationalId, 'الهوية الوطنية', mono: true),
+                _field(_birthDate, 'تاريخ الميلاد',
+                    hint: 'YYYY-MM-DD', mono: true),
+                _genderField(),
+              ]),
+              SizedBox(height: 12.h),
+              _group('التواصل', Icons.phone_rounded, AppTheme.greenGradient, [
+                _field(_altPhone, 'هاتف بديل',
+                    mono: true, keyboard: TextInputType.phone),
+                _field(_whatsapp, 'رقم واتساب',
+                    mono: true, keyboard: TextInputType.phone),
+                _field(_email, 'البريد الإلكتروني',
+                    keyboard: TextInputType.emailAddress),
+              ]),
+              SizedBox(height: 12.h),
+              _group('الموقع / العقار', Icons.location_on_rounded,
+                  AppTheme.orangeGradient, [
+                _field(_address, 'تفاصيل العنوان'),
+                _field(_propertyType, 'نوع العقار'),
+                _field(_landmark, 'أقرب نقطة دالّة'),
+                Row(
+                  children: [
+                    Expanded(
+                        child: _field(_latitude, 'خط العرض (lat)',
+                            mono: true,
+                            keyboard: const TextInputType.numberWithOptions(
+                                decimal: true, signed: true))),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                        child: _field(_longitude, 'خط الطول (lng)',
+                            mono: true,
+                            keyboard: const TextInputType.numberWithOptions(
+                                decimal: true, signed: true))),
+                  ],
+                ),
+              ]),
+            ],
+          ),
+        ),
+        _saveBar(),
+      ],
+    );
+  }
+
+  Widget _group(
+      String title, IconData icon, List<Color> gradient, List<Widget> fields) {
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: SasUi.card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SasSectionHeader(title: title, icon: icon, gradient: gradient),
+          SizedBox(height: 12.h),
+          for (int i = 0; i < fields.length; i++) ...[
+            if (i > 0) SizedBox(height: 10.h),
+            fields[i],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _field(TextEditingController ctl, String label,
+      {bool mono = false, String? hint, TextInputType? keyboard}) {
+    return TextField(
+      controller: ctl,
+      enabled: _canManage,
+      keyboardType: keyboard,
+      style: mono
+          ? GoogleFonts.robotoMono(fontWeight: FontWeight.w700, fontSize: 13.sp)
+          : GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 13.sp),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        labelStyle:
+            GoogleFonts.cairo(color: Colors.grey[600], fontSize: 12.sp),
+        isDense: true,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+      ),
+    );
+  }
+
+  Widget _genderField() {
+    return Row(
+      children: [
+        Text('الجنس:',
+            style: GoogleFonts.cairo(
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey[700])),
+        SizedBox(width: 10.w),
+        _genderChip('male', 'ذكر'),
+        SizedBox(width: 8.w),
+        _genderChip('female', 'أنثى'),
+      ],
+    );
+  }
+
+  Widget _genderChip(String value, String label) {
+    final active = _gender == value;
+    return ChoiceChip(
+      selected: active,
+      onSelected: _canManage ? (_) => setState(() => _gender = value) : null,
+      label: Text(label,
+          style: GoogleFonts.cairo(
+              fontWeight: FontWeight.w700,
+              color: active ? Colors.white : Colors.grey[700])),
+      selectedColor: AppTheme.primaryColor,
+      backgroundColor: Colors.grey.withValues(alpha: 0.10),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+    );
+  }
+
+  Widget _saveBar() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 8.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+            top: BorderSide(color: Colors.grey.withValues(alpha: 0.12))),
+      ),
+      child: Row(
+        children: [
+          const Spacer(),
+          FilledButton.icon(
+            onPressed: (!_canManage || _saving) ? null : _save,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              disabledBackgroundColor: Colors.grey.withValues(alpha: 0.30),
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 11.h),
+            ),
+            icon: _saving
+                ? SizedBox(
+                    width: 16.w,
+                    height: 16.w,
+                    child: const CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.save_rounded),
+            label: Text(_canManage ? 'حفظ' : 'لا صلاحية',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
     );
   }
 }

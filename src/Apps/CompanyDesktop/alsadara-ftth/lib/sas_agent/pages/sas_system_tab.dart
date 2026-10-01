@@ -9,6 +9,7 @@ import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_explorer_page.dart';
 import 'sas_license_page.dart';
+import 'sas_package_prices_page.dart';
 import 'sas_system_managers.dart';
 import 'sas_system_online.dart';
 
@@ -96,6 +97,10 @@ class _SasSystemTabState extends State<SasSystemTab>
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         children: [
+          _actionChip('أسعار الباقات', Icons.sell_rounded,
+              const [AppTheme.warningColor, Color(0xFFFFB74D)],
+              () => _open(SasPackagePricesPage(account: widget.account))),
+          SizedBox(width: 8.w),
           _actionChip('الترخيص', Icons.verified_user_rounded,
               AppTheme.orangeGradient,
               () => _open(SasLicensePage(account: widget.account))),

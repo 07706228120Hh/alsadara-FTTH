@@ -6,6 +6,7 @@ import '../models/sas_account.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_report_table.dart';
 import '../widgets/sas_state_views.dart';
+import 'sas_debtors_page.dart';
 import 'sas_license_page.dart';
 import 'sas_reports_page.dart' show kSasReports, SasAggregateReportsPage;
 import 'sas_transactions_page.dart';
@@ -57,6 +58,15 @@ class SasReportsTab extends StatelessWidget {
           icon: Icons.receipt_long_rounded,
           gradient: AppTheme.greenGradient,
           onTap: () => _open(context, SasTransactionsPage(account: account)),
+        ),
+        SizedBox(height: 8.h),
+        _tile(
+          context,
+          title: 'المدينون (ذمم المواطنين)',
+          subtitle: 'المشتركون المدينون بالآجل + الرصيد المستحق · كشف وتسديد',
+          icon: Icons.account_balance_wallet_rounded,
+          gradient: const [AppTheme.errorColor, Color(0xFFEF5350)],
+          onTap: () => _open(context, SasDebtorsPage(account: account)),
         ),
         SizedBox(height: 8.h),
         _tile(
