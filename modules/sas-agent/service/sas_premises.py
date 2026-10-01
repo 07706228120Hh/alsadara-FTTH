@@ -33,7 +33,20 @@ from typing import Any, Dict, Iterator, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.functional_validators import BeforeValidator
+from typing import Annotated as _Annotated
+
+
+def _coerce_int(v: Any) -> int:
+    """يقبل int أو str رقمي — ينتج ValidationError لأي قيمة أخرى."""
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        raise ValueError(f"يجب أن يكون رقماً صحيحاً، وردت القيمة: {v!r}")
+
+
+_IntFromAny = _Annotated[int, BeforeValidator(_coerce_int)]
 
 # ─── مسار محرّك العنونة (يُضاف sys.path في app.py قبل الاستيراد) ────────────
 # تستوردها بعد أن يُضيف app.py المسار؛ إن لم يكن في sys.path بعد نضيفه هنا
@@ -374,6 +387,8 @@ def _row_to_dict(conn: sqlite3.Connection,
 
 class _PremBase(BaseModel):
     """الحقول الأساسية لعزل النطاق (مطلوبة في كل طلبات العقارات)."""
+    model_config = ConfigDict(extra="forbid")
+
     companyId:    str = Field(...,  description="معرّف الشركة")
     ownerUserId:  str = Field(...,  description="معرّف الوكيل المالك")
 
@@ -398,16 +413,20 @@ class PremCreateRequest(_PremBase):
     phone:           str            = Field(default="")
     ownership:       str            = Field(default="")
     ptype:           str            = Field(default="")
+    # البوّابة ترسل created_by من هوية المستخدم — يُقبَل ولا يُستخدَم للتخزين حالياً
+    # (جدول premises لا يحتوي عمود created_by — يُقبَل ويُتجاهَل بأمان)
+    created_by:      Optional[str]  = Field(default="")
 
 
 class PremGetRequest(_PremBase):
     """POST /premises/get"""
-    premises_id: int
+    # البوّابة ترسل premises_id كنص — نقبل int أو str رقمي
+    premises_id: _IntFromAny
 
 
 class PremUpdateRequest(_PremBase):
     """POST /premises/update"""
-    premises_id:     int
+    premises_id:     _IntFromAny
     governorate:     Optional[str]  = None
     area:            Optional[str]  = None
     landmark:        Optional[str]  = None
@@ -420,12 +439,12 @@ class PremUpdateRequest(_PremBase):
 
 class PremDeleteRequest(_PremBase):
     """POST /premises/delete"""
-    premises_id: int
+    premises_id: _IntFromAny
 
 
 class PremPhotoUploadRequest(_PremBase):
     """POST /premises/photo/upload — صورة مُشفَّرة Base64"""
-    premises_id: int
+    premises_id: _IntFromAny
     image_b64:   str  = Field(..., min_length=1, max_length=8_000_000,
                               description="بيانات الصورة Base64 (حدّ ~6MB قبل الفكّ — PRODUCTION_BUG_3)")
     ext:         str  = Field(default="jpg", description="امتداد الملف (jpg|png|webp)")
@@ -433,24 +452,24 @@ class PremPhotoUploadRequest(_PremBase):
 
 class PremPhotoGetRequest(_PremBase):
     """POST /premises/photo/get"""
-    premises_id: int
+    premises_id: _IntFromAny
 
 
 class PremLinkRequest(_PremBase):
     """POST /premises/link"""
-    premises_id:    int
+    premises_id:    _IntFromAny
     subscriber_ref: str = Field(..., min_length=1)
 
 
 class PremUnlinkRequest(_PremBase):
     """POST /premises/unlink"""
-    premises_id:    int
+    premises_id:    _IntFromAny
     subscriber_ref: str = Field(..., min_length=1)
 
 
 class PremSubscribersRequest(_PremBase):
     """POST /premises/subscribers"""
-    premises_id: int
+    premises_id: _IntFromAny
 
 
 class PremBySubscriberRequest(_PremBase):

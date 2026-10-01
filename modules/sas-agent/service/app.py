@@ -30,7 +30,7 @@ import uuid
 from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Annotated, Any, Dict, Iterator, List, Optional, Union
 
 # ── ضبط مسار الاستيراد ────────────────────────────────────────────────────────
 _BACKEND_APP = os.path.join(os.path.dirname(__file__), "..", "backend", "app")
@@ -43,7 +43,8 @@ from sas_premises import router as _premises_router, PREMISES_DDL  # noqa: E402 
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, status  # noqa: E402
 from fastapi.responses import JSONResponse                                    # noqa: E402
-from pydantic import BaseModel, Field                                         # noqa: E402
+from pydantic import BaseModel, ConfigDict, Field                             # noqa: E402
+from pydantic.functional_validators import BeforeValidator                    # noqa: E402
 
 # ── إعداد التسجيل ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -264,10 +265,28 @@ _SECRET_KEYS = re.compile(
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+# مساعد نوع: تحويل str→int (يستوعب .NET الذي يُرسل uid/mid كنصوص)
+# ═════════════════════════════════════════════════════════════════════════════
+
+def _coerce_int(v: Any) -> int:
+    """يقبل int أو str رقمي ويحوّله لـ int — ينتج ValidationError لأي قيمة أخرى."""
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        raise ValueError(f"يجب أن يكون رقماً صحيحاً، وردت القيمة: {v!r}")
+
+
+# نوع مُشتَق يقبل int أو str رقمي — يُستخدَم لكل حقلَي uid/mid/ticket_id/premises_id
+_IntFromAny = Annotated[int, BeforeValidator(_coerce_int)]
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # نماذج Pydantic — النقاط الأصلية
 # ═════════════════════════════════════════════════════════════════════════════
 
 class _Creds(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     serverUrl: str = Field(..., description="عنوان خادم SAS")
     username:  str = Field(..., description="اسم مستخدم المدير/الوكيل في SAS")
     password:  str = Field(..., description="كلمة المرور — لا تُسجَّل")
@@ -278,7 +297,8 @@ class LoginRequest(_Creds):
 
 
 class DashboardRequest(_Creds):
-    pass
+    # البوّابة ترسل query:{} دائماً — يجب تعريفه حتى لا يُرفض بـ extra="forbid"
+    query: Dict[str, Any] = Field(default_factory=dict)
 
 
 class SubscribersRequest(_Creds):
@@ -290,40 +310,47 @@ class ReportRequest(_Creds):
 
 
 class PackagesRequest(_Creds):
-    pass
+    # البوّابة ترسل query:{} دائماً
+    query: Dict[str, Any] = Field(default_factory=dict)
 
 
 class FinanceRequest(_Creds):
-    pass
+    # البوّابة ترسل query:{} دائماً
+    query: Dict[str, Any] = Field(default_factory=dict)
 
 
 class SystemHealthRequest(_Creds):
-    pass
+    # البوّابة ترسل query:{} دائماً
+    query: Dict[str, Any] = Field(default_factory=dict)
 
 
 class RenewalCandidatesRequest(_Creds):
     # Optional + تسامح مع null (البوّابة قد ترسل null صريحاً لحقل غير مُمرَّر)
-    days:        Optional[int]            = Field(default=7)
-    query:       Optional[Dict[str, Any]] = Field(default=None)
+    days:        Optional[int]  = Field(default=7)
+    # البوّابة قد ترسل query كسلسلة نصية أو قاموس أو null —
+    # نقبل Any ونتجاهل ما ليس قاموساً في المعالج (لا نرفضه بـ 422)
+    query:       Optional[Any]  = Field(default=None)
 
 
 class RenewalBulkRequest(_Creds):
-    subscriberIds: List[int]        = Field(...)
-    months:        Optional[int]    = Field(default=None, ge=1, le=24)
-    profileId:     Optional[Any]    = Field(default=None)
-    dryRun:        bool             = Field(default=False)
+    # البوّابة ترسل subscriberIds كـ string[] — نقبل int أو str رقمي
+    subscriberIds: List[_IntFromAny] = Field(...)
+    months:        Optional[int]     = Field(default=None, ge=1, le=24)
+    profileId:     Optional[Any]     = Field(default=None)
+    dryRun:        bool              = Field(default=False)
 
 
 class UserDetailRequest(_Creds):
-    uid: int
+    # البوّابة ترسل uid كنص — نقبل int أو str رقمي
+    uid: _IntFromAny
 
 
 class UserOverviewRequest(_Creds):
-    uid: int
+    uid: _IntFromAny
 
 
 class UserHistoryRequest(_Creds):
-    uid:       int
+    uid:       _IntFromAny
     page:      int = Field(default=1, ge=1)
     count:     int = Field(default=50, ge=1, le=500)
     sortBy:    str = Field(default="id")
@@ -332,19 +359,20 @@ class UserHistoryRequest(_Creds):
 
 
 class UserExtendDataRequest(_Creds):
-    uid:        int
+    uid:        _IntFromAny
     profile_id: Optional[int] = Field(default=None)
 
 
 class UserActionRequest(_Creds):
-    uid:     int
+    uid:     _IntFromAny
     action:  str
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
 class UserBulkActionRequest(_Creds):
     action:   str
-    user_ids: List[int]
+    # البوّابة ترسل user_ids كـ string[] — نقبل int أو str رقمي
+    user_ids: List[_IntFromAny]
     payload:  Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -353,20 +381,20 @@ class UserCreateRequest(_Creds):
 
 
 class UserUpdateRequest(_Creds):
-    uid:     int
+    uid:     _IntFromAny
     changes: Dict[str, Any] = Field(...)
 
 
 class UserDeleteRequest(_Creds):
-    uid: int
+    uid: _IntFromAny
 
 
 class UserRefundDataRequest(_Creds):
-    uid: int
+    uid: _IntFromAny
 
 
 class UserRefundRequest(_Creds):
-    uid: int
+    uid: _IntFromAny
 
 
 class OnlineRequest(_Creds):
@@ -378,13 +406,14 @@ class ManagersRequest(_Creds):
 
 
 class ManagerActionRequest(_Creds):
-    mid:     int
+    # البوّابة ترسل mid كنص — نقبل int أو str رقمي
+    mid:     _IntFromAny
     action:  str
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ManagerDeleteRequest(_Creds):
-    mid: int
+    mid: _IntFromAny
 
 
 class SasGetRequest(_Creds):
@@ -402,6 +431,8 @@ class SasPostRequest(_Creds):
 
 class _LocalBase(BaseModel):
     """الحقول الأساسية المشتركة في كل طلبات التخزين المحلي."""
+    model_config = ConfigDict(extra="forbid")
+
     accountId:    str = Field(..., description="GUID حساب الساس في الصدارة")
     companyId:    str = Field(default="", description="معرّف الشركة (اختياري)")
     ownerUserId:  str = Field(default="", description="معرّف مستخدم الوكيل (اختياري)")
@@ -409,6 +440,7 @@ class _LocalBase(BaseModel):
 
 class _LocalCreds(_LocalBase):
     """كريدنشيال SAS مضافة للطلبات التي تحتاج نداء حيّاً."""
+    # model_config مورَّث من _LocalBase (extra="forbid")
     serverUrl: str = Field(..., description="عنوان خادم SAS")
     username:  str = Field(..., description="اسم مستخدم SAS")
     password:  str = Field(..., description="كلمة المرور — لا تُسجَّل")
@@ -416,7 +448,8 @@ class _LocalCreds(_LocalBase):
 
 class AccountTestRequest(_LocalCreds):
     """اختبار اتصال: POST /account/test"""
-    pass
+    # البوّابة لا ترسل accountId في هذه النقطة — نجعله اختيارياً
+    accountId: str = Field(default="", description="GUID حساب الساس (اختياري في اختبار الاتصال)")
 
 
 class SyncRequest(_LocalCreds):
@@ -480,6 +513,8 @@ _TK_STATUS_AR = {
 
 class _TkBase(BaseModel):
     """الحقول الأساسية المشتركة لكل نقاط التذاكر."""
+    model_config = ConfigDict(extra="forbid")
+
     companyId:    str = Field(..., description="معرّف الشركة")
     ownerUserId:  str = Field(..., description="معرّف مستخدم الوكيل (المالك)")
 
@@ -510,12 +545,13 @@ class TicketCreateRequest(_TkBase):
 
 class TicketGetRequest(_TkBase):
     """POST /tickets/get"""
-    ticket_id: int
+    # البوّابة ترسل ticket_id كنص — نقبل int أو str رقمي
+    ticket_id: _IntFromAny
 
 
 class TicketReplyRequest(_TkBase):
     """POST /tickets/reply"""
-    ticket_id:   int
+    ticket_id:   _IntFromAny
     body:        str  = Field(..., min_length=1, max_length=4000)
     is_internal: bool = Field(default=False)
     author:      str  = Field(default="")
@@ -523,7 +559,7 @@ class TicketReplyRequest(_TkBase):
 
 class TicketUpdateRequest(_TkBase):
     """POST /tickets/update"""
-    ticket_id: int
+    ticket_id: _IntFromAny
     status:    Optional[str] = None
     priority:  Optional[str] = None
     category:  Optional[str] = None
@@ -644,9 +680,11 @@ async def system_health(body: SystemHealthRequest) -> Any:
 
 @app.post("/renewal/candidates", tags=["sas"], dependencies=_DEP)
 async def renewal_candidates(body: RenewalCandidatesRequest) -> Any:
+    # body.query قد يكون str أو None أو dict — نتجاهل ما ليس قاموساً بأمان
+    extra_query = body.query if isinstance(body.query, dict) else {}
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_renewal_candidates,
-                           days=(body.days or 7), extra_query=(body.query or {}))
+                           days=(body.days or 7), extra_query=extra_query)
 
 
 @app.post("/renewal/bulk", tags=["sas"], dependencies=_DEP)
@@ -828,10 +866,13 @@ async def account_test(body: AccountTestRequest) -> Any:
     """
     اختبار اتصال: يسجّل الدخول ويجلب ملخّص المشتركين.
 
-    عقد .NET: POST /account/test  { serverUrl, username, password, accountId, … }
+    عقد .NET: POST /account/test  { serverUrl, username, password }
     → { ok, message, subscribers_count? }
     """
-    _guard_account_id(body.accountId)
+    # accountId اختياري هنا — نتحقّق منه فقط إن أُرسل
+    if body.accountId:
+        _guard_account_id(body.accountId)
+    _account_label = body.accountId[:8] if body.accountId else "(no-id)"
     try:
         async with SASClient(body.serverUrl, body.username, body.password) as sas:
             res = await sas.dashboard_subscribers()
@@ -840,11 +881,11 @@ async def account_test(body: AccountTestRequest) -> Any:
             return {"ok": True, "message": "الاتصال ناجح", "subscribers_count": total}
     except SASError as exc:
         logger.warning("[test] فشل اختبار الحساب %s: %s",
-                       body.accountId[:8], _safe_msg(exc))
+                       _account_label, _safe_msg(exc))
         return {"ok": False, "message": "تعذّر الاتصال بنظام الساس"}
     except Exception as exc:
         logger.error("[test] خطأ غير متوقّع للحساب %s: %s",
-                     body.accountId[:8], _safe_msg(exc))
+                     _account_label, _safe_msg(exc))
         return {"ok": False, "message": "خطأ داخلي — راجع السجلّ"}
 
 
@@ -1253,6 +1294,8 @@ class AgentsSummaryRequest(BaseModel):
     companyId  : معرّف الشركة — يُستخدَم لعزل كل استعلام.
     accountIds : قائمة معرّفات حسابات SAS تخصّ هذه الشركة (حدّ 500).
     """
+    model_config = ConfigDict(extra="forbid")
+
     companyId:  str           = Field(..., min_length=1, max_length=128,
                                       description="معرّف الشركة")
     accountIds: List[str]     = Field(..., min_length=1,

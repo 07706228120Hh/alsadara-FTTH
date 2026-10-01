@@ -588,7 +588,7 @@ public class SasServiceClient : ISasServiceClient
                 companyId,
                 ownerUserId,
                 premises_id = premisesId,
-                image_base64 = imageBase64,
+                image_b64 = imageBase64,
                 ext
             }, cancellationToken);
 
