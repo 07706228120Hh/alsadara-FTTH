@@ -2,14 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../services/thermal_printer_service.dart';
-import '../../services/receipt_template_storage.dart';
-import '../../services/print_template_storage.dart';
-import '../../services/vps_auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
-import '../whatsapp/whatsapp.dart';
+import '../widgets/sas_billing_post_actions.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_subscriber_form_page.dart';
@@ -838,7 +834,13 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       final receipt = (res['receipt'] is Map)
           ? (res['receipt'] as Map).cast<String, dynamic>()
           : <String, dynamic>{};
-      await _runPostActivation(receipt);
+      // ما بعد التحصيل (طباعة ثم واتساب) عبر المساعد المشترك — كلٌّ معزول.
+      await SasBillingPostActions.run(
+        receipt,
+        customerName: _subscriberFullName(),
+        phone: _subscriberPhone(),
+        newExpiration: _detail?['expiration']?.toString(),
+      );
     } catch (e) {
       if (mounted) {
         _toast('فشل: ${e.toString().replaceFirst('Exception: ', '').trim()}',
@@ -1329,157 +1331,12 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     return n.toString();
   }
 
-  // ─── ما بعد التفعيل: طباعة ثم واتساب (خلفياً، كلٌّ معزول) ───
-
-  /// يُطلق الطباعة ثم رسالة الواتساب بعد نجاح التفعيل المفوتر. كلٌّ داخل
-  /// try/catch مستقل حتى لا يُسقط تعذّرُ أحدهما العمليةَ الناجحة (نمط
-  /// `_runBackgroundPostActivation` في FTTH).
-  Future<void> _runPostActivation(Map<String, dynamic> receipt) async {
-    // 1) الطباعة الحرارية.
-    try {
-      final vars = _buildSasReceiptVars(receipt);
-      final conds = ReceiptTemplateStorageV2.buildConditions(
-        showCustomerInfo: true,
-        showServiceDetails: true,
-        showPaymentDetails: true,
-        showAdditionalInfo: false, // إخفاء قسم الشبكة/الجهاز (FTTH)
-        showContactInfo: true,
-      );
-      await ThermalPrinterService.printFromReceiptTemplate(
-        variableValues: vars,
-        conditions: conds,
-      );
-    } catch (_) {
-      // تعذّرت الطباعة — لا نُفشل العملية.
-    }
-
-    // 2) رسالة الواتساب (مشروطة بتوفّر الرقم/الإعداد).
-    try {
-      await _sendActivationWhatsApp(receipt);
-    } catch (_) {
-      // تعذّر الإرسال — صامت (العملية الأساسية نجحت).
-    }
-  }
-
-  /// يملأ متغيّرات قالب الإيصال من بيانات إيصال الساس + تفاصيل المشترك.
-  Map<String, String> _buildSasReceiptVars(Map<String, dynamic> receipt) {
-    final now = DateTime.now();
-    final activationDate = '${now.day}/${now.month}/${now.year}';
-    final activationTime =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    final opType =
-        (receipt['operationType'] ?? 'تم تفعيل اشتراك').toString();
-    final planName = (receipt['planName'] ?? _overview?['profile_name'] ?? '')
-        .toString();
-    final months = (receipt['months'] ?? '').toString();
-    final collected = _asNum(receipt['collectedAmount']);
-    final basePrice = _asNum(receipt['basePrice']);
-    final manualDiscount = _asNum(receipt['manualDiscount']);
-    final currency = (receipt['currency'] ?? 'IQD').toString();
-    final endDate =
-        (_detail?['expiration'] ?? receipt['endDate'] ?? '').toString();
-    final activatedBy =
-        VpsAuthService.instance.currentUser?.fullName ?? '';
-
-    final header = PrintTemplateStorage.defaultTemplate;
-
-    return ReceiptTemplateStorageV2.buildVariableValues(
-      operationType: opType,
-      customerName: _subscriberFullName(),
-      customerPhone: _subscriberPhone() ?? 'غير متوفر',
-      paymentMethod: _collectionTypeAr(receipt['collectionType']?.toString()),
-      totalPrice: collected != null ? _money(collected) : '0',
-      currency: currency,
-      endDate: endDate,
-      activatedBy: activatedBy,
-      receiptNumber: '0', // يُستبدل بعدّاد الوصل داخل الخدمة
-      selectedPlan: planName,
-      commitmentPeriod: months,
-      activationDate: activationDate,
-      activationTime: activationTime,
-      basePrice: basePrice != null ? _money(basePrice) : null,
-      manualDiscount: manualDiscount != null ? _money(manualDiscount) : null,
-      // ترويسة الشركة من القالب القديم.
-      companyName: header.companyName,
-      companySubtitle: header.companySubtitle,
-      contactInfo: header.contactInfo,
-      footerMessage: header.footerMessage,
-      // المشغّل.
-      operatorFullName: activatedBy,
-      // حقول الشبكة/الجهاز تُترك فارغة (إيصال ساس أنظف).
-    );
-  }
-
   /// الاسم الكامل للمشترك من التفاصيل، وإلا اسم المستخدم.
   String _subscriberFullName() {
     final f = (_detail?['firstname'] ?? '').toString().trim();
     final l = (_detail?['lastname'] ?? '').toString().trim();
     final full = '$f $l'.trim();
     return full.isNotEmpty ? full : (_username ?? _uid);
-  }
-
-  /// تحويل نوع التحصيل إلى العربية للعرض/الطباعة.
-  String _collectionTypeAr(String? type) {
-    switch (type) {
-      case 'cash':
-        return 'نقد';
-      case 'credit':
-        return 'أجل';
-      case 'agent':
-        return 'وكيل';
-      default:
-        return type ?? 'نقد';
-    }
-  }
-
-  /// يرسل رسالة واتساب «تم التفعيل/التجديد» الغنيّة عبر المُرسِل المضبوط.
-  /// صامت إن تعذّر الرقم أو الإعداد (لا يُفشل العملية).
-  Future<void> _sendActivationWhatsApp(Map<String, dynamic> receipt) async {
-    final rawPhone = _subscriberPhone();
-    if (rawPhone == null) return;
-    final normalized = normalizeIraqiPhone(rawPhone);
-    if (normalized == null) return;
-
-    // بناء نصّ الرسالة من القالب الغنيّ المخزّن.
-    final store = LocalTemplateStore();
-    final tpl = await store.byId(WaTemplateIds.renewed);
-    if (tpl == null) return;
-
-    final collected = _asNum(receipt['collectedAmount']);
-    final message = tpl.render({
-      'name': _subscriberFullName(),
-      'username': _username ?? '',
-      'profile': (receipt['planName'] ?? '').toString(),
-      'plan': (receipt['planName'] ?? '').toString(),
-      'price': collected != null ? _money(collected) : '',
-      'currency': (receipt['currency'] ?? 'IQD').toString(),
-      'months': (receipt['months'] ?? '').toString(),
-      'endDate': (_detail?['expiration'] ?? '').toString(),
-      'expiration': (_detail?['expiration'] ?? '').toString(),
-      'paymentMethod': _collectionTypeAr(receipt['collectionType']?.toString()),
-      'activatedBy': VpsAuthService.instance.currentUser?.fullName ?? '',
-    });
-
-    final settings = await WaSettingsStore().load();
-    // الإرسال التلقائي الصامت يقتصر على الأنماط الآلية (خادم محلي/Meta)؛ النمط
-    // اليدوي (app) يفتح نافذة لكل رسالة فلا يُشغَّل تلقائياً هنا (يبقى للإرسال
-    // اليدوي/الجماعي من شاشاته)، تفادياً لإزعاج تدفّق التفعيل.
-    final sender = settings.buildSender();
-    try {
-      if (!sender.capabilities.automated) return;
-      final status = await sender.status();
-      if (!status.ready) return; // الخادم غير جاهز/غير مربوط — تخطَّ بصمت.
-      await sender.sendOne(
-        WaOutgoing(
-          recipient:
-              WaRecipient(name: _subscriberFullName(), rawPhone: rawPhone),
-          text: message,
-        ),
-      );
-    } finally {
-      sender.dispose();
-    }
   }
 
   // ─── حوار تأكيد موحّد ───

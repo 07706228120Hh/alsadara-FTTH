@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../permissions/permission_manager.dart';
@@ -7,6 +8,7 @@ import '../models/sas_account.dart';
 import '../models/sas_renewal.dart';
 import '../services/sas_agent_api_service.dart';
 import '../whatsapp/whatsapp.dart';
+import '../widgets/sas_billing_post_actions.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 
@@ -181,7 +183,9 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
     await showWaBulkSheet(context, recipients);
   }
 
-  /// الخطوة 1: معاينة (dryRun=true) ثم عرض حوار التأكيد؛ عند التأكيد → تنفيذ.
+  /// التدفّق المفوتر: حوار تحصيل غنيّ (نوع التحصيل + صيانة/خصم + تحذير فعلي) →
+  /// `renewalBulkBilled` (تنفيذ فعلي يخصم من الرصيد) → لكل ناجح له إيصال: طباعة
+  /// إيصال + واتساب (خلفياً تسلسلياً، كلٌّ معزول) مع عدّاد تقدّم → ملخّص النتائج.
   Future<void> _startRenewal() async {
     if (_selected.isEmpty) {
       _snack('اختر مشتركاً واحداً على الأقل', error: true);
@@ -189,14 +193,25 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
     }
     if (!_canManage) return;
 
+    final count = _selected.length;
+    // 1) حوار التحصيل الغنيّ + التحذير الصريح (فعلي + طباعة N + إرسال N).
+    final collection = await _showBilledConfirmDialog(count);
+    if (collection == null || !mounted) return;
+
+    // 2) التنفيذ الفعلي المفوتر.
+    final ids = _selected.toList();
     setState(() => _busy = true);
-    List<SasRenewalResult> preview;
+    Map<String, dynamic> res;
     try {
-      preview = await _api.renewalBulk(
+      res = await _api.renewalBulkBilled(
         widget.account.id,
-        subscriberIds: _selected.toList(),
+        subscriberIds: ids,
+        action: 'extend',
         months: _months,
-        dryRun: true,
+        collectionType: collection.collectionType,
+        maintenanceFee: collection.maintenanceFee,
+        manualDiscount: collection.manualDiscount,
+        systemDiscountEnabled: true,
       );
     } catch (e) {
       _snack(_clean(e), error: true);
@@ -206,84 +221,285 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
     if (!mounted) return;
     setState(() => _busy = false);
 
-    final confirmed = await _showPreviewDialog(preview);
-    if (confirmed != true) return;
+    // 3) تفكيك النتائج.
+    final results = _extractResults(res);
+    final succeeded = results.where((r) => r.ok).toList();
+    final failed = results.where((r) => !r.ok).toList();
 
-    // الخطوة 2: تنفيذ فعلي (dryRun=false).
-    setState(() => _busy = true);
-    try {
-      final results = await _api.renewalBulk(
-        widget.account.id,
-        subscriberIds: _selected.toList(),
-        months: _months,
-        dryRun: false,
-      );
-      if (!mounted) return;
-      setState(() => _busy = false);
-      await _showResultsDialog(results);
-      // بعد التنفيذ: أعد جلب القائمة (قد تتغيّر تواريخ الانتهاء).
-      _selected.clear();
-      await _load();
-    } catch (e) {
-      _snack(_clean(e), error: true);
-      if (mounted) setState(() => _busy = false);
+    // 4) لكل ناجح له إيصال → طباعة + واتساب خلفياً (تسلسلياً، كلٌّ معزول) مع تقدّم.
+    final withReceipt =
+        succeeded.where((r) => r.receipt != null).toList(growable: false);
+    if (withReceipt.isNotEmpty) {
+      await _runPostActionsSequential(withReceipt);
     }
+
+    // 5) ملخّص النتائج.
+    if (!mounted) return;
+    await _showResultsDialog(
+      succeeded: succeeded.length,
+      failed: failed.length,
+      rows: results,
+    );
+
+    // بعد التنفيذ: أعد جلب القائمة (قد تتغيّر تواريخ الانتهاء).
+    _selected.clear();
+    await _load();
   }
 
-  Future<bool?> _showPreviewDialog(List<SasRenewalResult> preview) {
-    final okCount = preview.where((r) => r.ok).length;
-    final failCount = preview.length - okCount;
-    return showDialog<bool>(
+  /// يُفكّك قائمة النتائج من رد `bulk-billed` (يدعم results/data/rows).
+  List<_BilledResult> _extractResults(Map<String, dynamic> res) {
+    final raw = res['results'] ?? res['data'] ?? res['rows'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => _BilledResult.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  /// ينفّذ الطباعة + الواتساب لكل ناجح تسلسلياً مع شريط تقدّم معياري، وكلٌّ
+  /// داخل `try/catch` مستقل (لا يُفشل الدفعة). يُحدَّث العدّاد لكل عنصر.
+  Future<void> _runPostActionsSequential(List<_BilledResult> rows) async {
+    final total = rows.length;
+    final progress = ValueNotifier<int>(0);
+
+    // حوار تقدّم غير قابل للإغلاق (معزول عن حالة الودجة).
+    showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: Row(
-            children: [
-              const Icon(Icons.preview_rounded, color: AppTheme.primaryColor),
-              SizedBox(width: 8.w),
-              Text('معاينة التجديد',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
-            ],
-          ),
-          content: SizedBox(
-            width: 420.w,
-            child: Column(
+          content: ValueListenableBuilder<int>(
+            valueListenable: progress,
+            builder: (_, done, __) => Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'سيتم تجديد $_months شهر لعدد ${preview.length} مشترك.\n'
-                  'صالح: $okCount · تحذيرات: $failCount\n'
-                  'هذه معاينة فقط — لم يُنفَّذ أي تغيير بعد.',
-                  style: GoogleFonts.cairo(fontSize: 12.5.sp),
-                ),
+                Text('طباعة الإيصالات وإرسال الرسائل…',
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w800, fontSize: 13.5.sp)),
                 SizedBox(height: 12.h),
-                Flexible(
-                  child: _resultsList(preview),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6.r),
+                  child: LinearProgressIndicator(
+                    value: total == 0 ? 0 : done / total,
+                    minHeight: 10.h,
+                    backgroundColor:
+                        AppTheme.primaryColor.withValues(alpha: 0.15),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppTheme.primaryColor),
+                  ),
                 ),
+                SizedBox(height: 10.h),
+                Text('تمت معالجة $done من $total',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.cairo(
+                        fontSize: 12.sp, color: Colors.grey[700])),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+        ),
+      ),
+    );
+
+    for (final r in rows) {
+      try {
+        final c = _candidateOf(r.uid);
+        await SasBillingPostActions.run(
+          r.receipt!,
+          customerName: c?.displayName ?? r.subscriberUsername,
+          phone: c?.phone,
+          newExpiration: c?.expiry,
+        );
+      } catch (_) {
+        // معزول — لا نُفشل الدفعة.
+      }
+      progress.value = progress.value + 1;
+    }
+
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    progress.dispose();
+  }
+
+  SasRenewalCandidate? _candidateOf(String uid) {
+    for (final c in _candidates) {
+      if (c.id == uid) return c;
+    }
+    return null;
+  }
+
+  /// حوار التحصيل الغنيّ قبل التنفيذ الفعلي: منتقي نوع التحصيل + حقلا صيانة/خصم
+  /// اختياريان + **تحذير صريح** بأن العملية فعلية وتخصم من الرصيد وستطبع N
+  /// إيصالاً وترسل N رسالة. يعيد [_SasCollection] عند التأكيد أو null عند الإلغاء.
+  Future<_SasCollection?> _showBilledConfirmDialog(int count) {
+    String collectionType = 'cash';
+    final maintenanceCtl = TextEditingController();
+    final discountCtl = TextEditingController();
+
+    return showDialog<_SasCollection>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: StatefulBuilder(
+          builder: (ctx, setLocal) => AlertDialog(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(SasUi.radius.r)),
+            title: Row(
+              children: [
+                const Icon(Icons.point_of_sale_rounded,
+                    color: AppTheme.primaryColor, size: 24),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Text('تأكيد التجديد الجماعي المفوتر',
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primaryColor)),
+                ),
+              ],
             ),
-            FilledButton.icon(
-              onPressed: () => Navigator.pop(ctx, true),
-              icon: const Icon(Icons.check_rounded),
-              label: Text('تأكيد وتنفيذ', style: GoogleFonts.cairo()),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // تحذير صريح.
+                    Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warningColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+                        border: Border.all(
+                            color:
+                                AppTheme.warningColor.withValues(alpha: 0.30)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.warning_amber_rounded,
+                              color: AppTheme.warningColor, size: 20),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: Text(
+                              'سيُجدَّد $_months شهر لعدد $count مشترك فعلياً '
+                              'ويُخصَم من رصيدك.\n'
+                              'وبعد النجاح سيُطبَع حتى $count إيصالاً ويُرسَل '
+                              'حتى $count رسالة واتساب.',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.5,
+                                  color: const Color(0xFF8A5A00)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 14.h),
+                    Text('نوع التحصيل',
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.sp,
+                            color: Colors.grey[700])),
+                    SizedBox(height: 6.h),
+                    Wrap(
+                      spacing: 8.w,
+                      children: [
+                        _collectionChip('cash', 'نقد', collectionType,
+                            (v) => setLocal(() => collectionType = v)),
+                        _collectionChip('credit', 'أجل', collectionType,
+                            (v) => setLocal(() => collectionType = v)),
+                        _collectionChip('agent', 'وكيل', collectionType,
+                            (v) => setLocal(() => collectionType = v)),
+                      ],
+                    ),
+                    SizedBox(height: 14.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _miniField(
+                              maintenanceCtl, 'أجور صيانة (اختياري)'),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child:
+                              _miniField(discountCtl, 'خصم يدوي (اختياري)'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إلغاء',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(
+                  ctx,
+                  _SasCollection(
+                    collectionType: collectionType,
+                    maintenanceFee: num.tryParse(maintenanceCtl.text.trim()),
+                    manualDiscount: num.tryParse(discountCtl.text.trim()),
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor),
+                child: Text('تأكيد وتنفيذ',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _showResultsDialog(List<SasRenewalResult> results) {
-    final okCount = results.where((r) => r.ok).length;
-    final failCount = results.length - okCount;
+  Widget _collectionChip(String value, String label, String selected,
+      ValueChanged<String> onPick) {
+    final active = value == selected;
+    return ChoiceChip(
+      selected: active,
+      onSelected: (_) => onPick(value),
+      label: Text(label,
+          style: GoogleFonts.cairo(
+              fontWeight: FontWeight.w700,
+              color: active ? Colors.white : Colors.grey[700])),
+      selectedColor: AppTheme.primaryColor,
+      backgroundColor: Colors.grey.withValues(alpha: 0.10),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+    );
+  }
+
+  Widget _miniField(TextEditingController ctl, String label) {
+    return TextField(
+      controller: ctl,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+      ],
+      style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 13.sp),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle:
+            GoogleFonts.cairo(color: Colors.grey[600], fontSize: 11.5.sp),
+        isDense: true,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+      ),
+    );
+  }
+
+  Future<void> _showResultsDialog({
+    required int succeeded,
+    required int failed,
+    required List<_BilledResult> rows,
+  }) {
     return showDialog<void>(
       context: context,
       builder: (ctx) => Directionality(
@@ -292,12 +508,11 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
           title: Row(
             children: [
               Icon(
-                failCount == 0
+                failed == 0
                     ? Icons.check_circle_rounded
                     : Icons.info_rounded,
-                color: failCount == 0
-                    ? AppTheme.successColor
-                    : AppTheme.warningColor,
+                color:
+                    failed == 0 ? AppTheme.successColor : AppTheme.warningColor,
               ),
               SizedBox(width: 8.w),
               Text('نتيجة التجديد',
@@ -311,12 +526,12 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'نجح: $okCount · فشل: $failCount',
+                  'نجح: $succeeded · فشل: $failed',
                   style: GoogleFonts.cairo(
                       fontSize: 13.sp, fontWeight: FontWeight.w800),
                 ),
                 SizedBox(height: 12.h),
-                Flexible(child: _resultsList(results)),
+                Flexible(child: _resultsList(rows)),
               ],
             ),
           ),
@@ -331,11 +546,11 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
     );
   }
 
-  Widget _resultsList(List<SasRenewalResult> rows) {
-    // ابحث عن اسم المشترك من المرشّحين لعرض أوضح.
-    String nameOf(String id) {
-      final c = _candidates.where((e) => e.id == id);
-      return c.isEmpty ? id : c.first.displayName;
+  Widget _resultsList(List<_BilledResult> rows) {
+    String nameOf(String uid, String fallback) {
+      final c = _candidateOf(uid);
+      if (c != null) return c.displayName;
+      return fallback.isEmpty ? uid : fallback;
     }
 
     return ListView.separated(
@@ -358,7 +573,7 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    nameOf(r.id),
+                    nameOf(r.uid, r.subscriberUsername),
                     style: GoogleFonts.cairo(
                         fontSize: 12.5.sp, fontWeight: FontWeight.w700),
                   ),
@@ -682,4 +897,52 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
       ),
     );
   }
+}
+
+/// نتيجة تجديد مفوتر لمشترك واحد من رد `renewal/bulk-billed` (تتضمّن `receipt`).
+class _BilledResult {
+  final String uid;
+  final bool ok;
+  final String message;
+  final String subscriberUsername;
+
+  /// بيانات الإيصال (إن نجح وأُنشئ) — تُمرَّر لمساعد الطباعة/الواتساب المشترك.
+  final Map<String, dynamic>? receipt;
+
+  const _BilledResult({
+    required this.uid,
+    required this.ok,
+    required this.message,
+    required this.subscriberUsername,
+    this.receipt,
+  });
+
+  factory _BilledResult.fromJson(Map<String, dynamic> json) {
+    final rawReceipt = json['receipt'];
+    final rawUsername =
+        (rawReceipt is Map) ? rawReceipt['subscriberUsername'] : null;
+    return _BilledResult(
+      uid: (json['uid'] ?? json['id'] ?? json['Id'] ?? '').toString(),
+      ok: (json['ok'] ?? json['Ok'] ?? false) == true,
+      message: (json['message'] ?? json['Message'] ?? '').toString(),
+      subscriberUsername:
+          (json['subscriberUsername'] ?? rawUsername ?? '').toString(),
+      receipt: (rawReceipt is Map)
+          ? rawReceipt.cast<String, dynamic>()
+          : null,
+    );
+  }
+}
+
+/// اختيار المستخدم في حوار التحصيل: نوع التحصيل + الحقول الاختيارية.
+class _SasCollection {
+  final String collectionType; // cash | credit | agent
+  final num? maintenanceFee;
+  final num? manualDiscount;
+
+  const _SasCollection({
+    required this.collectionType,
+    this.maintenanceFee,
+    this.manualDiscount,
+  });
 }

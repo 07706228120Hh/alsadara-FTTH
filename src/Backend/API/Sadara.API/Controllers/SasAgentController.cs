@@ -718,158 +718,31 @@ public class SasAgentController : ControllerBase
         if (action == "changeProfile" && string.IsNullOrWhiteSpace(request.ProfileId))
             return BadRequest(new { success = false, message = "معرّف الباقة مطلوب لتغيير الباقة" });
 
-        var maintenanceFee = Math.Max(0, request.MaintenanceFee ?? 0);
-        var manualDiscount = Math.Max(0, request.ManualDiscount ?? 0);
-
         // 1) العزل الصارم + فكّ التشفير في الذاكرة فقط.
         var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
         if (account == null)
             return NotFound(new { success = false, message = "حساب الساس غير موجود" });
 
-        // 2) idempotency: معرّف عملية فريد — من العميل إن أُرسل (وصالح) وإلا نولّده خادمياً.
-        var transactionId = NormalizeTransactionId(request.TransactionId);
-
-        var alreadyLogged = await _unitOfWork.SubscriptionLogs.AsQueryable()
-            .AnyAsync(l => l.FtthTransactionId == transactionId && l.CompanyId == companyId, ct);
-        if (alreadyLogged)
-            return Conflict(new { success = false, message = "العملية مُنفّذة مسبقاً (معرّف عملية مكرّر)", transactionId });
-
-        var safePhone = Trim(request.Phone);
-        var note = Trim(request.Note);
-
         try
         {
             var password = _secretProtector.Unprotect(account.PasswordEncrypted); // في الذاكرة فقط
 
-            // 3) جلب السعر خادمياً من activationData (لا نثق بالعميل في السعر).
-            //    للـ extend قد لا يعيد سعراً — نستخدم activationData نفسه؛ إن غاب يبقى 0 (منطق بديل في المحاسبة).
-            decimal basePrice = 0;
-            string? planName = null;
-            try
-            {
-                var activationRaw = await _sasClient.SasGetAsync(
-                    account.ServerUrl, account.Username, password, $"user/activationData/{uid}", ct);
-                (basePrice, planName) = ParseActivationData(activationRaw);
-            }
-            catch (SasServiceUnavailableException)
-            {
-                // إذا تعذّر جلب السعر لا نُجهض كلياً: نُكمل بسعر 0 (يُسجَّل تحذير) لأن الإجراء قد ينجح دون سعر معروف.
-                _logger.LogWarning("تعذّر جلب activationData للمشترك {Uid} — سيُستخدم سعر 0", uid);
-            }
+            // قلب المنطق مُستخرَج في ActivateBilledCoreAsync (قابل لإعادة الاستخدام من التجديد الجماعي).
+            var core = await ActivateBilledCoreAsync(account, uid, request, companyId, userId, password, ct);
 
-            // 4) تنفيذ الإجراء على SAS4 (مالي: money_collected=true + transaction_id للـ idempotency على طرف الساس).
-            var sasParams = BuildActionParams(action, months, request.ProfileId, transactionId);
-            string actionRaw;
-            try
-            {
-                actionRaw = await _sasClient.UserActionAsync(
-                    account.ServerUrl, account.Username, password, uid, action, sasParams, ct);
-            }
-            catch (SasServiceUnavailableException ex)
-            {
-                // فشل SAS4/الخدمة → نُعيد الخطأ بلا أي قيد محاسبي.
-                _logger.LogWarning(ex, "فشل تنفيذ إجراء الساس {Action} للمشترك {Uid} — لا قيد", action, uid);
-                return StatusCode(502, new { success = false, message = "تعذّر تنفيذ العملية على نظام الساس" });
-            }
+            // ترجمة نتيجة القلب إلى IActionResult بنفس السلوك/الرد السابق تماماً.
+            if (core.Conflict)
+                return Conflict(new { success = false, message = core.Message, transactionId = core.TransactionId });
 
-            // 5) عند النجاح: إنشاء SubscriptionLog(Source=Sas) ثم القيد المحاسبي الموحّد.
-            var opType = action == "activate" ? "purchase" : "renewal";
-            // نفس معادلة RecordAsync حرفياً (CompanyDiscount=0): netFromCompany = basePrice (إن >0)
-            // أو PlanPrice وإلا؛ هنا PlanPrice=basePrice ليتطابق الطرفان. companyDiscountProfit=0.
-            var netFromCompany = basePrice; // CompanyDiscount=0
-            var collectedAmount = netFromCompany + maintenanceFee - manualDiscount; // ما يدفعه العميل
-
-            var log = new SubscriptionLog
-            {
-                Source = SubscriptionLogSource.Sas,
-                SasAccountId = account.Id,
-                SubscriberUid = uid,
-                SubscriberUsername = Trim(request.SubscriberUsername) ?? ParseUsername(actionRaw),
-                PlanName = planName ?? Trim(request.ProfileId),
-                OperationType = opType,
-                CollectionType = collectionType,
-                BasePrice = basePrice,
-                CompanyDiscount = 0,
-                MaintenanceFee = maintenanceFee,
-                ManualDiscount = manualDiscount,
-                SystemDiscountEnabled = request.SystemDiscountEnabled,
-                // PlanPrice = basePrice ليستخدمه فرع البديل في RecordAsync عند basePrice=0 بنفس النتيجة.
-                PlanPrice = basePrice,
-                PhoneNumber = safePhone,
-                CommitmentPeriod = months,
-                Currency = "IQD",
-                CompanyId = account.CompanyId,
-                UserId = account.OwnerUserId,
-                FtthTransactionId = transactionId,
-                SessionId = transactionId,
-                LinkedAgentId = collectionType == "agent" ? request.LinkedAgentId : null,
-                ActivationDate = DateTime.UtcNow,
-                SubscriptionNotes = note
-            };
-
-            await _unitOfWork.SubscriptionLogs.AddAsync(log, ct);
-            await _unitOfWork.SaveChangesAsync(ct);
-
-            // القيد المحاسبي — لا يُسقط السجل عند الفشل (try/catch كما FTTH).
-            Guid? journalEntryId = null;
-            try
-            {
-                var input = new Sadara.API.Services.SubscriptionAccountingInput
-                {
-                    BasePrice = basePrice,
-                    CompanyDiscount = 0,
-                    ManualDiscount = manualDiscount,
-                    MaintenanceFee = maintenanceFee,
-                    // PlanPrice = basePrice (فرع البديل في RecordAsync عند basePrice=0) — يُنتج نفس collectedAmount.
-                    PlanPrice = basePrice,
-                    SystemDiscountEnabled = request.SystemDiscountEnabled,
-                    CollectionType = collectionType,
-                    LinkedAgentId = collectionType == "agent" ? request.LinkedAgentId : null,
-                    PlanName = log.PlanName,
-                    CustomerName = log.SubscriberUsername,
-                    OperationType = opType,
-                    EntryDate = log.ActivationDate
-                };
-
-                journalEntryId = await _accounting.RecordAsync(log, input, account.CompanyId, account.OwnerUserId, ct);
-                if (journalEntryId.HasValue)
-                {
-                    log.JournalEntryId = journalEntryId;
-                    _unitOfWork.SubscriptionLogs.Update(log);
-                    await _unitOfWork.SaveChangesAsync(ct);
-                }
-            }
-            catch (Exception exAcc)
-            {
-                _logger.LogWarning(exAcc, "فشل إنشاء القيد المحاسبي لسجل الساس {LogId} — السجل حُفظ بدونه", log.Id);
-            }
+            if (!core.Ok)
+                return StatusCode(core.StatusCode, new { success = false, message = core.Message });
 
             return Ok(new
             {
                 success = true,
-                logId = log.Id,
-                journalEntryId,
-                receipt = new
-                {
-                    operationType = action switch
-                    {
-                        "activate" => "تم تفعيل اشتراك",
-                        "extend" => "تم تجديد الاشتراك",
-                        "changeProfile" => "تم تغيير الباقة",
-                        _ => "عملية اشتراك"
-                    },
-                    subscriberUsername = log.SubscriberUsername,
-                    planName = log.PlanName,
-                    months,
-                    basePrice,
-                    maintenanceFee,
-                    manualDiscount,
-                    collectedAmount,
-                    currency = "IQD",
-                    collectionType,
-                    transactionId,
-                    activatedByUserId = account.OwnerUserId
-                }
+                logId = core.LogId,
+                journalEntryId = core.JournalEntryId,
+                receipt = core.Receipt
             });
         }
         catch (SasServiceUnavailableException ex)
@@ -880,6 +753,446 @@ public class SasAgentController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في التفعيل المحاسبي عبر خدمة الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// قلب منطق التفعيل/التجديد/تغيير الباقة المفوتر — مُستخرَج ليُعاد استخدامه من النقطة الفردية
+    /// (<see cref="ActivateBilled"/>) والتجديد الجماعي (<see cref="BulkRenewalBilled"/>) معاً بنفس السلوك.
+    ///
+    /// افتراضات المدخلات (مضمونة من المستدعي): العزل محسوم عبر <paramref name="account"/> المملوك،
+    /// وفكّ التشفير تمّ وأُعطيت <paramref name="pwd"/>. التحقّقات الأولية (الإجراء/المدة/نوع التحصيل)
+    /// يفرضها المستدعي الفردي؛ التجديد الجماعي يمرّر طلباً مُنسّقاً مسبقاً.
+    ///
+    /// التدفّق:
+    ///  1) idempotency: رفض إن وُجد <c>SubscriptionLog</c> سابق بنفس <c>FtthTransactionId</c> لنفس الشركة.
+    ///  2) جلب السعر خادمياً من <c>user/activationData/{uid}</c> (لا من العميل) — تعذّره لا يُجهض (سعر 0).
+    ///  3) تنفيذ الإجراء على SAS4؛ فشله (SasServiceUnavailable) ⇒ نتيجة بـ StatusCode=502 بلا قيد.
+    ///  4) عند النجاح: <c>SubscriptionLog{Source=Sas}</c> + <c>SubscriptionAccountingService.RecordAsync</c>
+    ///     (القيد لا يُسقط السجل عند فشله).
+    ///  5) إرجاع <see cref="SasBilledResult"/> يحمل logId/journalEntryId/receipt للطباعة/الواتساب.
+    ///
+    /// ⚠️ لا يلتقط <c>SasServiceUnavailableException</c> الصادر من <c>SasGetAsync</c> كلياً (يُترك لمنطق السعر)،
+    /// لكنه يلتقطه حول <c>UserActionAsync</c> ليعيد 502. أي استثناء آخر يُترك ليُعالجه المستدعي
+    /// (الفردي يترجمه إلى 503/500؛ الجماعي يلتقطه لكل مشترك على حدة لضمان النجاح الجزئي).
+    /// </summary>
+    private async Task<SasBilledResult> ActivateBilledCoreAsync(
+        SasAccount account,
+        string uid,
+        SasActivateBilledRequest req,
+        Guid companyId,
+        Guid userId,
+        string pwd,
+        CancellationToken ct)
+    {
+        var action = req.Action.Trim();
+        var collectionType = string.IsNullOrWhiteSpace(req.CollectionType)
+            ? "cash"
+            : req.CollectionType.Trim().ToLowerInvariant();
+        var months = req.Months;
+        var maintenanceFee = Math.Max(0, req.MaintenanceFee ?? 0);
+        var manualDiscount = Math.Max(0, req.ManualDiscount ?? 0);
+
+        // 1) idempotency: معرّف عملية فريد — من الطلب إن أُرسل (وصالح) وإلا نولّده خادمياً.
+        var transactionId = NormalizeTransactionId(req.TransactionId);
+
+        var alreadyLogged = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .AnyAsync(l => l.FtthTransactionId == transactionId && l.CompanyId == companyId, ct);
+        if (alreadyLogged)
+            return SasBilledResult.AsConflict(transactionId, "العملية مُنفّذة مسبقاً (معرّف عملية مكرّر)");
+
+        var safePhone = Trim(req.Phone);
+        var note = Trim(req.Note);
+
+        // 2) جلب السعر خادمياً من activationData (لا نثق بالعميل في السعر).
+        //    للـ extend قد لا يعيد سعراً — نستخدم activationData نفسه؛ إن غاب يبقى 0 (منطق بديل في المحاسبة).
+        decimal basePrice = 0;
+        string? planName = null;
+        try
+        {
+            var activationRaw = await _sasClient.SasGetAsync(
+                account.ServerUrl, account.Username, pwd, $"user/activationData/{uid}", ct);
+            (basePrice, planName) = ParseActivationData(activationRaw);
+        }
+        catch (SasServiceUnavailableException)
+        {
+            // إذا تعذّر جلب السعر لا نُجهض كلياً: نُكمل بسعر 0 (يُسجَّل تحذير) لأن الإجراء قد ينجح دون سعر معروف.
+            _logger.LogWarning("تعذّر جلب activationData للمشترك {Uid} — سيُستخدم سعر 0", uid);
+        }
+
+        // 3) تنفيذ الإجراء على SAS4 (مالي: money_collected=true + transaction_id للـ idempotency على طرف الساس).
+        var sasParams = BuildActionParams(action, months, req.ProfileId, transactionId);
+        string actionRaw;
+        try
+        {
+            actionRaw = await _sasClient.UserActionAsync(
+                account.ServerUrl, account.Username, pwd, uid, action, sasParams, ct);
+        }
+        catch (SasServiceUnavailableException ex)
+        {
+            // فشل SAS4/الخدمة → نُعيد نتيجة 502 بلا أي قيد محاسبي.
+            _logger.LogWarning(ex, "فشل تنفيذ إجراء الساس {Action} للمشترك {Uid} — لا قيد", action, uid);
+            return SasBilledResult.AsFailure(502, "تعذّر تنفيذ العملية على نظام الساس", transactionId);
+        }
+
+        // 4) عند النجاح: إنشاء SubscriptionLog(Source=Sas) ثم القيد المحاسبي الموحّد.
+        var opType = action == "activate" ? "purchase" : "renewal";
+        // نفس معادلة RecordAsync حرفياً (CompanyDiscount=0): netFromCompany = basePrice (إن >0)
+        // أو PlanPrice وإلا؛ هنا PlanPrice=basePrice ليتطابق الطرفان. companyDiscountProfit=0.
+        var netFromCompany = basePrice; // CompanyDiscount=0
+        var collectedAmount = netFromCompany + maintenanceFee - manualDiscount; // ما يدفعه العميل
+
+        var log = new SubscriptionLog
+        {
+            Source = SubscriptionLogSource.Sas,
+            SasAccountId = account.Id,
+            SubscriberUid = uid,
+            SubscriberUsername = Trim(req.SubscriberUsername) ?? ParseUsername(actionRaw),
+            PlanName = planName ?? Trim(req.ProfileId),
+            OperationType = opType,
+            CollectionType = collectionType,
+            BasePrice = basePrice,
+            CompanyDiscount = 0,
+            MaintenanceFee = maintenanceFee,
+            ManualDiscount = manualDiscount,
+            SystemDiscountEnabled = req.SystemDiscountEnabled,
+            // PlanPrice = basePrice ليستخدمه فرع البديل في RecordAsync عند basePrice=0 بنفس النتيجة.
+            PlanPrice = basePrice,
+            PhoneNumber = safePhone,
+            CommitmentPeriod = months,
+            Currency = "IQD",
+            CompanyId = account.CompanyId,
+            UserId = account.OwnerUserId,
+            FtthTransactionId = transactionId,
+            SessionId = transactionId,
+            LinkedAgentId = collectionType == "agent" ? req.LinkedAgentId : null,
+            ActivationDate = DateTime.UtcNow,
+            SubscriptionNotes = note,
+            // الإجراء الخام (activate|extend|changeProfile) مخزَّن حرفياً لعرضه في سجل الحركات بلا migration.
+            ReconciliationNotes = action
+        };
+
+        await _unitOfWork.SubscriptionLogs.AddAsync(log, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+
+        // القيد المحاسبي — لا يُسقط السجل عند الفشل (try/catch كما FTTH).
+        Guid? journalEntryId = null;
+        try
+        {
+            var input = new Sadara.API.Services.SubscriptionAccountingInput
+            {
+                BasePrice = basePrice,
+                CompanyDiscount = 0,
+                ManualDiscount = manualDiscount,
+                MaintenanceFee = maintenanceFee,
+                // PlanPrice = basePrice (فرع البديل في RecordAsync عند basePrice=0) — يُنتج نفس collectedAmount.
+                PlanPrice = basePrice,
+                SystemDiscountEnabled = req.SystemDiscountEnabled,
+                CollectionType = collectionType,
+                LinkedAgentId = collectionType == "agent" ? req.LinkedAgentId : null,
+                PlanName = log.PlanName,
+                CustomerName = log.SubscriberUsername,
+                OperationType = opType,
+                EntryDate = log.ActivationDate
+            };
+
+            journalEntryId = await _accounting.RecordAsync(log, input, account.CompanyId, account.OwnerUserId, ct);
+            if (journalEntryId.HasValue)
+            {
+                log.JournalEntryId = journalEntryId;
+                _unitOfWork.SubscriptionLogs.Update(log);
+                await _unitOfWork.SaveChangesAsync(ct);
+            }
+        }
+        catch (Exception exAcc)
+        {
+            _logger.LogWarning(exAcc, "فشل إنشاء القيد المحاسبي لسجل الساس {LogId} — السجل حُفظ بدونه", log.Id);
+        }
+
+        var receipt = new
+        {
+            operationType = action switch
+            {
+                "activate" => "تم تفعيل اشتراك",
+                "extend" => "تم تجديد الاشتراك",
+                "changeProfile" => "تم تغيير الباقة",
+                _ => "عملية اشتراك"
+            },
+            subscriberUsername = log.SubscriberUsername,
+            planName = log.PlanName,
+            months,
+            basePrice,
+            maintenanceFee,
+            manualDiscount,
+            collectedAmount,
+            currency = "IQD",
+            collectionType,
+            transactionId,
+            activatedByUserId = account.OwnerUserId
+        };
+
+        return SasBilledResult.AsSuccess(log.Id, journalEntryId, receipt, transactionId);
+    }
+
+    /// <summary>الحد الأقصى المعقول لحجم دفعة التجديد الجماعي المفوتر (حماية من الإساءة/الحمل).</summary>
+    private const int MaxBulkBilledBatch = 300;
+
+    /// <summary>
+    /// تجديد/تفعيل جماعي مفوتر — نفس خطّ <see cref="ActivateBilled"/> لكل مشترك (قيد موحّد Source=Sas) — كتابة (manage).
+    ///
+    /// العزل: <see cref="GetOwnedAccountAsync"/> مرّة واحدة (شركة + مالك + غير محذوف) + فكّ التشفير مرّة واحدة.
+    /// لكل uid: <see cref="ActivateBilledCoreAsync"/> بمعرّف عملية فريد مولّد خادمياً (idempotency مستقلّ لكل مشترك).
+    /// نجاح جزئي: فشل مشترك (استثناء/502) لا يوقف الباقي؛ تُجمَع النتائج.
+    ///
+    /// ⚠️ لا أسرار في الرد؛ companyId/userId/accountId مختومة من الحساب خادمياً (لا من العميل).
+    /// </summary>
+    [HttpPost("accounts/{id}/renewal/bulk-billed")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> BulkRenewalBilled(
+        Guid id,
+        [FromBody] SasBulkBilledRequest request,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        if (request == null || request.SubscriberIds == null || request.SubscriberIds.Count == 0)
+            return BadRequest(new { success = false, message = "قائمة المشتركين مطلوبة" });
+
+        // قائمة سماح صارمة للإجراء (التجديد الجماعي يدعم التفعيل/التمديد فقط — لا تغيير باقة جماعي هنا).
+        var action = string.IsNullOrWhiteSpace(request.Action) ? "extend" : request.Action.Trim();
+        if (action is not ("activate" or "extend"))
+            return BadRequest(new { success = false, message = "إجراء غير مدعوم للتجديد الجماعي (المتاح: activate | extend)" });
+
+        // قائمة سماح لنوع التحصيل (مطابق لمنطق المحاسبة الموحّد).
+        var collectionType = string.IsNullOrWhiteSpace(request.CollectionType)
+            ? "cash"
+            : request.CollectionType.Trim().ToLowerInvariant();
+        if (collectionType is not ("cash" or "credit" or "agent"))
+            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent)" });
+
+        if (collectionType == "agent" && (!request.LinkedAgentId.HasValue || request.LinkedAgentId.Value == Guid.Empty))
+            return BadRequest(new { success = false, message = "يجب تحديد الوكيل عند اختيار نوع التحصيل 'وكيل'" });
+
+        // تحقّق المدة (مطلوبة للتفعيل/التمديد).
+        var months = request.Months;
+        if (!months.HasValue || months.Value <= 0 || months.Value > 60)
+            return BadRequest(new { success = false, message = "عدد الأشهر غير صالح (1..60)" });
+
+        // تنظيف المعرّفات: تفريغ الفارغ + قصّ + إزالة التكرار.
+        var subscriberIds = request.SubscriberIds
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (subscriberIds.Count == 0)
+            return BadRequest(new { success = false, message = "قائمة المشتركين مطلوبة" });
+
+        if (subscriberIds.Count > MaxBulkBilledBatch)
+            return BadRequest(new { success = false, message = $"حجم الدفعة يتجاوز الحد المسموح ({MaxBulkBilledBatch})" });
+
+        // العزل الصارم + فكّ التشفير مرّة واحدة في الذاكرة فقط.
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        string password;
+        try
+        {
+            password = _secretProtector.Unprotect(account.PasswordEncrypted); // في الذاكرة فقط
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "تعذّر فكّ تشفير اعتماد الحساب للتجديد الجماعي المفوتر");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+
+        var results = new List<object>(subscriberIds.Count);
+        var succeeded = 0;
+        var failed = 0;
+
+        foreach (var uid in subscriberIds)
+        {
+            // معرّف عملية فريد لكل مشترك (idempotency مستقلّ) — لا يُعتمد على العميل.
+            var perReq = new SasActivateBilledRequest(
+                Action: action,
+                Months: months,
+                ProfileId: string.IsNullOrWhiteSpace(request.ProfileId) ? null : request.ProfileId.Trim(),
+                CollectionType: collectionType,
+                MaintenanceFee: request.MaintenanceFee,
+                ManualDiscount: request.ManualDiscount,
+                SystemDiscountEnabled: request.SystemDiscountEnabled,
+                LinkedAgentId: collectionType == "agent" ? request.LinkedAgentId : null,
+                Phone: null,
+                SubscriberUsername: null,
+                TransactionId: Guid.NewGuid().ToString("N"),
+                Note: null);
+
+            try
+            {
+                var core = await ActivateBilledCoreAsync(account, uid, perReq, companyId, userId, password, ct);
+
+                if (core.Ok)
+                {
+                    succeeded++;
+                    results.Add(new
+                    {
+                        uid,
+                        ok = true,
+                        message = (string?)null,
+                        logId = core.LogId,
+                        journalEntryId = core.JournalEntryId,
+                        receipt = core.Receipt
+                    });
+                }
+                else
+                {
+                    // فشل منطقي (502 من الساس أو تكرار idempotency) — لا يوقف الباقي.
+                    failed++;
+                    results.Add(new
+                    {
+                        uid,
+                        ok = false,
+                        message = core.Message ?? "فشل تنفيذ العملية",
+                        logId = (long?)null,
+                        journalEntryId = (Guid?)null,
+                        receipt = (object?)null
+                    });
+                }
+            }
+            catch (SasServiceUnavailableException ex)
+            {
+                // خدمة الساس غير متاحة لهذا المشترك — نُكمل الباقي (نجاح جزئي).
+                _logger.LogWarning(ex, "خدمة الساس غير متاحة أثناء التجديد الجماعي للمشترك {Uid}", uid);
+                failed++;
+                results.Add(new
+                {
+                    uid,
+                    ok = false,
+                    message = "خدمة الساس غير متاحة حالياً",
+                    logId = (long?)null,
+                    journalEntryId = (Guid?)null,
+                    receipt = (object?)null
+                });
+            }
+            catch (Exception ex)
+            {
+                // خطأ غير متوقّع لهذا المشترك — نعزله ونُكمل الباقي.
+                _logger.LogError(ex, "خطأ غير متوقّع أثناء التجديد الجماعي للمشترك {Uid}", uid);
+                failed++;
+                results.Add(new
+                {
+                    uid,
+                    ok = false,
+                    message = "خطأ داخلي",
+                    logId = (long?)null,
+                    journalEntryId = (Guid?)null,
+                    receipt = (object?)null
+                });
+            }
+        }
+
+        return Ok(new
+        {
+            success = true,
+            total = subscriberIds.Count,
+            succeeded,
+            failed,
+            results
+        });
+    }
+
+    /// <summary>الحد الأقصى لعدد سجلات الحركات المُعادة في صفحة واحدة.</summary>
+    private const int MaxTransactionsPageSize = 200;
+
+    /// <summary>
+    /// سجل حركات حساب ساس — قراءة من الدفتر الموحّد (<c>SubscriptionLogs</c>) بلا جدول جديد — قراءة (view).
+    ///
+    /// العزل: <see cref="GetOwnedAccountAsync"/> (الحساب مملوك) ثم فلترة <c>SasAccountId == account.Id</c>
+    /// و<c>Source == Sas</c> و<c>CompanyId == account.CompanyId</c> (دفاع بالعمق). ترتيب تنازلي بـ CreatedAt، صفحات.
+    ///
+    /// «action»: مخزَّن حرفياً في <c>ReconciliationNotes</c> لحظة الإنشاء (activate|extend|changeProfile)؛
+    /// إن غاب (سجلّات قديمة) يُشتق من <c>OperationType</c> (purchase⇒activate، وإلا extend).
+    ///
+    /// ⚠️ بلا أسرار: لا كلمة مرور ولا اعتماد؛ حقول محاسبية/عرض فقط.
+    /// </summary>
+    [HttpGet("accounts/{id}/transactions")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetTransactions(
+        Guid id,
+        [FromQuery] int limit = 50,
+        [FromQuery] int offset = 0,
+        CancellationToken ct = default)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        // قصّ آمن للصفحات.
+        var safeLimit = Math.Clamp(limit, 1, MaxTransactionsPageSize);
+        var safeOffset = Math.Max(0, offset);
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            // الاستعلام الأساس: سجلات الساس لهذا الحساب ضمن الشركة (دفاع بالعمق فوق SasAccountId).
+            var baseQuery = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => l.SasAccountId == account.Id
+                            && l.Source == SubscriptionLogSource.Sas
+                            && l.CompanyId == account.CompanyId);
+
+            var total = await baseQuery.CountAsync(ct);
+
+            var rows = await baseQuery
+                .OrderByDescending(l => l.CreatedAt)
+                .Skip(safeOffset)
+                .Take(safeLimit)
+                .Select(l => new
+                {
+                    l.Id,
+                    l.CreatedAt,
+                    l.ReconciliationNotes,
+                    l.OperationType,
+                    l.SubscriberUid,
+                    l.SubscriberUsername,
+                    l.PlanName,
+                    l.BasePrice,
+                    l.PlanPrice,
+                    l.Currency,
+                    l.CollectionType,
+                    l.PaymentStatus,
+                    l.JournalEntryId
+                })
+                .ToListAsync(ct);
+
+            var data = rows.Select(l => new
+            {
+                id = l.Id,
+                createdAt = l.CreatedAt,
+                // «action» الصريح من ReconciliationNotes، وإلا يُشتق من OperationType.
+                action = !string.IsNullOrWhiteSpace(l.ReconciliationNotes)
+                    ? l.ReconciliationNotes
+                    : (string.Equals(l.OperationType, "purchase", StringComparison.OrdinalIgnoreCase) ? "activate" : "extend"),
+                subscriberUid = l.SubscriberUid,
+                subscriberUsername = l.SubscriberUsername,
+                planName = l.PlanName,
+                basePrice = l.BasePrice,
+                collectedAmount = l.PlanPrice,
+                currency = l.Currency ?? "IQD",
+                collectionType = l.CollectionType,
+                status = l.PaymentStatus,
+                journalEntryId = l.JournalEntryId
+            }).ToList();
+
+            return Ok(new { success = true, total, data });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب سجل حركات حساب الساس");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
@@ -1742,6 +2055,47 @@ public class SasAgentController : ControllerBase
 
     // ---------- مساعدات التفعيل المحاسبي (activate-billed) ----------
 
+    /// <summary>
+    /// نتيجة قلب التفعيل المفوتر (<see cref="ActivateBilledCoreAsync"/>) — محايدة عن HTTP ليترجمها
+    /// المستدعي (الفردي إلى IActionResult، والجماعي إلى عنصر في مصفوفة النتائج).
+    /// لا تحمل أي سرّ: فقط حالة العملية + معرّفات السجل/القيد + الإيصال.
+    /// </summary>
+    private sealed class SasBilledResult
+    {
+        /// <summary>نجحت العملية (سجل + محاولة قيد) — ⇒ رد 200.</summary>
+        public bool Ok { get; private init; }
+
+        /// <summary>تكرار idempotency (معرّف عملية مكرّر) — ⇒ رد 409.</summary>
+        public bool Conflict { get; private init; }
+
+        /// <summary>رمز الحالة المقترح عند الفشل (مثل 502 لفشل الساس).</summary>
+        public int StatusCode { get; private init; }
+
+        /// <summary>رسالة وصفية (نجاح/فشل/تكرار) — بلا أسرار.</summary>
+        public string? Message { get; private init; }
+
+        /// <summary>معرّف السجل (SubscriptionLog) عند النجاح.</summary>
+        public long? LogId { get; private init; }
+
+        /// <summary>معرّف القيد المحاسبي عند نجاحه (قد يكون null إن فشل القيد والسجل باقٍ).</summary>
+        public Guid? JournalEntryId { get; private init; }
+
+        /// <summary>كائن الإيصال (للطباعة/الواتساب) عند النجاح.</summary>
+        public object? Receipt { get; private init; }
+
+        /// <summary>معرّف العملية المستخدم (idempotency).</summary>
+        public string? TransactionId { get; private init; }
+
+        public static SasBilledResult AsSuccess(long logId, Guid? journalEntryId, object receipt, string transactionId)
+            => new() { Ok = true, StatusCode = 200, LogId = logId, JournalEntryId = journalEntryId, Receipt = receipt, TransactionId = transactionId };
+
+        public static SasBilledResult AsConflict(string transactionId, string message)
+            => new() { Ok = false, Conflict = true, StatusCode = 409, Message = message, TransactionId = transactionId };
+
+        public static SasBilledResult AsFailure(int statusCode, string message, string? transactionId = null)
+            => new() { Ok = false, StatusCode = statusCode, Message = message, TransactionId = transactionId };
+    }
+
     /// <summary>الحد الأقصى لطول معرّف العملية (idempotency) الممرَّر/المخزَّن.</summary>
     private const int MaxTransactionIdLength = 64;
 
@@ -1972,6 +2326,31 @@ public record SasBulkActionRequest(
     List<string> Uids,
     string Action,
     System.Text.Json.JsonElement? Params);
+
+/// <summary>
+/// طلب تجديد/تفعيل جماعي مفوتر — نفس خطّ <c>activate-billed</c> لكل مشترك (قيد موحّد Source=Sas).
+/// معرّف العملية (idempotency) يُولَّد خادمياً لكل مشترك على حدة — لا من العميل.
+/// companyId/userId/accountId مختومة خادمياً من الحساب المملوك — لا من العميل.
+/// </summary>
+/// <param name="SubscriberIds">معرّفات مشتركي الساس (uid) — مطلوبة (تُزال التكرارات والفوارغ).</param>
+/// <param name="Action">الإجراء: activate | extend (افتراضي extend).</param>
+/// <param name="Months">عدد الأشهر (مطلوب — 1..60).</param>
+/// <param name="ProfileId">معرّف الباقة (اختياري — إن رُغب تثبيت باقة موحّدة).</param>
+/// <param name="CollectionType">نوع التحصيل: cash | credit | agent (افتراضي cash).</param>
+/// <param name="MaintenanceFee">أجور صيانة/هامش اختياري لكل مشترك (≥0).</param>
+/// <param name="ManualDiscount">خصم يدوي اختياري لكل مشترك (≥0).</param>
+/// <param name="SystemDiscountEnabled">هل خصم الشركة مفعّل (افتراضي true).</param>
+/// <param name="LinkedAgentId">الوكيل المرتبط (مطلوب عند CollectionType=agent).</param>
+public record SasBulkBilledRequest(
+    List<string> SubscriberIds,
+    string Action = "extend",
+    int? Months = null,
+    string? ProfileId = null,
+    string CollectionType = "cash",
+    decimal? MaintenanceFee = null,
+    decimal? ManualDiscount = null,
+    bool SystemDiscountEnabled = true,
+    Guid? LinkedAgentId = null);
 
 /// <summary>طلب يحمل حمولة JSON حرّة (إنشاء/تعديل مشترك) تُمرَّر كما هي لخدمة الساس.</summary>
 public record SasPayloadRequest(

@@ -8,6 +8,7 @@ import '../widgets/sas_report_table.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_license_page.dart';
 import 'sas_reports_page.dart' show kSasReports, SasAggregateReportsPage;
+import 'sas_transactions_page.dart';
 
 /// تبويب «التقارير» — يرقّي التقارير من زرٍّ داخل «نظام الساس» إلى تبويب مستقل
 /// مطابقةً لتطبيق الوكلاء المرجعي. يعرض:
@@ -47,6 +48,15 @@ class SasReportsTab extends StatelessWidget {
           gradient: AppTheme.blueGradient,
           onTap: () =>
               _open(context, SasAggregateReportsPage(account: account)),
+        ),
+        SizedBox(height: 8.h),
+        _tile(
+          context,
+          title: 'سجل الحركات',
+          subtitle: 'العمليات المفوترة (تفعيل/تمديد/تغيير باقة) + المبالغ المحصّلة',
+          icon: Icons.receipt_long_rounded,
+          gradient: AppTheme.greenGradient,
+          onTap: () => _open(context, SasTransactionsPage(account: account)),
         ),
         SizedBox(height: 8.h),
         _tile(

@@ -12,6 +12,7 @@ import '../models/sas_report.dart';
 import '../models/sas_subscriber.dart';
 import '../models/sas_subscriber_summary.dart';
 import '../models/sas_ticket.dart';
+import '../models/sas_transaction.dart';
 import '../premises/models/premises.dart';
 
 /// خدمة API لوحدة «وكيل الساس» — تخاطب بوّابة الصدارة `/api/sas-agent/*`.
@@ -365,6 +366,65 @@ class SasAgentApiService {
     });
     final list = _asMapList(res['data'] ?? res['results'] ?? res['rows'] ?? res);
     return list.map(SasRenewalResult.fromJson).toList();
+  }
+
+  /// تجديد جماعي **مفوتر** — ينفّذ فعلياً على الساس ويختم القيد المزدوج وحركة
+  /// الاشتراك في دفتر الصدارة الموحّد (Source=sas) لكل مشترك ناجح، ويعيد الرد
+  /// كاملاً مع `results` (كلّ عنصر قد يحمل `receipt` للطباعة/الواتساب).
+  ///
+  /// ⚠️ عملية فعلية تخصم من رصيد الوكيل — لا معاينة. السعر يُحسب **خادمياً**؛
+  /// لا نرسل أي سعر من العميل. الهوية والعزل (شركة + مالك) مختومان خادمياً.
+  ///
+  /// [action] أحد: `extend` (افتراضي) · `activate`.
+  /// يعيد الخريطة العُليا كما هي:
+  /// `{ success, total, succeeded, failed, results:[{uid, ok, message,
+  ///    logId?, journalEntryId?, receipt?{...}}] }`.
+  Future<Map<String, dynamic>> renewalBulkBilled(
+    String id, {
+    required List<String> subscriberIds,
+    String action = 'extend',
+    int? months,
+    String? profileId,
+    required String collectionType,
+    num? maintenanceFee,
+    num? manualDiscount,
+    bool systemDiscountEnabled = true,
+    String? linkedAgentId,
+  }) async {
+    final res = await _api.post(
+      '$_base/accounts/$id/renewal/bulk-billed',
+      body: {
+        'subscriberIds': subscriberIds,
+        'action': action,
+        if (months != null) 'months': months,
+        if (profileId != null && profileId.isNotEmpty) 'profileId': profileId,
+        'collectionType': collectionType,
+        if (maintenanceFee != null) 'maintenanceFee': maintenanceFee,
+        if (manualDiscount != null) 'manualDiscount': manualDiscount,
+        'systemDiscountEnabled': systemDiscountEnabled,
+        if (linkedAgentId != null && linkedAgentId.isNotEmpty)
+          'linkedAgentId': linkedAgentId,
+      },
+    );
+    return _asMapKeepTop(res);
+  }
+
+  // ============================================================
+  //  سجل الحركات المفوترة (Source=sas) — من دفتر الصدارة
+  // ============================================================
+
+  /// سجلّ حركات العمليات المفوترة للحساب — `GET accounts/{id}/transactions`.
+  ///
+  /// يعيد صفحة مُرقّمة `{total, data:[...]}` (النموذج متساهل مع التسمية). العزل
+  /// (شركة + مالك) يفرضه الخادم؛ لا نمرّر أي هوية هنا.
+  Future<SasTransactionsPage> getTransactions(
+    String id, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final res =
+        await _api.get('$_base/accounts/$id/transactions?limit=$limit&offset=$offset');
+    return SasTransactionsPage.fromJson(_asMapKeepTop(res));
   }
 
   // ============================================================
