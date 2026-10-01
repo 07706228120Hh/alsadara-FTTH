@@ -87,6 +87,8 @@
 - `C:\SadaraPlatform\.dpkeys` (مفاتيح DataProtection محلية).
 - حاوية `sadara-postgres-dev` (Postgres 5480 نسخة محلية).
 - متغيّرات البيئة المثبّتة على مستوى المستخدم محلياً (`SADARA_INTERNAL_API_KEY`, `SADARA_SAS_INTERNAL_SECRET`, `DataProtection__KeysPath`).
+- **🔴 احذف `src/Backend/API/Sadara.API/Controllers/SasDevController.cs`** (متحكّم محاكاة فوترة للاختبار — محصور بـ Development فيعيد 404 في الإنتاج، لكن يُفضّل حذفه قبل النشر).
+- سجلّات الساس المحاكاة في القاعدة (`SubscriptionLogs WHERE Source=1 AND "FtthTransactionId" LIKE 'SIM-%'`) — بيانات اختبار محلية؛ لا تُرحَّل للإنتاج.
 
 ---
 
