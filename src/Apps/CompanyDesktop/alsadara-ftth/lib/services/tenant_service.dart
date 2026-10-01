@@ -4,7 +4,6 @@ library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/tenant.dart';
-import '../models/tenant_user.dart';
 import 'custom_auth_service.dart';
 import 'firebase_availability.dart';
 import 'api/api_client.dart';
@@ -58,7 +57,8 @@ class TenantService {
             : '';
         return TenantCreationResult.success(companyId);
       }
-      return TenantCreationResult.failure(response.message ?? 'فشل إنشاء الشركة');
+      return TenantCreationResult.failure(
+          response.message ?? 'فشل إنشاء الشركة');
     } catch (e) {
       return TenantCreationResult.failure('حدث خطأ في الاتصال بالخادم');
     }

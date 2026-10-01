@@ -13,6 +13,7 @@ import 'package:open_filex/open_filex.dart';
 import '../../theme/energy_dashboard_theme.dart';
 import '../../utils/responsive_helper.dart';
 import '../super_admin/widgets/super_admin_widgets.dart';
+import '../../services/api/api_config.dart';
 
 class DatabaseAdminPage extends StatefulWidget {
   const DatabaseAdminPage({super.key});
@@ -22,7 +23,7 @@ class DatabaseAdminPage extends StatefulWidget {
 }
 
 class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
-  static const String baseUrl = 'https://api.ramzalsadara.tech/api';
+  static String get baseUrl => '${ApiConfig.vpsBaseUrl}/api';
   static const String apiKey = 'sadara-internal-2024-secure-key';
 
   // State

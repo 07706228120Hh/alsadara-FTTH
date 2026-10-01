@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'vps_auth_service.dart';
 import 'api/api_client.dart';
+import 'api/api_config.dart';
 
 /// خدمة الاتصال بـ Sadara Platform API الجديد
 /// تعمل مع Firebase Auth للمصادقة
@@ -17,10 +18,10 @@ class SadaraApiService {
   static const String _devBaseUrl = 'http://localhost:5000/api';
 
   /// رابط API للإنتاج (VPS) - HTTPS مع دومين
-  static const String _prodBaseUrl = 'https://api.ramzalsadara.tech/api';
+  static String get _prodBaseUrl => '${ApiConfig.vpsBaseUrl}/api';
 
   /// استخدام بيئة التطوير أو الإنتاج
-  static const bool _isProduction = true;
+  static const bool _isProduction = false; // [تشغيل محلي مؤقت — يُعاد إلى true بعد الاختبار]
 
   /// رابط API الفعلي
   static String get baseUrl => _isProduction ? _prodBaseUrl : _devBaseUrl;

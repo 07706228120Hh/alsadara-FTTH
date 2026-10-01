@@ -11,10 +11,15 @@ class ApiConfig {
   static const String prodBaseUrl = 'https://api.ramzalsadara.tech/api';
 
   /// استخدام بيئة التطوير أو الإنتاج
-  static const bool isProduction = true;
+  static const bool isProduction = false; // [تشغيل محلي مؤقت — يُعاد إلى true بعد الاختبار]
 
   /// رابط API الفعلي
   static String get baseUrl => isProduction ? prodBaseUrl : devBaseUrl;
+
+  /// العنوان الأساس لخادم VPS (الداخلي/ramzalsadara) بلا لاحقة /api — بيئي
+  /// التطوير: الباكند المحلي · الإنتاج: دومين VPS
+  static String get vpsBaseUrl =>
+      isProduction ? 'https://api.ramzalsadara.tech' : 'http://localhost:5000';
 
   // ============================================
   // Endpoints - Super Admin

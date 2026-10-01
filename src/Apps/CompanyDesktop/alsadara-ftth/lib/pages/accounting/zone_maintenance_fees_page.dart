@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
+import '../../services/api/api_config.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 
@@ -249,7 +250,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
   Future<List<String>> _fetchZoneNames() async {
     try {
       final res = await http.get(
-        Uri.parse('https://api.ramzalsadara.tech/api/zonestatistics'),
+        Uri.parse('${ApiConfig.vpsBaseUrl}/api/zonestatistics'),
         headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'},
       );
       if (res.statusCode == 200) {

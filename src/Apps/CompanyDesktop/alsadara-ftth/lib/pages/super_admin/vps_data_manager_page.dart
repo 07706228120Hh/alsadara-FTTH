@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/energy_dashboard_theme.dart';
 import '../../config/app_secrets.dart';
+import '../../services/api/api_config.dart';
 
 class VpsDataManagerPage extends StatefulWidget {
   const VpsDataManagerPage({super.key});
@@ -23,7 +24,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   late TabController _tabController;
 
   // يمكنك تغيير هذا الرابط حسب بيئة العمل
-  static const String baseUrl = 'https://api.ramzalsadara.tech/api/internal';
+  static String get baseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
 
   // API Key من AppSecrets
   static String get apiKey => AppSecrets.instance.internalApiKey;

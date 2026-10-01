@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:intl/intl.dart';
 import 'account_stats_page.dart';
 import '../../models/filter_criteria.dart';
+import '../../services/api/api_config.dart';
 
 class AccountRecordsPage extends StatefulWidget {
   final String authToken;
@@ -168,8 +169,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   }
 
   // ========== VPS API ==========
-  static const String _vpsBaseUrl =
-      'https://api.ramzalsadara.tech/api/internal';
+  static String get _vpsBaseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
   static const String _vpsApiKey = 'sadara-internal-2024-secure-key';
 
   /// جلب السجلات من VPS وتحويلها لصيغة عربية متوافقة مع الصفحة

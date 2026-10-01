@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../services/api/api_config.dart';
 
 /// تقرير ربحية التفعيلات — يعرض تكلفة المحفظة وربح الخصم وإيراد الصيانة
 class ActivationProfitabilityPage extends StatefulWidget {
@@ -15,7 +16,8 @@ class ActivationProfitabilityPage extends StatefulWidget {
 }
 
 class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPage> {
-  static const _baseUrl = 'https://api.ramzalsadara.tech/api/internal/subscriptionlogs/profitability';
+  static String get _baseUrl =>
+      '${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/profitability';
   static const _apiKey = 'sadara-internal-2024-secure-key';
 
   bool _isLoading = true;

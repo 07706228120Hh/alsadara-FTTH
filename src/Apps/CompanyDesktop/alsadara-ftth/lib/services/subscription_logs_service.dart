@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'api_service.dart';
+import 'api/api_config.dart';
 
 class SubscriptionLogsService {
   static SubscriptionLogsService? _instance;
@@ -15,7 +16,7 @@ class SubscriptionLogsService {
 
   final ApiService _api = ApiService.instance;
 
-  static const String baseUrl = 'https://api.ramzalsadara.tech/api/internal';
+  static String get baseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
 
   // API Key للوصول الداخلي
   static const String apiKey = 'sadara-internal-2024-secure-key';

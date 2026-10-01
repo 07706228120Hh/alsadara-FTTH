@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 import 'api/api_client.dart';
+import 'api/api_config.dart';
 import 'location_offline_queue.dart';
 import 'mock_location_detector.dart';
 
@@ -366,7 +367,7 @@ class _LocationTaskHandler extends TaskHandler {
       int? statusCode;
       try {
         final url =
-            Uri.parse('https://api.ramzalsadara.tech/api/employee-location');
+            Uri.parse('${ApiConfig.vpsBaseUrl}/api/employee-location');
         final client = HttpClient()
           ..badCertificateCallback = (_, __, ___) => true;
         client.connectionTimeout = const Duration(seconds: 15);

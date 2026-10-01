@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'api/api_config.dart';
 
 /// طابور الموقع — يحفظ النقاط عند انقطاع الإنترنت ويرسلها عند العودة
 class LocationOfflineQueue {
@@ -42,7 +43,7 @@ class LocationOfflineQueue {
       for (final item in queue) {
         try {
           final data = jsonDecode(item) as Map<String, dynamic>;
-          final url = Uri.parse('https://api.ramzalsadara.tech/api/employee-location');
+          final url = Uri.parse('${ApiConfig.vpsBaseUrl}/api/employee-location');
           final client = HttpClient()..badCertificateCallback = (_, __, ___) => true;
           final request = await client.postUrl(url);
           request.headers.set('Content-Type', 'application/json');

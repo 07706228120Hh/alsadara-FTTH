@@ -6,6 +6,7 @@ import 'package:flutter_map_mbtiles/flutter_map_mbtiles.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api/api_client.dart';
+import '../services/api/api_config.dart';
 import '../permissions/permission_manager.dart';
 import 'employee_tracking_report_page.dart';
 import 'package:path_provider/path_provider.dart';
@@ -127,7 +128,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
   Future<void> _connectSignalR() async {
     try {
       final apiKey = 'sadara-internal-2024-secure-key';
-      final hubUrl = 'https://api.ramzalsadara.tech/hubs/location?apiKey=$apiKey';
+      final hubUrl = '${ApiConfig.vpsBaseUrl}/hubs/location?apiKey=$apiKey';
 
       _hubConnection = HubConnectionBuilder()
           .withUrl(hubUrl)

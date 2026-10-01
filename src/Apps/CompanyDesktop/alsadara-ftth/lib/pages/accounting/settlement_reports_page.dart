@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../services/api/api_config.dart';
 
 /// صفحة تقارير التسديدات اليومية — عرض للمحاسب
 class SettlementReportsPage extends StatefulWidget {
@@ -16,7 +17,7 @@ class SettlementReportsPage extends StatefulWidget {
 }
 
 class _SettlementReportsPageState extends State<SettlementReportsPage> {
-  static const String _vpsBaseUrl = 'https://api.ramzalsadara.tech/api/internal';
+  static String get _vpsBaseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
   static const String _vpsApiKey = 'sadara-internal-2024-secure-key';
 
   bool _isLoading = true;

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
+import '../../services/api/api_config.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 
@@ -326,7 +327,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     });
     try {
       var url =
-          'https://api.ramzalsadara.tech/api/ftth-accounting/operator-summary/${widget.userId}?companyId=$_companyId';
+          '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/operator-summary/${widget.userId}?companyId=$_companyId';
       if (widget.isTechnician) {
         url += '&isTechnician=true';
       }

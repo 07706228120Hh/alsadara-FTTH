@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../services/api/api_config.dart';
 
 class DailySettlementPage extends StatefulWidget {
   final String authToken;
@@ -28,8 +29,7 @@ class DailySettlementPage extends StatefulWidget {
 }
 
 class _DailySettlementPageState extends State<DailySettlementPage> {
-  static const String _vpsBaseUrl =
-      'https://api.ramzalsadara.tech/api/internal';
+  static String get _vpsBaseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
   static const String _vpsApiKey = 'sadara-internal-2024-secure-key';
 
   bool isAdmin = false;

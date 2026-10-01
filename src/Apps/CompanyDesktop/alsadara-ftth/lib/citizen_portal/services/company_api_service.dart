@@ -3,11 +3,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/company_model.dart';
+import '../../services/api/api_config.dart';
 
 /// خدمة API للتعامل مع الشركات
 class CompanyApiService {
   // TODO: قراءة من ملف .env أو تكوين
-  static const String baseUrl = 'https://api.ramzalsadara.tech/api';
+  static String get baseUrl => '${ApiConfig.vpsBaseUrl}/api';
 
   /// الحصول على جميع الشركات
   static Future<List<CompanyModel>> getAllCompanies({String? token}) async {

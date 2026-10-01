@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/api/api_config.dart';
 import '../../services/accounting_service.dart';
 import '../../services/task_api_service.dart';
 import '../../services/plan_pricing_service.dart';
@@ -580,7 +581,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     });
     try {
       var url =
-          'https://api.ramzalsadara.tech/api/ftth-accounting/operators-dashboard?companyId=$_companyId';
+          '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/operators-dashboard?companyId=$_companyId';
       if (_fromDate != null) {
         url += '&from=${_fromDate!.toIso8601String().split('T')[0]}';
       }
@@ -1373,7 +1374,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
 
       // 2.7 جلب كل عمليات المشغلين دفعة واحدة (لتمريرها لصفحة التفاصيل بدون إعادة جلب)
       try {
-        String txUrl = 'https://api.ramzalsadara.tech/api/internal/subscriptionlogs?pageSize=15000';
+        String txUrl = '${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs?pageSize=15000';
         if (_companyId.isNotEmpty) txUrl += '&companyId=$_companyId';
         if (_fromDate != null) txUrl += '&fromDate=${_fromDate!.toIso8601String().split('T')[0]}';
         if (_toDate != null) txUrl += '&toDate=${_toDate!.toIso8601String().split('T')[0]}';
@@ -2131,7 +2132,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       final token = VpsAuthService.instance.accessToken;
       final response = await http.post(
         Uri.parse(
-            'https://api.ramzalsadara.tech/api/ftth-accounting/fix-orphan-records'),
+            '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/fix-orphan-records'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -2208,7 +2209,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       final companyId = _companyId.isNotEmpty ? '?companyId=$_companyId' : '';
       final response = await http.post(
         Uri.parse(
-            'https://api.ramzalsadara.tech/api/ftth-accounting/fix-missing-userids$companyId'),
+            '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/fix-missing-userids$companyId'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -2249,8 +2250,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     List<Map<String, dynamic>> users = [];
     try {
       final url = _companyId.isNotEmpty
-          ? 'https://api.ramzalsadara.tech/api/ftth-accounting/operators-linking?companyId=$_companyId'
-          : 'https://api.ramzalsadara.tech/api/ftth-accounting/operators-linking';
+          ? '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/operators-linking?companyId=$_companyId'
+          : '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/operators-linking';
       final res = await http.get(Uri.parse(url), headers: {
         if (vpsToken != null) 'Authorization': 'Bearer $vpsToken',
         'X-Api-Key': 'sadara-internal-2024-secure-key',
@@ -2329,7 +2330,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     try {
       final companyParam = _companyId.isNotEmpty ? '&companyId=$_companyId' : '';
       final response = await http.post(
-        Uri.parse('https://api.ramzalsadara.tech/api/ftth-accounting/assign-unknown-records?targetUserId=$selectedUserId$companyParam'),
+        Uri.parse('${ApiConfig.vpsBaseUrl}/api/ftth-accounting/assign-unknown-records?targetUserId=$selectedUserId$companyParam'),
         headers: {
           'Content-Type': 'application/json',
           if (vpsToken != null) 'Authorization': 'Bearer $vpsToken',
@@ -9385,7 +9386,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       final now = DateTime.now();
       final effectiveFrom = widget.fromDate ?? DateTime(now.year, now.month, 1);
       final effectiveTo = widget.toDate ?? DateTime(now.year, now.month, now.day, 23, 59, 59);
-      String url = 'https://api.ramzalsadara.tech/api/internal/subscriptionlogs?pageSize=15000';
+      String url = '${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs?pageSize=15000';
       if (widget._companyId.isNotEmpty) url += '&companyId=${widget._companyId}';
       url += '&fromDate=${effectiveFrom.toIso8601String().split('T')[0]}';
       url += '&toDate=${effectiveTo.toIso8601String().split('T')[0]}';
@@ -9762,7 +9763,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
 
         if (updateBody.isNotEmpty) {
           await http.put(
-            Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
+            Uri.parse('${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/$logId'),
             headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
             body: jsonEncode(updateBody),
           );
@@ -9814,7 +9815,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     if (confirmed != true || !mounted) return;
     try {
       final res = await http.delete(
-        Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
+        Uri.parse('${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/$logId'),
         headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'},
       );
       if (!mounted) return;
@@ -10039,7 +10040,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                       if ((newPD - origPD).abs() > 0.5) bodyMap['PlanPrice'] = newPD;
                       final body = jsonEncode(bodyMap);
                       final res = await http.put(
-                        Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
+                        Uri.parse('${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/$logId'),
                         headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
                         body: body,
                       );
@@ -11824,8 +11825,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   bool _isGlobalSearching = false;
   bool _isGlobalSearchActive = false;
 
-  static const _baseUrl =
-      'https://api.ramzalsadara.tech/api/internal/subscriptionlogs';
+  static String get _baseUrl =>
+      '${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs';
   static const _apiKey = 'sadara-internal-2024-secure-key';
 
   /// [label, dataKey, flex]  — flex يُستخدم لـ Expanded ويملأ الشاشة تلقائياً
@@ -12142,7 +12143,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     _commitmentSaved.add(logId);
     // حفظ بالخلفية بدون انتظار
     http.put(
-      Uri.parse('https://api.ramzalsadara.tech/api/internal/subscriptionlogs/$logId'),
+      Uri.parse('${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/$logId'),
       headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
       body: jsonEncode({'CommitmentPeriod': months}),
     ).ignore();

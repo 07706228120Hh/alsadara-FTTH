@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../services/whatsapp_template_storage.dart';
 import '../../services/subscription_logs_service.dart';
+import '../../services/api/api_config.dart';
 import '../../services/auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../permissions/permission_manager.dart';
@@ -11259,8 +11260,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     try {
       final companyId = VpsAuthService.instance.currentCompanyId;
       final url = companyId != null
-          ? 'https://api.ramzalsadara.tech/api/ftth-accounting/agents-list?companyId=$companyId'
-          : 'https://api.ramzalsadara.tech/api/ftth-accounting/agents-list';
+          ? '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/agents-list?companyId=$companyId'
+          : '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/agents-list';
 
       final token = _getAuthToken();
       final headers = <String, String>{
@@ -11353,8 +11354,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     try {
       final companyId = VpsAuthService.instance.currentCompanyId;
       final url = companyId != null
-          ? 'https://api.ramzalsadara.tech/api/ftth-accounting/technicians-list?companyId=$companyId'
-          : 'https://api.ramzalsadara.tech/api/ftth-accounting/technicians-list';
+          ? '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/technicians-list?companyId=$companyId'
+          : '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/technicians-list';
 
       final token = _getAuthToken();
       final headers = <String, String>{
@@ -11980,7 +11981,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
 
   /// الحصول على Base URL للسيرفر
   String _getBaseUrl() {
-    return 'https://api.ramzalsadara.tech/api';
+    return '${ApiConfig.vpsBaseUrl}/api';
   }
 
   /// بطاقة رصيد المحفظة - منفصلة عن بطاقة طريقة الدفع وتعرض في نفس الصف
