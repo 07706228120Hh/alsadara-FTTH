@@ -49,6 +49,9 @@ else
 // Repositories
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+// محاسبة الاشتراكات المشتركة (القيد المزدوج الموحّد FTTH + ساس) — يستخدمها مسار الساس activate-billed.
+builder.Services.AddScoped<Sadara.API.Services.ISubscriptionAccountingService, Sadara.API.Services.SubscriptionAccountingService>();
+
 // عزل المستأجر: مزوّد الشركة الحالية (يقرأ company_id من التوكن؛ SuperAdmin يتجاوز)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentTenant, Sadara.API.Services.CurrentTenant>();

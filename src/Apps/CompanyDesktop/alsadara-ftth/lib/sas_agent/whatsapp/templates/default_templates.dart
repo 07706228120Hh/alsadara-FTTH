@@ -1,7 +1,13 @@
-/// القوالب المدمجة الافتراضية (عربية) — تذكير/تجديد/انتهاء.
+/// القوالب المدمجة الافتراضية (عربية) — تذكير/تفعيل-تجديد/انتهاء.
 ///
 /// تطابق أنواع قوالب الصدارة (reminder/renewed/expired) مع متغيّرات عربية.
-/// المتغيّرات المتاحة: `{name}` `{username}` `{profile}` `{expiration}` `{days}`.
+/// المتغيّرات المتاحة:
+/// الأساسية: `{name}` `{username}` `{profile}` `{expiration}` `{days}`
+/// الغنية (بعد التفعيل المفوتر): `{plan}` `{price}` `{currency}` `{months}`
+/// `{endDate}` `{paymentMethod}` `{activatedBy}`.
+///
+/// أي متغيّر مفقود يُستبدل بفراغ ويُنظَّف السطر (منطق [WaTemplate.render])، فتبقى
+/// القوالب صالحة سواء وُفّرت الحقول الغنية أم لا.
 library;
 
 import '../models/wa_template.dart';
@@ -25,11 +31,17 @@ const List<WaTemplate> kDefaultTemplates = [
   ),
   WaTemplate(
     id: WaTemplateIds.renewed,
-    title: 'تأكيد التجديد',
+    title: 'تأكيد التفعيل/التجديد',
     builtin: true,
+    // قالب غنيّ: يعرض الباقة/المدة/السعر/طريقة الدفع إن توفّرت، ويتقلّص بسلاسة
+    // (تُنظَّف الأسطر الفارغة) عند غياب أيٍّ منها.
     body: 'مرحباً {name} ✅\n'
-        'تم تجديد اشتراكك ({username}) بنجاح.\n'
-        'صالح حتى {expiration}. نتمنّى لك تصفّحاً ممتعاً 🌐',
+        'تم تفعيل/تجديد اشتراكك ({username}) بنجاح.\n'
+        'الباقة: {plan}\n'
+        'المدة: {months} شهر\n'
+        'المبلغ المدفوع: {price} {currency} ({paymentMethod})\n'
+        'صالح حتى {endDate}.\n'
+        'نتمنّى لك تصفّحاً ممتعاً 🌐',
   ),
   WaTemplate(
     id: WaTemplateIds.expired,

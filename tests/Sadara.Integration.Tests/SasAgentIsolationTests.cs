@@ -156,12 +156,17 @@ public class SasAgentIsolationTests
         ISecretProtector? protector = null)
     {
         var fakeSas = new UnreachableSasClient();
+        var uow = new Sadara.Infrastructure.Repositories.UnitOfWork(db);
+        var accounting = new Sadara.API.Services.SubscriptionAccountingService(
+            uow, NullLogger<Sadara.API.Services.SubscriptionAccountingService>.Instance);
         var ctrl = new SasAgentController(
             db,
             tenant,
             protector ?? new FakeSecretProtector(),
             fakeSas,
-            NullLogger<SasAgentController>.Instance);
+            NullLogger<SasAgentController>.Instance,
+            uow,
+            accounting);
 
         // حقن ClaimsPrincipal كمستخدم مصادَق
         var claims = new List<Claim>

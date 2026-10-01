@@ -5,6 +5,7 @@ using Sadara.API.Authorization;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
+using Sadara.Domain.Interfaces;
 using Sadara.Infrastructure.Data;
 using Sadara.Infrastructure.Services.Sas;
 
@@ -35,19 +36,25 @@ public class SasAgentController : ControllerBase
     private readonly ISecretProtector _secretProtector;
     private readonly ISasServiceClient _sasClient;
     private readonly ILogger<SasAgentController> _logger;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly Sadara.API.Services.ISubscriptionAccountingService _accounting;
 
     public SasAgentController(
         SadaraDbContext db,
         ICurrentTenant tenant,
         ISecretProtector secretProtector,
         ISasServiceClient sasClient,
-        ILogger<SasAgentController> logger)
+        ILogger<SasAgentController> logger,
+        IUnitOfWork unitOfWork,
+        Sadara.API.Services.ISubscriptionAccountingService accounting)
     {
         _db = db;
         _tenant = tenant;
         _secretProtector = secretProtector;
         _sasClient = sasClient;
         _logger = logger;
+        _unitOfWork = unitOfWork;
+        _accounting = accounting;
     }
 
     /// <summary>معرّف المستخدم الحالي من التوكن (بنفس نمط باقي المتحكمات).</summary>
@@ -654,6 +661,227 @@ public class SasAgentController : ControllerBase
 
         return PassThroughWriteAsync(id, (acc, pwd, token) =>
             _sasClient.UserActionAsync(acc.ServerUrl, acc.Username, pwd, uid, request.Action.Trim(), request.Params, token), ct);
+    }
+
+    /// <summary>
+    /// تفعيل/تجديد/تغيير باقة مشترك ساس مع قيد محاسبي (محاسبة موحّدة مع FTTH) — كتابة (manage).
+    ///
+    /// التدفّق (كله خادمي، لا ثقة بالعميل في السعر أو الهوية):
+    ///  1) <see cref="GetOwnedAccountAsync"/> للعزل الثلاثي (شركة + مالك + غير محذوف) → يُفكّ التشفير في الذاكرة فقط.
+    ///  2) idempotency: رفض إن وُجد <c>SubscriptionLog</c> سابق بنفس <c>FtthTransactionId</c> لنفس الشركة (منع قيد مزدوج).
+    ///  3) جلب السعر خادمياً من <c>user/activationData/{uid}</c> (n_required_amount/vat/manager_balance) — لا من العميل.
+    ///  4) تنفيذ الإجراء على SAS4 عبر <see cref="ISasServiceClient.UserActionAsync"/>؛ فشل الساس → خطأ بلا قيد.
+    ///  5) عند النجاح: إنشاء <c>SubscriptionLog{Source=Sas,…}</c> ثم <c>SubscriptionAccountingService.RecordAsync(…)</c>
+    ///     (القيد لا يُسقط السجل عند فشله — يُسجَّل تحذير ويُعاد بلا journalEntryId).
+    ///  6) إعادة إيصال للطباعة بالواجهة لاحقاً.
+    ///
+    /// العزل: companyId/userId/accountId مختومة من <c>account</c> خادمياً (لا من العميل).
+    /// </summary>
+    [HttpPost("accounts/{id}/users/{uid}/activate-billed")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> ActivateBilled(
+        Guid id,
+        string uid,
+        [FromBody] SasActivateBilledRequest request,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        if (string.IsNullOrWhiteSpace(uid))
+            return BadRequest(new { success = false, message = "معرّف المشترك مطلوب" });
+
+        if (request == null || string.IsNullOrWhiteSpace(request.Action))
+            return BadRequest(new { success = false, message = "الإجراء مطلوب" });
+
+        // قائمة سماح صارمة للإجراءات المالية المدعومة.
+        var action = request.Action.Trim();
+        if (action is not ("activate" or "extend" or "changeProfile"))
+            return BadRequest(new { success = false, message = "إجراء غير مدعوم (المتاح: activate | extend | changeProfile)" });
+
+        // قائمة سماح لنوع التحصيل (مطابق لمنطق المحاسبة الموحّد).
+        var collectionType = string.IsNullOrWhiteSpace(request.CollectionType) ? "cash" : request.CollectionType.Trim().ToLowerInvariant();
+        if (collectionType is not ("cash" or "credit" or "agent"))
+            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent)" });
+
+        if (collectionType == "agent" && (!request.LinkedAgentId.HasValue || request.LinkedAgentId.Value == Guid.Empty))
+            return BadRequest(new { success = false, message = "يجب تحديد الوكيل عند اختيار نوع التحصيل 'وكيل'" });
+
+        // تحقّق المدة للإجراءات التي تتطلّبها.
+        var months = request.Months;
+        if (action is "activate" or "extend")
+        {
+            if (!months.HasValue || months.Value <= 0 || months.Value > 60)
+                return BadRequest(new { success = false, message = "عدد الأشهر غير صالح (1..60)" });
+        }
+
+        if (action == "changeProfile" && string.IsNullOrWhiteSpace(request.ProfileId))
+            return BadRequest(new { success = false, message = "معرّف الباقة مطلوب لتغيير الباقة" });
+
+        var maintenanceFee = Math.Max(0, request.MaintenanceFee ?? 0);
+        var manualDiscount = Math.Max(0, request.ManualDiscount ?? 0);
+
+        // 1) العزل الصارم + فكّ التشفير في الذاكرة فقط.
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        // 2) idempotency: معرّف عملية فريد — من العميل إن أُرسل (وصالح) وإلا نولّده خادمياً.
+        var transactionId = NormalizeTransactionId(request.TransactionId);
+
+        var alreadyLogged = await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .AnyAsync(l => l.FtthTransactionId == transactionId && l.CompanyId == companyId, ct);
+        if (alreadyLogged)
+            return Conflict(new { success = false, message = "العملية مُنفّذة مسبقاً (معرّف عملية مكرّر)", transactionId });
+
+        var safePhone = Trim(request.Phone);
+        var note = Trim(request.Note);
+
+        try
+        {
+            var password = _secretProtector.Unprotect(account.PasswordEncrypted); // في الذاكرة فقط
+
+            // 3) جلب السعر خادمياً من activationData (لا نثق بالعميل في السعر).
+            //    للـ extend قد لا يعيد سعراً — نستخدم activationData نفسه؛ إن غاب يبقى 0 (منطق بديل في المحاسبة).
+            decimal basePrice = 0;
+            string? planName = null;
+            try
+            {
+                var activationRaw = await _sasClient.SasGetAsync(
+                    account.ServerUrl, account.Username, password, $"user/activationData/{uid}", ct);
+                (basePrice, planName) = ParseActivationData(activationRaw);
+            }
+            catch (SasServiceUnavailableException)
+            {
+                // إذا تعذّر جلب السعر لا نُجهض كلياً: نُكمل بسعر 0 (يُسجَّل تحذير) لأن الإجراء قد ينجح دون سعر معروف.
+                _logger.LogWarning("تعذّر جلب activationData للمشترك {Uid} — سيُستخدم سعر 0", uid);
+            }
+
+            // 4) تنفيذ الإجراء على SAS4 (مالي: money_collected=true + transaction_id للـ idempotency على طرف الساس).
+            var sasParams = BuildActionParams(action, months, request.ProfileId, transactionId);
+            string actionRaw;
+            try
+            {
+                actionRaw = await _sasClient.UserActionAsync(
+                    account.ServerUrl, account.Username, password, uid, action, sasParams, ct);
+            }
+            catch (SasServiceUnavailableException ex)
+            {
+                // فشل SAS4/الخدمة → نُعيد الخطأ بلا أي قيد محاسبي.
+                _logger.LogWarning(ex, "فشل تنفيذ إجراء الساس {Action} للمشترك {Uid} — لا قيد", action, uid);
+                return StatusCode(502, new { success = false, message = "تعذّر تنفيذ العملية على نظام الساس" });
+            }
+
+            // 5) عند النجاح: إنشاء SubscriptionLog(Source=Sas) ثم القيد المحاسبي الموحّد.
+            var opType = action == "activate" ? "purchase" : "renewal";
+            // نفس معادلة RecordAsync حرفياً (CompanyDiscount=0): netFromCompany = basePrice (إن >0)
+            // أو PlanPrice وإلا؛ هنا PlanPrice=basePrice ليتطابق الطرفان. companyDiscountProfit=0.
+            var netFromCompany = basePrice; // CompanyDiscount=0
+            var collectedAmount = netFromCompany + maintenanceFee - manualDiscount; // ما يدفعه العميل
+
+            var log = new SubscriptionLog
+            {
+                Source = SubscriptionLogSource.Sas,
+                SasAccountId = account.Id,
+                SubscriberUid = uid,
+                SubscriberUsername = Trim(request.SubscriberUsername) ?? ParseUsername(actionRaw),
+                PlanName = planName ?? Trim(request.ProfileId),
+                OperationType = opType,
+                CollectionType = collectionType,
+                BasePrice = basePrice,
+                CompanyDiscount = 0,
+                MaintenanceFee = maintenanceFee,
+                ManualDiscount = manualDiscount,
+                SystemDiscountEnabled = request.SystemDiscountEnabled,
+                // PlanPrice = basePrice ليستخدمه فرع البديل في RecordAsync عند basePrice=0 بنفس النتيجة.
+                PlanPrice = basePrice,
+                PhoneNumber = safePhone,
+                CommitmentPeriod = months,
+                Currency = "IQD",
+                CompanyId = account.CompanyId,
+                UserId = account.OwnerUserId,
+                FtthTransactionId = transactionId,
+                SessionId = transactionId,
+                LinkedAgentId = collectionType == "agent" ? request.LinkedAgentId : null,
+                ActivationDate = DateTime.UtcNow,
+                SubscriptionNotes = note
+            };
+
+            await _unitOfWork.SubscriptionLogs.AddAsync(log, ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            // القيد المحاسبي — لا يُسقط السجل عند الفشل (try/catch كما FTTH).
+            Guid? journalEntryId = null;
+            try
+            {
+                var input = new Sadara.API.Services.SubscriptionAccountingInput
+                {
+                    BasePrice = basePrice,
+                    CompanyDiscount = 0,
+                    ManualDiscount = manualDiscount,
+                    MaintenanceFee = maintenanceFee,
+                    // PlanPrice = basePrice (فرع البديل في RecordAsync عند basePrice=0) — يُنتج نفس collectedAmount.
+                    PlanPrice = basePrice,
+                    SystemDiscountEnabled = request.SystemDiscountEnabled,
+                    CollectionType = collectionType,
+                    LinkedAgentId = collectionType == "agent" ? request.LinkedAgentId : null,
+                    PlanName = log.PlanName,
+                    CustomerName = log.SubscriberUsername,
+                    OperationType = opType,
+                    EntryDate = log.ActivationDate
+                };
+
+                journalEntryId = await _accounting.RecordAsync(log, input, account.CompanyId, account.OwnerUserId, ct);
+                if (journalEntryId.HasValue)
+                {
+                    log.JournalEntryId = journalEntryId;
+                    _unitOfWork.SubscriptionLogs.Update(log);
+                    await _unitOfWork.SaveChangesAsync(ct);
+                }
+            }
+            catch (Exception exAcc)
+            {
+                _logger.LogWarning(exAcc, "فشل إنشاء القيد المحاسبي لسجل الساس {LogId} — السجل حُفظ بدونه", log.Id);
+            }
+
+            return Ok(new
+            {
+                success = true,
+                logId = log.Id,
+                journalEntryId,
+                receipt = new
+                {
+                    operationType = action switch
+                    {
+                        "activate" => "تم تفعيل اشتراك",
+                        "extend" => "تم تجديد الاشتراك",
+                        "changeProfile" => "تم تغيير الباقة",
+                        _ => "عملية اشتراك"
+                    },
+                    subscriberUsername = log.SubscriberUsername,
+                    planName = log.PlanName,
+                    months,
+                    basePrice,
+                    maintenanceFee,
+                    manualDiscount,
+                    collectedAmount,
+                    currency = "IQD",
+                    collectionType,
+                    transactionId,
+                    activatedByUserId = account.OwnerUserId
+                }
+            });
+        }
+        catch (SasServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "خدمة الساس غير متاحة أثناء التفعيل المحاسبي");
+            return StatusCode(503, new { success = false, message = "خدمة الساس غير متاحة حالياً" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في التفعيل المحاسبي عبر خدمة الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
     }
 
     /// <summary>تنفيذ إجراء جماعي على مشتركين — كتابة (manage).</summary>
@@ -1512,6 +1740,126 @@ public class SasAgentController : ControllerBase
         }
     }
 
+    // ---------- مساعدات التفعيل المحاسبي (activate-billed) ----------
+
+    /// <summary>الحد الأقصى لطول معرّف العملية (idempotency) الممرَّر/المخزَّن.</summary>
+    private const int MaxTransactionIdLength = 64;
+
+    /// <summary>
+    /// يطبّع معرّف العملية (idempotency): يقبل قيمة العميل إن كانت غير فارغة ومعقولة الطول،
+    /// وإلا يولّد Guid جديداً خادمياً (لا يُعتمد على العميل لضمان الفرادة).
+    /// </summary>
+    private static string NormalizeTransactionId(string? clientTxn)
+    {
+        if (!string.IsNullOrWhiteSpace(clientTxn))
+        {
+            var v = clientTxn.Trim();
+            if (v.Length is > 0 and <= MaxTransactionIdLength)
+                return v;
+        }
+        return Guid.NewGuid().ToString("N");
+    }
+
+    /// <summary>
+    /// يبني وسائط إجراء الساس المالي: method=credit + money_collected=true + transaction_id،
+    /// مع months للتفعيل/التمديد أو profile_id لتغيير الباقة.
+    /// </summary>
+    private static Dictionary<string, object?> BuildActionParams(
+        string action, int? months, string? profileId, string transactionId)
+    {
+        var p = new Dictionary<string, object?>
+        {
+            ["method"] = "credit",
+            ["money_collected"] = true,
+            ["transaction_id"] = transactionId
+        };
+        if (action is "activate" or "extend" && months.HasValue)
+            p["months"] = months.Value;
+        if (action == "changeProfile" && !string.IsNullOrWhiteSpace(profileId))
+            p["profile_id"] = profileId.Trim();
+        return p;
+    }
+
+    /// <summary>
+    /// يحلّل استجابة <c>user/activationData/{uid}</c> لاستخراج السعر المطلوب (BasePrice) واسم الباقة.
+    /// يقرأ <c>n_required_amount</c> (أو <c>required_amount</c>) من الجذر أو <c>data</c>؛ يُرجع (0, null) بأمان إن تعذّر.
+    /// </summary>
+    private static (decimal basePrice, string? planName) ParseActivationData(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return (0, null);
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+
+            // قد تكون البيانات في الجذر أو تحت "data".
+            System.Text.Json.JsonElement node = root;
+            if (root.ValueKind == System.Text.Json.JsonValueKind.Object
+                && root.TryGetProperty("data", out var dataEl)
+                && dataEl.ValueKind == System.Text.Json.JsonValueKind.Object)
+                node = dataEl;
+
+            decimal price = ReadDecimal(node, "n_required_amount") ?? ReadDecimal(node, "required_amount") ?? 0;
+            string? plan = ReadString(node, "profile_name") ?? ReadString(node, "profile");
+
+            return (price < 0 ? 0 : price, plan);
+        }
+        catch
+        {
+            return (0, null);
+        }
+    }
+
+    /// <summary>يحاول قراءة اسم المستخدم من استجابة الإجراء الخام (إن وُجد)؛ null بأمان.</summary>
+    private static string? ParseUsername(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+            if (root.ValueKind != System.Text.Json.JsonValueKind.Object)
+                return null;
+            return ReadString(root, "username")
+                ?? (root.TryGetProperty("data", out var d) && d.ValueKind == System.Text.Json.JsonValueKind.Object
+                    ? ReadString(d, "username")
+                    : null);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>يقرأ قيمة عددية (decimal) من خاصيّة JSON (رقم أو نص رقمي)؛ null إن غابت/غير صالحة.</summary>
+    private static decimal? ReadDecimal(System.Text.Json.JsonElement obj, string name)
+    {
+        if (obj.ValueKind != System.Text.Json.JsonValueKind.Object || !obj.TryGetProperty(name, out var el))
+            return null;
+        if (el.ValueKind == System.Text.Json.JsonValueKind.Number && el.TryGetDecimal(out var d))
+            return d;
+        if (el.ValueKind == System.Text.Json.JsonValueKind.String
+            && decimal.TryParse(el.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var s))
+            return s;
+        return null;
+    }
+
+    /// <summary>يقرأ قيمة نصّية من خاصيّة JSON؛ null إن غابت/فارغة.</summary>
+    private static string? ReadString(System.Text.Json.JsonElement obj, string name)
+    {
+        if (obj.ValueKind != System.Text.Json.JsonValueKind.Object || !obj.TryGetProperty(name, out var el))
+            return null;
+        if (el.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            var v = el.GetString();
+            return string.IsNullOrWhiteSpace(v) ? null : v;
+        }
+        return null;
+    }
+
     /// <summary>
     /// وسائط الاستعلام المسموح تمريرها لخدمة الساس (قائمة سماح صارمة، غير حسّاسة لحالة الأحرف).
     /// أي مفتاح خارج هذه القائمة يُتجاهَل.
@@ -1587,6 +1935,37 @@ public record BulkRenewRequest(
 public record SasActionRequest(
     string Action,
     System.Text.Json.JsonElement? Params);
+
+/// <summary>
+/// طلب تفعيل/تجديد/تغيير باقة مشترك ساس مع قيد محاسبي (محاسبة موحّدة مع FTTH).
+/// السعر (BasePrice) يُجلب خادمياً من activationData — لا من هذا الطلب.
+/// companyId/userId/accountId مختومة خادمياً من الحساب المملوك — لا من العميل.
+/// </summary>
+/// <param name="Action">الإجراء: activate | extend | changeProfile.</param>
+/// <param name="Months">عدد الأشهر (مطلوب لـ activate/extend).</param>
+/// <param name="ProfileId">معرّف الباقة (مطلوب لـ changeProfile).</param>
+/// <param name="CollectionType">نوع التحصيل: cash | credit | agent (افتراضي cash).</param>
+/// <param name="MaintenanceFee">أجور صيانة/هامش اختياري (≥0).</param>
+/// <param name="ManualDiscount">خصم يدوي اختياري للعميل (≥0).</param>
+/// <param name="SystemDiscountEnabled">هل خصم الشركة مفعّل (افتراضي true).</param>
+/// <param name="LinkedAgentId">الوكيل المرتبط (مطلوب عند CollectionType=agent).</param>
+/// <param name="Phone">هاتف المشترك (اختياري — للإيصال/الواتساب لاحقاً).</param>
+/// <param name="SubscriberUsername">اسم مستخدم المشترك (اختياري — للإيصال).</param>
+/// <param name="TransactionId">معرّف عملية للـ idempotency (اختياري — يُولَّد خادمياً إن غاب).</param>
+/// <param name="Note">ملاحظة اختيارية.</param>
+public record SasActivateBilledRequest(
+    string Action,
+    int? Months,
+    string? ProfileId,
+    string CollectionType,
+    decimal? MaintenanceFee,
+    decimal? ManualDiscount,
+    bool SystemDiscountEnabled = true,
+    Guid? LinkedAgentId = null,
+    string? Phone = null,
+    string? SubscriberUsername = null,
+    string? TransactionId = null,
+    string? Note = null);
 
 /// <summary>طلب إجراء جماعي — معرّفات + اسم الإجراء + وسائط حرّة (JSON).</summary>
 public record SasBulkActionRequest(

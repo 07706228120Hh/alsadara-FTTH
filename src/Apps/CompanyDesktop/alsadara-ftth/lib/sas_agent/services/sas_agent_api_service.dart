@@ -421,6 +421,55 @@ class SasAgentApiService {
     return _asMap(res);
   }
 
+  /// تفعيل/تمديد/تغيير باقة **مفوتر** — ينفّذ على الساس ثم يختم القيد المزدوج
+  /// وحركة الاشتراك في دفتر الصدارة الموحّد (Source=sas)، ويعيد بيانات الإيصال.
+  ///
+  /// ⚠️ السعر يُحسب **خادمياً** من `activationData` — لا نُرسل السعر من العميل.
+  /// الهوية والعزل (شركة + مالك) مختومان خادمياً. [transactionId] يمنع التكرار.
+  ///
+  /// [action] أحد: `activate` · `extend` · `changeProfile`.
+  /// يعيد خريطة الرد الكاملة متضمّنةً `receipt` (operationType/planName/months/
+  /// basePrice/maintenanceFee/manualDiscount/collectedAmount/currency/
+  /// collectionType/transactionId/activatedByUserId/subscriberUsername).
+  Future<Map<String, dynamic>> activateBilled(
+    String id,
+    String uid, {
+    required String action,
+    int? months,
+    String? profileId,
+    required String collectionType,
+    num? maintenanceFee,
+    num? manualDiscount,
+    bool systemDiscountEnabled = true,
+    String? linkedAgentId,
+    String? phone,
+    String? subscriberUsername,
+    String? transactionId,
+    String? note,
+  }) async {
+    final res = await _api.post(
+      '$_base/accounts/$id/users/$uid/activate-billed',
+      body: {
+        'action': action,
+        if (months != null) 'months': months,
+        if (profileId != null && profileId.isNotEmpty) 'profileId': profileId,
+        'collectionType': collectionType,
+        if (maintenanceFee != null) 'maintenanceFee': maintenanceFee,
+        if (manualDiscount != null) 'manualDiscount': manualDiscount,
+        'systemDiscountEnabled': systemDiscountEnabled,
+        if (linkedAgentId != null && linkedAgentId.isNotEmpty)
+          'linkedAgentId': linkedAgentId,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        if (subscriberUsername != null && subscriberUsername.isNotEmpty)
+          'subscriberUsername': subscriberUsername,
+        if (transactionId != null && transactionId.isNotEmpty)
+          'transactionId': transactionId,
+        if (note != null && note.isNotEmpty) 'note': note,
+      },
+    );
+    return _asMapKeepTop(res);
+  }
+
   /// إجراء جماعي على عدة مشتركين على الحساب نفسه.
   Future<Map<String, dynamic>> usersBulkAction(
     String id,
@@ -821,6 +870,11 @@ class SasAgentApiService {
     }
     return const [];
   }
+
+  /// أداة داخلية: يعيد الخريطة العُليا كما هي (بلا فكّ `data`) — لردود تحمل
+  /// حقولاً في الجذر مباشرةً مثل `{success, logId, journalEntryId, receipt}`.
+  Map<String, dynamic> _asMapKeepTop(dynamic raw) =>
+      raw is Map ? raw.cast<String, dynamic>() : <String, dynamic>{};
 
   /// أداة داخلية: يفكّ غلاف `data` إن كان خريطة، وإلا يعيد الخريطة كما هي.
   Map<String, dynamic> _asMap(dynamic raw) {

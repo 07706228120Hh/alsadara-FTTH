@@ -152,12 +152,17 @@ public class SasAgentAdminAgentsTests
         UserRole role,
         ISasServiceClient sasClient)
     {
+        var uow = new Sadara.Infrastructure.Repositories.UnitOfWork(db);
+        var accounting = new Sadara.API.Services.SubscriptionAccountingService(
+            uow, NullLogger<Sadara.API.Services.SubscriptionAccountingService>.Instance);
         var ctrl = new SasAgentController(
             db,
             tenant,
             new FakeProtector(),
             sasClient,
-            NullLogger<SasAgentController>.Instance);
+            NullLogger<SasAgentController>.Instance,
+            uow,
+            accounting);
 
         // role_id يُقرأ أولاً في IsCompanyAdminOrAbove (CompanyAdmin=20).
         var claims = new List<Claim>

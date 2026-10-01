@@ -179,12 +179,20 @@ public class SasAgentExtendedTests
         ISasServiceClient? sasClient = null,
         ISecretProtector? protector = null)
     {
+        // المحاسبة الموحّدة (activate-billed) لا تُستدعى في هذه الاختبارات، لكن المُنشئ يتطلّبها:
+        // نمرّر UnitOfWork حقيقياً فوق سياق الاختبار + خدمة محاسبة حقيقية عليه.
+        var uow = new Sadara.Infrastructure.Repositories.UnitOfWork(db);
+        var accounting = new Sadara.API.Services.SubscriptionAccountingService(
+            uow, NullLogger<Sadara.API.Services.SubscriptionAccountingService>.Instance);
+
         var ctrl = new SasAgentController(
             db,
             tenant,
             protector ?? new FakeProtector(),
             sasClient ?? new ConfigurableSasClient(),
-            NullLogger<SasAgentController>.Instance);
+            NullLogger<SasAgentController>.Instance,
+            uow,
+            accounting);
 
         var claims = new List<Claim>
         {

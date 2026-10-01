@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../services/thermal_printer_service.dart';
+import '../../services/receipt_template_storage.dart';
+import '../../services/print_template_storage.dart';
+import '../../services/vps_auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
+import '../whatsapp/whatsapp.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_subscriber_form_page.dart';
@@ -671,57 +676,28 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     );
   }
 
-  // ─── الإجراءات: تفعيل ───
+  // ─── الإجراءات المفوترة: تفعيل / تمديد / تغيير باقة ───
+  //
+  // كلّها تمرّ بالخط المطابق لـ FTTH:
+  //   جلب السعر (activationData) → حوار تحصيل غنيّ → activateBilled →
+  //   إعادة تحميل (الانتهاء الجديد) → طباعة ثم واتساب (خلفياً، معزول).
 
-  Future<void> _doActivate() async {
-    final ok = await _confirm(
-      title: 'تفعيل الخدمة',
-      body: 'سيتم تفعيل اشتراك المشترك «${_username ?? _uid}». متابعة؟',
-      confirmText: 'تفعيل',
-      confirmColor: AppTheme.successColor,
-    );
-    if (ok != true) return;
-    await _run(
-      () => _api.userAction(_aid, _uid, 'activate', params: {
-        'method': 'credit',
-        'money_collected': true,
-        'transaction_id': _txn(),
-      }),
-      'تم تفعيل المشترك',
-    );
-  }
-
-  String? get _username => widget.username ?? _detail?['username']?.toString();
-
-  // ─── تمديد ───
+  Future<void> _doActivate() => _runBilledAction(
+        action: 'activate',
+        operationType: 'تم تفعيل اشتراك',
+        confirmColor: AppTheme.successColor,
+      );
 
   Future<void> _doExtend() async {
-    final periodsCtl = TextEditingController(text: '1');
-    final result = await showDialog<int>(
-      context: context,
-      builder: (ctx) => _InputDialog(
-        title: 'تمديد الخدمة',
-        controller: periodsCtl,
-        label: 'عدد الفترات/الأشهر',
-        keyboard: TextInputType.number,
-        digitsOnly: true,
-        confirmText: 'تمديد',
-        parse: (t) => int.tryParse(t.trim()) ?? 1,
-      ),
-    );
-    if (result == null) return;
-    await _run(
-      () => _api.userAction(_aid, _uid, 'extend', params: {
-        'periods': result,
-        'count': result,
-        'method': 'credit',
-        'transaction_id': _txn(),
-      }),
-      'تم التمديد',
+    final months = await _askMonths(title: 'تمديد الخدمة', confirmText: 'متابعة');
+    if (months == null) return;
+    await _runBilledAction(
+      action: 'extend',
+      operationType: 'تم التمديد',
+      months: months,
+      confirmColor: AppTheme.infoColor,
     );
   }
-
-  // ─── تغيير الباقة ───
 
   Future<void> _doChangeProfile() async {
     List<Map<String, dynamic>> profiles;
@@ -732,7 +708,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       return;
     }
     if (!mounted) return;
-    final chosen = await showDialog<int>(
+    final chosen = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
@@ -742,8 +718,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           children: [
             for (final p in profiles)
               SimpleDialogOption(
-                onPressed: () =>
-                    Navigator.pop(ctx, _asNum(p['id'])?.toInt()),
+                onPressed: () => Navigator.pop(ctx, p),
                 child: Text('${p['name'] ?? p['id']}',
                     style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               ),
@@ -752,14 +727,134 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       ),
     );
     if (chosen == null) return;
-    await _run(
-      () => _api.userAction(_aid, _uid, 'changeProfile', params: {
-        'profile_id': chosen,
-        'method': 'credit',
-        'transaction_id': _txn(),
-      }),
-      'تم تغيير الباقة',
+    final profileId =
+        _asNum(chosen['id'])?.toInt().toString() ?? chosen['id']?.toString();
+    if (profileId == null || profileId.isEmpty) {
+      _toast('باقة غير صالحة', isError: true);
+      return;
+    }
+    await _runBilledAction(
+      action: 'changeProfile',
+      operationType: 'تم تغيير الباقة',
+      profileId: profileId,
+      profileNameHint: chosen['name']?.toString(),
+      confirmColor: AppTheme.accentColor,
     );
+  }
+
+  String? get _username => widget.username ?? _detail?['username']?.toString();
+
+  /// حوار إدخال عدد الأشهر (للتمديد) — يعيد عدداً ≥ 1 أو null عند الإلغاء.
+  Future<int?> _askMonths(
+      {required String title, required String confirmText}) async {
+    final ctl = TextEditingController(text: '1');
+    return showDialog<int>(
+      context: context,
+      builder: (ctx) => _InputDialog(
+        title: title,
+        controller: ctl,
+        label: 'عدد الأشهر',
+        keyboard: TextInputType.number,
+        digitsOnly: true,
+        confirmText: confirmText,
+        parse: (t) {
+          final n = int.tryParse(t.trim()) ?? 1;
+          return n < 1 ? 1 : n;
+        },
+      ),
+    );
+  }
+
+  /// الخط المفوتر الموحّد: يجلب السعر، يعرض حوار التحصيل، ينفّذ `activateBilled`،
+  /// يعيد التحميل، ثم يُطلق الطباعة/الواتساب خلفياً.
+  Future<void> _runBilledAction({
+    required String action,
+    required String operationType,
+    int? months,
+    String? profileId,
+    String? profileNameHint,
+    Color confirmColor = AppTheme.primaryColor,
+  }) async {
+    // 1) جلب بيانات التفعيل (السعر + رصيد الوكيل + VAT + اسم الباقة) — خادمياً.
+    setState(() => _busy = true);
+    Map<String, dynamic> actData = const {};
+    try {
+      final raw = await _api.sasGet(_aid, 'user/activationData/$_uid');
+      actData = _asMap(raw);
+    } catch (_) {
+      // قد لا تتوفّر (التمديد مثلاً) — نكمل بعرض «غير متاح» بسلاسة.
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+
+    final price = _asNum(actData['n_required_amount'] ??
+        actData['required_amount'] ??
+        actData['price']);
+    final managerBalance = _asNum(actData['manager_balance'] ??
+        actData['managerBalance'] ??
+        actData['balance']);
+    final vat = _asNum(actData['vat']);
+    final planName = (profileNameHint?.trim().isNotEmpty == true)
+        ? profileNameHint!.trim()
+        : (actData['profile_name'] ??
+                actData['profileName'] ??
+                _overview?['profile_name'] ??
+                _detail?['profile_id'])
+            ?.toString();
+
+    // 2) حوار التحصيل الغنيّ.
+    final collection = await _showCollectionDialog(
+      operationType: operationType,
+      planName: planName,
+      months: months,
+      price: price,
+      vat: vat,
+      managerBalance: managerBalance,
+      confirmColor: confirmColor,
+    );
+    if (collection == null || !mounted) return;
+
+    // 3) التنفيذ المفوتر ثم إعادة التحميل + ما بعد التفعيل (طباعة/واتساب).
+    setState(() => _busy = true);
+    try {
+      final res = await _api.activateBilled(
+        _aid,
+        _uid,
+        action: action,
+        months: months,
+        profileId: profileId,
+        collectionType: collection.collectionType,
+        maintenanceFee: collection.maintenanceFee,
+        manualDiscount: collection.manualDiscount,
+        systemDiscountEnabled: true,
+        phone: _subscriberPhone(),
+        subscriberUsername: _username,
+        transactionId: _txn(),
+      );
+      if (!mounted) return;
+      _toast('تم: $operationType');
+      await _loadMain();
+      final receipt = (res['receipt'] is Map)
+          ? (res['receipt'] as Map).cast<String, dynamic>()
+          : <String, dynamic>{};
+      await _runPostActivation(receipt);
+    } catch (e) {
+      if (mounted) {
+        _toast('فشل: ${e.toString().replaceFirst('Exception: ', '').trim()}',
+            isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// رقم هاتف المشترك من التفاصيل (خام، يُطبَّع لاحقاً عند الإرسال).
+  String? _subscriberPhone() {
+    final p = (_detail?['phone'] ?? _detail?['mobile'] ?? _overview?['phone'])
+        ?.toString()
+        .trim();
+    return (p == null || p.isEmpty) ? null : p;
   }
 
   // ─── إضافة ترافيك ───
@@ -986,6 +1081,407 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     }
   }
 
+  // ─── حوار التحصيل الغنيّ (على نمط FTTH) ───
+
+  /// يعرض ملخّص العملية (المشترك/الباقة/المدة/السعر/رصيد الوكيل) + منتقي نوع
+  /// التحصيل + حقلَي أجور الصيانة والخصم اليدوي (اختياريان). يتحقّق من كفاية
+  /// الرصيد قبل الإتاحة. يعيد [_SasCollection] عند التأكيد أو null عند الإلغاء.
+  Future<_SasCollection?> _showCollectionDialog({
+    required String operationType,
+    String? planName,
+    int? months,
+    num? price,
+    num? vat,
+    num? managerBalance,
+    Color confirmColor = AppTheme.primaryColor,
+  }) {
+    String collectionType = 'cash';
+    final maintenanceCtl = TextEditingController();
+    final discountCtl = TextEditingController();
+
+    // رصيد كافٍ؟ (السعر ≤ رصيد الوكيل) — إن تعذّر السعر/الرصيد نسمح بالمتابعة.
+    bool sufficient() {
+      if (price == null || managerBalance == null) return true;
+      return price <= managerBalance;
+    }
+
+    return showDialog<_SasCollection>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: StatefulBuilder(
+          builder: (ctx, setLocal) {
+            final enough = sufficient();
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(SasUi.radius)),
+              title: Row(
+                children: [
+                  Icon(Icons.point_of_sale_rounded, color: confirmColor, size: 24),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text('تأكيد التحصيل — $operationType',
+                        style: GoogleFonts.cairo(
+                            fontWeight: FontWeight.w800, color: confirmColor)),
+                  ),
+                ],
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: confirmColor.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(SasUi.radiusSm),
+                          border: Border.all(
+                              color: confirmColor.withValues(alpha: 0.18)),
+                        ),
+                        child: Column(
+                          children: [
+                            _summaryRow('المشترك', _username ?? _uid, mono: true),
+                            if (planName != null && planName.trim().isNotEmpty)
+                              _summaryRow('الباقة', planName),
+                            if (months != null)
+                              _summaryRow('المدة', '$months شهر'),
+                            _summaryRow(
+                                'السعر',
+                                price != null
+                                    ? _money(price)
+                                    : 'غير متاح',
+                                strong: true,
+                                color: confirmColor),
+                            if (vat != null && vat > 0)
+                              _summaryRow('ضريبة (VAT)', _money(vat)),
+                            _summaryRow(
+                              'رصيد الوكيل',
+                              managerBalance != null
+                                  ? _money(managerBalance)
+                                  : 'غير متاح',
+                              color: enough
+                                  ? AppTheme.successColor
+                                  : AppTheme.errorColor,
+                              strong: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text('نوع التحصيل',
+                          style: GoogleFonts.cairo(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: Colors.grey[700])),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _collectionChip('cash', 'نقد', collectionType,
+                              (v) => setLocal(() => collectionType = v)),
+                          _collectionChip('credit', 'أجل', collectionType,
+                              (v) => setLocal(() => collectionType = v)),
+                          _collectionChip('agent', 'وكيل', collectionType,
+                              (v) => setLocal(() => collectionType = v)),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _miniField(
+                                maintenanceCtl, 'أجور صيانة (اختياري)'),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _miniField(
+                                discountCtl, 'خصم يدوي (اختياري)'),
+                          ),
+                        ],
+                      ),
+                      if (!enough) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Icon(Icons.error_outline_rounded,
+                                color: AppTheme.errorColor, size: 18),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'رصيد الوكيل لا يكفي لإتمام هذه العملية.',
+                                style: GoogleFonts.cairo(
+                                    color: AppTheme.errorColor,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('إلغاء',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                ),
+                FilledButton(
+                  onPressed: enough
+                      ? () => Navigator.pop(
+                            ctx,
+                            _SasCollection(
+                              collectionType: collectionType,
+                              maintenanceFee:
+                                  num.tryParse(maintenanceCtl.text.trim()),
+                              manualDiscount:
+                                  num.tryParse(discountCtl.text.trim()),
+                            ),
+                          )
+                      : null,
+                  style: FilledButton.styleFrom(backgroundColor: confirmColor),
+                  child: Text('تأكيد وتحصيل',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryRow(String label, String value,
+      {bool strong = false, bool mono = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Text('$label: ',
+              style: GoogleFonts.cairo(
+                  color: Colors.grey[600], fontSize: 12.5)),
+          Expanded(
+            child: mono
+                ? Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(value,
+                        textAlign: TextAlign.start,
+                        style: GoogleFonts.robotoMono(
+                            fontSize: 12.5,
+                            fontWeight:
+                                strong ? FontWeight.w800 : FontWeight.w600,
+                            color: color ?? const Color(0xFF1A1A2E))),
+                  )
+                : Text(value,
+                    style: GoogleFonts.cairo(
+                        fontSize: 12.5,
+                        fontWeight:
+                            strong ? FontWeight.w800 : FontWeight.w600,
+                        color: color ?? const Color(0xFF1A1A2E))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _collectionChip(String value, String label, String selected,
+      ValueChanged<String> onPick) {
+    final active = value == selected;
+    return ChoiceChip(
+      selected: active,
+      onSelected: (_) => onPick(value),
+      label: Text(label,
+          style: GoogleFonts.cairo(
+              fontWeight: FontWeight.w700,
+              color: active ? Colors.white : Colors.grey[700])),
+      selectedColor: AppTheme.primaryColor,
+      backgroundColor: Colors.grey.withValues(alpha: 0.10),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SasUi.radiusSm)),
+    );
+  }
+
+  Widget _miniField(TextEditingController ctl, String label) {
+    return TextField(
+      controller: ctl,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+      ],
+      style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 13),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 11.5),
+        isDense: true,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(SasUi.radiusSm)),
+      ),
+    );
+  }
+
+  String _money(num v) {
+    final n = v == v.roundToDouble() ? v.round() : v;
+    return n.toString();
+  }
+
+  // ─── ما بعد التفعيل: طباعة ثم واتساب (خلفياً، كلٌّ معزول) ───
+
+  /// يُطلق الطباعة ثم رسالة الواتساب بعد نجاح التفعيل المفوتر. كلٌّ داخل
+  /// try/catch مستقل حتى لا يُسقط تعذّرُ أحدهما العمليةَ الناجحة (نمط
+  /// `_runBackgroundPostActivation` في FTTH).
+  Future<void> _runPostActivation(Map<String, dynamic> receipt) async {
+    // 1) الطباعة الحرارية.
+    try {
+      final vars = _buildSasReceiptVars(receipt);
+      final conds = ReceiptTemplateStorageV2.buildConditions(
+        showCustomerInfo: true,
+        showServiceDetails: true,
+        showPaymentDetails: true,
+        showAdditionalInfo: false, // إخفاء قسم الشبكة/الجهاز (FTTH)
+        showContactInfo: true,
+      );
+      await ThermalPrinterService.printFromReceiptTemplate(
+        variableValues: vars,
+        conditions: conds,
+      );
+    } catch (_) {
+      // تعذّرت الطباعة — لا نُفشل العملية.
+    }
+
+    // 2) رسالة الواتساب (مشروطة بتوفّر الرقم/الإعداد).
+    try {
+      await _sendActivationWhatsApp(receipt);
+    } catch (_) {
+      // تعذّر الإرسال — صامت (العملية الأساسية نجحت).
+    }
+  }
+
+  /// يملأ متغيّرات قالب الإيصال من بيانات إيصال الساس + تفاصيل المشترك.
+  Map<String, String> _buildSasReceiptVars(Map<String, dynamic> receipt) {
+    final now = DateTime.now();
+    final activationDate = '${now.day}/${now.month}/${now.year}';
+    final activationTime =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    final opType =
+        (receipt['operationType'] ?? 'تم تفعيل اشتراك').toString();
+    final planName = (receipt['planName'] ?? _overview?['profile_name'] ?? '')
+        .toString();
+    final months = (receipt['months'] ?? '').toString();
+    final collected = _asNum(receipt['collectedAmount']);
+    final basePrice = _asNum(receipt['basePrice']);
+    final manualDiscount = _asNum(receipt['manualDiscount']);
+    final currency = (receipt['currency'] ?? 'IQD').toString();
+    final endDate =
+        (_detail?['expiration'] ?? receipt['endDate'] ?? '').toString();
+    final activatedBy =
+        VpsAuthService.instance.currentUser?.fullName ?? '';
+
+    final header = PrintTemplateStorage.defaultTemplate;
+
+    return ReceiptTemplateStorageV2.buildVariableValues(
+      operationType: opType,
+      customerName: _subscriberFullName(),
+      customerPhone: _subscriberPhone() ?? 'غير متوفر',
+      paymentMethod: _collectionTypeAr(receipt['collectionType']?.toString()),
+      totalPrice: collected != null ? _money(collected) : '0',
+      currency: currency,
+      endDate: endDate,
+      activatedBy: activatedBy,
+      receiptNumber: '0', // يُستبدل بعدّاد الوصل داخل الخدمة
+      selectedPlan: planName,
+      commitmentPeriod: months,
+      activationDate: activationDate,
+      activationTime: activationTime,
+      basePrice: basePrice != null ? _money(basePrice) : null,
+      manualDiscount: manualDiscount != null ? _money(manualDiscount) : null,
+      // ترويسة الشركة من القالب القديم.
+      companyName: header.companyName,
+      companySubtitle: header.companySubtitle,
+      contactInfo: header.contactInfo,
+      footerMessage: header.footerMessage,
+      // المشغّل.
+      operatorFullName: activatedBy,
+      // حقول الشبكة/الجهاز تُترك فارغة (إيصال ساس أنظف).
+    );
+  }
+
+  /// الاسم الكامل للمشترك من التفاصيل، وإلا اسم المستخدم.
+  String _subscriberFullName() {
+    final f = (_detail?['firstname'] ?? '').toString().trim();
+    final l = (_detail?['lastname'] ?? '').toString().trim();
+    final full = '$f $l'.trim();
+    return full.isNotEmpty ? full : (_username ?? _uid);
+  }
+
+  /// تحويل نوع التحصيل إلى العربية للعرض/الطباعة.
+  String _collectionTypeAr(String? type) {
+    switch (type) {
+      case 'cash':
+        return 'نقد';
+      case 'credit':
+        return 'أجل';
+      case 'agent':
+        return 'وكيل';
+      default:
+        return type ?? 'نقد';
+    }
+  }
+
+  /// يرسل رسالة واتساب «تم التفعيل/التجديد» الغنيّة عبر المُرسِل المضبوط.
+  /// صامت إن تعذّر الرقم أو الإعداد (لا يُفشل العملية).
+  Future<void> _sendActivationWhatsApp(Map<String, dynamic> receipt) async {
+    final rawPhone = _subscriberPhone();
+    if (rawPhone == null) return;
+    final normalized = normalizeIraqiPhone(rawPhone);
+    if (normalized == null) return;
+
+    // بناء نصّ الرسالة من القالب الغنيّ المخزّن.
+    final store = LocalTemplateStore();
+    final tpl = await store.byId(WaTemplateIds.renewed);
+    if (tpl == null) return;
+
+    final collected = _asNum(receipt['collectedAmount']);
+    final message = tpl.render({
+      'name': _subscriberFullName(),
+      'username': _username ?? '',
+      'profile': (receipt['planName'] ?? '').toString(),
+      'plan': (receipt['planName'] ?? '').toString(),
+      'price': collected != null ? _money(collected) : '',
+      'currency': (receipt['currency'] ?? 'IQD').toString(),
+      'months': (receipt['months'] ?? '').toString(),
+      'endDate': (_detail?['expiration'] ?? '').toString(),
+      'expiration': (_detail?['expiration'] ?? '').toString(),
+      'paymentMethod': _collectionTypeAr(receipt['collectionType']?.toString()),
+      'activatedBy': VpsAuthService.instance.currentUser?.fullName ?? '',
+    });
+
+    final settings = await WaSettingsStore().load();
+    // الإرسال التلقائي الصامت يقتصر على الأنماط الآلية (خادم محلي/Meta)؛ النمط
+    // اليدوي (app) يفتح نافذة لكل رسالة فلا يُشغَّل تلقائياً هنا (يبقى للإرسال
+    // اليدوي/الجماعي من شاشاته)، تفادياً لإزعاج تدفّق التفعيل.
+    final sender = settings.buildSender();
+    try {
+      if (!sender.capabilities.automated) return;
+      final status = await sender.status();
+      if (!status.ready) return; // الخادم غير جاهز/غير مربوط — تخطَّ بصمت.
+      await sender.sendOne(
+        WaOutgoing(
+          recipient:
+              WaRecipient(name: _subscriberFullName(), rawPhone: rawPhone),
+          text: message,
+        ),
+      );
+    } finally {
+      sender.dispose();
+    }
+  }
+
   // ─── حوار تأكيد موحّد ───
 
   Future<bool?> _confirm({
@@ -1023,6 +1519,31 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
 
   // معرّف عملية فريد لمنع تكرار العمليات المالية.
   String _txn() => 'txn-${DateTime.now().microsecondsSinceEpoch}';
+
+  /// يفكّ غلاف `data` إن وُجد، وإلا يعيد الخريطة كما هي.
+  Map<String, dynamic> _asMap(dynamic raw) {
+    if (raw is Map) {
+      final data = raw['data'];
+      if (data is Map) return data.cast<String, dynamic>();
+      return raw.cast<String, dynamic>();
+    }
+    return <String, dynamic>{};
+  }
+}
+
+// ─── نتيجة حوار التحصيل ───
+
+/// اختيار المستخدم في حوار التحصيل: نوع التحصيل + الحقول الاختيارية.
+class _SasCollection {
+  final String collectionType; // cash | credit | agent
+  final num? maintenanceFee;
+  final num? manualDiscount;
+
+  const _SasCollection({
+    required this.collectionType,
+    this.maintenanceFee,
+    this.manualDiscount,
+  });
 }
 
 // ─── نموذج حقل داخلي ───

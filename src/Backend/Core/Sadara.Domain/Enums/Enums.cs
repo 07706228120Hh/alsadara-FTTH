@@ -342,7 +342,10 @@ public enum JournalReferenceType
     CustomerReceipt = 19,
 
     /// <summary>سند صرف لمورد</summary>
-    SupplierPayment = 20
+    SupplierPayment = 20,
+
+    /// <summary>عملية اشتراك ساس (تفعيل/تجديد/تغيير باقة) — دفتر موحّد مع FTTH</summary>
+    SasSubscription = 21
 }
 
 /// <summary>
@@ -689,4 +692,17 @@ public enum ReturnStatus
 
     /// <summary>ملغي</summary>
     Cancelled = 2
+}
+
+/// <summary>
+/// مصدر سجل الاشتراك (SubscriptionLog) — لتمييز عمليات FTTH عن عمليات الساس
+/// ضمن الدفتر المحاسبي الموحّد. الافتراضي Ftth للتوافق مع السجلات القائمة.
+/// </summary>
+public enum SubscriptionLogSource
+{
+    /// <summary>عملية FTTH (المصدر التاريخي الافتراضي)</summary>
+    Ftth = 0,
+
+    /// <summary>عملية وكيل ساس (SAS)</summary>
+    Sas = 1
 }

@@ -1,3 +1,5 @@
+using Sadara.Domain.Enums;
+
 namespace Sadara.Domain.Entities;
 
 /// <summary>
@@ -114,4 +116,18 @@ public class SubscriptionLog : BaseEntity<long>
     
     /// <summary>تاريخ الاستحقاق القادم (نفس يوم التفعيل + شهر)</summary>
     public DateTime? NextRenewalDate { get; set; }
+
+    // ============ مصدر الساس - SAS Agent Source (دفتر موحّد مع FTTH) ============
+
+    /// <summary>مصدر العملية: Ftth=0 (افتراضي) أو Sas=1 — للتمييز في الدفتر المحاسبي الموحّد</summary>
+    public SubscriptionLogSource Source { get; set; } = SubscriptionLogSource.Ftth;
+
+    /// <summary>معرّف حساب الساس (SasAccount) الذي تمّت العملية عبره — للعزل والتتبّع (Source=Sas)</summary>
+    public Guid? SasAccountId { get; set; }
+
+    /// <summary>معرّف المشترك في نظام الساس (uid) — (Source=Sas)</summary>
+    public string? SubscriberUid { get; set; }
+
+    /// <summary>اسم المستخدم للمشترك في نظام الساس — (Source=Sas)</summary>
+    public string? SubscriberUsername { get; set; }
 }
