@@ -22,6 +22,13 @@ public class SasServiceClient : ISasServiceClient
     private const string InternalSecretHeader = "X-Internal-Secret";
     private const string DefaultBaseUrl = "http://127.0.0.1:8100";
 
+    // إسقاط الحقول ذات القيمة null عند التسلسل: الخدمة (pydantic) ترفض null لحقل غير Optional
+    // رغم وجود default؛ الحذف يجعلها تستخدم الافتراضي (يمنع 422 على page/count/days/query… لكل النقاط).
+    private static readonly System.Text.Json.JsonSerializerOptions _jsonOptions = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
+
     private readonly HttpClient _httpClient;
     private readonly ILogger<SasServiceClient> _logger;
     private readonly string _internalSecret;
@@ -211,14 +218,14 @@ public class SasServiceClient : ISasServiceClient
         string uid, string action, object? parameters = null,
         CancellationToken cancellationToken = default)
         => PostBodyForRawAsync("/users/action",
-            new { serverUrl, username, password, uid, action, @params = parameters }, cancellationToken);
+            new { serverUrl, username, password, uid, action, payload = parameters }, cancellationToken);
 
     public Task<string> UsersBulkActionAsync(
         string serverUrl, string username, string password,
         IEnumerable<string> uids, string action, object? parameters = null,
         CancellationToken cancellationToken = default)
         => PostBodyForRawAsync("/users/bulk-action",
-            new { serverUrl, username, password, uids = uids?.ToArray() ?? Array.Empty<string>(), action, @params = parameters }, cancellationToken);
+            new { serverUrl, username, password, user_ids = uids?.ToArray() ?? Array.Empty<string>(), action, payload = parameters }, cancellationToken);
 
     public Task<string> CreateUserAsync(
         string serverUrl, string username, string password,
@@ -230,7 +237,7 @@ public class SasServiceClient : ISasServiceClient
         string serverUrl, string username, string password,
         string uid, object payload, CancellationToken cancellationToken = default)
         => PostBodyForRawAsync("/users/update",
-            new { serverUrl, username, password, uid, payload }, cancellationToken);
+            new { serverUrl, username, password, uid, changes = payload }, cancellationToken);
 
     public Task<string> DeleteUserAsync(
         string serverUrl, string username, string password,
@@ -271,7 +278,7 @@ public class SasServiceClient : ISasServiceClient
         string mid, string action, object? parameters = null,
         CancellationToken cancellationToken = default)
         => PostBodyForRawAsync("/managers/action",
-            new { serverUrl, username, password, mid, action, @params = parameters }, cancellationToken);
+            new { serverUrl, username, password, mid, action, payload = parameters }, cancellationToken);
 
     public Task<string> DeleteManagerAsync(
         string serverUrl, string username, string password,
@@ -719,7 +726,7 @@ public class SasServiceClient : ISasServiceClient
 
         var request = new HttpRequestMessage(method, path)
         {
-            Content = JsonContent.Create(payload)
+            Content = JsonContent.Create(payload, payload.GetType(), options: _jsonOptions)
         };
         if (!string.IsNullOrEmpty(_internalSecret))
             request.Headers.Add(InternalSecretHeader, _internalSecret);
