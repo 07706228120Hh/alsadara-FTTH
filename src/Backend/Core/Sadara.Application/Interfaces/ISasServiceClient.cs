@@ -241,7 +241,7 @@ public interface ISasServiceClient
         string accountId,
         string? search = null,
         string? status = null,
-        bool? expiring = null,
+        string? expiring = null,
         int? page = null,
         int? count = null,
         CancellationToken cancellationToken = default);

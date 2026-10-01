@@ -1374,7 +1374,7 @@ public class SasAgentController : ControllerBase
         Guid id,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
-        [FromQuery] bool? expiring = null,
+        [FromQuery] string? expiring = null,
         [FromQuery] int? page = null,
         [FromQuery] int? count = null,
         CancellationToken ct = default)

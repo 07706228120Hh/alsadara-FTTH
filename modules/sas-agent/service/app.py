@@ -302,8 +302,9 @@ class SystemHealthRequest(_Creds):
 
 
 class RenewalCandidatesRequest(_Creds):
-    days:        int            = Field(default=7, ge=1, le=365)
-    query:       Dict[str, Any] = Field(default_factory=dict)
+    # Optional + تسامح مع null (البوّابة قد ترسل null صريحاً لحقل غير مُمرَّر)
+    days:        Optional[int]            = Field(default=7)
+    query:       Optional[Dict[str, Any]] = Field(default=None)
 
 
 class RenewalBulkRequest(_Creds):
@@ -428,8 +429,9 @@ class LocalSubscribersRequest(_LocalBase):
     search:   Optional[str] = None
     status:   Optional[str] = None   # active | expired | manual
     expiring: Optional[str] = None   # overdue | today | soon3 | soon7
-    page:     int = Field(default=1, ge=1)
-    count:    int = Field(default=50, ge=1, le=500)
+    # Optional + تسامح مع null (البوّابة ترسل null صريحاً عند عدم التمرير)
+    page:     Optional[int] = Field(default=1)
+    count:    Optional[int] = Field(default=50)
 
 
 class SubscriberSummaryRequest(_LocalBase):
@@ -644,7 +646,7 @@ async def system_health(body: SystemHealthRequest) -> Any:
 async def renewal_candidates(body: RenewalCandidatesRequest) -> Any:
     return await _call_sas(body.serverUrl, body.username, body.password,
                            _fetch_renewal_candidates,
-                           days=body.days, extra_query=body.query)
+                           days=(body.days or 7), extra_query=(body.query or {}))
 
 
 @app.post("/renewal/bulk", tags=["sas"], dependencies=_DEP)
@@ -986,9 +988,9 @@ async def subscribers_local(body: LocalSubscribersRequest) -> Any:
 
     total = len(rows)
 
-    # ترقيم
-    page  = max(1, body.page)
-    count = max(1, min(body.count, 500))
+    # ترقيم (تسامح مع null)
+    page  = max(1, body.page or 1)
+    count = max(1, min(body.count or 50, 500))
     start = (page - 1) * count
     page_rows = rows[start:start + count]
 

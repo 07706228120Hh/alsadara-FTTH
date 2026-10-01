@@ -126,7 +126,7 @@ public class SasAgentExtendedTests
         // التخزين المحلي
         public Task<string> TestAccountAsync(string s, string u, string p, CancellationToken ct = default) => Handle("test_account");
         public Task<string> SyncAccountAsync(string s, string u, string p, string accountId, CancellationToken ct = default) => Handle("sync_account");
-        public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, bool? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Handle("local_subscribers");
+        public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Handle("local_subscribers");
         public Task<string> GetSubscribersSummaryAsync(string accountId, CancellationToken ct = default) => Handle("subscribers_summary");
         public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => Handle("submit_report");
         public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => Handle("list_reports");
@@ -1539,7 +1539,7 @@ internal sealed class CapturingSasClient : ISasServiceClient
     public Task<string> SasPostAsync(string s, string u, string p, string path, object? payload = null, CancellationToken ct = default) => Empty();
     public Task<string> TestAccountAsync(string s, string u, string p, CancellationToken ct = default) => Empty();
     public Task<string> SyncAccountAsync(string s, string u, string p, string accountId, CancellationToken ct = default) => Empty();
-    public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, bool? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Empty();
+    public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Empty();
     public Task<string> GetSubscribersSummaryAsync(string accountId, CancellationToken ct = default) => Empty();
     public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => Empty();
     public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => Empty();
