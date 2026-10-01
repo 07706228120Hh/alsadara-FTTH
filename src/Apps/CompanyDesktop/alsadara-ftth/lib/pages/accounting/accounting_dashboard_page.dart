@@ -32,6 +32,7 @@ import 'fixed_expenses_page.dart';
 import 'withdrawal_requests_page.dart';
 import 'zone_maintenance_fees_page.dart';
 import 'activation_profitability_page.dart';
+import 'sas_accounting_page.dart';
 import 'trial_balance_page.dart';
 import 'income_statement_page.dart';
 import 'balance_sheet_page.dart';
@@ -533,6 +534,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                 ActivationProfitabilityPage(companyId: widget.companyId)),
             forceExpanded: alwaysExpanded),
         _sidebarBtn(
+            icon: Icons.router,
+            label: 'نظام الساس',
+            color: const Color(0xFF009688),
+            permKey: 'accounting.ftth_operators',
+            onTap: () =>
+                _navigateTo(SasAccountingPage(companyId: widget.companyId)),
+            forceExpanded: alwaysExpanded),
+        _sidebarBtn(
             icon: Icons.money_off,
             label: 'طلبات السحب',
             color: const Color(0xFFE74C3C),
@@ -818,6 +827,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                     color: const Color(0xFF00897B),
                     onTap: () => _navigateTo(
                         ActivationProfitabilityPage(companyId: widget.companyId)),
+                  ),
+                  _sidebarBtn(
+                    icon: Icons.router,
+                    label: 'نظام الساس',
+                    color: const Color(0xFF009688),
+                    permKey: 'accounting.ftth_operators',
+                    onTap: () => _navigateTo(
+                        SasAccountingPage(companyId: widget.companyId)),
                   ),
                   _sidebarBtn(
                     icon: Icons.money_off,
@@ -1570,6 +1587,15 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           color: const Color(0xFF00897B),
           onTap: () => _navigateTo(
               FtthOperatorsDashboardPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.ftth_operators'))
+        _SectionItem(
+          title: 'نظام الساس',
+          subtitle: 'ملخّص محاسبة عمليات نظام الساس',
+          icon: Icons.router,
+          color: const Color(0xFF009688),
+          onTap: () =>
+              _navigateTo(SasAccountingPage(companyId: widget.companyId)),
         ),
       if (pm.canView('accounting.client_accounts'))
         _SectionItem(

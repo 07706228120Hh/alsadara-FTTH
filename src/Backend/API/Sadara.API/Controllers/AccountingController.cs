@@ -4474,6 +4474,125 @@ public class AccountingController : ControllerBase
     }
 
     /// <summary>
+    /// ملخّص محاسبة نظام الساس — يلخّص عمليات الدفتر الموحّد ذات <c>Source == Sas</c> فقط.
+    /// company-scoped عبر <paramref name="companyId"/> (نفس نمط <see cref="GetDashboard"/>) مع فلتر مدى تاريخي اختياري.
+    /// آمِن ضد null: أصفار وقوائم فارغة عند عدم وجود سجلّات. بلا أسرار (حقول محاسبية/عرض فقط).
+    /// </summary>
+    [HttpGet("sas-summary")]
+    public async Task<IActionResult> GetSasSummary(
+        [FromQuery] Guid? companyId = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null)
+    {
+        try
+        {
+            // عمليات الساس فقط من الدفتر الموحّد.
+            var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => l.Source == SubscriptionLogSource.Sas);
+
+            if (companyId.HasValue)
+                query = query.Where(l => l.CompanyId == companyId);
+
+            // فلتر المدى على CreatedAt (المحلي → UTC بنفس اصطلاح -3 المتّبع في كشف الحساب).
+            if (from.HasValue)
+            {
+                var fromUtc = DateTime.SpecifyKind(from.Value.AddHours(-3), DateTimeKind.Utc);
+                query = query.Where(l => l.CreatedAt >= fromUtc);
+            }
+            if (to.HasValue)
+            {
+                // نهاية اليوم: +1 يوم ثم < الحد (شامل ليوم «to»).
+                var toUtc = DateTime.SpecifyKind(to.Value.AddHours(-3).AddDays(1), DateTimeKind.Utc);
+                query = query.Where(l => l.CreatedAt < toUtc);
+            }
+
+            var totalOperations = await query.CountAsync();
+            var totalCollected = await query.SumAsync(l => (decimal?)l.PlanPrice) ?? 0m;
+            var totalBasePrice = await query.SumAsync(l => (decimal?)l.BasePrice) ?? 0m;
+            var totalMaintenance = await query.SumAsync(l => (decimal?)l.MaintenanceFee) ?? 0m;
+            var totalManualDiscount = await query.SumAsync(l => (decimal?)l.ManualDiscount) ?? 0m;
+
+            // توزيع حسب نوع التحصيل (نقد/أجل/وكيل/ماستر...).
+            var byCollectionType = await query
+                .GroupBy(l => l.CollectionType)
+                .Select(g => new
+                {
+                    type = g.Key,
+                    count = g.Count(),
+                    total = g.Sum(x => (decimal?)x.PlanPrice) ?? 0m
+                })
+                .ToListAsync();
+
+            // توزيع حسب حساب الساس.
+            var byAccount = await query
+                .GroupBy(l => l.SasAccountId)
+                .Select(g => new
+                {
+                    sasAccountId = g.Key,
+                    count = g.Count(),
+                    total = g.Sum(x => (decimal?)x.PlanPrice) ?? 0m
+                })
+                .ToListAsync();
+
+            // آخر 30 حركة تنازلياً.
+            var recentRows = await query
+                .OrderByDescending(l => l.CreatedAt)
+                .Take(30)
+                .Select(l => new
+                {
+                    l.Id,
+                    l.CreatedAt,
+                    l.SubscriberUsername,
+                    l.PlanName,
+                    l.BasePrice,
+                    l.PlanPrice,
+                    l.CollectionType,
+                    l.OperationType,
+                    l.ReconciliationNotes,
+                    l.JournalEntryId
+                })
+                .ToListAsync();
+
+            var recent = recentRows.Select(l => new
+            {
+                id = l.Id,
+                createdAt = l.CreatedAt,
+                subscriberUsername = l.SubscriberUsername,
+                planName = l.PlanName,
+                basePrice = l.BasePrice ?? 0m,
+                collectedAmount = l.PlanPrice ?? 0m,
+                collectionType = l.CollectionType,
+                // «action» الصريح من ReconciliationNotes، وإلا يُشتق من OperationType.
+                action = !string.IsNullOrWhiteSpace(l.ReconciliationNotes)
+                    ? l.ReconciliationNotes
+                    : (string.Equals(l.OperationType, "purchase", StringComparison.OrdinalIgnoreCase) ? "activate" : "extend"),
+                journalEntryId = l.JournalEntryId
+            }).ToList();
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    totalOperations,
+                    totalCollected,
+                    totalBasePrice,
+                    totalMaintenance,
+                    totalManualDiscount,
+                    byCollectionType,
+                    byAccount,
+                    recent
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في ملخّص محاسبة الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
     /// كشف حساب - Account Statement
     /// </summary>
     [HttpGet("accounts/{id}/statement")]
