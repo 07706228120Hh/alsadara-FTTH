@@ -345,7 +345,10 @@ public enum JournalReferenceType
     SupplierPayment = 20,
 
     /// <summary>عملية اشتراك ساس (تفعيل/تجديد/تغيير باقة) — دفتر موحّد مع FTTH</summary>
-    SasSubscription = 21
+    SasSubscription = 21,
+
+    /// <summary>تسديد ذمة مواطن/مشترك في دفتر ذمم الساس (آجل)</summary>
+    SasCitizenPayment = 22
 }
 
 /// <summary>

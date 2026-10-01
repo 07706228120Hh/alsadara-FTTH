@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sadara.API.Authorization;
+using Sadara.API.Constants;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
@@ -808,6 +809,389 @@ public class SasAgentController : ControllerBase
         }
     }
 
+    // ==================== دفتر ذمم المواطنين (المرحلة 3 — التسجيل الآجل) ====================
+    // معزولة بالعزل الثلاثي عبر GetOwnedAccountAsync (شركة + مالك + غير محذوف).
+    // الذمة تُقيَّد على المشترك بمفتاح (SasAccountId:SubscriberUid) تحت «ذمم المواطنين 1180».
+    // بلا أسرار في الردود. CompanyId/SasAccountId مختومة من الحساب خادمياً — لا من العميل.
+
+    /// <summary>
+    /// كشف حساب ذمّة المشترك/المواطن (الآجل) — قراءة (view).
+    ///
+    /// يجمع:
+    ///  - الشحنات: سجلّات الساس الآجلة (<c>SubscriptionLogs</c> حيث SasAccountId+SubscriberUid و CollectionType='citizen').
+    ///  - التسديدات: <c>SasCitizenPayments</c> لنفس المفتاح.
+    ///  - الرصيد المستحق: رصيد الحساب الفرعي لذمّة المشترك تحت 1180 (أصول: مدين−دائن)، أو Σشحنات − Σتسديدات كبديل.
+    ///
+    /// الرد: <c>{ charges:[...], payments:[...], balance }</c>. بلا أسرار.
+    /// </summary>
+    [HttpGet("accounts/{id}/users/{uid}/statement")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetCitizenStatement(Guid id, string uid, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var safeUid = Trim(uid);
+        if (safeUid == null)
+            return BadRequest(new { success = false, message = "معرّف المشترك مطلوب" });
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            // 1) الشحنات الآجلة لهذا المشترك ضمن هذا الحساب (دفاع بالعمق فوق المفتاح الثلاثي).
+            var charges = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => l.SasAccountId == account.Id
+                            && l.Source == SubscriptionLogSource.Sas
+                            && l.CompanyId == account.CompanyId
+                            && l.SubscriberUid == safeUid
+                            && l.CollectionType == "citizen")
+                .OrderBy(l => l.CreatedAt)
+                .Select(l => new
+                {
+                    l.Id,
+                    l.CreatedAt,
+                    l.PlanName,
+                    l.OperationType,
+                    l.BasePrice,
+                    l.PlanPrice,
+                    l.Currency,
+                    l.JournalEntryId
+                })
+                .ToListAsync(ct);
+
+            // 2) التسديدات لنفس المشترك ضمن هذا الحساب.
+            var payments = await _db.SasCitizenPayments
+                .Where(p => p.CompanyId == account.CompanyId
+                            && p.SasAccountId == account.Id
+                            && p.SubscriberUid == safeUid
+                            && !p.IsDeleted)
+                .OrderBy(p => p.CreatedAt)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.CreatedAt,
+                    p.Amount,
+                    p.Method,
+                    p.Note,
+                    p.JournalEntryId
+                })
+                .ToListAsync(ct);
+
+            // 3) الرصيد المستحق: من رصيد الحساب الفرعي لذمّة المشترك (أدقّ)، وإلا Σشحنات − Σتسديدات.
+            var balance = await GetCitizenBalanceAsync(account, safeUid, charges.Sum(c => c.PlanPrice ?? 0), payments.Sum(p => p.Amount), ct);
+
+            var chargeDtos = charges.Select(c => new
+            {
+                id = c.Id,
+                createdAt = c.CreatedAt,
+                type = "charge",
+                planName = c.PlanName,
+                operationType = c.OperationType,
+                amount = c.PlanPrice ?? 0,
+                currency = c.Currency ?? "IQD",
+                journalEntryId = c.JournalEntryId
+            }).ToList();
+
+            var paymentDtos = payments.Select(p => new
+            {
+                id = p.Id,
+                createdAt = p.CreatedAt,
+                type = "payment",
+                amount = p.Amount,
+                method = p.Method,
+                note = p.Note,
+                journalEntryId = p.JournalEntryId
+            }).ToList();
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    subscriberUid = safeUid,
+                    charges = chargeDtos,
+                    payments = paymentDtos,
+                    balance
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب كشف حساب ذمّة المشترك");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// تسديد ذمّة مشترك (الآجل) — كتابة (manage). الجسم: <c>{amount, method('cash'|'master'), note?}</c>.
+    ///
+    /// القيد (Posted فوراً، متوازن): مدين حساب التحصيل (نقد صندوق المشغّل 1110x / إلكتروني 1170)
+    /// + دائن ذمّة المشترك (1180x بمفتاح SasAccountId:SubscriberUid). تُسجَّل الحركة في <c>SasCitizenPayments</c>.
+    ///
+    /// العزل: companyId/userId/accountId مختومة من الحساب خادمياً. يعيد الرصيد الجديد ومعرّف القيد. بلا أسرار.
+    /// </summary>
+    [HttpPost("accounts/{id}/users/{uid}/payment")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> AddCitizenPayment(
+        Guid id,
+        string uid,
+        [FromBody] SasCitizenPaymentRequest request,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var safeUid = Trim(uid);
+        if (safeUid == null)
+            return BadRequest(new { success = false, message = "معرّف المشترك مطلوب" });
+
+        if (request == null || request.Amount <= 0)
+            return BadRequest(new { success = false, message = "مبلغ التسديد يجب أن يكون موجباً" });
+
+        // وسيلة التسديد: نقد (صندوق المشغّل 1110x) أو إلكتروني (1170).
+        var method = string.IsNullOrWhiteSpace(request.Method) ? "cash" : request.Method.Trim().ToLowerInvariant();
+        if (method is not ("cash" or "master"))
+            return BadRequest(new { success = false, message = "وسيلة تسديد غير مدعومة (المتاح: cash | master)" });
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            var amount = request.Amount;
+            var note = Trim(request.Note);
+
+            // اسم المشترك (للوصف) من بيانات المواطن المحفوظة إن وُجدت.
+            var subscriberName = await _db.SasSubscriberProfiles
+                .Where(x => x.CompanyId == account.CompanyId
+                            && x.SasAccountId == account.Id
+                            && x.SubscriberUid == safeUid
+                            && !x.IsDeleted)
+                .Select(x => x.SubscriberUsername)
+                .FirstOrDefaultAsync(ct) ?? safeUid;
+
+            // 1) ضمان وجود الحساب الأب 1180 ثم ذمّة المشترك الفرعية (نفس مفتاح الشحن).
+            await ServiceRequestAccountingHelper.EnsureFixedParentAccount(
+                _unitOfWork, AccountCodes.CitizenReceivables, "ذمم المشتركين (الآجل)", AccountType.Assets, account.CompanyId);
+
+            var citizenPersonId = Sadara.API.Services.SubscriptionAccountingService.DeterministicGuid(CitizenKey(account.Id, safeUid));
+            var citizenAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                _unitOfWork, AccountCodes.CitizenReceivables, citizenPersonId, subscriberName, account.CompanyId);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            // 2) حساب التحصيل (المدين): صندوق المشغّل (نقد) أو صندوق الدفع الإلكتروني.
+            Account debitAccount;
+            if (method == "cash")
+            {
+                var operatorName = await _unitOfWork.Users.AsQueryable()
+                    .Where(u => u.Id == userId).Select(u => u.FullName).FirstOrDefaultAsync(ct) ?? "مشغل";
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                    _unitOfWork, AccountCodes.Cash, userId, $"صندوق {operatorName}", account.CompanyId);
+                await _unitOfWork.SaveChangesAsync(ct);
+            }
+            else // master
+            {
+                debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.ElectronicPayment, account.CompanyId)
+                    ?? throw new Exception("حساب صندوق الدفع الإلكتروني 1170 غير موجود");
+            }
+
+            // 3) القيد: مدين التحصيل / دائن ذمّة المشترك — بالمبلغ.
+            var payment = new SasCitizenPayment
+            {
+                Id = Guid.NewGuid(),
+                CompanyId = account.CompanyId,
+                SasAccountId = account.Id,
+                SubscriberUid = safeUid,
+                Amount = amount,
+                Method = method,
+                Note = note
+            };
+            await _db.SasCitizenPayments.AddAsync(payment, ct);
+            await _db.SaveChangesAsync(ct);
+
+            var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+            {
+                (debitAccount.Id, amount, 0, $"{debitAccount.Name} - تسديد ذمّة {subscriberName}"),
+                (citizenAccount.Id, 0, amount, $"تسديد ذمّة - {subscriberName}")
+            };
+
+            Guid? journalEntryId = null;
+            try
+            {
+                journalEntryId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                    _unitOfWork, account.CompanyId, userId,
+                    $"تسديد ذمّة مشترك - {subscriberName}",
+                    JournalReferenceType.SasCitizenPayment, payment.Id.ToString(), lines);
+                await _unitOfWork.SaveChangesAsync(ct);
+
+                payment.JournalEntryId = journalEntryId;
+                _db.SasCitizenPayments.Update(payment);
+                await _db.SaveChangesAsync(ct);
+            }
+            catch (Exception exAcc)
+            {
+                _logger.LogWarning(exAcc, "فشل إنشاء قيد تسديد ذمّة المشترك {PaymentId} — الحركة حُفظت بدونه", payment.Id);
+            }
+
+            // 4) الرصيد الجديد بعد التسديد.
+            var newBalance = await GetCitizenBalanceAsync(account, safeUid, null, null, ct);
+
+            return Ok(new
+            {
+                success = true,
+                paymentId = payment.Id,
+                journalEntryId,
+                balance = newBalance,
+                message = "تم تسجيل التسديد بنجاح"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تسجيل تسديد ذمّة المشترك");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// قائمة المدينين (المشتركون ذوو رصيد ذمّة > 0) لهذا الحساب — قراءة (view).
+    ///
+    /// يجمّع الشحنات والتسديدات لكل مشترك (CollectionType='citizen') ويحسب الرصيد = Σشحنات − Σتسديدات،
+    /// ثم يرشّح الموجب فقط. اسم المشترك من بيانات المواطن إن وُجد، وإلا اسم المستخدم من السجل، وإلا الـ uid.
+    ///
+    /// الرد: <c>[{subscriberUid, name, balance}]</c>. العزل: الحساب مملوك + الشركة. بلا أسرار.
+    /// </summary>
+    [HttpGet("accounts/{id}/debtors")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetCitizenDebtors(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            // 1) إجمالي الشحنات الآجلة لكل مشترك.
+            var chargeSums = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => l.SasAccountId == account.Id
+                            && l.Source == SubscriptionLogSource.Sas
+                            && l.CompanyId == account.CompanyId
+                            && l.CollectionType == "citizen"
+                            && l.SubscriberUid != null)
+                .GroupBy(l => l.SubscriberUid!)
+                .Select(g => new { Uid = g.Key, Total = g.Sum(x => x.PlanPrice ?? 0) })
+                .ToListAsync(ct);
+
+            if (chargeSums.Count == 0)
+                return Ok(new { success = true, data = Array.Empty<object>(), total = 0 });
+
+            // 2) إجمالي التسديدات لكل مشترك.
+            var paymentSums = await _db.SasCitizenPayments
+                .Where(p => p.CompanyId == account.CompanyId
+                            && p.SasAccountId == account.Id
+                            && !p.IsDeleted)
+                .GroupBy(p => p.SubscriberUid)
+                .Select(g => new { Uid = g.Key, Total = g.Sum(x => x.Amount) })
+                .ToListAsync(ct);
+
+            var paidByUid = paymentSums.ToDictionary(x => x.Uid, x => x.Total, StringComparer.Ordinal);
+
+            // 3) الرصيد = شحنات − تسديدات؛ المدينون فقط (> 0).
+            var debtorUids = chargeSums
+                .Select(c => new
+                {
+                    c.Uid,
+                    Balance = c.Total - (paidByUid.TryGetValue(c.Uid, out var paid) ? paid : 0)
+                })
+                .Where(x => x.Balance > 0)
+                .ToList();
+
+            if (debtorUids.Count == 0)
+                return Ok(new { success = true, data = Array.Empty<object>(), total = 0 });
+
+            var uids = debtorUids.Select(d => d.Uid).ToList();
+
+            // 4) أسماء المشتركين من بيانات المواطن المحفوظة (إن وُجدت).
+            var names = await _db.SasSubscriberProfiles
+                .Where(x => x.CompanyId == account.CompanyId
+                            && x.SasAccountId == account.Id
+                            && !x.IsDeleted
+                            && uids.Contains(x.SubscriberUid))
+                .Select(x => new { x.SubscriberUid, x.SubscriberUsername, x.FullNameQuad })
+                .ToListAsync(ct);
+            var nameByUid = names.ToDictionary(
+                n => n.SubscriberUid,
+                n => !string.IsNullOrWhiteSpace(n.FullNameQuad) ? n.FullNameQuad! : (n.SubscriberUsername ?? string.Empty),
+                StringComparer.Ordinal);
+
+            var data = debtorUids
+                .OrderByDescending(d => d.Balance)
+                .Select(d => new
+                {
+                    subscriberUid = d.Uid,
+                    name = nameByUid.TryGetValue(d.Uid, out var nm) && !string.IsNullOrWhiteSpace(nm) ? nm : d.Uid,
+                    balance = d.Balance
+                })
+                .ToList();
+
+            return Ok(new { success = true, data, total = data.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب قائمة مدينين الذمم");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// يحسب رصيد ذمّة مشترك: من رصيد حسابه الفرعي تحت 1180 (أدقّ، أصول: مدين−دائن)، وإلا Σشحنات − Σتسديدات.
+    /// عند تمرير <paramref name="chargesTotal"/>/<paramref name="paymentsTotal"/> (محسوبَين مسبقاً) يُستخدمان كبديل بلا استعلام إضافي.
+    /// </summary>
+    private async Task<decimal> GetCitizenBalanceAsync(
+        SasAccount account, string uid, decimal? chargesTotal, decimal? paymentsTotal, CancellationToken ct)
+    {
+        // المسار الأدقّ: رصيد الحساب الفرعي لذمّة المشترك (Description=personId المشتق حتمياً من المفتاح).
+        var citizenPersonId = Sadara.API.Services.SubscriptionAccountingService
+            .DeterministicGuid(CitizenKey(account.Id, uid)).ToString();
+        var parent = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CitizenReceivables, account.CompanyId);
+        if (parent != null)
+        {
+            var sub = await _unitOfWork.Accounts.AsQueryable()
+                .Where(a => a.ParentAccountId == parent.Id
+                            && a.CompanyId == account.CompanyId
+                            && a.Description == citizenPersonId
+                            && a.IsActive)
+                .Select(a => (decimal?)a.CurrentBalance)
+                .FirstOrDefaultAsync(ct);
+            if (sub.HasValue)
+                return sub.Value;
+        }
+
+        // البديل: Σشحنات − Σتسديدات (يُحسب إن لم يُمرَّر مسبقاً).
+        var charges = chargesTotal ?? await _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => l.SasAccountId == account.Id
+                        && l.Source == SubscriptionLogSource.Sas
+                        && l.CompanyId == account.CompanyId
+                        && l.SubscriberUid == uid
+                        && l.CollectionType == "citizen")
+            .SumAsync(l => l.PlanPrice ?? 0, ct);
+
+        var payments = paymentsTotal ?? await _db.SasCitizenPayments
+            .Where(p => p.CompanyId == account.CompanyId
+                        && p.SasAccountId == account.Id
+                        && p.SubscriberUid == uid
+                        && !p.IsDeleted)
+            .SumAsync(p => p.Amount, ct);
+
+        return charges - payments;
+    }
+
     // ---------- مساعدات التسعير وبيانات المواطن ----------
 
     /// <summary>يبني DTO تسعير باقة واحدة من الصفّ المخزّن (إن وُجد)؛ باقة غير مسعّرة ⇒ أصفار. الربح محسوب.</summary>
@@ -1102,10 +1486,10 @@ public class SasAgentController : ControllerBase
         if (action is not ("activate" or "extend" or "changeProfile"))
             return BadRequest(new { success = false, message = "إجراء غير مدعوم (المتاح: activate | extend | changeProfile)" });
 
-        // قائمة سماح لنوع التحصيل (مطابق لمنطق المحاسبة الموحّد).
+        // قائمة سماح لنوع التحصيل (مطابق لمنطق المحاسبة الموحّد). «citizen» = آجل على ذمة المشترك (دفتر الذمم).
         var collectionType = string.IsNullOrWhiteSpace(request.CollectionType) ? "cash" : request.CollectionType.Trim().ToLowerInvariant();
-        if (collectionType is not ("cash" or "credit" or "agent"))
-            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent)" });
+        if (collectionType is not ("cash" or "credit" or "agent" or "citizen"))
+            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent | citizen)" });
 
         if (collectionType == "agent" && (!request.LinkedAgentId.HasValue || request.LinkedAgentId.Value == Guid.Empty))
             return BadRequest(new { success = false, message = "يجب تحديد الوكيل عند اختيار نوع التحصيل 'وكيل'" });
@@ -1321,6 +1705,8 @@ public class SasAgentController : ControllerBase
                 SystemDiscountEnabled = req.SystemDiscountEnabled,
                 CollectionType = collectionType,
                 LinkedAgentId = collectionType == "agent" ? req.LinkedAgentId : null,
+                // الذمة تُقيَّد على المشترك نفسه بمفتاح (SasAccountId:SubscriberUid) عند collectionType=citizen.
+                CitizenKey = collectionType == "citizen" ? CitizenKey(account.Id, uid) : null,
                 PlanName = log.PlanName,
                 CustomerName = log.SubscriberUsername,
                 OperationType = opType,
@@ -1395,12 +1781,12 @@ public class SasAgentController : ControllerBase
         if (action is not ("activate" or "extend"))
             return BadRequest(new { success = false, message = "إجراء غير مدعوم للتجديد الجماعي (المتاح: activate | extend)" });
 
-        // قائمة سماح لنوع التحصيل (مطابق لمنطق المحاسبة الموحّد).
+        // قائمة سماح لنوع التحصيل (مطابق لمنطق المحاسبة الموحّد). «citizen» = آجل على ذمة المشترك (دفتر الذمم).
         var collectionType = string.IsNullOrWhiteSpace(request.CollectionType)
             ? "cash"
             : request.CollectionType.Trim().ToLowerInvariant();
-        if (collectionType is not ("cash" or "credit" or "agent"))
-            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent)" });
+        if (collectionType is not ("cash" or "credit" or "agent" or "citizen"))
+            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent | citizen)" });
 
         if (collectionType == "agent" && (!request.LinkedAgentId.HasValue || request.LinkedAgentId.Value == Guid.Empty))
             return BadRequest(new { success = false, message = "يجب تحديد الوكيل عند اختيار نوع التحصيل 'وكيل'" });
@@ -2380,6 +2766,12 @@ public class SasAgentController : ControllerBase
     }
 
     /// <summary>
+    /// مفتاح ذمة المشترك الفريد في دفتر الذمم: «SasAccountId:SubscriberUid».
+    /// يضمن ربط ذمة كل مشترك بحساب فرعي ثابت تحت «ذمم المواطنين 1180» عبر الزمن والعمليات.
+    /// </summary>
+    private static string CitizenKey(Guid accountId, string uid) => $"{accountId:N}:{uid}";
+
+    /// <summary>
     /// نمط تمرير موحّد: يحصر النطاق، يجلب الحساب بالمطابقة الصارمة، يفكّ التشفير في الذاكرة،
     /// ينادي خدمة الساس، ويعيد JSON خاماً — مع ترجمة تعذّر الخدمة إلى 503.
     /// </summary>
@@ -2968,6 +3360,15 @@ public record SasProfileDto(
     double? Longitude,
     string? PropertyType,
     string? Landmark);
+
+// ==================== DTOs دفتر ذمم المواطنين (SasCitizenPayment) ====================
+// accountId/uid من المسار؛ companyId/sasAccountId مختومة خادمياً — لا من العميل.
+
+/// <summary>طلب تسديد ذمّة مشترك (آجل) — المبلغ موجب؛ الوسيلة cash|master؛ ملاحظة اختيارية.</summary>
+public record SasCitizenPaymentRequest(
+    decimal Amount,
+    string? Method,
+    string? Note);
 
 /// <summary>طلب حفظ بيانات المواطن الموسّعة (upsert) — كل الحقول اختيارية. (accountId/uid من المسار؛ companyId خادمياً.)</summary>
 public record SasProfileUpsertRequest(

@@ -165,6 +165,7 @@ public class SadaraDbContext : DbContext
     public DbSet<CompanySasSettings> CompanySasSettings => Set<CompanySasSettings>();
     public DbSet<SasPackagePrice> SasPackagePrices => Set<SasPackagePrice>();
     public DbSet<SasSubscriberProfile> SasSubscriberProfiles => Set<SasSubscriberProfile>();
+    public DbSet<SasCitizenPayment> SasCitizenPayments => Set<SasCitizenPayment>();
 
     // ==================== Inventory System (نظام المخازن والمواد) ====================
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
@@ -438,6 +439,12 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<SasSubscriberProfile>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<SasSubscriberProfile>()
             .HasIndex(x => new { x.CompanyId, x.SasAccountId, x.SubscriberUid }).IsUnique();
+
+        // تسديدات ذمم المواطنين (الآجل): فهرس مركّب (شركة + حساب + uid + تاريخ) لسرعة كشف الحساب.
+        modelBuilder.Entity<SasCitizenPayment>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<SasCitizenPayment>()
+            .HasIndex(x => new { x.CompanyId, x.SasAccountId, x.SubscriberUid, x.CreatedAt });
+        modelBuilder.Entity<SasCitizenPayment>().Property(x => x.Amount).HasPrecision(18, 2);
 
         // Reminder Settings
         modelBuilder.Entity<ReminderSettings>()

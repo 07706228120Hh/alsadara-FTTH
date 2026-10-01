@@ -78,8 +78,14 @@ public sealed class SubscriptionAccountingInput
     /// <summary>هل خصم الشركة مفعّل (ممرّر للعميل)؟ عند false يتحوّل الخصم إلى ربح شركة (4120).</summary>
     public bool SystemDiscountEnabled { get; init; } = true;
 
-    /// <summary>نوع التحصيل: cash | credit | master | agent | technician.</summary>
+    /// <summary>نوع التحصيل: cash | credit | master | agent | technician | citizen.</summary>
     public string CollectionType { get; init; } = "cash";
+
+    /// <summary>
+    /// مفتاح ذمة المشترك/المواطن الفريد (مطلوب عند CollectionType=citizen).
+    /// يُحوَّل حتمياً إلى معرّف الحساب الفرعي تحت «ذمم المواطنين 1180» (نمط SasAccountId:SubscriberUid).
+    /// </summary>
+    public string? CitizenKey { get; init; }
 
     /// <summary>الوكيل المرتبط (مطلوب عند CollectionType=agent).</summary>
     public Guid? LinkedAgentId { get; init; }
@@ -216,6 +222,23 @@ public sealed class SubscriptionAccountingService : ISubscriptionAccountingServi
                 debitAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.ElectronicPayment, companyId)
                     ?? throw new Exception("حساب صندوق الدفع الإلكتروني 1170 غير موجود");
                 description = $"{opType} {planName} - {customerName} - ماستر (إلكتروني)";
+                break;
+
+            case "citizen":
+                // الآجل على المشترك/المواطن نفسه: ذمة فرعية تحت «ذمم المواطنين 1180».
+                if (string.IsNullOrWhiteSpace(input.CitizenKey))
+                    throw new Exception("يجب تحديد مفتاح المشترك (CitizenKey) عند اختيار نوع التحصيل 'citizen'");
+
+                // ضمان وجود الحساب الأب الثابت 1180 (أصول) — يُنشأ لكل شركة عند الحاجة.
+                await ServiceRequestAccountingHelper.EnsureFixedParentAccount(
+                    _unitOfWork, AccountCodes.CitizenReceivables, "ذمم المشتركين (الآجل)", AccountType.Assets, companyId);
+
+                // المفتاح النصّي يُحوَّل حتمياً إلى Guid ثابت ليربط ذمة المشترك عبر الزمن (نفس المفتاح ⇒ نفس الحساب الفرعي).
+                var citizenPersonId = DeterministicGuid(input.CitizenKey!);
+                debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                    _unitOfWork, AccountCodes.CitizenReceivables, citizenPersonId, customerName, companyId);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                description = $"{opType} {planName} - {customerName} - آجل على المشترك";
                 break;
 
             case "agent":
@@ -398,5 +421,17 @@ public sealed class SubscriptionAccountingService : ISubscriptionAccountingServi
         }
 
         return entry?.Id;
+    }
+
+    /// <summary>
+    /// يحوّل مفتاحاً نصّياً (مثل «SasAccountId:SubscriberUid») إلى Guid حتمي ثابت (MD5 على UTF-8).
+    /// يضمن أن نفس المشترك يربط دائماً نفس الحساب الفرعي للذمة عبر <see cref="ServiceRequestAccountingHelper.FindOrCreateSubAccount"/>
+    /// (الذي يطابق الحساب الفرعي بـ Description=personId). غير تشفيري — لمجرّد التوليد الحتمي.
+    /// </summary>
+    internal static Guid DeterministicGuid(string key)
+    {
+        using var md5 = System.Security.Cryptography.MD5.Create();
+        var hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(key ?? string.Empty));
+        return new Guid(hash);
     }
 }

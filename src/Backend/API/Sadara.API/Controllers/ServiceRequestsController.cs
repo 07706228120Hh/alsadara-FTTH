@@ -2910,6 +2910,55 @@ public static class ServiceRequestAccountingHelper
             .FirstOrDefaultAsync(a => a.Code == code && a.CompanyId == companyId && a.IsActive);
     }
 
+    /// <summary>
+    /// يضمن وجود حساب أب ثابت بكود معروف للشركة؛ يُنشئه إن غاب (بلا حساب أب أعلى — جذر منطقي لفرعه).
+    /// يُستخدم لحسابات الذمم/التحصيل الثابتة (مثل «ذمم المواطنين 1180») التي يفترض <see cref="FindOrCreateSubAccount"/>
+    /// وجود أبها مسبقاً وإلا يرمي. آمن للتزامن (يلتقط تعارض الإنشاء المتوازي ويعيد البحث).
+    /// </summary>
+    /// <param name="code">كود الحساب الأب الثابت (مثل 1180).</param>
+    /// <param name="name">اسم الحساب العربي (يُستخدم عند الإنشاء فقط).</param>
+    /// <param name="type">نوع الحساب المحاسبي (Assets/Liabilities/…).</param>
+    public static async Task<Account> EnsureFixedParentAccount(
+        IUnitOfWork unitOfWork, string code, string name, AccountType type, Guid companyId)
+    {
+        var existing = await FindAccountByCode(unitOfWork, code, companyId);
+        if (existing != null)
+            return existing;
+
+        var account = new Account
+        {
+            Id = Guid.NewGuid(),
+            Code = code,
+            Name = name,
+            NameEn = null,
+            AccountType = type,
+            ParentAccountId = null,
+            OpeningBalance = 0,
+            CurrentBalance = 0,
+            IsSystemAccount = true,
+            // مستوى معقول لحساب تجميعي تحت فئته الرئيسية (مثل الأصول المتداولة) — ليس حساب ترحيل نهائي.
+            Level = 2,
+            IsLeaf = false,
+            IsActive = true,
+            Description = null,
+            CompanyId = companyId
+        };
+
+        try
+        {
+            await unitOfWork.Accounts.AddAsync(account);
+            await unitOfWork.SaveChangesAsync();
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            // تعارض إنشاء متوازٍ لنفس الكود — نعيد البحث عن الحساب المُنشأ.
+            var retry = await FindAccountByCode(unitOfWork, code, companyId);
+            if (retry != null) return retry;
+            throw; // فشل حقيقي — ليس تعارض تزامن
+        }
+        return account;
+    }
+
     public static async Task<Account> FindOrCreateSubAccount(
         IUnitOfWork unitOfWork, string parentCode, Guid personId, string personName, Guid companyId)
     {

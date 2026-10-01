@@ -36,6 +36,9 @@ public static class AccountCodes
     /// <summary>صندوق الدفع الإلكتروني (ماستر كارد)</summary>
     public const string ElectronicPayment = "1170";
 
+    /// <summary>ذمم المشتركين/المواطنين (الآجل) - أب لحسابات ذمم المواطنين (دفتر الذمم)</summary>
+    public const string CitizenReceivables = "1180";
+
     // ═══════════════════════════════════════════
     // الالتزامات - Liabilities (2000)
     // ═══════════════════════════════════════════
