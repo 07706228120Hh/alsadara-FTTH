@@ -1212,16 +1212,43 @@ public class SasAgentController : ControllerBase
         //    للـ extend قد لا يعيد سعراً — نستخدم activationData نفسه؛ إن غاب يبقى 0 (منطق بديل في المحاسبة).
         decimal basePrice = 0;
         string? planName = null;
+        string? activationProfileId = null; // profileId مستنتَج من activationData (للبحث في جدول التسعير).
         try
         {
             var activationRaw = await _sasClient.SasGetAsync(
                 account.ServerUrl, account.Username, pwd, $"user/activationData/{uid}", ct);
-            (basePrice, planName) = ParseActivationData(activationRaw);
+            (basePrice, planName, activationProfileId) = ParseActivationData(activationRaw);
         }
         catch (SasServiceUnavailableException)
         {
             // إذا تعذّر جلب السعر لا نُجهض كلياً: نُكمل بسعر 0 (يُسجَّل تحذير) لأن الإجراء قد ينجح دون سعر معروف.
             _logger.LogWarning("تعذّر جلب activationData للمشترك {Uid} — سيُستخدم سعر 0", uid);
+        }
+
+        // 2.ب) تسعير الباقة (نظام الأرباح): إن وُجد صفّ SasPackagePrice فعّال لهذه الباقة ضمن هذا الحساب،
+        //     فهو مصدر الحقيقة للتسعير (يَجُبّ activationData): BasePrice=الكلفة (رصيد الصفحة)،
+        //     MaintenanceFee=الربح(سعر البيع−الكلفة)+أجور الطلب (إيراد). تدهور رشيق: غياب الصفّ ⇒ سلوك activationData الحالي.
+        var pricingProfileId = ResolvePricingProfileId(req.ProfileId, activationProfileId);
+        if (!string.IsNullOrWhiteSpace(pricingProfileId))
+        {
+            var price = await _db.SasPackagePrices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    x => x.CompanyId == account.CompanyId
+                         && x.SasAccountId == account.Id
+                         && x.ProfileId == pricingProfileId
+                         && x.IsActive
+                         && !x.IsDeleted,
+                    ct);
+
+            if (price != null)
+            {
+                basePrice = price.Cost;                                        // الكلفة الفعلية → رصيد الصفحة
+                var profit = Math.Max(0, price.SellingPrice - price.Cost);     // الربح → إيراد
+                maintenanceFee = profit + Math.Max(0, req.MaintenanceFee ?? 0);// الربح + أي أجور إضافية
+                if (string.IsNullOrWhiteSpace(planName))
+                    planName = price.ProfileName;                             // اسم الباقة من التسعير إن لم يُعرف
+            }
         }
 
         // 3) تنفيذ الإجراء على SAS4 (مالي: money_collected=true + transaction_id للـ idempotency على طرف الساس).
@@ -2538,13 +2565,14 @@ public class SasAgentController : ControllerBase
     }
 
     /// <summary>
-    /// يحلّل استجابة <c>user/activationData/{uid}</c> لاستخراج السعر المطلوب (BasePrice) واسم الباقة.
-    /// يقرأ <c>n_required_amount</c> (أو <c>required_amount</c>) من الجذر أو <c>data</c>؛ يُرجع (0, null) بأمان إن تعذّر.
+    /// يحلّل استجابة <c>user/activationData/{uid}</c> لاستخراج السعر المطلوب (BasePrice) واسم الباقة ومعرّفها.
+    /// يقرأ <c>n_required_amount</c> (أو <c>required_amount</c>) و<c>profile_name</c>/<c>profile</c> و<c>profile_id</c>
+    /// من الجذر أو <c>data</c>؛ يُرجع (0, null, null) بأمان إن تعذّر.
     /// </summary>
-    private static (decimal basePrice, string? planName) ParseActivationData(string raw)
+    private static (decimal basePrice, string? planName, string? profileId) ParseActivationData(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
-            return (0, null);
+            return (0, null, null);
 
         try
         {
@@ -2560,13 +2588,31 @@ public class SasAgentController : ControllerBase
 
             decimal price = ReadDecimal(node, "n_required_amount") ?? ReadDecimal(node, "required_amount") ?? 0;
             string? plan = ReadString(node, "profile_name") ?? ReadString(node, "profile");
+            // معرّف الباقة قد يكون رقماً أو نصّاً — نقرؤه من profile_id ثم profile كبديل.
+            string? profileId = ReadString(node, "profile_id")
+                                ?? ReadNumberAsString(node, "profile_id")
+                                ?? ReadString(node, "profile")
+                                ?? ReadNumberAsString(node, "profile");
 
-            return (price < 0 ? 0 : price, plan);
+            return (price < 0 ? 0 : price, plan, profileId);
         }
         catch
         {
-            return (0, null);
+            return (0, null, null);
         }
+    }
+
+    /// <summary>
+    /// يحدّد معرّف الباقة المستخدَم في البحث عن التسعير: أولوية <paramref name="requestProfileId"/> (من الطلب)
+    /// ثم المستنتَج من activationData. يُرجع null إن تعذّر (تساهل — المحاسبة تتابع بالسلوك الحالي).
+    /// </summary>
+    private static string? ResolvePricingProfileId(string? requestProfileId, string? activationProfileId)
+    {
+        var fromRequest = Trim(requestProfileId);
+        if (!string.IsNullOrWhiteSpace(fromRequest))
+            return fromRequest;
+        var fromActivation = Trim(activationProfileId);
+        return string.IsNullOrWhiteSpace(fromActivation) ? null : fromActivation;
     }
 
     /// <summary>يحاول قراءة اسم المستخدم من استجابة الإجراء الخام (إن وُجد)؛ null بأمان.</summary>

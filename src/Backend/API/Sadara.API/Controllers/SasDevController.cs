@@ -72,6 +72,31 @@ public class SasDevController : ControllerBase
         var maintenanceFee = req.MaintenanceFee ?? 0m;
         var manualDiscount = req.ManualDiscount ?? 0m;
         var collectionType = string.IsNullOrWhiteSpace(req.CollectionType) ? "cash" : req.CollectionType!.Trim();
+        var planName = req.PlanName ?? "باقة تجريبية (محاكاة)";
+
+        // تسعير الباقة (اختياري للمحاكاة): إن مُرِّر profileId ووُجد صفّ تسعير فعّال، يَجُبّ السعر اليدوي
+        //   BasePrice=الكلفة (رصيد الصفحة) · MaintenanceFee=الربح(سعر البيع−الكلفة)+أجور · PlanName=اسم الباقة.
+        var simProfileId = req.ProfileId?.Trim();
+        if (!string.IsNullOrWhiteSpace(simProfileId))
+        {
+            var price = await _db.SasPackagePrices
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    x => x.CompanyId == account.CompanyId
+                         && x.SasAccountId == account.Id
+                         && x.ProfileId == simProfileId
+                         && x.IsActive
+                         && !x.IsDeleted,
+                    ct);
+            if (price != null)
+            {
+                basePrice = price.Cost;
+                maintenanceFee = Math.Max(0, price.SellingPrice - price.Cost) + Math.Max(0, req.MaintenanceFee ?? 0m);
+                if (!string.IsNullOrWhiteSpace(price.ProfileName))
+                    planName = price.ProfileName;
+            }
+        }
+
         var txn = "SIM-" + Guid.NewGuid().ToString("N");
         var collected = basePrice + maintenanceFee - manualDiscount;
 
@@ -81,7 +106,7 @@ public class SasDevController : ControllerBase
             SasAccountId = account.Id,
             SubscriberUid = req.SubscriberUid ?? "0",
             SubscriberUsername = req.SubscriberUsername ?? "TEST-SIM",
-            PlanName = req.PlanName ?? "باقة تجريبية (محاكاة)",
+            PlanName = planName,
             OperationType = "purchase",
             CollectionType = collectionType,
             BasePrice = basePrice,
@@ -163,4 +188,7 @@ public class SasSimulateBillingRequest
     public decimal? MaintenanceFee { get; set; }
     public decimal? ManualDiscount { get; set; }
     public string? CollectionType { get; set; }
+
+    /// <summary>معرّف الباقة (اختياري) — إن وُجد صفّ تسعير فعّال له، يَجُبّ السعر اليدوي (كلفة/ربح).</summary>
+    public string? ProfileId { get; set; }
 }

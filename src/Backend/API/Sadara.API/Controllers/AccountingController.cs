@@ -4512,6 +4512,11 @@ public class AccountingController : ControllerBase
             var totalMaintenance = await query.SumAsync(l => (decimal?)l.MaintenanceFee) ?? 0m;
             var totalManualDiscount = await query.SumAsync(l => (decimal?)l.ManualDiscount) ?? 0m;
 
+            // إجمالي الأرباح: عند تفعيل تسعير الباقات يُخزَّن الربح (سعر البيع − الكلفة) + أي أجور في MaintenanceFee،
+            // بينما BasePrice/PlanPrice = الكلفة (رصيد الصفحة). لذا MaintenanceFee هو المصدر الأدقّ للربح
+            // (مقابل PlanPrice − BasePrice = 0 في مسار التسعير). للسجلّات القديمة بلا تسعير يساوي أجور الصيانة فقط.
+            var totalProfit = totalMaintenance;
+
             // توزيع حسب نوع التحصيل (نقد/أجل/وكيل/ماستر...).
             var byCollectionType = await query
                 .GroupBy(l => l.CollectionType)
@@ -4520,6 +4525,22 @@ public class AccountingController : ControllerBase
                     type = g.Key,
                     count = g.Count(),
                     total = g.Sum(x => (decimal?)x.PlanPrice) ?? 0m
+                })
+                .ToListAsync();
+
+            // توزيع الأرباح حسب الباقة (PlanName): عدد العمليات + المحصّل (الكلفة+الربح) + الكلفة + الربح.
+            // المحصّل = الكلفة (BasePrice) + الربح والأجور (MaintenanceFee) − الخصم اليدوي = ما دفعه المواطن فعلاً.
+            var byProfile = await query
+                .GroupBy(l => l.PlanName)
+                .Select(g => new
+                {
+                    planName = g.Key,
+                    count = g.Count(),
+                    totalCost = g.Sum(x => (decimal?)x.BasePrice) ?? 0m,
+                    totalProfit = g.Sum(x => (decimal?)x.MaintenanceFee) ?? 0m,
+                    totalCollected = (g.Sum(x => (decimal?)x.BasePrice) ?? 0m)
+                                     + (g.Sum(x => (decimal?)x.MaintenanceFee) ?? 0m)
+                                     - (g.Sum(x => (decimal?)x.ManualDiscount) ?? 0m)
                 })
                 .ToListAsync();
 
@@ -4579,8 +4600,10 @@ public class AccountingController : ControllerBase
                     totalBasePrice,
                     totalMaintenance,
                     totalManualDiscount,
+                    totalProfit,
                     byCollectionType,
                     byAccount,
+                    byProfile,
                     recent
                 }
             });
