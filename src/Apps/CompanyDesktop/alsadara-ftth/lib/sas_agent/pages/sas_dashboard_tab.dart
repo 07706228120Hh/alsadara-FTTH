@@ -15,6 +15,7 @@ import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
 import '../widgets/sas_metric_card.dart';
 import '../widgets/sas_metrics.dart';
+import '../widgets/sas_ring_metric.dart';
 import '../widgets/sas_report_widgets.dart';
 import '../widgets/sas_state_views.dart';
 
@@ -1244,20 +1245,28 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
   // مهما ضاق اللوح. تحافظ على نفس البيانات والقابلية للنقر.
 
   /// ملخّص المشتركين — شبكة 2×2 تملأ اللوح (الإجمالي/نشط/منتهٍ/متصل)
-  /// ببطاقات عدّاد فاخرة (count-up + تدرّج + glow + hover).
+  /// بعدّادات **حلقية دائرية فاخرة** ([SasRingMetric]): قوس متدرّج + توهّج +
+  /// رقم count-up متزامن. نسبة كلّ حلقة من الإجمالي (`max = s.total`)، وحلقة
+  /// «الإجمالي» ممتلئة 100% كمرجع.
   Widget _summaryStatsCompact(SasSubscriberSummary s) {
-    final cells = <_Metric>[
-      _Metric('الإجمالي', s.total, AppTheme.primaryColor, Icons.groups_rounded),
-      _Metric('نشط', s.active, AppTheme.successColor,
-          Icons.check_circle_rounded),
-      _Metric('منتهٍ', s.expired, AppTheme.warningColor,
-          Icons.timer_off_rounded),
-      _Metric('متصل الآن', s.online, AppTheme.infoColor, Icons.wifi_rounded),
+    // الإجمالي مرجع (بلا max ⇒ ممتلئ)؛ البقية نسبتها من الإجمالي.
+    final total = s.total;
+    final cells = <_RingDef>[
+      _RingDef('الإجمالي', s.total, null,
+          AppTheme.primaryColor, Icons.groups_rounded),
+      _RingDef('نشط', s.active, total,
+          AppTheme.successColor, Icons.check_circle_rounded),
+      _RingDef('منتهٍ', s.expired, total,
+          AppTheme.warningColor, Icons.timer_off_rounded),
+      _RingDef('متصل الآن', s.online, total,
+          AppTheme.infoColor, Icons.wifi_rounded),
     ];
     return _miniGrid(
       count: cells.length,
-      builder: (i) => SasMetricCard(
+      builder: (i) => SasRingMetric(
         value: cells[i].value,
+        max: cells[i].max,
+        showPercent: cells[i].max != null,
         label: cells[i].label,
         color: cells[i].color,
         icon: cells[i].icon,
@@ -1266,9 +1275,11 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
   }
 
   /// قرب الانتهاء — شبكة 2×2 قابلة للنقر (منتهٍ/اليوم/٣ أيام/أسبوع)
-  /// ببطاقات عدّاد فاخرة (count-up + تدرّج + glow + hover).
+  /// بعدّادات **حلقية دائرية فاخرة** ([SasRingMetric]): كلّ حلقة تُظهر حجم
+  /// شريحتها نسبةً للإجمالي (`max = s.total`)، مع الحفاظ على `onTap` للتصفية.
   Widget _expiryCardsCompact(SasSubscriberSummary s) {
     final e = s.expiry;
+    final total = s.total;
     final defs = <_ExpiryDef>[
       _ExpiryDef('overdue', 'منتهٍ', e.overdue, AppTheme.errorColor,
           Icons.event_busy_rounded),
@@ -1282,8 +1293,10 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
     final enabled = widget.onOpenExpiring != null;
     return _miniGrid(
       count: defs.length,
-      builder: (i) => SasMetricCard(
+      builder: (i) => SasRingMetric(
         value: defs[i].count,
+        max: total > 0 ? total : null,
+        showPercent: total > 0,
         label: defs[i].label,
         color: defs[i].color,
         icon: defs[i].icon,
@@ -1508,4 +1521,15 @@ class _Metric {
   final Color color;
   final IconData icon;
   const _Metric(this.label, this.value, this.color, this.icon);
+}
+
+/// بيانات عدّاد حلقي (تسمية + قيمة + max اختياري + لون + أيقونة) لـ [SasRingMetric].
+/// [max] معدوم/غياب ⇒ حلقة مرجعية ممتلئة؛ موجب ⇒ الامتلاء = value/max.
+class _RingDef {
+  final String label;
+  final num value;
+  final num? max;
+  final Color color;
+  final IconData icon;
+  const _RingDef(this.label, this.value, this.max, this.color, this.icon);
 }
