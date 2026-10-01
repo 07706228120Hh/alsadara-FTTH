@@ -514,6 +514,409 @@ public class SasAgentController : ControllerBase
         => PassThroughAsync(id, (acc, pwd, token) =>
             _sasClient.GetPackagesAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
 
+    // ==================== تسعير الباقات (المرحلة 1 — نظام الأرباح) ====================
+    // معزولة بالعزل الثلاثي عبر GetOwnedAccountAsync (شركة + مالك + غير محذوف).
+    // CompanyId/SasAccountId مختومة من الحساب المملوك خادمياً — لا من العميل. بلا أسرار في الردود.
+
+    /// <summary>
+    /// قائمة أسعار باقات الحساب (كلفة/سعر بيع/ربح) — قراءة (view).
+    ///
+    /// التدفّق:
+    ///  1) <see cref="GetOwnedAccountAsync"/> للعزل الثلاثي.
+    ///  2) جلب باقات SAS4 عبر <c>GetPackagesAsync</c> (يُفكّ التشفير في الذاكرة فقط) ودمجها مع صفوف
+    ///     <c>SasPackagePrice</c> المخزّنة (CompanyId + SasAccountId): باقة غير مسعّرة ⇒ كلفة/سعر/ربح = 0.
+    ///  3) تدهور رشيق: إن تعذّرت SAS4 تُعاد الصفوف المخزّنة فقط.
+    /// الربح = <c>SellingPrice − Cost</c> (محسوب). بلا أسرار.
+    /// </summary>
+    [HttpGet("accounts/{id}/package-prices")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetPackagePrices(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            // 1) الصفوف المخزّنة لهذا الحساب ضمن الشركة (المصدر الموثوق للتسعير).
+            var stored = await _db.SasPackagePrices
+                .Where(x => x.CompanyId == account.CompanyId
+                            && x.SasAccountId == account.Id
+                            && !x.IsDeleted)
+                .ToListAsync(ct);
+
+            var storedByProfile = stored
+                .GroupBy(x => x.ProfileId, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+            // 2) محاولة دمج باقات SAS4 (تدهور رشيق عند تعذّرها).
+            var sasProfiles = new List<(string ProfileId, string ProfileName)>();
+            try
+            {
+                var password = _secretProtector.Unprotect(account.PasswordEncrypted); // في الذاكرة فقط
+                var raw = await _sasClient.GetPackagesAsync(account.ServerUrl, account.Username, password, ct);
+                sasProfiles = ParseSasProfiles(raw);
+            }
+            catch (SasServiceUnavailableException ex)
+            {
+                _logger.LogWarning(ex, "خدمة الساس غير متاحة أثناء جلب باقات التسعير — تُعاد الصفوف المخزّنة فقط");
+            }
+
+            // 3) الدمج: اتحاد باقات SAS4 والمخزّنة بمفتاح ProfileId (بلا تكرار).
+            var merged = new List<SasPricingPackageDto>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var p in sasProfiles)
+            {
+                if (string.IsNullOrWhiteSpace(p.ProfileId) || !seen.Add(p.ProfileId))
+                    continue;
+
+                storedByProfile.TryGetValue(p.ProfileId, out var row);
+                var name = !string.IsNullOrWhiteSpace(row?.ProfileName) ? row!.ProfileName : p.ProfileName;
+                merged.Add(BuildPricingDto(p.ProfileId, name ?? string.Empty, row));
+            }
+
+            // صفوف مخزّنة لباقات لم تعُدها SAS4 (أو تعذّرت الخدمة) — تُدرَج أيضاً.
+            foreach (var row in stored)
+            {
+                if (!seen.Add(row.ProfileId))
+                    continue;
+                merged.Add(BuildPricingDto(row.ProfileId, row.ProfileName, row));
+            }
+
+            var data = merged.OrderBy(x => x.ProfileName, StringComparer.OrdinalIgnoreCase).ToList();
+            return Ok(new { success = true, data, total = data.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب أسعار باقات الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// حفظ أسعار باقات الحساب (upsert) — كتابة (manage). CompanyId/SasAccountId مختومة من الحساب خادمياً.
+    /// الجسم: <c>{items:[{profileId, profileName, cost, sellingPrice, isActive}]}</c>. يعيد عدد الصفوف المحدَّثة/المضافة.
+    /// </summary>
+    [HttpPut("accounts/{id}/package-prices")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UpsertPackagePrices(
+        Guid id,
+        [FromBody] SasPricingUpsertRequest request,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        if (request?.Items == null || request.Items.Count == 0)
+            return BadRequest(new { success = false, message = "قائمة الأسعار مطلوبة" });
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            // الصفوف القائمة لهذا الحساب (للـ upsert عبر ProfileId).
+            var existing = await _db.SasPackagePrices
+                .Where(x => x.CompanyId == account.CompanyId
+                            && x.SasAccountId == account.Id
+                            && !x.IsDeleted)
+                .ToListAsync(ct);
+
+            var byProfile = existing
+                .GroupBy(x => x.ProfileId, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+            var affected = 0;
+            var now = DateTime.UtcNow;
+
+            foreach (var item in request.Items)
+            {
+                var profileId = item.ProfileId?.Trim();
+                if (string.IsNullOrWhiteSpace(profileId))
+                    continue; // تجاهل العناصر بلا معرّف باقة
+
+                var cost = Math.Max(0, item.Cost);
+                var selling = Math.Max(0, item.SellingPrice);
+                var profileName = item.ProfileName?.Trim() ?? string.Empty;
+                var isActive = item.IsActive ?? true;
+
+                if (byProfile.TryGetValue(profileId, out var row))
+                {
+                    row.ProfileName = profileName;
+                    row.Cost = cost;
+                    row.SellingPrice = selling;
+                    row.IsActive = isActive;
+                    row.UpdatedAt = now;
+                    _db.SasPackagePrices.Update(row);
+                }
+                else
+                {
+                    var created = new SasPackagePrice
+                    {
+                        Id = Guid.NewGuid(),
+                        CompanyId = account.CompanyId,   // ختم العزل من الحساب المملوك
+                        SasAccountId = account.Id,       // ختم العزل من الحساب المملوك
+                        ProfileId = profileId,
+                        ProfileName = profileName,
+                        Cost = cost,
+                        SellingPrice = selling,
+                        IsActive = isActive
+                    };
+                    await _db.SasPackagePrices.AddAsync(created, ct);
+                    byProfile[profileId] = created; // منع إضافة مكرّرة إن تكرّر المعرّف في الطلب
+                }
+
+                affected++;
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return Ok(new { success = true, count = affected, message = "تم حفظ الأسعار بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حفظ أسعار باقات الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    // ==================== بيانات المواطن الموسّعة (المرحلة 1) ====================
+    // معزولة بالعزل الثلاثي عبر GetOwnedAccountAsync. المفتاح (CompanyId + account.Id + uid) من الحساب خادمياً.
+
+    /// <summary>
+    /// جلب بيانات المواطن الموسّعة لمشترك ساس (أو كائن فارغ إن لم تُحفظ بعد) — قراءة (view).
+    /// المفتاح: (CompanyId + account.Id + uid) — مختوم من الحساب المملوك خادمياً.
+    /// </summary>
+    [HttpGet("accounts/{id}/users/{uid}/profile")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetSubscriberProfile(Guid id, string uid, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var safeUid = Trim(uid);
+        if (safeUid == null)
+            return BadRequest(new { success = false, message = "معرّف المشترك مطلوب" });
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            var profile = await _db.SasSubscriberProfiles
+                .FirstOrDefaultAsync(
+                    x => x.CompanyId == account.CompanyId
+                         && x.SasAccountId == account.Id
+                         && x.SubscriberUid == safeUid
+                         && !x.IsDeleted,
+                    ct);
+
+            return Ok(new { success = true, data = BuildProfileDto(safeUid, profile) });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب بيانات المواطن الموسّعة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// حفظ/تحديث بيانات المواطن الموسّعة لمشترك ساس (upsert) — كتابة (manage).
+    /// المفتاح: (CompanyId + account.Id + uid) — مختوم من الحساب المملوك خادمياً. يعيد المحفوظ.
+    /// </summary>
+    [HttpPut("accounts/{id}/users/{uid}/profile")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UpsertSubscriberProfile(
+        Guid id,
+        string uid,
+        [FromBody] SasProfileUpsertRequest request,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var safeUid = Trim(uid);
+        if (safeUid == null)
+            return BadRequest(new { success = false, message = "معرّف المشترك مطلوب" });
+
+        if (request == null)
+            return BadRequest(new { success = false, message = "بيانات المواطن مطلوبة" });
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            var profile = await _db.SasSubscriberProfiles
+                .FirstOrDefaultAsync(
+                    x => x.CompanyId == account.CompanyId
+                         && x.SasAccountId == account.Id
+                         && x.SubscriberUid == safeUid
+                         && !x.IsDeleted,
+                    ct);
+
+            var isNew = profile == null;
+            if (profile == null)
+            {
+                profile = new SasSubscriberProfile
+                {
+                    Id = Guid.NewGuid(),
+                    CompanyId = account.CompanyId,   // ختم العزل من الحساب المملوك
+                    SasAccountId = account.Id,       // ختم العزل من الحساب المملوك
+                    SubscriberUid = safeUid
+                };
+            }
+
+            // اسم المستخدم (عرضي) + الحقول الموسّعة.
+            profile.SubscriberUsername = Trim(request.SubscriberUsername) ?? profile.SubscriberUsername;
+            profile.NationalId = Trim(request.NationalId);
+            profile.FullNameQuad = Trim(request.FullNameQuad);
+            profile.BirthDate = request.BirthDate;
+            profile.Gender = Trim(request.Gender);
+            profile.AltPhone = Trim(request.AltPhone);
+            profile.WhatsappNumber = Trim(request.WhatsappNumber);
+            profile.Email = Trim(request.Email);
+            profile.AddressDetail = Trim(request.AddressDetail);
+            profile.Latitude = request.Latitude;
+            profile.Longitude = request.Longitude;
+            profile.PropertyType = Trim(request.PropertyType);
+            profile.Landmark = Trim(request.Landmark);
+
+            if (isNew)
+            {
+                await _db.SasSubscriberProfiles.AddAsync(profile, ct);
+            }
+            else
+            {
+                profile.UpdatedAt = DateTime.UtcNow;
+                _db.SasSubscriberProfiles.Update(profile);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return Ok(new { success = true, data = BuildProfileDto(safeUid, profile), message = "تم حفظ بيانات المواطن بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حفظ بيانات المواطن الموسّعة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    // ---------- مساعدات التسعير وبيانات المواطن ----------
+
+    /// <summary>يبني DTO تسعير باقة واحدة من الصفّ المخزّن (إن وُجد)؛ باقة غير مسعّرة ⇒ أصفار. الربح محسوب.</summary>
+    private static SasPricingPackageDto BuildPricingDto(string profileId, string profileName, SasPackagePrice? row)
+    {
+        var cost = row?.Cost ?? 0;
+        var selling = row?.SellingPrice ?? 0;
+        return new SasPricingPackageDto(
+            profileId,
+            profileName,
+            cost,
+            selling,
+            selling - cost,            // الربح = سعر البيع − الكلفة (محسوب)
+            row?.IsActive ?? true);
+    }
+
+    /// <summary>يبني DTO بيانات المواطن الموسّعة من الكيان (أو كائن فارغ بالـ uid فقط إن لم يُحفظ بعد).</summary>
+    private static SasProfileDto BuildProfileDto(string uid, SasSubscriberProfile? p)
+        => new(
+            uid,
+            p?.SubscriberUsername,
+            p?.NationalId,
+            p?.FullNameQuad,
+            p?.BirthDate,
+            p?.Gender,
+            p?.AltPhone,
+            p?.WhatsappNumber,
+            p?.Email,
+            p?.AddressDetail,
+            p?.Latitude,
+            p?.Longitude,
+            p?.PropertyType,
+            p?.Landmark);
+
+    /// <summary>
+    /// يحلّل باقات SAS4 الخام (<c>GetPackagesAsync</c>) إلى قائمة (profileId, profileName).
+    /// يقبل مصفوفة جذرية أو تحت <c>data</c>/<c>packages</c>/<c>profiles</c>؛ ويقرأ المعرّف/الاسم بمفاتيح شائعة.
+    /// أي عنصر بلا معرّف يُتجاهَل بأمان (لا يُسقط الباقي).
+    /// </summary>
+    private static List<(string ProfileId, string ProfileName)> ParseSasProfiles(string raw)
+    {
+        var list = new List<(string, string)>();
+        if (string.IsNullOrWhiteSpace(raw))
+            return list;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+
+            System.Text.Json.JsonElement arr = default;
+            var found = false;
+            if (root.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                arr = root;
+                found = true;
+            }
+            else if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                foreach (var key in new[] { "data", "packages", "profiles", "items" })
+                {
+                    if (root.TryGetProperty(key, out var el) && el.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        arr = el;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!found)
+                return list;
+
+            foreach (var item in arr.EnumerateArray())
+            {
+                if (item.ValueKind != System.Text.Json.JsonValueKind.Object)
+                    continue;
+
+                var pid = ReadString(item, "id")
+                       ?? ReadString(item, "profile_id")
+                       ?? ReadString(item, "profileId")
+                       ?? ReadNumberAsString(item, "id");
+                if (string.IsNullOrWhiteSpace(pid))
+                    continue;
+
+                var name = ReadString(item, "name")
+                        ?? ReadString(item, "profile_name")
+                        ?? ReadString(item, "profileName")
+                        ?? string.Empty;
+
+                list.Add((pid, name));
+            }
+        }
+        catch
+        {
+            // تحليل فاشل ⇒ قائمة فارغة (الصفوف المخزّنة تغطّي العرض).
+        }
+
+        return list;
+    }
+
+    /// <summary>يقرأ قيمة عددية كنصّ من خاصيّة JSON (لمعرّفات رقمية)؛ null إن غابت/غير رقمية.</summary>
+    private static string? ReadNumberAsString(System.Text.Json.JsonElement obj, string name)
+    {
+        if (obj.ValueKind != System.Text.Json.JsonValueKind.Object || !obj.TryGetProperty(name, out var el))
+            return null;
+        return el.ValueKind == System.Text.Json.JsonValueKind.Number ? el.GetRawText() : null;
+    }
+
     /// <summary>جلب ملخّص/تفاصيل المالية للوكيل (تبويب المالية) — قراءة (view).</summary>
     [HttpGet("accounts/{id}/finance")]
     [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
@@ -2472,3 +2875,66 @@ public record SasAgentAdminAgentDto(
     string? Username,
     List<SasAgentAdminAccountDto> Accounts,
     SasAgentAdminTotalsDto Totals);
+
+// ==================== DTOs تسعير الباقات (SasPricing — نظام الأرباح) ====================
+// بادئة SasPricing لتفادي التصادم. CompanyId/SasAccountId مختومة خادمياً من الحساب المملوك — لا من العميل.
+
+/// <summary>
+/// تسعير باقة واحدة للعرض — الكلفة وسعر البيع والربح (محسوب = SellingPrice − Cost) وحالة التفعيل.
+/// باقة غير مسعّرة تُعاد بأصفار.
+/// </summary>
+public record SasPricingPackageDto(
+    string ProfileId,
+    string ProfileName,
+    decimal Cost,
+    decimal SellingPrice,
+    decimal Profit,
+    bool IsActive);
+
+/// <summary>عنصر تسعير واحد في طلب الحفظ (upsert) — profileId مفتاح الـ upsert.</summary>
+public record SasPricingUpsertItem(
+    string ProfileId,
+    string? ProfileName,
+    decimal Cost,
+    decimal SellingPrice,
+    bool? IsActive);
+
+/// <summary>طلب حفظ أسعار الباقات (upsert) — قائمة عناصر التسعير. (accountId من المسار؛ companyId خادمياً.)</summary>
+public record SasPricingUpsertRequest(
+    List<SasPricingUpsertItem> Items);
+
+// ==================== DTOs بيانات المواطن الموسّعة (SasProfile) ====================
+// بادئة SasProfile لتفادي التصادم. CompanyId/SasAccountId/uid مختومة خادمياً — لا من العميل.
+
+/// <summary>بيانات المواطن الموسّعة للعرض (مع الـ uid)؛ الحقول null إن لم تُحفظ بعد.</summary>
+public record SasProfileDto(
+    string SubscriberUid,
+    string? SubscriberUsername,
+    string? NationalId,
+    string? FullNameQuad,
+    DateTime? BirthDate,
+    string? Gender,
+    string? AltPhone,
+    string? WhatsappNumber,
+    string? Email,
+    string? AddressDetail,
+    double? Latitude,
+    double? Longitude,
+    string? PropertyType,
+    string? Landmark);
+
+/// <summary>طلب حفظ بيانات المواطن الموسّعة (upsert) — كل الحقول اختيارية. (accountId/uid من المسار؛ companyId خادمياً.)</summary>
+public record SasProfileUpsertRequest(
+    string? SubscriberUsername,
+    string? NationalId,
+    string? FullNameQuad,
+    DateTime? BirthDate,
+    string? Gender,
+    string? AltPhone,
+    string? WhatsappNumber,
+    string? Email,
+    string? AddressDetail,
+    double? Latitude,
+    double? Longitude,
+    string? PropertyType,
+    string? Landmark);

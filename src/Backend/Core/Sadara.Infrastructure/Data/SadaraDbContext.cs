@@ -163,6 +163,8 @@ public class SadaraDbContext : DbContext
     // ==================== SAS Agent (وحدة وكيل SAS) ====================
     public DbSet<SasAccount> SasAccounts => Set<SasAccount>();
     public DbSet<CompanySasSettings> CompanySasSettings => Set<CompanySasSettings>();
+    public DbSet<SasPackagePrice> SasPackagePrices => Set<SasPackagePrice>();
+    public DbSet<SasSubscriberProfile> SasSubscriberProfiles => Set<SasSubscriberProfile>();
 
     // ==================== Inventory System (نظام المخازن والمواد) ====================
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
@@ -424,6 +426,18 @@ public class SadaraDbContext : DbContext
             .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SasAccount>()
             .HasOne<User>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+
+        // تسعير باقات الساس (كلفة/سعر بيع → ربح): فهرس فريد (شركة + حساب + بروفايل) لمنع تكرار تسعير الباقة.
+        modelBuilder.Entity<SasPackagePrice>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<SasPackagePrice>()
+            .HasIndex(x => new { x.CompanyId, x.SasAccountId, x.ProfileId }).IsUnique();
+        modelBuilder.Entity<SasPackagePrice>().Property(x => x.Cost).HasPrecision(18, 2);
+        modelBuilder.Entity<SasPackagePrice>().Property(x => x.SellingPrice).HasPrecision(18, 2);
+
+        // بيانات المواطن الموسّعة لمشترك ساس: فهرس فريد (شركة + حساب + uid) لضمان صفّ واحد لكل مشترك.
+        modelBuilder.Entity<SasSubscriberProfile>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<SasSubscriberProfile>()
+            .HasIndex(x => new { x.CompanyId, x.SasAccountId, x.SubscriberUid }).IsUnique();
 
         // Reminder Settings
         modelBuilder.Entity<ReminderSettings>()
