@@ -39,6 +39,10 @@
 |---|---|
 | `20260929225841_AddSasAgentModule` | جدولان: `SasAccounts` + `CompanySasSettings` |
 | `20261001111515_AddSasSourceToSubscriptionLog` | 4 أعمدة على `SubscriptionLogs`: `Source`(int افتراضي 0) · `SasAccountId`(uuid null) · `SubscriberUid`(text null) · `SubscriberUsername`(text null) |
+| `20261001220456_AddSasPricingAndProfile` | جدولان: `SasPackagePrices` (تسعير الباقات) + `SasSubscriberProfiles` (حقول المواطن الـ11) |
+| `20261001224100_AddSasCitizenPayment` | جدول `SasCitizenPayments` (تسديدات ذمم المواطنين) |
+
+> الحساب المحاسبي `1180` (ذمم المشتركين) يُنشأ تلقائياً لكل شركة عند أوّل تحصيل «آجل» (`EnsureFixedParentAccount`) — لا يحتاج بذرة يدوية.
 
 > ملاحظة: الإنتاج يستخدم `migrations.sql` يدوياً (لا MigrateAsync تلقائي). طبّق الهجرتين يدوياً أو عبر `dotnet ef database update`.
 
