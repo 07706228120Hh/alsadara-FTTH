@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +10,7 @@ import '../models/sas_account.dart';
 import '../models/sas_report.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_metrics.dart';
+import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_report_widgets.dart';
 import '../widgets/sas_state_views.dart';
 
@@ -36,10 +39,21 @@ class _SasReportTabState extends State<SasReportTab> {
 
   bool get _canSubmit => PermissionManager.instance.canAdd('sas_agent');
 
+  /// اشتراك ناقل التحديث المشترك — يعيد جلب المقاطعة/التصاريح عند أي حدث.
+  StreamSubscription<SasRefreshEvent>? _busSub;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _busSub = SasRefreshBus.instance.stream.listen(_onBusEvent);
+  }
+
+  /// عند إشعار الناقل الخاص بهذا الحساب: أعد الجلب بصمت (بلا وميض).
+  void _onBusEvent(SasRefreshEvent e) {
+    if (!mounted || _loading || _submitting) return;
+    if (!e.matches(widget.account.id)) return;
+    _load(silent: true);
   }
 
   @override
@@ -55,6 +69,7 @@ class _SasReportTabState extends State<SasReportTab> {
 
   @override
   void dispose() {
+    _busSub?.cancel();
     _totalCtrl.dispose();
     _activeCtrl.dispose();
     _noteCtrl.dispose();
@@ -64,9 +79,11 @@ class _SasReportTabState extends State<SasReportTab> {
   String _clean(Object e) =>
       e.toString().replaceFirst('Exception: ', '').trim();
 
-  Future<void> _load() async {
+  /// [silent] يعيد الجلب دون إظهار حالة تحميل (بلا وميض) — يُستخدم عند إشعار
+  /// الناقل؛ تُستبدل القيم عند وصول الجديدة.
+  Future<void> _load({bool silent = false}) async {
     setState(() {
-      _loading = true;
+      if (!silent) _loading = true;
       _error = null;
     });
     try {
@@ -100,6 +117,14 @@ class _SasReportTabState extends State<SasReportTab> {
       backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
       behavior: SnackBarBehavior.floating,
     ));
+  }
+
+  /// سحب للتحديث: مزامنة الحساب (سحب SAS4→محلي) ثم إعادة جلب المقاطعة/التصاريح
+  /// + إشعار بقية التبويبات. المزامنة معزولة؛ نُبقي العرض (silent) فلا يومض.
+  Future<void> _refreshManual() async {
+    await SasRefreshBus.instance
+        .syncAndNotify(widget.account.id, reason: 'report-refresh-pull');
+    if (mounted) await _load(silent: true);
   }
 
   Future<void> _submit() async {
@@ -168,7 +193,7 @@ class _SasReportTabState extends State<SasReportTab> {
     if (_error != null) return SasErrorView(message: _error!, onRetry: _load);
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: _refreshManual,
       child: ListView(
         padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
         children: [

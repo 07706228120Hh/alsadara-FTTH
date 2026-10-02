@@ -7,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../models/sas_accounting.dart';
 import '../services/sas_agent_api_service.dart';
 import 'sas_metrics.dart';
+import 'sas_refresh_bus.dart';
 import 'sas_state_views.dart';
 
 /// عرض «كشف حساب المواطن» (الآجل/الذمّة) القابل لإعادة الاستخدام:
@@ -448,6 +449,10 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
       if (!mounted) return;
       _snack('تم تسجيل التسديد');
       widget.onChanged?.call();
+      // مزامنة الحساب ثم إشعار كل التبويبات المفتوحة (معزول — فشله لا يُسقط).
+      await SasRefreshBus.instance
+          .syncAndNotify(widget.accountId, reason: 'citizen-payment');
+      if (!mounted) return;
       await _load();
     } catch (e) {
       if (mounted) _snack(_clean(e), error: true);

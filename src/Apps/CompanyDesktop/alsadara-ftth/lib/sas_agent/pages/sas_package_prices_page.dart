@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +10,7 @@ import '../models/sas_account.dart';
 import '../models/sas_accounting.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_metrics.dart';
+import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_state_views.dart';
 
 /// صفحة «أسعار الباقات» — إدارة كلفة/سعر بيع كلّ باقة وحساب ربحها.
@@ -33,19 +36,42 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
   bool _saving = false;
   String? _error;
 
+  /// تعديلات غير محفوظة — نمنع إعادة التحميل الصامت من الناقل حتى لا تُفقَد.
+  bool _dirty = false;
+
+  /// اشتراك ناقل التحديث المشترك — يعيد جلب الأسعار عند أي حدث (ما لم تكن هناك
+  /// تعديلات غير محفوظة).
+  StreamSubscription<SasRefreshEvent>? _busSub;
+
   bool get _canManage => PermissionManager.instance.canAdd('sas_agent');
 
   @override
   void initState() {
     super.initState();
     _load();
+    _busSub = SasRefreshBus.instance.stream.listen(_onBusEvent);
+  }
+
+  @override
+  void dispose() {
+    _busSub?.cancel();
+    super.dispose();
+  }
+
+  /// عند إشعار الناقل الخاص بهذا الحساب: أعد الجلب بصمت — إلا إن كان المستخدم
+  /// يُعدّل أسعاراً لم تُحفَظ بعد (لا نُطيح بتعديلاته).
+  void _onBusEvent(SasRefreshEvent e) {
+    if (!mounted || _loading || _saving || _dirty) return;
+    if (!e.matches(widget.account.id)) return;
+    _load(silent: true);
   }
 
   String _clean(Object e) => e.toString().replaceFirst('Exception: ', '').trim();
 
-  Future<void> _load() async {
+  /// [silent] يعيد الجلب دون إظهار حالة تحميل (بلا وميض) — عند إشعار الناقل.
+  Future<void> _load({bool silent = false}) async {
     setState(() {
-      _loading = true;
+      if (!silent) _loading = true;
       _error = null;
     });
     try {
@@ -54,6 +80,7 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
       setState(() {
         _items = list;
         _loading = false;
+        _dirty = false; // البيانات الآن مطابقة للخادم.
       });
     } catch (e) {
       if (mounted) {
@@ -90,6 +117,15 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
     ));
   }
 
+  /// تحديث يدوي (زر): مزامنة الحساب (قد تجلب باقات جديدة) ثم إعادة تحميل الأسعار
+  /// + إشعار بقية التبويبات. المزامنة معزولة؛ إعادة التحميل تُسقط أي تعديل غير
+  /// محفوظ (فعل صريح من المستخدم).
+  Future<void> _refreshManual() async {
+    await SasRefreshBus.instance
+        .syncAndNotify(widget.account.id, reason: 'prices-refresh-button');
+    if (mounted) await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -115,7 +151,7 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh_rounded),
-              onPressed: _loading ? null : _load,
+              onPressed: _loading ? null : _refreshManual,
             ),
           ],
         ),
@@ -223,7 +259,10 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
                     value: p.isActive,
                     activeThumbColor: AppTheme.successColor,
                     onChanged: _canManage
-                        ? (v) => setState(() => p.isActive = v)
+                        ? (v) => setState(() {
+                              p.isActive = v;
+                              _dirty = true;
+                            })
                         : null,
                   ),
                 ],
@@ -240,6 +279,7 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
                   enabled: _canManage,
                   onChanged: (v) => setState(() {
                     p.cost = v;
+                    _dirty = true;
                   }),
                 ),
               ),
@@ -251,6 +291,7 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
                   enabled: _canManage,
                   onChanged: (v) => setState(() {
                     p.sellingPrice = v;
+                    _dirty = true;
                   }),
                 ),
               ),

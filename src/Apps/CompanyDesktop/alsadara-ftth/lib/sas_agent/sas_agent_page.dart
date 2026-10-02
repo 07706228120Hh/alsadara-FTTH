@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -15,7 +17,9 @@ import 'pages/sas_subscribers_tab.dart';
 import 'pages/sas_system_tab.dart';
 import 'pages/sas_tickets_tab.dart';
 import 'premises/ui/premises_list_screen.dart';
+import 'services/sas_agent_api_service.dart';
 import 'whatsapp/whatsapp.dart';
+import 'widgets/sas_refresh_bus.dart';
 import 'widgets/sas_state_views.dart';
 
 /// صفحة «وكيل الساس» — شل بتبويبات يعمل على بوّابة الصدارة `/api/sas-agent/*`.
@@ -61,6 +65,31 @@ class _SasAgentShellState extends State<_SasAgentShell>
   String? _pendingExpiring;
   int _expiryNavToken = 0;
 
+  // ─── مزامنة عند دخول التبويب (debounce + حارس) ───
+  // الساس يُسحب بالاستعلام لا بالدفع، فالمزامنة = syncAccount ثم إشعار الناقل.
+  final _api = SasAgentApiService.instance;
+
+  /// آخر وقت مزامنة ناجح لكل حساب (لمنع المزامنة المتكرّرة عند التنقّل السريع).
+  final Map<String, DateTime> _lastTabSync = <String, DateTime>{};
+
+  /// مزامنة تبويب جارية الآن (حارس يمنع التزامن المكرّر).
+  bool _tabSyncing = false;
+
+  /// مؤقّت debounce لتثبيت الاستقرار على تبويب قبل إطلاق المزامنة.
+  Timer? _tabSyncDebounce;
+
+  /// الحدّ الأدنى بين مزامنتَي الدخول للحساب الواحد.
+  static const _tabSyncCooldown = Duration(seconds: 20);
+
+  /// فترة تثبيت الاستقرار على التبويب قبل المزامنة (تمنع المزامنة أثناء التنقّل
+  /// السريع عبر التبويبات).
+  static const _tabSyncDebounceDelay = Duration(milliseconds: 600);
+
+  /// فهارس تبويبات البيانات التي تستفيد من مزامنة عند الدخول (تحتاج حساباً
+  /// محدّداً): لوحة · مشتركون · نظام · تقارير · تجديد · تصريح. تُستثنى: الحسابات
+  /// (0) · التذاكر (7، user-scoped) · الإعدادات (8).
+  static const _dataTabIndices = <int>{1, 2, 3, 4, 5, 6};
+
   // مجموعة أيقونات موحّدة (Material rounded بوزن بصري واحد) بترتيب مطابق
   // لتطبيق الوكلاء المرجعي: حسابات · لوحة · مشتركون · نظام · تقارير · تجديد ·
   // تصريح · تذاكر · إعدادات. لون المؤشّر للمحدّد متدرّج، ولون موحّد (Slate)
@@ -81,10 +110,13 @@ class _SasAgentShellState extends State<_SasAgentShell>
   void initState() {
     super.initState();
     _tab = TabController(length: _tabs.length, vsync: this);
+    _tab.addListener(_onTabChanged);
   }
 
   @override
   void dispose() {
+    _tabSyncDebounce?.cancel();
+    _tab.removeListener(_onTabChanged);
     _tab.dispose();
     super.dispose();
   }
@@ -95,6 +127,54 @@ class _SasAgentShellState extends State<_SasAgentShell>
       _selected = acc;
       _pendingExpiring = null; // فلتر اللوحة خاص بالحساب السابق.
     });
+    // حساب جديد ⇒ أسقِط ختم المزامنة السابق فتُزامَن عند دخول أوّل تبويب بيانات.
+    _lastTabSync.remove(acc.id);
+  }
+
+  // ─────────────────────── مزامنة عند دخول التبويب ───────────────────────
+
+  /// يُستدعى عند تغيّر التبويب النشط. يطلق مزامنة مؤجّلة (debounce) عند الاستقرار
+  /// على تبويب بيانات، إن مرّ وقت كافٍ على آخر مزامنة للحساب.
+  void _onTabChanged() {
+    // نتفاعل فقط عند استقرار التبويب (نهاية الحركة) لا أثناء الانزلاق.
+    if (_tab.indexIsChanging) return;
+    _maybeSyncCurrentTab();
+  }
+
+  /// يجدول مزامنة للحساب المحدّد إن كان التبويب الحالي تبويب بيانات وانقضى وقت
+  /// التهدئة منذ آخر مزامنة. مؤجّلة عبر [_tabSyncDebounceDelay] لمنع التكرار عند
+  /// التنقّل السريع، ومحميّة بحارس [_tabSyncing] ضدّ التزامن المكرّر.
+  void _maybeSyncCurrentTab() {
+    final acc = _selected;
+    if (acc == null) return;
+    if (!_dataTabIndices.contains(_tab.index)) return;
+
+    final last = _lastTabSync[acc.id];
+    if (last != null && DateTime.now().difference(last) < _tabSyncCooldown) {
+      return; // مُزامَن حديثاً — لا داعي.
+    }
+
+    _tabSyncDebounce?.cancel();
+    _tabSyncDebounce = Timer(_tabSyncDebounceDelay, () => _syncOnEnter(acc.id));
+  }
+
+  /// ينفّذ المزامنة الفعلية ثم يبثّ الإشعار (معزول). يسجّل ختم الوقت عند النجاح
+  /// فقط فلا نُطيل التهدئة عند الفشل.
+  Future<void> _syncOnEnter(String accountId) async {
+    if (_tabSyncing) return;
+    // قد يكون المستخدم بدّل الحساب خلال التأجيل — تحقّق مجدّداً.
+    if (_selected?.id != accountId) return;
+    _tabSyncing = true;
+    try {
+      await _api.syncAccount(accountId);
+      _lastTabSync[accountId] = DateTime.now();
+    } catch (_) {
+      // فشل المزامنة معزول — نُبقي الإشعار لإعادة قراءة الحالة المحلية الحالية.
+    } finally {
+      _tabSyncing = false;
+    }
+    // أبلغ التبويبات المفتوحة لتعيد التحميل (حتى عند فشل المزامنة: تقرأ الأحدث).
+    SasRefreshBus.instance.notify(accountId: accountId, reason: 'tab-enter');
   }
 
   /// ينتقل لتبويب «مشتركون» مفلترًا على نافذة الانتهاء المطلوبة من اللوحة.

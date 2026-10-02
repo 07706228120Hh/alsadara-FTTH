@@ -10,6 +10,7 @@ import '../services/sas_agent_api_service.dart';
 import '../whatsapp/whatsapp.dart';
 import '../widgets/sas_billing_post_actions.dart';
 import '../widgets/sas_metrics.dart';
+import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_state_views.dart';
 
 /// تبويب «تجديد» — قائمة المشتركين قرب الانتهاء مع تحديد متعدّد وتجديد جماعي.
@@ -241,8 +242,12 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
       rows: results,
     );
 
-    // بعد التنفيذ: أعد جلب القائمة (قد تتغيّر تواريخ الانتهاء).
+    // بعد التنفيذ: مزامنة الحساب ثم إشعار كل التبويبات (معزول — فشله لا يُسقط)،
+    // ثم أعد جلب القائمة محلياً (قد تتغيّر تواريخ الانتهاء).
+    await SasRefreshBus.instance
+        .syncAndNotify(widget.account.id, reason: 'renewal-bulk');
     _selected.clear();
+    if (!mounted) return;
     await _load();
   }
 

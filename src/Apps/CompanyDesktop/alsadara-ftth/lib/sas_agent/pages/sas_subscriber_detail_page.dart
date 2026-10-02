@@ -10,6 +10,7 @@ import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_billing_post_actions.dart';
 import '../widgets/sas_citizen_statement.dart';
 import '../widgets/sas_metrics.dart';
+import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_subscriber_form_page.dart';
 
@@ -842,6 +843,10 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       if (!mounted) return;
       _toast('تم: $operationType');
       await _loadMain();
+      // مزامنة الحساب (سحب SAS4→محلي) ثم إشعار كل التبويبات المفتوحة لتتحدّث —
+      // معزولة (فشلها لا يُسقط العملية). لا نحجب الطباعة/الواتساب خلفها.
+      await SasRefreshBus.instance
+          .syncAndNotify(_aid, reason: 'billed-$action');
       final receipt = (res['receipt'] is Map)
           ? (res['receipt'] as Map).cast<String, dynamic>()
           : <String, dynamic>{};

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -6,6 +8,7 @@ import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
 import '../widgets/sas_metrics.dart';
+import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_explorer_page.dart';
 import 'sas_license_page.dart';
@@ -223,23 +226,49 @@ class _SystemOverviewState extends State<_SystemOverview> {
   String? _healthError;
   bool _loading = true;
 
+  /// تحديث يدوي جارٍ (حارس يمنع التزامن المكرّر للزر/السحب).
+  bool _refreshing = false;
+
+  /// اشتراك ناقل التحديث المشترك — يعيد جلب الباقات/المالية/الصحّة عند أي حدث.
+  StreamSubscription<SasRefreshEvent>? _busSub;
+
   @override
   void initState() {
     super.initState();
     _loadAll();
+    _busSub = SasRefreshBus.instance.stream.listen(_onBusEvent);
+  }
+
+  @override
+  void dispose() {
+    _busSub?.cancel();
+    super.dispose();
+  }
+
+  /// عند إشعار الناقل الخاص بهذا الحساب: أعد الجلب بصمت (بلا وميض — لا نُظهر حالة
+  /// تحميل ولا نُفرّغ البيانات الحالية؛ نستبدلها عند وصول الجديدة). نتجنّب
+  /// التكديس أثناء جلب جارٍ.
+  void _onBusEvent(SasRefreshEvent e) {
+    if (!mounted || _loading) return;
+    if (!e.matches(widget.account.id)) return;
+    _loadAll(silent: true);
   }
 
   String _clean(Object e) => e.toString().replaceFirst('Exception: ', '').trim();
 
-  Future<void> _loadAll() async {
+  /// [silent] يعيد الجلب دون إظهار حالة تحميل ودون تفريغ البيانات الحالية —
+  /// يُستخدم عند إشعار الناقل فلا يومض العرض؛ تُستبدل القيم عند وصول الجديدة.
+  Future<void> _loadAll({bool silent = false}) async {
     setState(() {
-      _loading = true;
-      _packages = null;
-      _packagesError = null;
-      _finance = null;
-      _financeError = null;
-      _health = null;
-      _healthError = null;
+      if (!silent) {
+        _loading = true;
+        _packages = null;
+        _packagesError = null;
+        _finance = null;
+        _financeError = null;
+        _health = null;
+        _healthError = null;
+      }
     });
     final id = widget.account.id;
     await Future.wait([
@@ -259,13 +288,29 @@ class _SystemOverviewState extends State<_SystemOverview> {
     if (mounted) setState(() => _loading = false);
   }
 
+  /// تحديث يدوي (سحب للتحديث / زر إعادة): مزامنة الحساب (سحب SAS4→محلي) ثم إعادة
+  /// جلب نظام الساس + إشعار بقية التبويبات. المزامنة معزولة داخل [syncAndNotify].
+  Future<void> _refreshManual() async {
+    if (_refreshing) return;
+    _refreshing = true;
+    try {
+      // نُبقي العرض الحالي أثناء المزامنة (silent) فلا يومض؛ الإشعار سيصل لنا
+      // أيضاً لكن الحارس أدناه + تمرير silent يمنعان التكرار المرئي.
+      await SasRefreshBus.instance
+          .syncAndNotify(widget.account.id, reason: 'system-refresh-button');
+      if (mounted) await _loadAll(silent: true);
+    } finally {
+      _refreshing = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
       return const SasLoadingView(message: 'جاري جلب نظام الساس…');
     }
     return RefreshIndicator(
-      onRefresh: _loadAll,
+      onRefresh: _refreshManual,
       child: ListView(
         padding: EdgeInsets.all(14.w),
         children: [

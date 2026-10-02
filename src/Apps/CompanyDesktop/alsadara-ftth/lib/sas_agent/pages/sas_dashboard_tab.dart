@@ -15,6 +15,7 @@ import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
 import '../widgets/sas_metric_card.dart';
 import '../widgets/sas_metrics.dart';
+import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_ring_metric.dart';
 import '../widgets/sas_report_widgets.dart';
 import '../widgets/sas_state_views.dart';
@@ -81,10 +82,22 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
   Timer? _timer;
 
+  /// اشتراك ناقل التحديث المشترك — يعيد تحميلاً خفيفاً عند أي عملية/مزامنة.
+  StreamSubscription<SasRefreshEvent>? _busSub;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _busSub = SasRefreshBus.instance.stream.listen(_onBusEvent);
+  }
+
+  /// عند إشعار الناقل الخاص بحساب هذه اللوحة: تحديث خفيف موضعي (بلا مزامنة ثقيلة
+  /// ولا وميض) — المزامنة تمّت عند مصدر الحدث (العملية/الشل/الزر).
+  void _onBusEvent(SasRefreshEvent e) {
+    if (!mounted) return;
+    if (!e.matches(widget.account.id)) return;
+    _refreshLight();
   }
 
   @override
@@ -106,6 +119,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
 
   @override
   void dispose() {
+    _busSub?.cancel();
     _stopTimer();
     super.dispose();
   }
@@ -252,6 +266,10 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
         setState(() => _lastSyncAt = r.syncedAt ?? _lastSyncAt);
       }
       await _fetchSecondary(widget.account.id);
+      // أبلغ بقية التبويبات المفتوحة لتتحدّث (نبثّ و_syncing لا يزال true فيتخطّى
+      // مستمعنا الذاتي إعادةً مكرّرة؛ لوحتنا مُحدَّثة أصلاً أعلاه).
+      SasRefreshBus.instance
+          .notify(accountId: widget.account.id, reason: 'dashboard-sync-button');
     } catch (e) {
       _snack(_clean(e), error: true);
     } finally {

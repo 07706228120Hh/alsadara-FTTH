@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -7,6 +9,7 @@ import '../models/sas_accounting.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_citizen_statement.dart';
 import '../widgets/sas_metrics.dart';
+import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_state_views.dart';
 
 /// صفحة «المدينون» — قائمة المشتركين الذين عليهم ذمّة (آجل) للحساب المحدّد.
@@ -28,17 +31,35 @@ class _SasDebtorsPageState extends State<SasDebtorsPage> {
   bool _loading = true;
   String? _error;
 
+  /// اشتراك ناقل التحديث المشترك — يعيد جلب المدينين عند أي عملية/تسديد.
+  StreamSubscription<SasRefreshEvent>? _busSub;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _busSub = SasRefreshBus.instance.stream.listen(_onBusEvent);
+  }
+
+  @override
+  void dispose() {
+    _busSub?.cancel();
+    super.dispose();
+  }
+
+  /// عند إشعار الناقل الخاص بهذا الحساب: أعد الجلب بصمت (بلا وميض).
+  void _onBusEvent(SasRefreshEvent e) {
+    if (!mounted || _loading) return;
+    if (!e.matches(widget.account.id)) return;
+    _load(silent: true);
   }
 
   String _clean(Object e) => e.toString().replaceFirst('Exception: ', '').trim();
 
-  Future<void> _load() async {
+  /// [silent] يعيد الجلب دون إظهار حالة تحميل (بلا وميض) — عند إشعار الناقل.
+  Future<void> _load({bool silent = false}) async {
     setState(() {
-      _loading = true;
+      if (!silent) _loading = true;
       _error = null;
     });
     try {
@@ -60,6 +81,14 @@ class _SasDebtorsPageState extends State<SasDebtorsPage> {
 
   num get _totalOwed =>
       _debtors.fold<num>(0, (sum, d) => sum + d.balance);
+
+  /// تحديث يدوي (زر/سحب): مزامنة الحساب ثم إعادة جلب المدينين + إشعار بقية
+  /// التبويبات. المزامنة معزولة؛ نُبقي العرض (silent) فلا يومض.
+  Future<void> _refreshManual() async {
+    await SasRefreshBus.instance
+        .syncAndNotify(widget.account.id, reason: 'debtors-refresh-button');
+    if (mounted) await _load(silent: true);
+  }
 
   Future<void> _openStatement(SasDebtor d) async {
     await Navigator.of(context).push(
@@ -100,7 +129,7 @@ class _SasDebtorsPageState extends State<SasDebtorsPage> {
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh_rounded),
-              onPressed: _loading ? null : _load,
+              onPressed: _loading ? null : _refreshManual,
             ),
           ],
         ),
@@ -126,7 +155,7 @@ class _SasDebtorsPageState extends State<SasDebtorsPage> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 820),
         child: RefreshIndicator(
-          onRefresh: _load,
+          onRefresh: _refreshManual,
           child: ListView.separated(
             padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 20.h),
             itemCount: _debtors.length + 1,

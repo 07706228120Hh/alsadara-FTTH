@@ -9,6 +9,7 @@ import '../models/sas_report.dart';
 import '../models/sas_subscriber.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_metrics.dart';
+import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_report_widgets.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_subscriber_detail_page.dart';
@@ -54,6 +55,9 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
   bool _syncing = false;
   String? _error;
 
+  /// اشتراك ناقل التحديث المشترك — يعيد التحميل عند أي عملية/مزامنة.
+  StreamSubscription<SasRefreshEvent>? _busSub;
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +66,15 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
       _source = _Source.local;
       _expiring = widget.initialExpiring;
     }
+    _load();
+    _busSub = SasRefreshBus.instance.stream.listen(_onBusEvent);
+  }
+
+  /// عند إشعار الناقل الخاص بهذا الحساب: أعد تحميل القائمة الحالية موضعياً (بلا
+  /// مزامنة ثقيلة — تمّت عند مصدر الحدث). نتجنّب التحميل أثناء مزامنة سريعة جارية.
+  void _onBusEvent(SasRefreshEvent e) {
+    if (!mounted || _syncing) return;
+    if (!e.matches(widget.account.id)) return;
     _load();
   }
 
@@ -88,6 +101,7 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
 
   @override
   void dispose() {
+    _busSub?.cancel();
     _debounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
@@ -165,6 +179,10 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
         _expiryCounts = r.expiry;
       });
       await _load();
+      // أبلغ بقية التبويبات المفتوحة لتتحدّث (نبثّ و_syncing لا يزال true فيتخطّى
+      // مستمعنا الذاتي إعادةً مكرّرة؛ قائمتنا مُحمَّلة أصلاً أعلاه).
+      SasRefreshBus.instance
+          .notify(accountId: widget.account.id, reason: 'subscribers-sync-button');
     } catch (e) {
       _snack(_clean(e), error: true);
     } finally {
