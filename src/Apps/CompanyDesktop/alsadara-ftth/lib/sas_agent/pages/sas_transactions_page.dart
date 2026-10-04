@@ -113,6 +113,7 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
         backgroundColor: SasUi.pageBg,
         appBar: AppBar(
           elevation: 0,
+          backgroundColor: AppTheme.primaryColor,
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

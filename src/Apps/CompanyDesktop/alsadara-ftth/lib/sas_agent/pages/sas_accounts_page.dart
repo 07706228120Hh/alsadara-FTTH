@@ -227,24 +227,27 @@ class SasAccountsPageState extends State<SasAccountsPage> {
 
     return RefreshIndicator(
       onRefresh: reload,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 20.h),
-        children: [
-          SasSectionHeader(
-            title: 'حسابات الساس',
-            icon: Icons.hub_rounded,
-            trailingText: '${_accounts.length}',
-          ),
-          SizedBox(height: 14.h),
-          for (int i = 0; i < _accounts.length; i++) ...[
-            _accountCard(_accounts[i], widget.selected?.id == _accounts[i].id),
-            SizedBox(height: 10.h),
+      child: SasContentWrap(
+        maxWidth: 860,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 20.h),
+          children: [
+            SasSectionHeader(
+              title: 'حسابات الساس',
+              icon: Icons.hub_rounded,
+              trailingText: '${_accounts.length}',
+            ),
+            SizedBox(height: 14.h),
+            for (int i = 0; i < _accounts.length; i++) ...[
+              _accountCard(_accounts[i], widget.selected?.id == _accounts[i].id),
+              SizedBox(height: 10.h),
+            ],
+            if (_canManage) ...[
+              SizedBox(height: 4.h),
+              _addButton(),
+            ],
           ],
-          if (_canManage) ...[
-            SizedBox(height: 4.h),
-            _addButton(),
-          ],
-        ],
+        ),
       ),
     );
   }

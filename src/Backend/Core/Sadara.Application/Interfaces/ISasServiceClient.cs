@@ -234,6 +234,7 @@ public interface ISasServiceClient
     /// <param name="accountId">معرّف الحساب المملوك (عزل التخزين المحلي).</param>
     /// <param name="search">نص بحث اختياري.</param>
     /// <param name="status">تصفية بالحالة (اختياري).</param>
+    /// <param name="profile">تصفية بالباقة/البروفايل (اختياري).</param>
     /// <param name="expiring">تصفية المنتهين/الأوشك على الانتهاء (اختياري).</param>
     /// <param name="page">رقم الصفحة (اختياري).</param>
     /// <param name="count">حجم الصفحة (اختياري).</param>
@@ -241,6 +242,7 @@ public interface ISasServiceClient
         string accountId,
         string? search = null,
         string? status = null,
+        string? profile = null,
         string? expiring = null,
         int? page = null,
         int? count = null,
@@ -554,5 +556,14 @@ public interface ISasServiceClient
     Task<string> GetAgentsSummaryAsync(
         string companyId,
         IEnumerable<string> accountIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// مستكشف الساس (أداة مسؤول): يفكّ دفعة حمولات SAS4 مشفّرة (Salted__/AES) الملتقَطة من اللوحة
+    /// (POST /explorer/decrypt). فكّ محلي بالمفتاح الثابت — بلا اعتماد ولا نداء SAS. يعيد JSON خاماً
+    /// <c>{results:[{ok,text?,error?}]}</c> بالترتيب نفسه.
+    /// </summary>
+    Task<string> DecryptPayloadsAsync(
+        IEnumerable<string> items,
         CancellationToken cancellationToken = default);
 }

@@ -218,16 +218,98 @@ Future<void> main(List<String> args) async {
   ));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  // حجم التصميم المرجعي الحالي المشتق من عرض النافذة الفعلي.
+  // يبدأ على مقاس الموبايل (iPhone X) ثم يُعاد اشتقاقه حسب عرض النافذة.
+  Size _designSize = const Size(375, 812);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // اشتقاق الحجم المرجعي مبكراً (قبل أول frame) من النافذة الرئيسية مباشرةً
+    // عبر PlatformDispatcher لتفادي أي وميض على سطح المكتب عند الإقلاع.
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    if (views.isNotEmpty) {
+      final view = views.first;
+      final dpr = view.devicePixelRatio == 0 ? 1.0 : view.devicePixelRatio;
+      final logicalWidth = view.physicalSize.width / dpr;
+      if (logicalWidth > 0) {
+        _designSize = _deriveDesignSize(logicalWidth);
+      }
+    }
+    // إعادة اشتقاق دقيقة بعد أول frame (حين يستقرّ حجم النافذة الفعلي).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _recomputeDesignSize());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// يُستدعى عند تغيّر أبعاد النافذة (تكبير/تصغير سطح المكتب أو تدوير الجهاز).
+  @override
+  void didChangeMetrics() {
+    _recomputeDesignSize();
+  }
+
+  /// يشتق عرض التصميم المرجعي من عرض النافذة الفعلي بحيث يبقى معامل
+  /// flutter_screenutil (العرض الفعلي ÷ عرض التصميم) ضمن مدى طبيعي:
+  ///   - النوافذ الضيّقة (≤ 600 منطقي): يبقى 375×812 كما هو (سلوك الموبايل بلا تغيير).
+  ///   - النوافذ العريضة (سطح المكتب): يكبر عرض التصميم مع العرض الفعلي بحيث
+  ///     يبقى معامل .sp/.w قريباً من 1×–1.3× بدل ~5× السابق.
+  void _recomputeDesignSize() {
+    if (!mounted) return;
+    final view = View.maybeOf(context);
+    if (view == null) return;
+    // عرض النافذة بالوحدات المنطقية = البكسل الفيزيائي ÷ نسبة البكسل.
+    final dpr = view.devicePixelRatio == 0 ? 1.0 : view.devicePixelRatio;
+    final logicalWidth = view.physicalSize.width / dpr;
+    if (logicalWidth <= 0) return;
+
+    final newSize = _deriveDesignSize(logicalWidth);
+    // تجنّب إعادة البناء بلا داعٍ (تفادي الوميض) إذا لم يتغيّر الحجم فعلياً.
+    if ((newSize.width - _designSize.width).abs() < 0.5 &&
+        (newSize.height - _designSize.height).abs() < 0.5) {
+      return;
+    }
+    setState(() => _designSize = newSize);
+  }
+
+  /// الخريطة من عرض النافذة المنطقي إلى حجم التصميم المرجعي.
+  /// النسبة الرأسية ثابتة (812/375) للحفاظ على سلوك .h المعروف.
+  static Size _deriveDesignSize(double logicalWidth) {
+    const double aspect = 812.0 / 375.0; // نسبة iPhone X الأصلية
+    double designWidth;
+    if (logicalWidth <= 600) {
+      // موبايل / نافذة ضيّقة: لا تغيير إطلاقاً عن السلوك الأصلي.
+      designWidth = 375;
+    } else {
+      // سطح المكتب: اشتق عرض التصميم من العرض الفعلي بمعامل هدف ~1.15×
+      // (أي designWidth = العرض الفعلي ÷ 1.15)، محدوداً بين 600 و 1600
+      // كي لا يتجاوز المقياس حدوداً غير معقولة على الشاشات الضخمة جداً.
+      const double targetFactor = 1.15;
+      designWidth = (logicalWidth / targetFactor).clamp(600.0, 1600.0);
+    }
+    return Size(designWidth, designWidth * aspect);
+  }
 
   @override
   Widget build(BuildContext context) {
     // إعداد مدير دورة حياة التطبيق مع إدارة السيرفر
     return AppLifecycleManager(
       child: ScreenUtilInit(
-        // تحديد حجم مرجعي مناسب لجميع الأجهزة
-        designSize: Size(375, 812), // iPhone X size as base
+        // حجم مرجعي متجاوب: 375 للموبايل، ويكبر تلقائياً على سطح المكتب
+        // لمنع تضخّم .sp/.w على النوافذ العريضة.
+        designSize: _designSize,
         minTextAdapt: true,
         splitScreenMode: true,
         useInheritedMediaQuery: true,

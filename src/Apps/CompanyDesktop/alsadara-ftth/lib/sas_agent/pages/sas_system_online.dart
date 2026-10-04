@@ -74,25 +74,27 @@ class _SasSystemOnlineState extends State<SasSystemOnline> {
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.separated(
-        padding: EdgeInsets.all(12.w),
-        itemCount: _rows.length + 1,
-        separatorBuilder: (_, __) => SizedBox(height: 8.h),
-        itemBuilder: (context, i) {
-          if (i == _rows.length) {
-            return Padding(
-              padding: EdgeInsets.symmetric(vertical: 12.h),
-              child: Center(
-                child: Text('الإجمالي المتصل: ${_rows.length}',
-                    style: GoogleFonts.cairo(
-                        fontSize: 12.5.sp,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey[700])),
-              ),
-            );
-          }
-          return _sessionCard(_rows[i]);
-        },
+      child: SasContentWrap(
+        child: ListView.separated(
+          padding: EdgeInsets.all(12.w),
+          itemCount: _rows.length + 1,
+          separatorBuilder: (_, __) => SizedBox(height: 8.h),
+          itemBuilder: (context, i) {
+            if (i == _rows.length) {
+              return Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.h),
+                child: Center(
+                  child: Text('الإجمالي المتصل: ${_rows.length}',
+                      style: GoogleFonts.cairo(
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey[700])),
+                ),
+              );
+            }
+            return _sessionCard(_rows[i]);
+          },
+        ),
       ),
     );
   }

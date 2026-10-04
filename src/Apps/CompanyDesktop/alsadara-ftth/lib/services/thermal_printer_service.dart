@@ -1088,6 +1088,111 @@ class ThermalPrinterService {
 
   // تمت إزالة جميع دوال البلوتوث (الاتصال، الأذونات، والأجهزة).
 
+  static const String _receiptPrinterKey = 'receipt_printer_name';
+
+  /// اسم طابعة الإيصالات المحفوظة (أو null).
+  static Future<String?> getReceiptPrinterName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final v = prefs.getString(_receiptPrinterKey);
+      return (v != null && v.isNotEmpty) ? v : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// يحفظ/يمسح اسم طابعة الإيصالات.
+  static Future<void> setReceiptPrinterName(String? name) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (name == null || name.trim().isEmpty) {
+        await prefs.remove(_receiptPrinterKey);
+      } else {
+        await prefs.setString(_receiptPrinterKey, name.trim());
+      }
+    } catch (_) {}
+  }
+
+  /// قائمة الطابعات المثبّتة على النظام (للاختيار في الإعدادات).
+  static Future<List<Printer>> listSystemPrinters() async {
+    try {
+      return await Printing.listPrinters();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// طباعة صفحة اختبار صغيرة على طابعة محدّدة (للتحقق من الإعداد).
+  /// نص لاتيني فقط لتفادي مشاكل الخطوط. يُعيد true إن أُرسلت دون خطأ/مهلة.
+  static Future<bool> testPrintToPrinter(Printer printer) async {
+    try {
+      final pdf = pw.Document();
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat(
+              _paperWidthMm * PdfPageFormat.mm, 120 * PdfPageFormat.mm),
+          margin: pw.EdgeInsets.all(2),
+          build: (ctx) => pw.Center(
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              children: [
+                pw.Text('Receipt Printer Test',
+                    style: pw.TextStyle(
+                        fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 6),
+                pw.Text(printer.name, textAlign: pw.TextAlign.center),
+                pw.SizedBox(height: 6),
+                pw.Text(DateTime.now().toString().split('.')[0]),
+                pw.SizedBox(height: 6),
+                pw.Text('--- OK ---'),
+              ],
+            ),
+          ),
+        ),
+      );
+      final bytes = await pdf.save();
+      await Future<bool>.value(Printing.directPrintPdf(
+        printer: printer,
+        onLayout: (PdfPageFormat format) async => bytes,
+        name: 'receipt_printer_test',
+      )).timeout(const Duration(seconds: 20));
+      return true;
+    } catch (e) {
+      debugPrint('$_tag: Test print failed');
+      return false;
+    }
+  }
+
+  /// يختار طابعة الإيصال للطباعة الصامتة — **لا يعيد أبداً طابعة غير متاحة**
+  /// (تفادياً لحوار «Waiting for printer connection» من نظام ويندوز):
+  ///  1) المحفوظة بالاسم إن كانت متاحة؛ إن كانت محفوظة لكن غير متاحة ⇒ null.
+  ///  2) الافتراضية إن كانت متاحة.
+  ///  3) أول طابعة متاحة.
+  ///  4) null إن لا توجد أي طابعة متاحة ⇒ تُتخطّى الطباعة بلا حوار نظام.
+  static Future<Printer?> _resolveReceiptPrinter() async {
+    try {
+      final printers = await Printing.listPrinters();
+      if (printers.isEmpty) return null;
+      final saved = await getReceiptPrinterName();
+      if (saved != null) {
+        for (final p in printers) {
+          if (p.name == saved) return p.isAvailable ? p : null;
+        }
+        return null; // محفوظة بالاسم لكنها غير موجودة الآن.
+      }
+      for (final p in printers) {
+        if (p.isDefault && p.isAvailable) return p;
+      }
+      for (final p in printers) {
+        if (p.isAvailable) return p;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('$_tag: Error resolving receipt printer');
+      return null;
+    }
+  }
+
   /// فحص توفر طابعة على النظام (بدون طباعة)
   static Future<bool> hasAvailablePrinter() async {
     try {
@@ -1604,10 +1709,15 @@ class ThermalPrinterService {
   }
 
   /// طباعة/حفظ وصل باستخدام نظام القالب الجديد (V2)
+  ///
+  /// [silent] إذا كان `true` تُطبَع مباشرةً على الطابعة (المحفوظة بالاسم إن
+  /// وُجدت، وإلا الافتراضية) عبر `directPrintPdf` **دون حوار ويندوز** — مع مهلة.
+  /// الافتراضي `false` يبقي سلوك FTTH الأصلي (حوار الطباعة) دون تغيير.
   static Future<bool> printFromReceiptTemplate({
     required Map<String, String> variableValues,
     Map<String, bool> conditions = const {},
     bool saveAsPdf = false,
+    bool silent = false,
   }) async {
     try {
       // زيادة عداد الوصل تلقائياً وتحديث المتغير
@@ -1657,13 +1767,29 @@ class ThermalPrinterService {
           return false;
         }
       } else {
-        debugPrint('$_tag: Printing V2 receipt...');
-        await Printing.layoutPdf(
-          onLayout: (PdfPageFormat format) async => pdfBytes,
-          name:
-              'وصل_${variableValues['operationType'] ?? ''}_${DateTime.now().millisecondsSinceEpoch}',
-        );
-        debugPrint('$_tag: V2 receipt printed successfully');
+        final receiptName =
+            'وصل_${variableValues['operationType'] ?? ''}_${DateTime.now().millisecondsSinceEpoch}';
+        if (silent) {
+          debugPrint('$_tag: Printing V2 receipt silently...');
+          final printer = await _resolveReceiptPrinter();
+          if (printer == null) {
+            debugPrint('$_tag: No printer available for silent print');
+            return false;
+          }
+          await Future<bool>.value(Printing.directPrintPdf(
+            printer: printer,
+            onLayout: (PdfPageFormat format) async => pdfBytes,
+            name: receiptName,
+          )).timeout(const Duration(seconds: 25));
+          debugPrint('$_tag: V2 receipt printed silently');
+        } else {
+          debugPrint('$_tag: Printing V2 receipt...');
+          await Printing.layoutPdf(
+            onLayout: (PdfPageFormat format) async => pdfBytes,
+            name: receiptName,
+          );
+          debugPrint('$_tag: V2 receipt printed successfully');
+        }
 
         // أمر القطع بعد الطباعة
         try {

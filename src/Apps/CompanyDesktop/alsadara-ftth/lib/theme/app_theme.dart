@@ -194,6 +194,32 @@ class AppTheme {
     Color(0xFFFF9800),
     Color(0xFFFF8F00),
   ];
+
+  /// خلفية تدرّج موحّدة للشريط العلوي (AppBar.flexibleSpace).
+  ///
+  /// الثيم العام يجعل الـ AppBar شفافاً بأيقونات/عنوان بيضاء؛ لذا أي شريط
+  /// بلا خلفية داكنة تختفي أيقوناته. استخدم هذه مع
+  /// `backgroundColor: Colors.transparent` لإظهار الأيقونات البيضاء بنمط
+  /// موحّد مع هوية الصدارة.
+  ///
+  /// ```dart
+  /// AppBar(
+  ///   backgroundColor: Colors.transparent,
+  ///   flexibleSpace: AppTheme.appBarGradient(),
+  ///   title: const Text('العنوان'),
+  /// )
+  /// ```
+  static Widget appBarGradient({List<Color>? colors}) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors ?? blueGradient,
+        ),
+      ),
+    );
+  }
 }
 
 /// انتقال فوري بين الصفحات - بدون أنيميشن لأداء أفضل على Windows Desktop

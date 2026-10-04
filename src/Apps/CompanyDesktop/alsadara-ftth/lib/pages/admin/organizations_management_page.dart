@@ -806,7 +806,23 @@ class _OrganizationsManagementPageState
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('إدارة الشركات', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.transparent,
+          iconTheme: const IconThemeData(color: Colors.white),
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF283593),
+                  Color(0xFF1976D2),
+                  Color(0xFF64B5F6)
+                ],
+              ),
+            ),
+          ),
+          title: Text('إدارة الشركات',
+              style: GoogleFonts.cairo(color: Colors.white)),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );

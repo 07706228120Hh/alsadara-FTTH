@@ -685,6 +685,365 @@ public class SasAgentController : ControllerBase
         }
     }
 
+    // ==================== مستكشف الساس (أداة مسؤول/مطوّر) ====================
+    // فكّ تشفير حمولات SAS4 الملتقَطة من اللوحة لاكتشاف عقد الـAPI الحقيقي. محصور بالمسؤول (CompanyAdmin فأعلى).
+    // فكّ محلي بالمفتاح الثابت (بلا اعتماد/نداء SAS). لا يُسجَّل المحتوى.
+
+    /// <summary>فكّ دفعة حمولات ساس مشفّرة (مستكشف الساس) — كتابة (manage) + مسؤول فقط.</summary>
+    [HttpPost("explorer/decrypt")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> ExplorerDecrypt([FromBody] SasExplorerDecryptRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out _, out _, out var denied))
+            return denied!;
+        if (!IsCompanyAdminOrAbove())
+            return Forbid();
+
+        if (request?.Items == null || request.Items.Count == 0)
+            return Ok(new { success = true, results = Array.Empty<object>(), count = 0 });
+
+        // سقف معقول للدفعة (حماية).
+        var items = request.Items.Take(2000).ToList();
+
+        try
+        {
+            var raw = await _sasClient.DecryptPayloadsAsync(items, ct);
+            // نُعيد JSON خدمة Python كما هو (results[]) ضمن غلاف success.
+            return Content(
+                $"{{\"success\":true,\"data\":{raw}}}",
+                "application/json");
+        }
+        catch (SasServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "تعذّر فكّ تشفير حمولات المستكشف");
+            return StatusCode(503, new { success = false, message = "خدمة الساس غير متاحة" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في فكّ تشفير حمولات المستكشف");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    // ==================== المناطق (SasRegion) — بيانات رئيسية على مستوى الشركة ====================
+    // معزولة بالشركة (CompanyId من التوكن). أجور الصيانة لكل منطقة تُطبَّق تلقائياً على مشتركيها عند التفعيل/التجديد.
+    // ملاحظة: المناطق على مستوى الشركة لا الحساب (يشترك بها كل حسابات موظفي الشركة) — بلا ربط SasAccountId.
+
+    /// <summary>قائمة مناطق الشركة مع عدد المشتركين المرتبطين بكل منطقة — قراءة (view).</summary>
+    [HttpGet("regions")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetRegions(CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied))
+            return denied!;
+
+        try
+        {
+            var regions = await _db.SasRegions
+                .AsNoTracking()
+                .Where(x => x.CompanyId == companyId && !x.IsDeleted)
+                .OrderBy(x => x.Name)
+                .ToListAsync(ct);
+
+            // عدّ المشتركين المرتبطين لكل منطقة (ضمن الشركة) في استعلام واحد.
+            var counts = await _db.SasSubscriberProfiles
+                .AsNoTracking()
+                .Where(p => p.CompanyId == companyId && p.RegionId != null && !p.IsDeleted)
+                .GroupBy(p => p.RegionId!.Value)
+                .Select(g => new { RegionId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.RegionId, x => x.Count, ct);
+
+            var data = regions.Select(r => new SasRegionDto(
+                r.Id, r.Name, r.Code, r.Governorate, r.City,
+                r.MaintenanceFee, r.IsActive, r.Notes,
+                counts.TryGetValue(r.Id, out var c) ? c : 0)).ToList();
+
+            return Ok(new { success = true, data, total = data.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب مناطق الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>إنشاء منطقة جديدة للشركة — كتابة (manage). CompanyId مختوم خادمياً. الاسم فريد ضمن الشركة.</summary>
+    [HttpPost("regions")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> CreateRegion([FromBody] SasRegionUpsertRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied))
+            return denied!;
+
+        var name = Trim(request?.Name);
+        if (name == null)
+            return BadRequest(new { success = false, message = "اسم المنطقة مطلوب" });
+
+        try
+        {
+            // تفرّد الاسم ضمن الشركة (دفاع فوق الفهرس الفريد).
+            var exists = await _db.SasRegions.AnyAsync(
+                x => x.CompanyId == companyId && x.Name == name && !x.IsDeleted, ct);
+            if (exists)
+                return Conflict(new { success = false, message = "اسم المنطقة مستخدم مسبقاً" });
+
+            var region = new SasRegion
+            {
+                Id = Guid.NewGuid(),
+                CompanyId = companyId,                        // ختم العزل من التوكن
+                Name = name,
+                Code = Trim(request!.Code),
+                Governorate = Trim(request.Governorate),
+                City = Trim(request.City),
+                MaintenanceFee = Math.Max(0, request.MaintenanceFee),
+                IsActive = request.IsActive ?? true,
+                Notes = Trim(request.Notes)
+            };
+            await _db.SasRegions.AddAsync(region, ct);
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new { success = true, data = ToRegionDto(region, 0), message = "تم إنشاء المنطقة بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إنشاء منطقة الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>تعديل منطقة — كتابة (manage). العزل: المنطقة ضمن شركة التوكن حصراً.</summary>
+    [HttpPut("regions/{rid}")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UpdateRegion(Guid rid, [FromBody] SasRegionUpsertRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied))
+            return denied!;
+
+        var name = Trim(request?.Name);
+        if (name == null)
+            return BadRequest(new { success = false, message = "اسم المنطقة مطلوب" });
+
+        try
+        {
+            var region = await _db.SasRegions.FirstOrDefaultAsync(
+                x => x.Id == rid && x.CompanyId == companyId && !x.IsDeleted, ct);
+            if (region == null)
+                return NotFound(new { success = false, message = "المنطقة غير موجودة" });
+
+            // تفرّد الاسم ضمن الشركة (باستثناء الصفّ نفسه).
+            var clash = await _db.SasRegions.AnyAsync(
+                x => x.CompanyId == companyId && x.Name == name && x.Id != rid && !x.IsDeleted, ct);
+            if (clash)
+                return Conflict(new { success = false, message = "اسم المنطقة مستخدم مسبقاً" });
+
+            region.Name = name;
+            region.Code = Trim(request!.Code);
+            region.Governorate = Trim(request.Governorate);
+            region.City = Trim(request.City);
+            region.MaintenanceFee = Math.Max(0, request.MaintenanceFee);
+            region.IsActive = request.IsActive ?? region.IsActive;
+            region.Notes = Trim(request.Notes);
+            region.UpdatedAt = DateTime.UtcNow;
+            _db.SasRegions.Update(region);
+            await _db.SaveChangesAsync(ct);
+
+            var count = await _db.SasSubscriberProfiles.CountAsync(
+                p => p.CompanyId == companyId && p.RegionId == rid && !p.IsDeleted, ct);
+            return Ok(new { success = true, data = ToRegionDto(region, count), message = "تم تحديث المنطقة بنجاح" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تعديل منطقة الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>حذف منطقة (ناعم) — كتابة (manage). يُرفَض إن كانت مرتبطة بمشتركين (لتفادي يُتم الربط).</summary>
+    [HttpDelete("regions/{rid}")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> DeleteRegion(Guid rid, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied))
+            return denied!;
+
+        try
+        {
+            var region = await _db.SasRegions.FirstOrDefaultAsync(
+                x => x.Id == rid && x.CompanyId == companyId && !x.IsDeleted, ct);
+            if (region == null)
+                return NotFound(new { success = false, message = "المنطقة غير موجودة" });
+
+            var linked = await _db.SasSubscriberProfiles.CountAsync(
+                p => p.CompanyId == companyId && p.RegionId == rid && !p.IsDeleted, ct);
+            if (linked > 0)
+                return Conflict(new { success = false, message = $"لا يمكن حذف المنطقة: مرتبطة بـ{linked} مشترك — أعِد ربطهم أولاً" });
+
+            region.IsDeleted = true;
+            region.DeletedAt = DateTime.UtcNow;
+            _db.SasRegions.Update(region);
+            await _db.SaveChangesAsync(ct);
+            return Ok(new { success = true, message = "تم حذف المنطقة" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في حذف منطقة الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>يبني DTO منطقة من الكيان مع عدد المشتركين.</summary>
+    private static SasRegionDto ToRegionDto(SasRegion r, int subscribersCount)
+        => new(r.Id, r.Name, r.Code, r.Governorate, r.City, r.MaintenanceFee, r.IsActive, r.Notes, subscribersCount);
+
+    /// <summary>اسم منطقة ضمن الشركة (عرضي) أو null. يستخدم في بناء بروفايل المشترك.</summary>
+    private async Task<string?> ResolveRegionNameAsync(Guid companyId, Guid? regionId, CancellationToken ct)
+    {
+        if (!regionId.HasValue || regionId.Value == Guid.Empty)
+            return null;
+        return await _db.SasRegions
+            .AsNoTracking()
+            .Where(r => r.Id == regionId.Value && r.CompanyId == companyId && !r.IsDeleted)
+            .Select(r => r.Name)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>
+    /// أجور صيانة المنطقة المرتبطة بمشترك ساس (افتراضي تلقائي) — 0 إن لا منطقة/غير مفعّلة.
+    /// المفتاح: (CompanyId + account.Id + uid) → RegionId → SasRegion.MaintenanceFee.
+    /// </summary>
+    private async Task<decimal> ResolveRegionMaintenanceFeeAsync(SasAccount account, string uid, CancellationToken ct)
+    {
+        var regionId = await _db.SasSubscriberProfiles
+            .AsNoTracking()
+            .Where(p => p.CompanyId == account.CompanyId
+                        && p.SasAccountId == account.Id
+                        && p.SubscriberUid == uid
+                        && !p.IsDeleted)
+            .Select(p => p.RegionId)
+            .FirstOrDefaultAsync(ct);
+
+        if (!regionId.HasValue || regionId.Value == Guid.Empty)
+            return 0m;
+
+        var fee = await _db.SasRegions
+            .AsNoTracking()
+            .Where(r => r.Id == regionId.Value
+                        && r.CompanyId == account.CompanyId
+                        && r.IsActive
+                        && !r.IsDeleted)
+            .Select(r => (decimal?)r.MaintenanceFee)
+            .FirstOrDefaultAsync(ct);
+
+        return Math.Max(0m, fee ?? 0m);
+    }
+
+    // ==================== تقرير الأرباح (SAS) — تجميع من الدفتر الموحّد ====================
+    // معزول بالشركة (CompanyId من التوكن). يجمع سجلات الساس (Source=Sas) ضمن فترة، ويُفصّل حسب المنطقة والباقة.
+    // المعادلات: الكلفة = Σ BasePrice؛ الربح = Σ(MaintenanceFee − ManualDiscount)؛ المحصّل = Σ(BasePrice + MaintenanceFee − ManualDiscount).
+    // ملاحظة: MaintenanceFee يضمّ ربح الباقة (بيع−كلفة) + أجور صيانة المنطقة ⇒ كلاهما هامش للشركة.
+
+    /// <summary>تقرير أرباح الساس للشركة ضمن فترة — إجمالي + تفصيل حسب المنطقة والباقة — قراءة (view).</summary>
+    [HttpGet("reports/profits")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetProfitsReport(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied))
+            return denied!;
+
+        try
+        {
+            // 1) سجلات الساس للشركة ضمن الفترة (على ActivationDate؛ fallback لتاريخ الإنشاء إن غابت).
+            var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+                .Where(l => l.CompanyId == companyId
+                            && l.Source == SubscriptionLogSource.Sas);
+
+            if (from.HasValue)
+            {
+                var f = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+                query = query.Where(l => (l.ActivationDate ?? l.CreatedAt) >= f);
+            }
+            if (to.HasValue)
+            {
+                var t = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc);
+                query = query.Where(l => (l.ActivationDate ?? l.CreatedAt) <= t);
+            }
+
+            var logs = await query
+                .Select(l => new
+                {
+                    l.SasAccountId,
+                    l.SubscriberUid,
+                    l.PlanName,
+                    BasePrice = l.BasePrice ?? 0m,
+                    MaintenanceFee = l.MaintenanceFee ?? 0m,
+                    ManualDiscount = l.ManualDiscount ?? 0m
+                })
+                .ToListAsync(ct);
+
+            // 2) خريطة (SasAccountId:uid) → RegionId للشركة، وخريطة RegionId → اسم المنطقة.
+            var profiles = await _db.SasSubscriberProfiles
+                .AsNoTracking()
+                .Where(p => p.CompanyId == companyId && p.RegionId != null && !p.IsDeleted)
+                .Select(p => new { p.SasAccountId, p.SubscriberUid, p.RegionId })
+                .ToListAsync(ct);
+
+            var regionByKey = profiles.ToDictionary(
+                p => $"{p.SasAccountId:N}:{p.SubscriberUid}",
+                p => p.RegionId!.Value);
+
+            var regionNames = await _db.SasRegions
+                .AsNoTracking()
+                .Where(r => r.CompanyId == companyId && !r.IsDeleted)
+                .ToDictionaryAsync(r => r.Id, r => r.Name, ct);
+
+            // 3) التجميع في الذاكرة (أحجام الساس لكل شركة معتدلة).
+            decimal totalCost = 0, totalProfit = 0, totalRevenue = 0;
+            var byRegion = new Dictionary<string, (decimal cost, decimal profit, decimal revenue, int count)>();
+            var byPackage = new Dictionary<string, (decimal cost, decimal profit, decimal revenue, int count)>();
+
+            foreach (var l in logs)
+            {
+                var cost = l.BasePrice;
+                var profit = l.MaintenanceFee - l.ManualDiscount;
+                var revenue = cost + profit;
+                totalCost += cost; totalProfit += profit; totalRevenue += revenue;
+
+                var key = $"{l.SasAccountId:N}:{l.SubscriberUid}";
+                var regionName = regionByKey.TryGetValue(key, out var rid) && regionNames.TryGetValue(rid, out var rn)
+                    ? rn : "بلا منطقة";
+                var rAgg = byRegion.TryGetValue(regionName, out var rv) ? rv : default;
+                byRegion[regionName] = (rAgg.cost + cost, rAgg.profit + profit, rAgg.revenue + revenue, rAgg.count + 1);
+
+                var pkg = string.IsNullOrWhiteSpace(l.PlanName) ? "غير محدّدة" : l.PlanName!;
+                var pAgg = byPackage.TryGetValue(pkg, out var pv) ? pv : default;
+                byPackage[pkg] = (pAgg.cost + cost, pAgg.profit + profit, pAgg.revenue + revenue, pAgg.count + 1);
+            }
+
+            var regionsBreakdown = byRegion
+                .Select(kv => new SasProfitRow(kv.Key, kv.Value.count, kv.Value.cost, kv.Value.profit, kv.Value.revenue))
+                .OrderByDescending(x => x.Profit).ToList();
+            var packagesBreakdown = byPackage
+                .Select(kv => new SasProfitRow(kv.Key, kv.Value.count, kv.Value.cost, kv.Value.profit, kv.Value.revenue))
+                .OrderByDescending(x => x.Profit).ToList();
+
+            return Ok(new
+            {
+                success = true,
+                totals = new SasProfitRow("الإجمالي", logs.Count, totalCost, totalProfit, totalRevenue),
+                byRegion = regionsBreakdown,
+                byPackage = packagesBreakdown
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تقرير أرباح الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
     // ==================== بيانات المواطن الموسّعة (المرحلة 1) ====================
     // معزولة بالعزل الثلاثي عبر GetOwnedAccountAsync. المفتاح (CompanyId + account.Id + uid) من الحساب خادمياً.
 
@@ -717,7 +1076,8 @@ public class SasAgentController : ControllerBase
                          && !x.IsDeleted,
                     ct);
 
-            return Ok(new { success = true, data = BuildProfileDto(safeUid, profile) });
+            var regionName = await ResolveRegionNameAsync(account.CompanyId, profile?.RegionId, ct);
+            return Ok(new { success = true, data = BuildProfileDto(safeUid, profile, regionName) });
         }
         catch (Exception ex)
         {
@@ -774,6 +1134,25 @@ public class SasAgentController : ControllerBase
                 };
             }
 
+            // المنطقة: تحقّق من ملكية الشركة (دفاع بالعمق — لا نثق بمعرّف العميل) قبل الربط.
+            string? regionName = null;
+            if (request.RegionId.HasValue && request.RegionId.Value != Guid.Empty)
+            {
+                var region = await _db.SasRegions.FirstOrDefaultAsync(
+                    r => r.Id == request.RegionId.Value
+                         && r.CompanyId == account.CompanyId
+                         && !r.IsDeleted,
+                    ct);
+                if (region == null)
+                    return BadRequest(new { success = false, message = "المنطقة غير موجودة ضمن الشركة" });
+                profile.RegionId = region.Id;
+                regionName = region.Name;
+            }
+            else
+            {
+                profile.RegionId = null; // إلغاء الربط عند إرسال null/فارغ
+            }
+
             // اسم المستخدم (عرضي) + الحقول الموسّعة.
             profile.SubscriberUsername = Trim(request.SubscriberUsername) ?? profile.SubscriberUsername;
             profile.NationalId = Trim(request.NationalId);
@@ -800,7 +1179,7 @@ public class SasAgentController : ControllerBase
             }
 
             await _db.SaveChangesAsync(ct);
-            return Ok(new { success = true, data = BuildProfileDto(safeUid, profile), message = "تم حفظ بيانات المواطن بنجاح" });
+            return Ok(new { success = true, data = BuildProfileDto(safeUid, profile, regionName), message = "تم حفظ بيانات المواطن بنجاح" });
         }
         catch (Exception ex)
         {
@@ -1208,8 +1587,9 @@ public class SasAgentController : ControllerBase
             row?.IsActive ?? true);
     }
 
-    /// <summary>يبني DTO بيانات المواطن الموسّعة من الكيان (أو كائن فارغ بالـ uid فقط إن لم يُحفظ بعد).</summary>
-    private static SasProfileDto BuildProfileDto(string uid, SasSubscriberProfile? p)
+    /// <summary>يبني DTO بيانات المواطن الموسّعة من الكيان (أو كائن فارغ بالـ uid فقط إن لم يُحفظ بعد).
+    /// <paramref name="regionName"/> اسم المنطقة المرتبطة (عرضي) إن وُجدت.</summary>
+    private static SasProfileDto BuildProfileDto(string uid, SasSubscriberProfile? p, string? regionName = null)
         => new(
             uid,
             p?.SubscriberUsername,
@@ -1220,6 +1600,8 @@ public class SasAgentController : ControllerBase
             p?.AltPhone,
             p?.WhatsappNumber,
             p?.Email,
+            p?.RegionId,
+            regionName,
             p?.AddressDetail,
             p?.Latitude,
             p?.Longitude,
@@ -1242,26 +1624,10 @@ public class SasAgentController : ControllerBase
             using var doc = System.Text.Json.JsonDocument.Parse(raw);
             var root = doc.RootElement;
 
+            // ابحث عن أول مصفوفة باقات — جذرياً أو تحت data/packages/profiles/items، حتى لو كانت
+            // مغلّفة مرّتين (مثل {status, data:{data:[...]}} أو {success, data:{status, data:[...]}}).
             System.Text.Json.JsonElement arr = default;
-            var found = false;
-            if (root.ValueKind == System.Text.Json.JsonValueKind.Array)
-            {
-                arr = root;
-                found = true;
-            }
-            else if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
-            {
-                foreach (var key in new[] { "data", "packages", "profiles", "items" })
-                {
-                    if (root.TryGetProperty(key, out var el) && el.ValueKind == System.Text.Json.JsonValueKind.Array)
-                    {
-                        arr = el;
-                        found = true;
-                        break;
-                    }
-                }
-            }
-
+            var found = FindProfilesArray(root, 0, out arr);
             if (!found)
                 return list;
 
@@ -1291,6 +1657,36 @@ public class SasAgentController : ControllerBase
         }
 
         return list;
+    }
+
+    /// <summary>
+    /// يبحث تعاوديّاً عن أوّل مصفوفة باقات (جذرية أو تحت data/packages/profiles/items)، حتى لو
+    /// كانت مغلّفة عبر عدّة مستويات (مثل {status, data:{data:[...]}}). عمق محدود (≤3) لتفادي الدوران.
+    /// </summary>
+    private static bool FindProfilesArray(System.Text.Json.JsonElement node, int depth,
+        out System.Text.Json.JsonElement arr)
+    {
+        arr = default;
+        if (depth > 3) return false;
+        if (node.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            arr = node;
+            return true;
+        }
+        if (node.ValueKind != System.Text.Json.JsonValueKind.Object)
+            return false;
+        // أولاً: مفاتيح الحاويات الشائعة (مصفوفة مباشرة أو مغلّفة أعمق).
+        foreach (var key in new[] { "data", "packages", "profiles", "items", "result", "results" })
+        {
+            if (node.TryGetProperty(key, out var el))
+            {
+                if (el.ValueKind == System.Text.Json.JsonValueKind.Array) { arr = el; return true; }
+                if (el.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                    FindProfilesArray(el, depth + 1, out arr))
+                    return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>يقرأ قيمة عددية كنصّ من خاصيّة JSON (لمعرّفات رقمية)؛ null إن غابت/غير رقمية.</summary>
@@ -1578,7 +1974,11 @@ public class SasAgentController : ControllerBase
             ? "cash"
             : req.CollectionType.Trim().ToLowerInvariant();
         var months = req.Months;
-        var maintenanceFee = Math.Max(0, req.MaintenanceFee ?? 0);
+        // أجور الصيانة: إن أرسل العميل قيمة صراحةً تُحترم كتجاوز؛ وإلا تُجلب تلقائياً من منطقة المشترك (مبلغ ثابت لكل منطقة).
+        var requestedFee = req.MaintenanceFee;
+        var regionFee = requestedFee.HasValue ? 0m : await ResolveRegionMaintenanceFeeAsync(account, uid, ct);
+        var baseServiceFee = Math.Max(0, requestedFee ?? regionFee);
+        var maintenanceFee = baseServiceFee;
         var manualDiscount = Math.Max(0, req.ManualDiscount ?? 0);
 
         // 1) idempotency: معرّف عملية فريد — من الطلب إن أُرسل (وصالح) وإلا نولّده خادمياً.
@@ -1625,11 +2025,12 @@ public class SasAgentController : ControllerBase
                          && !x.IsDeleted,
                     ct);
 
-            if (price != null)
+            if (price != null && price.SellingPrice > 0)
             {
-                basePrice = price.Cost;                                        // الكلفة الفعلية → رصيد الصفحة
-                var profit = Math.Max(0, price.SellingPrice - price.Cost);     // الربح → إيراد
-                maintenanceFee = profit + Math.Max(0, req.MaintenanceFee ?? 0);// الربح + أي أجور إضافية
+                // basePrice يبقى = الأساسي المخصوم فعلاً من الساس (activationData) — لا يُدخَل يدوياً.
+                // الربح = سعر البيع − الأساسي؛ المحصّل من المشترك = سعر البيع + أجور الصيانة.
+                var margin = Math.Max(0, price.SellingPrice - basePrice);
+                maintenanceFee = margin + baseServiceFee;                      // الربح + أجور الصيانة (طلب أو منطقة)
                 if (string.IsNullOrWhiteSpace(planName))
                     planName = price.ProfileName;                             // اسم الباقة من التسعير إن لم يُعرف
             }
@@ -2013,6 +2414,59 @@ public class SasAgentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// وسم سجل اشتراك ساس بأن رسالة واتساب أُرسلت فعلاً — كتابة (manage).
+    ///
+    /// العزل: <see cref="GetOwnedAccountAsync"/> (الحساب مملوك: شركة + مالك + غير محذوف) ثم مطابقة صارمة للسجل
+    /// (<c>Source == Sas</c> و<c>SasAccountId == account.Id</c> و<c>CompanyId == account.CompanyId</c> — دفاع بالعمق).
+    ///
+    /// idempotent: إن كان <c>IsWhatsAppSent</c> مضبوطاً مسبقاً يعيد success دون كتابة أو خطأ.
+    /// </summary>
+    [HttpPost("accounts/{id}/subscription-logs/{logId}/whatsapp-sent")]
+    [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> MarkSubscriptionLogWhatsAppSent(
+        Guid id,
+        long logId,
+        CancellationToken ct = default)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            // مطابقة صارمة: سجل ساس لهذا الحساب ضمن الشركة (دفاع بالعمق فوق المفتاح).
+            var log = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                .FirstOrDefaultAsync(
+                    l => l.Id == logId
+                         && l.Source == SubscriptionLogSource.Sas
+                         && l.SasAccountId == account.Id
+                         && l.CompanyId == account.CompanyId,
+                    ct);
+
+            if (log == null)
+                return NotFound(new { success = false, message = "السجل غير موجود" });
+
+            // idempotent: إن كان مضبوطاً مسبقاً نعيد النجاح دون كتابة.
+            if (!log.IsWhatsAppSent)
+            {
+                log.IsWhatsAppSent = true;
+                _unitOfWork.SubscriptionLogs.Update(log);
+                await _unitOfWork.SaveChangesAsync(ct);
+            }
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في وسم سجل اشتراك الساس بإرسال واتساب");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
     /// <summary>تنفيذ إجراء جماعي على مشتركين — كتابة (manage).</summary>
     [HttpPost("accounts/{id}/users/bulk-action")]
     [RequirePermission("sas_agent", "manage", PermissionSystem.Second, failClosed: true)]
@@ -2190,6 +2644,7 @@ public class SasAgentController : ControllerBase
         Guid id,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
+        [FromQuery] string? profile = null,
         [FromQuery] string? expiring = null,
         [FromQuery] int? page = null,
         [FromQuery] int? count = null,
@@ -2198,12 +2653,13 @@ public class SasAgentController : ControllerBase
         // قصّ آمن للوسائط النصّية والعددية قبل التمرير.
         var safeSearch = Trim(search);
         var safeStatus = Trim(status);
+        var safeProfile = Trim(profile);
         var safePage = page.HasValue ? Math.Clamp(page.Value, 1, 100000) : (int?)null;
         var safeCount = count.HasValue ? Math.Clamp(count.Value, 1, 1000) : (int?)null;
 
         return LocalPassThroughAsync(id, (acc, token) =>
             _sasClient.GetLocalSubscribersAsync(
-                acc.Id.ToString(), safeSearch, safeStatus, expiring, safePage, safeCount, token), ct);
+                acc.Id.ToString(), safeSearch, safeStatus, safeProfile, expiring, safePage, safeCount, token), ct);
     }
 
     /// <summary>
@@ -3355,6 +3811,8 @@ public record SasProfileDto(
     string? AltPhone,
     string? WhatsappNumber,
     string? Email,
+    Guid? RegionId,
+    string? RegionName,
     string? AddressDetail,
     double? Latitude,
     double? Longitude,
@@ -3380,8 +3838,46 @@ public record SasProfileUpsertRequest(
     string? AltPhone,
     string? WhatsappNumber,
     string? Email,
+    Guid? RegionId,
     string? AddressDetail,
     double? Latitude,
     double? Longitude,
     string? PropertyType,
     string? Landmark);
+
+// ==================== DTOs المناطق (SasRegion) ====================
+// CompanyId مختوم خادمياً — لا من العميل. أجور الصيانة تُطبَّق تلقائياً على مشتركي المنطقة.
+
+/// <summary>منطقة للعرض — مع عدد المشتركين المرتبطين (للتقارير).</summary>
+public record SasRegionDto(
+    Guid Id,
+    string Name,
+    string? Code,
+    string? Governorate,
+    string? City,
+    decimal MaintenanceFee,
+    bool IsActive,
+    string? Notes,
+    int SubscribersCount);
+
+/// <summary>طلب إنشاء/تعديل منطقة — الاسم مطلوب؛ أجور الصيانة ≥0. (companyId خادمياً.)</summary>
+public record SasRegionUpsertRequest(
+    string Name,
+    string? Code,
+    string? Governorate,
+    string? City,
+    decimal MaintenanceFee,
+    bool? IsActive,
+    string? Notes);
+
+/// <summary>طلب فكّ دفعة حمولات ساس مشفّرة (مستكشف الساس). items = حمولات base64 (Salted__).</summary>
+public record SasExplorerDecryptRequest(
+    List<string> Items);
+
+/// <summary>صفّ تفصيل في تقرير الأرباح (مجموعة: منطقة/باقة/إجمالي). الربح = المحصّل − الكلفة.</summary>
+public record SasProfitRow(
+    string Label,
+    int Count,
+    decimal Cost,
+    decimal Profit,
+    decimal Revenue);

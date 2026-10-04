@@ -171,12 +171,15 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _statsRow(),
-        _controls(),
-        Expanded(child: _body()),
-      ],
+    return SasContentWrap(
+      maxWidth: 1100,
+      child: Column(
+        children: [
+          _statsRow(),
+          _controls(),
+          Expanded(child: _body()),
+        ],
+      ),
     );
   }
 

@@ -194,7 +194,9 @@ class _SasReportTabState extends State<SasReportTab> {
 
     return RefreshIndicator(
       onRefresh: _refreshManual,
-      child: ListView(
+      child: SasContentWrap(
+        maxWidth: 900,
+        child: ListView(
         padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
         children: [
           _banner(),
@@ -228,6 +230,7 @@ class _SasReportTabState extends State<SasReportTab> {
           SizedBox(height: 10.h),
           _reportsHistory(),
         ],
+        ),
       ),
     );
   }

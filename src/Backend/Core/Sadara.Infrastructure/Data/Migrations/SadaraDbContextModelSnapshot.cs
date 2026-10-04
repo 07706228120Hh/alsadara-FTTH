@@ -6020,6 +6020,58 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("SasPackagePrices");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.SasRegion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("City")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Code")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Governorate")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MaintenanceFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("SasRegions");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.SasSubscriberProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6071,6 +6123,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<string>("PropertyType")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("RegionId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("SasAccountId")
                         .HasColumnType("uuid");
 
@@ -6088,6 +6143,10 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RegionId");
+
+                    b.HasIndex("CompanyId", "RegionId");
 
                     b.HasIndex("CompanyId", "SasAccountId", "SubscriberUid")
                         .IsUnique();
@@ -10055,6 +10114,25 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.SasRegion", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.SasSubscriberProfile", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.SasRegion", null)
+                        .WithMany()
+                        .HasForeignKey("RegionId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.ServiceOperation", b =>

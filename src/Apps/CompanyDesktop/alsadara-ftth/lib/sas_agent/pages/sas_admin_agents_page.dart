@@ -196,23 +196,26 @@ class _SasAdminAgentsPageState extends State<SasAdminAgentsPage> {
                 ),
               ],
             )
-          : ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
-              children: [
-                _summary(),
-                SizedBox(height: 18.h),
-                SasSectionHeader(
-                  title: 'الوكلاء',
-                  icon: Icons.badge_rounded,
-                  trailingText: '$_totalAgents',
-                ),
-                SizedBox(height: 10.h),
-                for (final a in _agents) ...[
-                  _AgentCard(agent: a),
+          : SasContentWrap(
+              maxWidth: 1180,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
+                children: [
+                  _summary(),
+                  SizedBox(height: 18.h),
+                  SasSectionHeader(
+                    title: 'الوكلاء',
+                    icon: Icons.badge_rounded,
+                    trailingText: '$_totalAgents',
+                  ),
                   SizedBox(height: 10.h),
+                  for (final a in _agents) ...[
+                    _AgentCard(agent: a),
+                    SizedBox(height: 10.h),
+                  ],
                 ],
-              ],
+              ),
             ),
     );
   }

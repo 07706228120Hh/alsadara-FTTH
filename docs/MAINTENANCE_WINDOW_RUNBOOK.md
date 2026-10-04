@@ -71,9 +71,10 @@ echo "API=$NEW_API_KEY" ; echo "SAS=$NEW_SAS_SECRET"   # احفظهما بأما
 ```bash
 # من مجلد الباكند على الخادم (أو dotnet ef عن بُعد)
 dotnet ef database update --project src/Backend/Core/Sadara.Infrastructure --startup-project src/Backend/API/Sadara.API
-# الهجرات الأربع للساس: AddSasAgentModule · AddSasSourceToSubscriptionLog · AddSasPricingAndProfile · AddSasCitizenPayment
+# الهجرات الخمس للساس (بالترتيب): AddSasAgentModule · AddSasSourceToSubscriptionLog · AddSasPricingAndProfile · AddSasCitizenPayment · AddSasRegionAndSubscriberRegionLink
 ```
-✅ تحقّق: `\dt "Sas*"` تُظهر: SasAccounts · SasPackagePrices · SasSubscriberProfiles · SasCitizenPayments + أعمدة Source على SubscriptionLogs.
+✅ تحقّق: `\dt "Sas*"` تُظهر: SasAccounts · SasPackagePrices · SasSubscriberProfiles · SasCitizenPayments · **SasRegions** + أعمدة Source على SubscriptionLogs + عمود RegionId على SasSubscriberProfiles.
+> ملاحظة: **خمس هجرات لا أربع** — أُضيفت `AddSasRegionAndSubscriberRegionLink` (2026-10-02: جدول المناطق + ربط المشترك بمنطقته لأجور الصيانة). نقطة واتساب الجديدة (§5) **لا تحتاج migration** (عمود `IsWhatsAppSent` قديم منذ AddSubscriptionLogs).
 
 **3.3 خدمة الساس (sidecar):**
 ```bash
@@ -121,11 +122,16 @@ sudo systemctl enable --now sas-sidecar && curl -s 127.0.0.1:8100/health   # {"s
 - [ ] `https://api.<domain>/health` ← 200.
 - [ ] دخول موظّف (وكيل + أدمن) → توجيه صحيح.
 - [ ] FTTH: المشتركون/التجديد (admin.ftth.iq) يعملون.
-- [ ] الساس: الحسابات/لوحة/مشتركون/تذاكر/التسعير/الذمم.
+- [ ] الساس: الحسابات/لوحة/مشتركون/تذاكر/التسعير/الذمم/**المناطق**.
 - [ ] الحسابات: لوحة + «نظام الساس» + «وكلاء/خادمنا».
+- [ ] **تفعيل الساس (الجديد):** نافذة **واحدة** (أشهر + تحصيل + إجمالي حيّ) → تفعيل → قيد محاسبي.
+- [ ] **الطباعة الصامتة:** بعد اختيار طابعة الإيصالات في الإعدادات، التفعيل يطبع **بلا حوار ويندوز**.
+- [ ] **نقطة واتساب:** `POST /api/sas-agent/accounts/{id}/subscription-logs/{logId}/whatsapp-sent` ← 200 + `IsWhatsAppSent` يُحدَّث + الحالة تظهر للمستخدم.
 - [ ] الواتساب + n8n (بالمفتاح الجديد).
 - [ ] من خارج الشبكة: المنافذ الداخلية (DB/الساس) مغلقة.
 - [ ] أنشئ نسخة احتياطية ثانية بعد النجاح (نقطة استقرار).
+
+> **ما بعد تثبيت التطبيق (كل جهاز وكيل):** «إعدادات الشركة ← إعدادات طابعة الإيصالات» → اختر الطابعة الحرارية → حفظ + تجربة.
 
 ---
 

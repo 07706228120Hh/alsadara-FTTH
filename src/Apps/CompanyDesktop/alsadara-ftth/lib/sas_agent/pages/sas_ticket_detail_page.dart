@@ -170,11 +170,14 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
                 ? SasErrorView(message: _error!, onRetry: _load)
                 : t == null
                     ? const SasEmptyView(message: 'التذكرة غير موجودة')
-                    : Column(
-                        children: [
-                          Expanded(child: _thread(t)),
-                          _composer(t),
-                        ],
+                    : SasContentWrap(
+                        maxWidth: 900,
+                        child: Column(
+                          children: [
+                            Expanded(child: _thread(t)),
+                            _composer(t),
+                          ],
+                        ),
                       ),
       ),
     );

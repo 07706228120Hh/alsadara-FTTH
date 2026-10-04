@@ -566,6 +566,7 @@ PreferredSizeWidget _bar(BuildContext context, String title,
   return AppBar(
     elevation: 0,
     toolbarHeight: 56,
+    backgroundColor: AppTheme.primaryColor,
     flexibleSpace: const DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(

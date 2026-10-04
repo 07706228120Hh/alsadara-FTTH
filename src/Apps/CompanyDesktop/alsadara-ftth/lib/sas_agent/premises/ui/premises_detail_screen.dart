@@ -238,6 +238,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
   PreferredSizeWidget _appBar() {
     return AppBar(
       elevation: 0,
+      backgroundColor: AppTheme.primaryColor,
       flexibleSpace: const DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -269,18 +270,21 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
   }
 
   Widget _body(Premises p) {
-    return ListView(
-      padding: const EdgeInsets.all(14),
-      children: [
-        _qrCard(p),
-        const SizedBox(height: 12),
-        _photoCard(p),
-        const SizedBox(height: 12),
-        _detailsCard(p),
-        const SizedBox(height: 12),
-        _subscribersCard(p),
-        const SizedBox(height: 20),
-      ],
+    return SasContentWrap(
+      maxWidth: 960,
+      child: ListView(
+        padding: const EdgeInsets.all(14),
+        children: [
+          _qrCard(p),
+          const SizedBox(height: 12),
+          _photoCard(p),
+          const SizedBox(height: 12),
+          _detailsCard(p),
+          const SizedBox(height: 12),
+          _subscribersCard(p),
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 

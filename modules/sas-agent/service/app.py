@@ -37,7 +37,7 @@ _BACKEND_APP = os.path.join(os.path.dirname(__file__), "..", "backend", "app")
 if _BACKEND_APP not in sys.path:
     sys.path.insert(0, os.path.abspath(_BACKEND_APP))
 
-from integrations.sas_client import SASClient, SASError        # noqa: E402
+from integrations.sas_client import SASClient, SASError, sas_decrypt  # noqa: E402
 from integrations.sas_user_client import SASUserClient          # noqa: E402
 from sas_premises import router as _premises_router, PREMISES_DDL  # noqa: E402 — اسم فريد لتفادي تصادم حزمة backend/app/premises عبر sys.path
 
@@ -425,6 +425,11 @@ class SasPostRequest(_Creds):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
+class ExplorerDecryptRequest(BaseModel):
+    """دفعة حمولات SAS4 مشفّرة لفكّها (بلا اعتماد — فكّ محلي بالمفتاح الثابت)."""
+    items: List[str] = Field(default_factory=list)
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # نماذج Pydantic — النقاط الجديدة (التخزين المحلي)
 # ═════════════════════════════════════════════════════════════════════════════
@@ -461,6 +466,7 @@ class LocalSubscribersRequest(_LocalBase):
     """استعلام محلي سريع: POST /subscribers/local"""
     search:   Optional[str] = None
     status:   Optional[str] = None   # active | expired | manual
+    profile:  Optional[str] = None   # فلتر الباقة (مطابقة تامة غير حسّاسة للأحرف)
     expiring: Optional[str] = None   # overdue | today | soon3 | soon7
     # Optional + تسامح مع null (البوّابة ترسل null صريحاً عند عدم التمرير)
     page:     Optional[int] = Field(default=1)
@@ -858,6 +864,43 @@ async def sas_proxy_post(body: SasPostRequest) -> Any:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# مستكشف الساس — فكّ تشفير حمولات SAS4 الملتقَطة (أداة اكتشاف للمسؤول)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.post("/explorer/decrypt", tags=["explorer"], dependencies=_DEP)
+async def explorer_decrypt(body: ExplorerDecryptRequest) -> Any:
+    """
+    يفكّ دفعة من حمولات SAS4 المشفّرة (Salted__/AES-256-CBC/EVP-MD5) الملتقَطة من اللوحة.
+    لا نداء SAS ولا اعتماد — فكّ محلي بالمفتاح الثابت المعروف (نفس SAS4).
+
+    عقد .NET: POST /explorer/decrypt  { items: ["<b64>", ...] }
+    → { results: [ { ok: bool, text?: str, error?: str } ] }   (بالترتيب نفسه)
+
+    حماية: محصور بالسرّ الداخلي (dependencies=_DEP)؛ الوصول من الواجهة محصور بالمسؤول في البوّابة.
+    """
+    results: List[Dict[str, Any]] = []
+    for raw in (body.items or [])[:2000]:   # سقف معقول للدفعة
+        s = (raw or "").strip()
+        if not s:
+            results.append({"ok": False, "error": "فارغ"})
+            continue
+        # قد تأتي الحمولة كـ payload=<b64> أو JSON يحوي payload — نستخرج القيمة إن لزم.
+        candidate = s
+        if candidate.startswith("payload="):
+            candidate = candidate[len("payload="):]
+        try:
+            from urllib.parse import unquote_plus
+            candidate = unquote_plus(candidate).strip()
+        except Exception:
+            pass
+        try:
+            results.append({"ok": True, "text": sas_decrypt(candidate)})
+        except Exception as exc:
+            results.append({"ok": False, "error": _safe_msg(exc)})
+    return {"results": results, "count": len(results)}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # النقاط الجديدة — طبقة التخزين المحلي
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -974,12 +1017,13 @@ async def sync(body: SyncRequest) -> Any:
                 safe_raw, synced_at,
             ))
 
-    # حساب عدّادات الانتهاء من السجلّات المُخزَّنة (بلا نداء SAS)
+    # حساب عدّادات الانتهاء من السجلّات المُخزَّنة (بلا نداء SAS) — بوعي الحالة.
     with _db() as conn:
         cur = conn.execute(
-            "SELECT expiration FROM local_subscribers WHERE account_id = ?",
+            "SELECT expiration, status FROM local_subscribers WHERE account_id = ?",
             (account_id,))
-        expiry = _expiry_counts([r[0] for r in cur.fetchall()])
+        expiry = _expiry_counts_rows(
+            [{"expiration": r[0], "status": r[1]} for r in cur.fetchall()])
 
     logger.info("[sync] الحساب %s: %d مشترك مُزامَن", account_id[:8], len(rows))
     return {"count": len(rows), "expiry": expiry, "synced_at": synced_at}
@@ -994,7 +1038,7 @@ async def subscribers_local(body: LocalSubscribersRequest) -> Any:
       { total, page, count, expiry:{…}, subscribers:[…] }
 
     عقد .NET: POST /subscribers/local
-      { accountId, search?, status?, expiring?, page?, count? }
+      { accountId, search?, status?, profile?, expiring?, page?, count? }
     """
     _guard_account_id(body.accountId)
     account_id = body.accountId
@@ -1012,20 +1056,55 @@ async def subscribers_local(body: LocalSubscribersRequest) -> Any:
 
     rows = [dict(r) for r in rows_raw]
 
-    # البحث النصي (بعد الجلب — SQLite بلا FTS هنا)
-    if body.search:
-        s = body.search.strip().lower()
-        rows = [r for r in rows if
-                s in (r.get("username") or "").lower() or
-                s in (r.get("name") or "").lower() or
-                s in (r.get("phone") or "").lower()]
+    # فلتر الباقة (profile) — مطابقة تامة غير حسّاسة للأحرف (post-fetch، بلا حقن SQL)
+    if body.profile:
+        pf = body.profile.strip().lower()
+        rows = [r for r in rows if (r.get("profile") or "").strip().lower() == pf]
 
-    # فلتر الانتهاء
+    # البحث النصي الشامل (بعد الجلب — SQLite بلا FTS هنا).
+    # بحث متعدّد الكلمات بمنطق AND: يُطابق الصفّ فقط إذا وُجدت كل كلمة في «النصّ المجمّع».
+    # الحقول القابلة للبحث: username/name/phone + الباقة (profile) + المدينة (city)
+    #   + تاريخ الانتهاء (expiration). غير حسّاس للأحرف. مع تطبيع الهاتف (أرقام فقط).
+    if body.search:
+        terms = [t for t in body.search.strip().lower().split() if t]
+        if terms:
+            def _matches(r: dict) -> bool:
+                # النصّ المجمّع من كل الحقول القابلة للبحث (بالحروف الصغيرة)
+                haystack = " ".join([
+                    (r.get("username") or "").lower(),
+                    (r.get("name") or "").lower(),
+                    (r.get("phone") or "").lower(),
+                    (r.get("profile") or "").lower(),
+                    (r.get("city") or "").lower(),
+                    (r.get("expiration") or "").lower(),
+                ])
+                # هاتف مطبّع «أرقام فقط» للمطابقة الرقمية
+                phone_digits = "".join(ch for ch in (r.get("phone") or "") if ch.isdigit())
+                for term in terms:
+                    term_digits = "".join(ch for ch in term if ch.isdigit())
+                    # مطابقة نصّية عادية في النصّ المجمّع
+                    if term in haystack:
+                        continue
+                    # مطابقة رقمية: الكلمة أرقام بالكامل بعد التطبيع وتظهر في هاتف مطبّع
+                    if term_digits and term_digits == term and term_digits in phone_digits:
+                        continue
+                    return False
+                return True
+            rows = [r for r in rows if _matches(r)]
+
+    # فلتر الانتهاء (بوعي الحالة — يطابق عدّادات اللوحة):
+    #   overdue = «منتهٍ» حسب الحالة (status=expired)؛ باقي النوافذ = ساري بتاريخ ضمن النافذة.
     if body.expiring:
         win = body.expiring.strip()
-        today = datetime.now(timezone.utc).date()
-        rows = [r for r in rows if _in_window(_days_left(r.get("expiration", ""), today), win)]
-        rows.sort(key=lambda r: (_days_left(r.get("expiration", ""), today) or 9999))
+        if win == "overdue":
+            rows = [r for r in rows if (r.get("status") or "") == "expired"]
+            rows.sort(key=lambda r: str(r.get("expiration") or ""))
+        else:
+            today = datetime.now(timezone.utc).date()
+            rows = [r for r in rows
+                    if (r.get("status") or "") != "expired"
+                    and _in_window(_days_left(r.get("expiration", ""), today), win)]
+            rows.sort(key=lambda r: (_days_left(r.get("expiration", ""), today) or 9999))
 
     total = len(rows)
 
@@ -1035,8 +1114,9 @@ async def subscribers_local(body: LocalSubscribersRequest) -> Any:
     start = (page - 1) * count
     page_rows = rows[start:start + count]
 
-    # عدّادات الانتهاء من كل سجلّات الحساب (ليست من الصفحة فقط)
-    expiry = _expiry_counts([r.get("expiration", "") for r in rows])
+    # عدّادات الانتهاء من كل سجلّات الحساب (ليست من الصفحة فقط) — بوعي الحالة.
+    # ملاحظة: تُحسب قبل أي فلتر انتهاء (rows هنا بعد البحث فقط) لتبقى العدّادات ثابتة.
+    expiry = _expiry_counts_rows(rows)
 
     # إزالة raw_json من المخرجات (لا يُعاد للعميل)
     for r in page_rows:
@@ -1094,8 +1174,8 @@ async def subscribers_summary(body: SubscriberSummaryRequest) -> Any:
     expired = sum(1 for r in rows if r["status"] == "expired")
     online  = sum(1 for r in rows if r["online"] == 1)
 
-    # منطق الانتهاء: يُعيد استخدام _expiry_counts المشتركة (نفس منطق /sync)
-    expiry = _expiry_counts([r["expiration"] for r in rows])
+    # منطق الانتهاء بوعي الحالة (المصدر الموحّد): «منتهٍ»=status expired، النوافذ=ساري فقط.
+    expiry = _expiry_counts_rows([dict(r) for r in rows])
 
     # أحدث synced_at لهذا الحساب
     last_sync = max(
@@ -1790,6 +1870,19 @@ def _in_window(dl: Optional[int], window: str) -> bool:
     return True
 
 
+def _expiry_counts_rows(rows: List[dict]) -> dict:
+    """عدّادات الانتهاء بوعي الحالة (المصدر الموحّد للّوحة والقائمة):
+      - overdue = «منتهٍ» = من انتهى اشتراكه ولم يجدّد (status == 'expired').
+      - today/soon3/soon7 = «ينتهي قريباً» = اشتراكه ما زال سارياً (status != 'expired') وتاريخه ضمن النافذة.
+    هذا يوحّد الرقم مع ملخّص الحالة (active/expired) ويزيل تضارب «منتهٍ 70 مقابل 38»."""
+    expired = sum(1 for r in rows if (r.get("status") or "") == "expired")
+    active_exps = [(r.get("expiration") or "")
+                   for r in rows if (r.get("status") or "") != "expired"]
+    c = _expiry_counts(active_exps)   # النوافذ للساري فقط
+    c["overdue"] = expired            # «منتهٍ» حسب الحالة
+    return c
+
+
 def _expiry_counts(expirations: List[str]) -> dict:
     today = datetime.now(timezone.utc).date()
     c = {"overdue": 0, "today": 0, "soon3": 0, "soon7": 0}
@@ -1835,7 +1928,10 @@ def _safe_msg(exc: Exception) -> str:
 async def _call_sas(server_url: str, username: str, password: str,
                     fetcher, **kwargs) -> Any:
     try:
-        async with SASClient(server_url, username, password) as sas:
+        # نُفضّل HTTPS (المتصفّح يستخدمه؛ بعض النقاط مثل user/traffic تُرجع 200 فارغاً على HTTP).
+        # verify_tls=False لأن لوحات SAS غالباً بشهادة ذاتية التوقيع.
+        async with SASClient(server_url, username, password,
+                             https=True, verify_tls=False) as sas:
             return await fetcher(sas, **kwargs)
     except SASError as exc:
         logger.warning("فشل نداء SAS: %s", _safe_msg(exc))
@@ -1844,7 +1940,10 @@ async def _call_sas(server_url: str, username: str, password: str,
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("خطأ غير متوقّع في نداء SAS: %s", _safe_msg(exc))
+        # تشخيص دقيق: نوع الاستثناء (شبكي/تحليل/غيره) يُسجَّل لمعرفة السبب الفعلي
+        # (httpx.ReadTimeout / RemoteProtocolError / ConnectError … مقابل خطأ تحليل).
+        logger.error("خطأ غير متوقّع في نداء SAS [%s]: %s",
+                     type(exc).__name__, _safe_msg(exc))
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
                             detail="خدمة الساس غير متاحة حالياً")
 
@@ -1884,7 +1983,41 @@ async def _fetch_packages(sas: SASClient) -> Any:
 
 
 async def _fetch_finance(sas: SASClient) -> Any:
-    return await sas.dashboard_finance()
+    data = await sas.dashboard_finance()
+    # رصيد الوكيل ونقاط المكافآت غير موجودة في advancedDashboard/finance — نجلبها من auth
+    # ونحقنها (أعلى المستوى + داخل data) ليعرضها الملخّص المالي («الرصيد» أولاً).
+    bal = rp = None
+    try:
+        auth = await sas.get("auth")
+        client = auth.get("client") if isinstance(auth, dict) else None
+        if isinstance(client, dict):
+            bal = client.get("balance")
+            rp = client.get("reward_points")
+    except Exception:
+        pass
+
+    # رصيد الوكيل رقماً (auth قد يُعيده 704.8؛ وadvancedDashboard قد يحوي نصّاً "IQD .." فنفرض الرقم).
+    bal_num: Any = None
+    if bal is not None:
+        try:
+            bal_num = float(str(bal).replace(",", "").split()[-1])
+        except Exception:
+            bal_num = bal
+
+    def _inject(d: Any) -> None:
+        if isinstance(d, dict):
+            if bal_num is not None:
+                d["balance"] = bal_num          # فرض الرقم (يستبدل أي نصّ موجود)
+            if rp is not None:
+                d.setdefault("reward_points", rp)
+
+    if isinstance(data, dict):
+        _inject(data)
+        _inject(data.get("data"))
+        logger.warning("[finance] keys=%s balance=%r (inner keys=%s)",
+                       list(data.keys()), data.get("balance"),
+                       list(data.get("data", {}).keys()) if isinstance(data.get("data"), dict) else None)
+    return data
 
 
 async def _fetch_system_health(sas: SASClient) -> Any:
@@ -1964,13 +2097,21 @@ async def _execute_renewal_bulk(
     for sub_id in subscriber_ids:
         op_uuid = str(uuid.uuid5(base_uuid_ns, f"{sas.base_url}:{sub_id}:{minute_key}"))
         try:
+            # العقد الإداري المؤكَّد من الأصل (sas_panel._USER_ACTIONS):
+            #   extend/activate تُنادى على المسارَين "user/extend" / "user/activate"
+            #   (لا "user/{id}/extend") مع user_id في الحمولة. idempotency بـ uuid +
+            #   transaction_id (كما في العملية الجماعية) كي لا يتكرّر الخصم عند إعادة المحاولة.
             if months is not None:
-                payload_body: Dict[str, Any] = {"uuid": op_uuid}
+                payload_body: Dict[str, Any] = {
+                    "user_id": sub_id, "uuid": op_uuid, "transaction_id": op_uuid,
+                }
                 if profile_id is not None:
                     payload_body["profile_id"] = profile_id
-                resp = await sas.post(f"user/{sub_id}/extend", payload_body)
+                resp = await sas.post("user/extend", payload_body)
             else:
-                resp = await sas.post(f"user/{sub_id}/activate", {"uuid": op_uuid})
+                resp = await sas.post("user/activate", {
+                    "user_id": sub_id, "uuid": op_uuid, "transaction_id": op_uuid,
+                })
 
             ok = True
             if isinstance(resp, dict):
@@ -2115,5 +2256,21 @@ async def _exec_proxy_get(sas: SASClient, path: str) -> Any:
 
 async def _exec_proxy_post(sas: SASClient, path: str,
                             payload: Dict[str, Any]) -> Any:
+    # user/traffic يتطلّب العقد الكامل (مطابق لتطبيق الوكلاء الأصلي portal_sas.py):
+    # {user_id (رقم), report_type:"daily", month, year} — بدون report_type تُرجع 200 فارغاً.
+    if path == "user/traffic":
+        now = datetime.now(timezone.utc)
+        uid_raw = payload.get("user_id") or payload.get("id") or payload.get("uid")
+        try:
+            uid_val: Any = int(uid_raw)
+        except Exception:
+            uid_val = uid_raw
+        body = {
+            "user_id": uid_val,
+            "report_type": payload.get("report_type") or "daily",
+            "month": payload.get("month") or now.month,
+            "year": payload.get("year") or now.year,
+        }
+        return _redact(await sas.post("user/traffic", body))
     res = await sas.post(path, payload)
     return _redact(res)

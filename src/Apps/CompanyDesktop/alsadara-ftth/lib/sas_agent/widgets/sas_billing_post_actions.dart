@@ -46,6 +46,68 @@ String _collectionTypeAr(String? type) {
   }
 }
 
+/// نتيجة إرسال الواتساب لعرضها للمستخدم (بدل الابتلاع الصامت).
+enum SasWaOutcome {
+  /// لم يُحاوَل (لا سياق إرسال).
+  notAttempted,
+
+  /// لا رقم/رقم غير صالح — تُخطّى الرسالة.
+  skippedNoPhone,
+
+  /// الوضع يدوي (app): لا يُرسل تلقائياً — يفتح المستخدم واتساب يدوياً.
+  skippedManual,
+
+  /// الإعداد ناقص (لا قالب/غير مُهيّأ).
+  notConfigured,
+
+  /// المُرسِل الآلي غير جاهز (خادم غير مربوط).
+  notReady,
+
+  /// أُرسلت بنجاح.
+  sent,
+
+  /// فشل الإرسال.
+  failed,
+}
+
+/// نتيجة إجراءات ما بعد التحصيل: حالة الطباعة + حالة الواتساب.
+class SasPostActionResult {
+  /// نجحت الطباعة الصامتة (أو أُرسلت للطابعة).
+  final bool printOk;
+
+  /// حالة إرسال الواتساب.
+  final SasWaOutcome wa;
+
+  /// تفصيل إضافي (سبب الفشل/العطل) للعرض عند الحاجة.
+  final String? waDetail;
+
+  const SasPostActionResult({
+    required this.printOk,
+    required this.wa,
+    this.waDetail,
+  });
+
+  /// وصف عربي مختصر لحالة الواتساب.
+  String get waLabel {
+    switch (wa) {
+      case SasWaOutcome.sent:
+        return 'أُرسل واتساب ✓';
+      case SasWaOutcome.failed:
+        return 'فشل إرسال واتساب';
+      case SasWaOutcome.skippedManual:
+        return 'واتساب يدوي — لم يُرسَل تلقائياً';
+      case SasWaOutcome.skippedNoPhone:
+        return 'لا رقم واتساب';
+      case SasWaOutcome.notReady:
+        return 'خادم واتساب غير جاهز';
+      case SasWaOutcome.notConfigured:
+        return 'واتساب غير مُهيّأ';
+      case SasWaOutcome.notAttempted:
+        return '';
+    }
+  }
+}
+
 /// منفّذ إجراءات ما بعد التحصيل المشترك (طباعة ثم واتساب، كلٌّ معزول).
 class SasBillingPostActions {
   SasBillingPostActions._();
@@ -62,7 +124,9 @@ class SasBillingPostActions {
   /// [newExpiration] تاريخ الانتهاء الجديد بعد العملية (للطباعة/الرسالة).
   ///
   /// كلٌّ من الطباعة والواتساب في `try/catch` مستقل؛ لا يرمي هذا الاستدعاء.
-  static Future<void> run(
+  /// يُعيد [SasPostActionResult] (حالة الطباعة + الواتساب) للعرض؛ المستدعون
+  /// القدامى (التجديد الجماعي) يتجاهلون القيمة بأمان.
+  static Future<SasPostActionResult> run(
     Map<String, dynamic> receipt, {
     String? customerName,
     String? phone,
@@ -73,7 +137,8 @@ class SasBillingPostActions {
         ? customerName!.trim()
         : (username.isNotEmpty ? username : 'مشترك');
 
-    // 1) الطباعة الحرارية.
+    // 1) الطباعة الحرارية الصامتة (directPrintPdf بلا حوار ويندوز، مع مهلة).
+    bool printOk = false;
     try {
       final vars = _buildReceiptVars(
         receipt,
@@ -88,26 +153,36 @@ class SasBillingPostActions {
         showAdditionalInfo: false, // إخفاء قسم الشبكة/الجهاز (نمط FTTH)
         showContactInfo: true,
       );
-      await ThermalPrinterService.printFromReceiptTemplate(
+      printOk = await ThermalPrinterService.printFromReceiptTemplate(
         variableValues: vars,
         conditions: conds,
-      );
+        silent: true,
+      ).timeout(const Duration(seconds: 30), onTimeout: () => false);
     } catch (_) {
       // تعذّرت الطباعة — لا نُفشل العملية.
+      printOk = false;
     }
 
     // 2) رسالة الواتساب (مشروطة بتوفّر الرقم/الإعداد).
+    SasWaOutcome wa = SasWaOutcome.notAttempted;
+    String? waDetail;
     try {
-      await _sendWhatsApp(
+      final r = await _sendWhatsApp(
         receipt,
         customerName: name,
         username: username,
         phone: phone,
         newExpiration: newExpiration,
       );
-    } catch (_) {
-      // تعذّر الإرسال — صامت (العملية الأساسية نجحت).
+      wa = r.$1;
+      waDetail = r.$2;
+    } catch (e) {
+      // تعذّر الإرسال — العملية الأساسية نجحت.
+      wa = SasWaOutcome.failed;
+      waDetail = e.toString();
     }
+
+    return SasPostActionResult(printOk: printOk, wa: wa, waDetail: waDetail);
   }
 
   /// يملأ متغيّرات قالب الإيصال من بيانات إيصال الساس + سياق المشترك.
@@ -170,7 +245,7 @@ class SasBillingPostActions {
   /// الإرسال التلقائي الصامت يقتصر على الأنماط الآلية (خادم محلي/Meta)؛ النمط
   /// اليدوي (app) يفتح نافذة لكل رسالة فلا يُشغَّل تلقائياً هنا تفادياً لإزعاج
   /// تدفّق التفعيل/الدفعة (يبقى للإرسال اليدوي/الجماعي من شاشاته).
-  static Future<void> _sendWhatsApp(
+  static Future<(SasWaOutcome, String?)> _sendWhatsApp(
     Map<String, dynamic> receipt, {
     required String customerName,
     required String username,
@@ -178,14 +253,20 @@ class SasBillingPostActions {
     String? newExpiration,
   }) async {
     final rawPhone = phone?.trim();
-    if (rawPhone == null || rawPhone.isEmpty) return;
+    if (rawPhone == null || rawPhone.isEmpty) {
+      return (SasWaOutcome.skippedNoPhone, null);
+    }
     final normalized = normalizeIraqiPhone(rawPhone);
-    if (normalized == null) return;
+    if (normalized == null) {
+      return (SasWaOutcome.skippedNoPhone, 'رقم غير صالح');
+    }
 
     // بناء نصّ الرسالة من القالب الغنيّ المخزّن.
     final store = LocalTemplateStore();
     final tpl = await store.byId(WaTemplateIds.renewed);
-    if (tpl == null) return;
+    if (tpl == null) {
+      return (SasWaOutcome.notConfigured, 'لا قالب رسالة');
+    }
 
     final collected = _asNum(receipt['collectedAmount']);
     final endDate = (newExpiration ?? '').toString();
@@ -206,15 +287,23 @@ class SasBillingPostActions {
     final settings = await WaSettingsStore().load();
     final sender = settings.buildSender();
     try {
-      if (!sender.capabilities.automated) return;
+      // الوضع يدوي (app): لا يُرسل تلقائياً — يُبلَّغ المستخدم ليرسله يدوياً.
+      if (!sender.capabilities.automated) {
+        return (SasWaOutcome.skippedManual, null);
+      }
       final status = await sender.status();
-      if (!status.ready) return; // الخادم غير جاهز/غير مربوط — تخطَّ بصمت.
-      await sender.sendOne(
+      if (!status.ready) {
+        return (SasWaOutcome.notReady, null); // الخادم غير جاهز/غير مربوط.
+      }
+      final res = await sender.sendOne(
         WaOutgoing(
           recipient: WaRecipient(name: customerName, rawPhone: rawPhone),
           text: message,
         ),
       );
+      return res.ok
+          ? (SasWaOutcome.sent, null)
+          : (SasWaOutcome.failed, res.error);
     } finally {
       sender.dispose();
     }

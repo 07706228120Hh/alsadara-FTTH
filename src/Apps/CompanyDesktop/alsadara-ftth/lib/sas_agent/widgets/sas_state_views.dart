@@ -88,6 +88,29 @@ class SasUi {
   }
 }
 
+/// يحدّ عرض المحتوى الرئيسي على الشاشات العريضة (سطح المكتب) ويوسّطه، فلا
+/// تمتدّ البطاقات/الحقول المفردة لكامل العرض فتبدو فارغة. على الشاشات الضيّقة
+/// يملأ العرض المتاح طبيعياً.
+///
+/// استخدمه كجذر لمحتوى أي تبويب/صفحة قابلة للتمرير (حول الـ`ListView`/`Column`).
+/// القيمة الافتراضية 1100 تناسب تخطيطات العمود الواحد والنماذج؛ مرّر قيمة أكبر
+/// (1400/1600) للشاشات ذات الشبكات متعدّدة الأعمدة.
+class SasContentWrap extends StatelessWidget {
+  final Widget child;
+  final double maxWidth;
+  const SasContentWrap({super.key, required this.child, this.maxWidth = 1100});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: child,
+      ),
+    );
+  }
+}
+
 /// رأس قسم أنيق (شارة أيقونة متدرّجة + عنوان + عدّاد/زر اختياري).
 class SasSectionHeader extends StatelessWidget {
   final String title;

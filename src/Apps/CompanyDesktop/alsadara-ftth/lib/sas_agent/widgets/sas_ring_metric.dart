@@ -6,44 +6,32 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import 'sas_metrics.dart';
 
-/// عدّاد **حلقي دائري فاخر (radial ring gauge)** لوحدة «وكيل الساس» —
-/// عرض فقط، بلا منطق أعمال.
+/// عدّاد **حلقي دائري مسطّح أنيق** لوحدة «وكيل الساس» — عرض فقط، بلا منطق أعمال.
 ///
-/// بديلٌ بصريّ فاخر لبطاقة العدّاد المستطيلة ([SasMetricCard])؛ يرسم قوساً
-/// متدرّجاً مستدير الأطراف يحيط برقم متحرّك في المنتصف.
+/// يرسم قوساً نظيفاً مستدير الأطراف يحيط برقم متحرّك في المنتصف، بثيم الصدارة:
+/// مسار خلفي خافت فاتح + قوس تقدّم بلون الشريحة بأطراف مستديرة — **بلا توهّج
+/// ثقيل وبلا بروز**، نظيف ومسطّح.
 ///
-/// ## البنية البصرية (كلّها في [CustomPainter] واحد — [_RingPainter])
-/// - **مسار خلفي خافت (track)**: قوس كامل (300°) بلون المقياس بشفافية منخفضة،
+/// ## البنية البصرية (في [_RingPainter])
+/// - **مسار خلفي خافت (track)**: قوس كامل (300°) بلون الشريحة بشفافية منخفضة،
 ///   سماكة موحّدة، أطراف مستديرة ([StrokeCap.round]).
-/// - **قوس التقدّم**: فوق المسار، بتدرّج لوني ([SweepGradient] كـ shader على
-///   نفس القوس) من درجة داكنة إلى فاتحة من لون المقياس؛ يمتلئ بنسبة القيمة.
-/// - **توهّج ملوّن (glow)**: طبقة قوس إضافية بلون المقياس + [MaskFilter.blur]
-///   خلف قوس التقدّم لإحساس الإضاءة (يقوى قليلاً عند المرور).
+/// - **قوس التقدّم**: فوق المسار بلون الشريحة بأطراف مستديرة؛ يمتلئ بنسبة القيمة.
 ///
 /// ## منطق النسبة (value / max)
 /// - إن مُرِّر [max] موجب: نسبة الامتلاء = `value / max` (مقصوصة ضمن 0..1)،
 ///   وتُعرَض نسبة مئوية صغيرة تحت التسمية اختيارياً ([showPercent]).
-/// - إن كان [max] معدوماً/غير مُمرَّر: حلقة **مزخرفة** ممتلئة (100%) — مرجعية
-///   (مثل بطاقة «الإجمالي») أو للمالية غير النسبية، بلا دلالة نسبة.
+/// - إن كان [max] معدوماً/غير مُمرَّر: حلقة **مزخرفة** ممتلئة (100%) — مرجعية.
 /// - إن كانت القيمة نفسها **نسبة مئوية** (0..100 أو 0..1)، مرِّر
 ///   [valueIsPercent] = true فيُشتقّ الامتلاء من القيمة مباشرة.
 ///
+/// ## السماكة ([strokeScale])
+/// السماكة الافتراضية متناسبة مع القطر؛ النمط الفاخر [SasRingMetric.premium]
+/// يكبّرها قليلاً لقوس سميك أنيق واضح.
+///
 /// ## الرقم المتحرّك المتزامن (count-up)
-/// نفس منطق [SasMetricCard]: [TweenAnimationBuilder] يحرّك من القيمة **السابقة**
-/// إلى الجديدة (منحنى `easeOutCubic` ~820ms) فلا وميض عند التحديث الدوري؛ وأول
-/// ظهور من 0. **القوس والرقم يتحرّكان معاً** لأن الـpainter يتغذّى من نفس القيمة
-/// المتحرّكة في كل إطار.
-///
-/// ## منع الـoverflow في الشبكة 2×2
-/// الودجت تملأ خليّتها عبر [LayoutBuilder]: تحسب قطراً = أصغر بُعد متاح، ثم
-/// تُقلّص السماكة/أحجام الخطوط تناسبياً مع القطر. النصّ الداخلي ملفوف بـ
-/// [FittedBox]`(scaleDown)` فيتقلّص بدل أن يفيض. لا مقاسات ثابتة كبيرة، فلا
-/// [RenderFlex] overflow مهما ضاقت الخليّة ضمن المقاسات المعقولة.
-///
-/// ## الأداء
-/// حركة عبر [TweenAnimationBuilder] لمرّة واحدة عند تغيّر القيمة فقط (لا
-/// [AnimationController] دائم، لا تسريب). [_RingPainter.shouldRepaint] يُعيد
-/// الرسم فقط عند تغيّر القيمة المتحرّكة/اللون/المرور.
+/// [TweenAnimationBuilder] يحرّك من القيمة **السابقة** إلى الجديدة
+/// (`easeOutCubic` ~820ms) فلا وميض عند التحديث الدوري؛ وأول ظهور من 0. القوس
+/// والرقم يتحرّكان معاً لأن الـpainter يتغذّى من نفس القيمة المتحرّكة كل إطار.
 class SasRingMetric extends StatefulWidget {
   /// القيمة العددية الحالية (يُحرّك العدّاد والقوس نحوها).
   final num value;
@@ -65,7 +53,7 @@ class SasRingMetric extends StatefulWidget {
   /// التسمية أسفل الرقم.
   final String label;
 
-  /// لون المقياس (أخضر=نشط · برتقالي=منتهٍ · أزرق=متصل · بنفسجي=إجمالي…).
+  /// لون المقياس (أخضر=نشط · برتقالي=منتهٍ · أزرق=متصل · إلخ).
   final Color color;
 
   /// أيقونة صغيرة أعلى الرقم في المنتصف.
@@ -73,6 +61,18 @@ class SasRingMetric extends StatefulWidget {
 
   /// نقرة اختيارية (تفعّل تفاعل المرور والمؤشّر).
   final VoidCallback? onTap;
+
+  /// معامل سماكة القوس (1.0 = الافتراضي). قيمة أصغر ⇒ قوس أرفع وأنعم.
+  final double strokeScale;
+
+  /// حالة **«غير متاح»**: القيمة الفعلية لم تصل بعد (مثل المالية قبل التحميل).
+  /// تُعرَض الحلقة بمسار خافت فقط (بلا قوس تقدّم) ونصّ «غير متاح» بدل الرقم.
+  final bool unavailable;
+
+  /// النمط **الفاخر «premium»** (للصف العلوي): قوس أسمك بتدرّج لوني راقٍ
+  /// ([SweepGradient]) + توهّج ناعم خلفه + رقم مركزي أكبر + أيقونة أوضح.
+  /// نظيف احترافي بلا بروز ثلاثي الأبعاد؛ `.thin` يبقى مسطّحاً رفيعاً كما هو.
+  final bool premium;
 
   const SasRingMetric({
     super.key,
@@ -85,7 +85,27 @@ class SasRingMetric extends StatefulWidget {
     this.showPercent = false,
     this.formatter,
     this.onTap,
+    this.strokeScale = 1.0,
+    this.unavailable = false,
+    this.premium = false,
   });
+
+  /// منشئ مختصر للنمط **الفاخر «premium»** (قوس أسمك + تدرّج + توهّج) — للصف
+  /// العلوي في اللوحة. سماكة أكبر وضوحاً (`strokeScale = 1.35`).
+  const SasRingMetric.premium({
+    super.key,
+    required this.value,
+    required this.label,
+    required this.color,
+    required this.icon,
+    this.max,
+    this.valueIsPercent = false,
+    this.showPercent = false,
+    this.formatter,
+    this.onTap,
+    this.unavailable = false,
+  })  : strokeScale = 1.35,
+        premium = true;
 
   @override
   State<SasRingMetric> createState() => _SasRingMetricState();
@@ -148,13 +168,13 @@ class _SasRingMetricState extends State<SasRingMetric> {
       },
     );
 
-    // micro-interaction: تكبير طفيف + رفع التوهّج عند المرور (سطح المكتب).
+    // micro-interaction هادئة: تكبير طفيف عند المرور (سطح المكتب).
     final interactive = MouseRegion(
       cursor: tappable ? SystemMouseCursors.click : MouseCursor.defer,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: AnimatedScale(
-        scale: _hover ? 1.035 : 1.0,
+        scale: _hover ? 1.03 : 1.0,
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOut,
         child: content,
@@ -176,12 +196,29 @@ class _SasRingMetricState extends State<SasRingMetric> {
   /// الحلقة الكاملة: قوس مرسوم ([CustomPaint]) + محتوى المنتصف فوقه.
   Widget _ring(double diameter) {
     final color = widget.color;
-    // سماكة/أحجام متناسبة مع القطر (تتقلّص في الخلايا الصغيرة).
-    final stroke = (diameter * 0.085).clamp(6.0, 15.0);
+    final premium = widget.premium;
+    // سماكة متناسبة مع القطر؛ [strokeScale] يصغّرها لقوس رفيع أنيق، أو يكبّرها
+    // للنمط الفاخر. حدّ أعلى أكبر في الفاخر ليبدو قوساً سميكاً أنيقاً.
+    final stroke = (diameter * 0.085 * widget.strokeScale)
+        .clamp(5.0, premium ? 18.0 : 16.0)
+        .toDouble();
+
+    // حالة «غير متاح»: لا حركة رقم ولا قوس تقدّم — مسار خافت ونصّ تمييزي ثابت.
+    if (widget.unavailable) {
+      return CustomPaint(
+        painter: _RingPainter(
+          fraction: 0,
+          color: color,
+          stroke: stroke,
+          premium: premium,
+          hover: _hover,
+        ),
+        child: _center(diameter, color, '', unavailable: true),
+      );
+    }
 
     return TweenAnimationBuilder<double>(
-      // نحرّك من _from إلى value؛ المفتاح بالقيمة يعيد التشغيل عند التغيّر فقط
-      // (لا AnimationController دائم — حركة لمرّة واحدة).
+      // نحرّك من _from إلى value؛ المفتاح بالقيمة يعيد التشغيل عند التغيّر فقط.
       key: ValueKey<num>(widget.value),
       tween: Tween<double>(
         begin: _from.toDouble(),
@@ -197,6 +234,7 @@ class _SasRingMetricState extends State<SasRingMetric> {
             fraction: fraction,
             color: color,
             stroke: stroke,
+            premium: premium,
             hover: _hover,
           ),
           child: _center(diameter, color, _format(animated)),
@@ -207,11 +245,18 @@ class _SasRingMetricState extends State<SasRingMetric> {
 
   /// محتوى المنتصف: أيقونة صغيرة + رقم متحرّك + تسمية (+ نسبة % اختيارية).
   /// كلّه ملفوف بـ [FittedBox] فيتقلّص في الخلايا الصغيرة بلا overflow.
-  Widget _center(double diameter, Color color, String numberText) {
+  /// عند [unavailable] يُعرَض «غير متاح» بدل الرقم (بلا نسبة).
+  Widget _center(double diameter, Color color, String numberText,
+      {bool unavailable = false}) {
     // نحصر المحتوى داخل الدائرة الداخلية (المربّع المحاط بها) تفادياً للتصادم
-    // مع القوس: نصف قطر داخلي ≈ 0.66 من القطر ⇒ ضلع مربّع = القطر × 0.66 /√2.
-    final innerSide = diameter * 0.66 / math.sqrt2;
-    final showPct = widget.showPercent &&
+    // مع القوس: نصف قطر داخلي ≈ 0.70 من القطر ⇒ ضلع مربّع = القطر × 0.70 /√2.
+    final innerSide = diameter * 0.70 / math.sqrt2;
+    final premium = widget.premium;
+    // الفاخر: أيقونة ورقم أبرز قليلاً (الـ FittedBox يقلّصهما بأمان عند الضيق).
+    final iconSize = premium ? 19.sp : 16.sp;
+    final numberSize = premium ? 27.sp : 22.sp;
+    final showPct = !unavailable &&
+        widget.showPercent &&
         !widget.valueIsPercent &&
         (widget.max != null && widget.max! > 0);
     return Center(
@@ -224,30 +269,49 @@ class _SasRingMetricState extends State<SasRingMetric> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(widget.icon, color: color, size: 16.sp),
-              SizedBox(height: 3.h),
-              Text(
-                numberText,
-                maxLines: 1,
-                style: GoogleFonts.cairo(
-                  fontSize: 22.sp,
-                  fontWeight: FontWeight.w900,
-                  color: color,
-                  height: 1.02,
-                  letterSpacing: 0.2,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              Icon(widget.icon,
+                  color: unavailable ? color.withValues(alpha: 0.45) : color,
+                  size: iconSize),
+              SizedBox(height: premium ? 4.h : 3.h),
+              if (unavailable)
+                Text(
+                  'غير متاح',
+                  maxLines: 1,
+                  style: GoogleFonts.cairo(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primaryColor.withValues(alpha: 0.55),
+                    height: 1.02,
+                  ),
+                )
+              else
+                Text(
+                  numberText,
+                  maxLines: 1,
+                  textDirection: TextDirection.ltr,
+                  style: GoogleFonts.cairo(
+                    fontSize: numberSize,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                    height: 1.02,
+                    letterSpacing: 0.2,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                widget.label,
-                maxLines: 1,
-                style: GoogleFonts.cairo(
-                  fontSize: 10.sp,
-                  color: AppTheme.primaryColor.withValues(alpha: 0.62),
-                  fontWeight: FontWeight.w700,
+              // تسمية داخلية اختيارية: تُحذف تماماً عند تمرير نصّ فارغ (مثل
+              // عدّادات الصف العلوي التي يظهر عنوانها أسفل الحلقة) فلا يبقى فراغ.
+              if (widget.label.isNotEmpty) ...[
+                SizedBox(height: 2.h),
+                Text(
+                  widget.label,
+                  maxLines: 1,
+                  style: GoogleFonts.cairo(
+                    fontSize: 10.sp,
+                    color: AppTheme.primaryColor.withValues(alpha: 0.62),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
+              ],
               if (showPct) ...[
                 SizedBox(height: 1.h),
                 Text(
@@ -269,22 +333,36 @@ class _SasRingMetricState extends State<SasRingMetric> {
   }
 }
 
-/// رسّام الحلقة: مسار خافت + قوس تقدّم متدرّج + توهّج ملوّن.
+/// رسّام الحلقة: مسار خافت فاتح + قوس تقدّم بلون الشريحة.
 ///
-/// القوس يبدأ من أسفل الحلقة ويمتدّ 300° (فجوة 60° في الأسفل) — شكل مقياس
-/// فاخر مألوف. الأطراف مستديرة ([StrokeCap.round]).
+/// القوس يبدأ من أسفل يسار الحلقة ويمتدّ 300° (فجوة 60° في الأسفل) — شكل مقياس
+/// نظيف مألوف. الأطراف مستديرة ([StrokeCap.round]).
+///
+/// النمط **الافتراضي/الرفيع** مسطّح نظيف (بلا توهّج/بروز). النمط **الفاخر
+/// ([premium])** يضيف — دون بروز ثلاثي أبعاد أو حفر داخلي — طبقاتٍ أنيقة:
+/// (1) توهّج ناعم خلف قوس التقدّم بلون المقياس (ألفا منخفضة + [MaskFilter.blur])
+///     يقوى قليلاً عند المرور ([hover])؛
+/// (2) قوس تقدّم بتدرّج [SweepGradient] من درجة أغمق قليلاً عند البداية إلى درجة
+///     أزهى/أفتح عند النهاية ⇒ إحساس عمق مسطّح راقٍ؛
+/// (3) نقطة ضوئية خافتة عند رأس القوس عند الامتلاء الجزئي.
 class _RingPainter extends CustomPainter {
   /// نسبة امتلاء قوس التقدّم (0..1) — تتغذّى من القيمة المتحرّكة.
   final double fraction;
   final Color color;
   final double stroke;
+
+  /// النمط الفاخر (تدرّج + توهّج + نقطة رأس) مقابل المسطّح الرفيع.
+  final bool premium;
+
+  /// مرور المؤشّر — يقوّي التوهّج قليلاً في النمط الفاخر فقط.
   final bool hover;
 
   _RingPainter({
     required this.fraction,
     required this.color,
     required this.stroke,
-    required this.hover,
+    this.premium = false,
+    this.hover = false,
   });
 
   // زاوية بداية القوس (أسفل يسار، 135°) وامتداده الكلّي (300° = فجوة 60° أسفل).
@@ -298,38 +376,51 @@ class _RingPainter extends CustomPainter {
     if (radius <= 0) return;
     final rect = Rect.fromCircle(center: center, radius: radius);
 
-    // 1) المسار الخلفي الخافت (track): كامل الـ300°.
+    // 1) المسار الخلفي الناعم (track): كامل الـ300° بلون المقياس بشفافية منخفضة.
     final trackPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round
-      ..color = color.withValues(alpha: 0.13);
+      ..color = color.withValues(alpha: premium ? 0.14 : 0.12);
     canvas.drawArc(rect, _startAngle, _sweepTotal, false, trackPaint);
 
     final sweep = (_sweepTotal * fraction).clamp(0.0, _sweepTotal);
     if (sweep <= 0) return;
 
-    // 2) توهّج ملوّن (glow) خلف قوس التقدّم — طبقة مموّهة بلون المقياس.
+    if (!premium) {
+      // النمط المسطّح النظيف: قوس تقدّم بلون الشريحة بأطراف مستديرة (بلا توهّج).
+      final arcPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..color = color;
+      canvas.drawArc(rect, _startAngle, sweep, false, arcPaint);
+      return;
+    }
+
+    // ── النمط الفاخر ──────────────────────────────────────────────────────
+
+    // 2) توهّج ناعم خلف قوس التقدّم بلون المقياس (ألفا منخفضة + blur خفيف) —
+    //    لمسة فخامة هادئة؛ يقوى قليلاً عند المرور فقط. لا بروز ولا حفر.
     final glowPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round
-      ..color = color.withValues(alpha: hover ? 0.55 : 0.38)
-      ..maskFilter =
-          MaskFilter.blur(BlurStyle.normal, hover ? stroke * 0.85 : stroke * 0.6);
+      ..color = color.withValues(alpha: hover ? 0.42 : 0.26)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, hover ? 7.0 : 5.0);
     canvas.drawArc(rect, _startAngle, sweep, false, glowPaint);
 
-    // 3) قوس التقدّم بتدرّج لوني (SweepGradient shader محاذٍ لبداية القوس).
+    // 3) قوس التقدّم بتدرّج SweepGradient على امتداد القوس: أغمق قليلاً عند
+    //    البداية ⇒ أزهى/أفتح عند النهاية (إحساس عمق مسطّح راقٍ، بلا ثلاثية أبعاد).
+    final darker = Color.lerp(color, Colors.black, 0.18) ?? color;
+    final brighter = Color.lerp(color, Colors.white, 0.26) ?? color;
     final gradient = SweepGradient(
       startAngle: _startAngle,
       endAngle: _startAngle + _sweepTotal,
       tileMode: TileMode.clamp,
-      colors: [
-        _shade(color, -0.18), // درجة داكنة عند البداية.
-        color,
-        _shade(color, 0.28), // درجة فاتحة/مشعّة عند النهاية.
-      ],
+      colors: [darker, color, brighter],
       stops: const [0.0, 0.55, 1.0],
+      transform: GradientRotation(_startAngle),
     );
     final arcPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -338,26 +429,18 @@ class _RingPainter extends CustomPainter {
       ..shader = gradient.createShader(rect);
     canvas.drawArc(rect, _startAngle, sweep, false, arcPaint);
 
-    // 4) نقطة مضيئة صغيرة عند رأس القوس (لمسة premium) عند الامتلاء الجزئي.
-    if (fraction > 0.02 && fraction < 0.999) {
-      final tipAngle = _startAngle + sweep;
-      final tip = Offset(
-        center.dx + radius * math.cos(tipAngle),
-        center.dy + radius * math.sin(tipAngle),
+    // 4) نقطة ضوئية صغيرة خافتة عند رأس القوس عند الامتلاء الجزئي فقط.
+    if (fraction > 0.02 && fraction < 0.995) {
+      final headAngle = _startAngle + sweep;
+      final head = Offset(
+        center.dx + radius * math.cos(headAngle),
+        center.dy + radius * math.sin(headAngle),
       );
-      final tipPaint = Paint()
-        ..color = _shade(color, 0.35)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-      canvas.drawCircle(tip, stroke * 0.32, tipPaint);
+      final dotPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = Colors.white.withValues(alpha: hover ? 0.95 : 0.80);
+      canvas.drawCircle(head, stroke * 0.22, dotPaint);
     }
-  }
-
-  /// يفتّح/يعتّم اللون بنسبة [amount] (+فاتح / -داكن) عبر مزج بالأبيض/الأسود.
-  Color _shade(Color c, double amount) {
-    if (amount >= 0) {
-      return Color.lerp(c, Colors.white, amount) ?? c;
-    }
-    return Color.lerp(c, Colors.black, -amount) ?? c;
   }
 
   @override
@@ -365,5 +448,6 @@ class _RingPainter extends CustomPainter {
       old.fraction != fraction ||
       old.color != color ||
       old.stroke != stroke ||
+      old.premium != premium ||
       old.hover != hover;
 }

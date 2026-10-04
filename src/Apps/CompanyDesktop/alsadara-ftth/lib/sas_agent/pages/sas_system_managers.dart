@@ -97,7 +97,8 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.separated(
+      child: SasContentWrap(
+        child: ListView.separated(
         padding: EdgeInsets.all(12.w),
         itemCount: _rows.length + 1,
         separatorBuilder: (_, __) => SizedBox(height: 8.h),
@@ -116,6 +117,7 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
           }
           return _managerCard(_rows[i]);
         },
+        ),
       ),
     );
   }

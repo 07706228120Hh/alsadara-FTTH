@@ -155,10 +155,12 @@ class SasAgentReport {
         json['timestamp'];
     return SasAgentReport(
       id: (json['id'] ?? json['Id'] ?? '').toString(),
-      declaredTotal:
-          _int(json['declaredTotal'] ?? json['declared_total']),
-      declaredActive:
-          _int(json['declaredActive'] ?? json['declared_active']),
+      declaredTotal: _int(json['declaredTotal'] ??
+          json['declared_total'] ??
+          json['DeclaredTotal']),
+      declaredActive: _int(json['declaredActive'] ??
+          json['declared_active'] ??
+          json['DeclaredActive']),
       note: (json['note'] ?? json['Note'] ?? '').toString(),
       createdAt: rawTs == null ? null : DateTime.tryParse('$rawTs'),
     );

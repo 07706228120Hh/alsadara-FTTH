@@ -41,6 +41,9 @@
 | `20261001111515_AddSasSourceToSubscriptionLog` | 4 أعمدة على `SubscriptionLogs`: `Source`(int افتراضي 0) · `SasAccountId`(uuid null) · `SubscriberUid`(text null) · `SubscriberUsername`(text null) |
 | `20261001220456_AddSasPricingAndProfile` | جدولان: `SasPackagePrices` (تسعير الباقات) + `SasSubscriberProfiles` (حقول المواطن الـ11) |
 | `20261001224100_AddSasCitizenPayment` | جدول `SasCitizenPayments` (تسديدات ذمم المواطنين) |
+| `20261002165714_AddSasRegionAndSubscriberRegionLink` | جدول `SasRegions` (مناطق + أجور صيانة) + عمود `RegionId`(uuid null) على `SasSubscriberProfiles` + فهارس/FK |
+
+> ⚠️ **خمس هجرات ساس لا أربع** (أُضيفت `AddSasRegionAndSubscriberRegionLink` في 2026-10-02). طبّقها جميعاً بالترتيب الزمني.
 
 > الحساب المحاسبي `1180` (ذمم المشتركين) يُنشأ تلقائياً لكل شركة عند أوّل تحصيل «آجل» (`EnsureFixedParentAccount`) — لا يحتاج بذرة يدوية.
 
@@ -61,6 +64,10 @@
   - **دوّر القيمة** على الـVPS (`SADARA_INTERNAL_API_KEY`) + حدّث التطبيق (يفضّل عبر `AppSecrets`/متغيّر بيئة لا ثابت) + حدّث **n8n**.
 - `Security:InternalApiKey` القديم المكشوف سابقاً في المستودع — مدوَّر ضمن ما سبق.
 - السرّ المحلي للساس `sadara-sas-dev-secret-2026` (تطوير فقط) — استبدله بسرّ إنتاجي قوي.
+- **🔴 أسرار مُتتبَّعة في Git (تدقيق devops 2026-10-05 — أزِلها من التتبّع قبل الدمج):**
+  - `n8n-workflows/n8n-whatsapp-templates-CREDENTIALS.json` + `n8n-auto-reminder-workflow.json` — تحوي المفتاح الداخلي مباشرةً (انقل الأسرار إلى credentials n8n لا ملف ملتزم).
+  - `tmp_n8n.json` · `tmp_n8n2.json` · `tmp_exec_detail.json` · `tmp_ex2.json` · `tmp_ex3.json` · `tmp_exec.json` — مخرجات n8n مؤقتة. `git rm --cached` + `.gitignore`.
+  - `.claude/settings.local.json` — يحوي المفتاح. `git rm --cached` + `.gitignore`.
 
 ---
 
@@ -73,6 +80,23 @@
 
 ---
 
+## 6.5) 🆕 تعديلات جلسة 2026-10-04 (تحسين تدفّق تفعيل الساس)
+
+راكمناها على `feature/sas-agent-integration` — تدخل ضمن نفس النشر:
+
+**الباكند (.NET — تُنشر مع publish، بلا migration):**
+- نقطة نهاية جديدة: `POST /api/sas-agent/accounts/{id}/subscription-logs/{logId}/whatsapp-sent` (`SasAgentController.MarkSubscriptionLogWhatsAppSent`) تضبط `IsWhatsAppSent=true` عند الإرسال الفعلي. **لا تحتاج migration** — العمود `IsWhatsAppSent` موجود منذ `20260206224918_AddSubscriptionLogs` (منشور إنتاجاً). عزل ثلاثي + idempotent. **مراجعة أمنية: معتمدة (لا P0/P1/P2).**
+
+**التطبيق (Flutter — يدخل في بناء الإصدار):**
+- دمج نافذتي (الأشهر) + (التحصيل) في **نافذة واحدة** غنية (إجمالي حيّ + زر «تفعيل وتحصيل»).
+- **طباعة صامتة** للإيصالات عبر `directPrintPdf` بدل حوار ويندوز (`layoutPdf`) — إيصالات FTTH تبقى على سلوكها (silent=false افتراضياً). لا تُرسَل مهمة لطابعة غير متاحة (لا حوار «Waiting for printer connection»).
+- **منتقي طابعة الإيصالات** الجديد في «إعدادات الشركة ← إعدادات طابعة الإيصالات» (مفتاح `receipt_printer_name`) + زر تجربة.
+- **عرض حالة واتساب** بعد التفعيل (أُرسل/فشل/يدوي/لا رقم/الخادم غير جاهز) + تبليغ الخادم.
+
+**🟠 خطوة ما بعد تثبيت التطبيق (لكل جهاز وكيل):** افتح «إعدادات طابعة الإيصالات» واختر **الطابعة الحرارية** واحفظها + «تجربة طباعة». بدونها تُطبع على الطابعة الافتراضية المتاحة (قد لا تكون الحرارية).
+
+---
+
 ## 7) 🟢 التحقّق بعد النشر
 
 1. تطبيق الهجرتين + نسخة احتياطية سليمة.
@@ -81,7 +105,10 @@
 4. تبويبات الساس: الحسابات/لوحة/مشتركون (محلي بعد مزامنة)/تذاكر/تصريح.
 5. شاشة «الحسابات» و«وكلاء FTTH/خادمنا» تُحمّل (الآن تضرب الـVPS بتوكن إنتاج صالح).
 6. تفعيل اختباري → قيد محاسبي + طباعة + واتساب (على مشترك اختباري).
-7. CI: أضِف `dotnet test` + `pytest` (منع الانحدار).
+7. **النافذة الموحّدة**: التفعيل يفتح نافذة واحدة (لا نافذتين) + الإجمالي يتحدّث حيّاً.
+8. **الطباعة الصامتة**: بعد اختيار طابعة الإيصالات، التفعيل يطبع مباشرة **بلا حوار ويندوز**.
+9. **نقطة واتساب**: `POST /api/sas-agent/accounts/{id}/subscription-logs/{logId}/whatsapp-sent` ← 200؛ وحالة الإرسال تظهر للمستخدم؛ و`IsWhatsAppSent` يُحدَّث عند الإرسال الفعلي.
+10. CI: أضِف `dotnet test` + `pytest` (منع الانحدار).
 
 ---
 

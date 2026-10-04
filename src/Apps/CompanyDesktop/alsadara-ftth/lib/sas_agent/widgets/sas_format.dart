@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../../theme/app_theme.dart';
 import 'sas_metrics.dart';
@@ -42,6 +43,19 @@ String sasDuration(dynamic secs) {
 
 /// عملة عراقية.
 String sasMoney(dynamic v) => v == null ? '-' : 'IQD $v';
+
+/// منسّق الفواصل الألفية (بلا كسور للأعداد الصحيحة، منزلتان للكسور).
+final NumberFormat _iqdWhole = NumberFormat('#,##0', 'en');
+final NumberFormat _iqdFrac = NumberFormat('#,##0.00', 'en');
+
+/// رصيد/مبلغ كامل بعملة IQD مع فواصل ألفية — للبطاقات البارزة (الرصيد).
+/// مثال: 704.80 ⇒ "704.80 IQD"، 1250000 ⇒ "1,250,000 IQD".
+String sasMoneyIqd(dynamic v) {
+  final n = sasNum(v)?.toDouble();
+  if (n == null) return '-';
+  final text = n % 1 == 0 ? _iqdWhole.format(n) : _iqdFrac.format(n);
+  return '$text IQD';
+}
 
 /// شرطة عند الفراغ.
 String sasDash(dynamic v) => (v == null || '$v'.isEmpty) ? '-' : '$v';

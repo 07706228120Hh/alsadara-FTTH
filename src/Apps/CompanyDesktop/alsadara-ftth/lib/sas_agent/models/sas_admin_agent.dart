@@ -34,10 +34,17 @@ class SasAdminReconciliation {
   factory SasAdminReconciliation.fromJson(Map<String, dynamic> json) {
     final rawSync = json['lastSync'] ?? json['last_sync'] ?? json['LastSync'];
     return SasAdminReconciliation(
-      declaredTotal: _int(json['declaredTotal'] ?? json['declared_total']),
-      declaredActive: _int(json['declaredActive'] ?? json['declared_active']),
-      actualTotal: _int(json['actualTotal'] ?? json['actual_total']),
-      actualActive: _int(json['actualActive'] ?? json['actual_active']),
+      declaredTotal: _int(json['declaredTotal'] ??
+          json['declared_total'] ??
+          json['DeclaredTotal']),
+      declaredActive: _int(json['declaredActive'] ??
+          json['declared_active'] ??
+          json['DeclaredActive']),
+      actualTotal: _int(
+          json['actualTotal'] ?? json['actual_total'] ?? json['ActualTotal']),
+      actualActive: _int(json['actualActive'] ??
+          json['actual_active'] ??
+          json['ActualActive']),
       diff: _int(json['diff'] ?? json['Diff']),
       verdict: SasVerdictX.parse(json['verdict'] ?? json['Verdict']),
       lastSync: rawSync == null ? null : DateTime.tryParse('$rawSync'),

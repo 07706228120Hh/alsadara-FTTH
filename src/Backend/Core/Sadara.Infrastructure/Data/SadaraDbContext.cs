@@ -166,6 +166,7 @@ public class SadaraDbContext : DbContext
     public DbSet<SasPackagePrice> SasPackagePrices => Set<SasPackagePrice>();
     public DbSet<SasSubscriberProfile> SasSubscriberProfiles => Set<SasSubscriberProfile>();
     public DbSet<SasCitizenPayment> SasCitizenPayments => Set<SasCitizenPayment>();
+    public DbSet<SasRegion> SasRegions => Set<SasRegion>();
 
     // ==================== Inventory System (نظام المخازن والمواد) ====================
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
@@ -445,6 +446,22 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<SasCitizenPayment>()
             .HasIndex(x => new { x.CompanyId, x.SasAccountId, x.SubscriberUid, x.CreatedAt });
         modelBuilder.Entity<SasCitizenPayment>().Property(x => x.Amount).HasPrecision(18, 2);
+
+        // مناطق مشتركي الساس (يدوية): فهرس فريد (شركة + اسم) لمنع تكرار اسم المنطقة ضمن الشركة.
+        // FK الشركة Cascade؛ أجور الصيانة بدقّة مالية موحّدة (18,2).
+        modelBuilder.Entity<SasRegion>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<SasRegion>()
+            .HasIndex(x => new { x.CompanyId, x.Name }).IsUnique();
+        modelBuilder.Entity<SasRegion>().Property(x => x.MaintenanceFee).HasPrecision(18, 2);
+        modelBuilder.Entity<SasRegion>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+
+        // ربط المشترك بالمنطقة (RegionId على SasSubscriberProfile): فهرس للتصفية/التجميع حسب المنطقة.
+        // FK Restrict لمنع حذف منطقة مرتبطة بمشتركين دون معالجة صريحة.
+        modelBuilder.Entity<SasSubscriberProfile>()
+            .HasIndex(x => new { x.CompanyId, x.RegionId });
+        modelBuilder.Entity<SasSubscriberProfile>()
+            .HasOne<SasRegion>().WithMany().HasForeignKey(x => x.RegionId).OnDelete(DeleteBehavior.Restrict);
 
         // Reminder Settings
         modelBuilder.Entity<ReminderSettings>()

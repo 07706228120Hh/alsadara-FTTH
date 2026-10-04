@@ -29,80 +29,121 @@ class SasReportsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
-      children: [
-        _banner(),
-        SizedBox(height: 16.h),
-
-        // التقارير المجمّعة + الترخيص (بطاقات بارزة).
-        const SasSectionHeader(
-          title: 'ملخّصات',
-          icon: Icons.insights_rounded,
-        ),
-        SizedBox(height: 10.h),
-        _tile(
-          context,
-          title: 'التقارير المجمّعة',
-          subtitle: 'ملخّص المشتركين + حسب الباقة + حسب المدير + تفعيلات الشهر',
-          icon: Icons.insights_rounded,
-          gradient: AppTheme.blueGradient,
-          onTap: () =>
-              _open(context, SasAggregateReportsPage(account: account)),
-        ),
-        SizedBox(height: 8.h),
-        _tile(
-          context,
-          title: 'سجل الحركات',
-          subtitle: 'العمليات المفوترة (تفعيل/تمديد/تغيير باقة) + المبالغ المحصّلة',
-          icon: Icons.receipt_long_rounded,
-          gradient: AppTheme.greenGradient,
-          onTap: () => _open(context, SasTransactionsPage(account: account)),
-        ),
-        SizedBox(height: 8.h),
-        _tile(
-          context,
-          title: 'المدينون (ذمم المواطنين)',
-          subtitle: 'المشتركون المدينون بالآجل + الرصيد المستحق · كشف وتسديد',
-          icon: Icons.account_balance_wallet_rounded,
-          gradient: const [AppTheme.errorColor, Color(0xFFEF5350)],
-          onTap: () => _open(context, SasDebtorsPage(account: account)),
-        ),
-        SizedBox(height: 8.h),
-        _tile(
-          context,
-          title: 'الترخيص والصلاحيات',
-          subtitle: 'حالة الترخيص · الانتهاء · الإصدار · الميزات المفعّلة',
-          icon: Icons.verified_user_rounded,
-          gradient: AppTheme.orangeGradient,
-          onTap: () => _open(context, SasLicensePage(account: account)),
-        ),
-
-        SizedBox(height: 20.h),
-
-        // التقارير التفصيلية العشرة.
-        const SasSectionHeader(
-          title: 'التقارير التفصيلية',
-          icon: Icons.table_chart_rounded,
-          gradient: AppTheme.greenGradient,
-        ),
-        SizedBox(height: 10.h),
-        for (final r in kSasReports) ...[
-          _tile(
-            context,
-            title: r.title,
-            subtitle: null,
-            icon: r.icon,
-            gradient: r.gradient,
-            onTap: () => _open(
+    return SasContentWrap(
+      maxWidth: 1180,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          // شبكة بطاقات تكيّفية: عمود واحد على الضيّق وعمودان على العريض.
+          final cols = c.maxWidth >= 720 ? 2 : 1;
+          final summaryTiles = <Widget>[
+            _tile(
               context,
-              _SingleReportScreen(account: account, def: r),
+              title: 'التقارير المجمّعة',
+              subtitle:
+                  'ملخّص المشتركين + حسب الباقة + حسب المدير + تفعيلات الشهر',
+              icon: Icons.insights_rounded,
+              gradient: AppTheme.blueGradient,
+              onTap: () =>
+                  _open(context, SasAggregateReportsPage(account: account)),
             ),
-          ),
-          SizedBox(height: 8.h),
-        ],
-      ],
+            _tile(
+              context,
+              title: 'سجل الحركات',
+              subtitle:
+                  'العمليات المفوترة (تفعيل/تمديد/تغيير باقة) + المبالغ المحصّلة',
+              icon: Icons.receipt_long_rounded,
+              gradient: AppTheme.greenGradient,
+              onTap: () => _open(context, SasTransactionsPage(account: account)),
+            ),
+            _tile(
+              context,
+              title: 'المدينون (ذمم المواطنين)',
+              subtitle:
+                  'المشتركون المدينون بالآجل + الرصيد المستحق · كشف وتسديد',
+              icon: Icons.account_balance_wallet_rounded,
+              gradient: const [AppTheme.errorColor, Color(0xFFEF5350)],
+              onTap: () => _open(context, SasDebtorsPage(account: account)),
+            ),
+            _tile(
+              context,
+              title: 'الترخيص والصلاحيات',
+              subtitle: 'حالة الترخيص · الانتهاء · الإصدار · الميزات المفعّلة',
+              icon: Icons.verified_user_rounded,
+              gradient: AppTheme.orangeGradient,
+              onTap: () => _open(context, SasLicensePage(account: account)),
+            ),
+          ];
+          final detailTiles = [
+            for (final r in kSasReports)
+              _tile(
+                context,
+                title: r.title,
+                subtitle: null,
+                icon: r.icon,
+                gradient: r.gradient,
+                onTap: () => _open(
+                  context,
+                  _SingleReportScreen(account: account, def: r),
+                ),
+              ),
+          ];
+          return ListView(
+            padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
+            children: [
+              _banner(),
+              SizedBox(height: 16.h),
+              const SasSectionHeader(
+                title: 'ملخّصات',
+                icon: Icons.insights_rounded,
+              ),
+              SizedBox(height: 10.h),
+              _grid(summaryTiles, cols),
+              SizedBox(height: 20.h),
+              const SasSectionHeader(
+                title: 'التقارير التفصيلية',
+                icon: Icons.table_chart_rounded,
+                gradient: AppTheme.greenGradient,
+              ),
+              SizedBox(height: 10.h),
+              _grid(detailTiles, cols),
+            ],
+          );
+        },
+      ),
     );
+  }
+
+  /// يرتّب بطاقات التقارير في شبكة بعدد أعمدة [cols] بفراغات متساوية.
+  Widget _grid(List<Widget> tiles, int cols) {
+    if (cols == 1) {
+      return Column(
+        children: [
+          for (int i = 0; i < tiles.length; i++) ...[
+            if (i > 0) SizedBox(height: 8.h),
+            tiles[i],
+          ],
+        ],
+      );
+    }
+    final rows = <Widget>[];
+    for (int i = 0; i < tiles.length; i += cols) {
+      final cells = <Widget>[];
+      for (int j = 0; j < cols; j++) {
+        final idx = i + j;
+        if (j > 0) cells.add(SizedBox(width: 10.w));
+        cells.add(Expanded(
+          child: idx < tiles.length ? tiles[idx] : const SizedBox.shrink(),
+        ));
+      }
+      if (rows.isNotEmpty) rows.add(SizedBox(height: 10.h));
+      rows.add(IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: cells,
+        ),
+      ));
+    }
+    return Column(children: rows);
   }
 
   Widget _banner() {
@@ -230,6 +271,7 @@ class _SingleReportScreen extends StatelessWidget {
         appBar: AppBar(
           elevation: 0,
           toolbarHeight: 56,
+          backgroundColor: AppTheme.primaryColor,
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

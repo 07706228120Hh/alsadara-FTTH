@@ -1553,7 +1553,17 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 50,
-        iconTheme: const IconThemeData(size: 20),
+        backgroundColor: Colors.transparent,
+        iconTheme: const IconThemeData(size: 20, color: Colors.white),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
+            ),
+          ),
+        ),
         title: const Text(
           'تفاصيل الوكلاء',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -2384,7 +2394,17 @@ class _AddAgentPageState extends State<AddAgentPage> {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 50,
-        iconTheme: const IconThemeData(size: 20),
+        backgroundColor: Colors.transparent,
+        iconTheme: const IconThemeData(size: 20, color: Colors.white),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
+            ),
+          ),
+        ),
         title: const Text(
           'إضافة وكيل جديد',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),

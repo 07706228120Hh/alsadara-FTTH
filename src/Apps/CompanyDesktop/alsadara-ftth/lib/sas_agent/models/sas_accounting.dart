@@ -13,12 +13,28 @@ num? _asNum(dynamic v) =>
 
 String _asStr(dynamic v) => (v ?? '').toString();
 
+/// أوّل قيمة غير-null من قائمة أسماء مفاتيح بديلة.
+///
+/// ضروري لأن بوّابة الصدارة .NET تُسلسِل DTOs بـ**PascalCase**
+/// (`Program.cs`: `PropertyNamingPolicy = null`) بينما بيانات Python/SAS4 تصل
+/// snake_case/lower. نمرّر كل الصيغ (camel ثم snake ثم Pascal) فيصمد التحليل
+/// مهما كانت سياسة التسمية في المصدر.
+dynamic _pick(Map<String, dynamic> j, List<String> keys) {
+  for (final k in keys) {
+    final v = j[k];
+    if (v != null) return v;
+  }
+  return null;
+}
+
 // ════════════════════════ تسعير الباقات ════════════════════════
 
 /// سعر باقة واحد — من `GET accounts/{id}/package-prices`.
 ///
-/// الربح محسوب للعرض فقط (`sellingPrice − cost`)؛ يُرسَل للخادم الكلفة/البيع فقط.
-/// نموذج **قابل للتعديل** (كلفة/بيع/مفعّل) لذا حقوله غير ثابتة ويحمل `copyWith`.
+/// النموذج الجديد: الوكيل يحدّد **سعر البيع فقط**. السعر الأساسي (`cost`)
+/// ديناميكي يُجلب وقت التجديد من الساس؛ لم يَعُد يُدخَل يدوياً ولا يُعرَض، والربح
+/// يُحسب خادمياً (سعر البيع + أجور الصيانة − الأساسي). يبقى `cost` في الموديل
+/// لتوافق القراءة لكن لا يُحرَّر ولا يُعتمَد عليه في العرض.
 class SasPackagePrice {
   final String profileId;
   final String profileName;
@@ -34,33 +50,42 @@ class SasPackagePrice {
     this.isActive = true,
   });
 
-  /// الربح = سعر البيع − الكلفة (محسوب، للعرض فقط).
+  /// الربح التقديري = سعر البيع − الكلفة (غير مستخدم في العرض؛ الربح الفعلي
+  /// يُحسب خادمياً وقت التجديد بالأساسي الديناميكي + أجور الصيانة).
   num get profit => sellingPrice - cost;
 
   factory SasPackagePrice.fromJson(Map<String, dynamic> json) {
     return SasPackagePrice(
-      profileId:
-          (json['profileId'] ?? json['profile_id'] ?? json['id'] ?? '')
-              .toString(),
-      profileName: (json['profileName'] ??
-              json['profile_name'] ??
-              json['name'] ??
-              '')
-          .toString(),
-      cost: _asNum(json['cost'] ?? json['Cost']) ?? 0,
-      sellingPrice: _asNum(json['sellingPrice'] ??
-              json['selling_price'] ??
-              json['price']) ??
+      profileId: _asStr(_pick(json,
+          ['profileId', 'profile_id', 'ProfileId', 'id', 'Id'])),
+      profileName: _asStr(_pick(json, [
+        'profileName',
+        'profile_name',
+        'ProfileName',
+        'name',
+        'Name',
+      ])),
+      cost: _asNum(_pick(json, ['cost', 'Cost'])) ?? 0,
+      sellingPrice: _asNum(_pick(json, [
+            'sellingPrice',
+            'selling_price',
+            'SellingPrice',
+            'price',
+            'Price',
+          ])) ??
           0,
-      isActive: (json['isActive'] ?? json['is_active'] ?? true) == true,
+      isActive:
+          (_pick(json, ['isActive', 'is_active', 'IsActive']) ?? true) == true,
     );
   }
 
-  /// الحمولة المرسَلة في `PUT package-prices` (بلا الربح — يُحسب خادمياً).
+  /// الحمولة المرسَلة في `PUT package-prices`. نرسل سعر البيع + التعريف +
+  /// التفعيل. `cost` يُرسَل 0 لأن الباكند صار يتجاهله (الأساسي ديناميكي وقت
+  /// التجديد)؛ الربح يُحسب خادمياً.
   Map<String, dynamic> toSaveJson() => {
         'profileId': profileId,
         'profileName': profileName,
-        'cost': cost,
+        'cost': 0,
         'sellingPrice': sellingPrice,
         'isActive': isActive,
       };
@@ -86,6 +111,12 @@ class SasSubscriberProfile {
   final String propertyType;
   final String landmark;
 
+  /// معرّف المنطقة المرتبطة (GUID) — فارغ إن لم تُربط. أساس أجور الصيانة التلقائية.
+  final String regionId;
+
+  /// اسم المنطقة المرتبطة (عرضي فقط — يأتي من الخادم).
+  final String regionName;
+
   const SasSubscriberProfile({
     this.nationalId = '',
     this.fullNameQuad = '',
@@ -99,27 +130,56 @@ class SasSubscriberProfile {
     this.longitude = '',
     this.propertyType = '',
     this.landmark = '',
+    this.regionId = '',
+    this.regionName = '',
   });
 
   factory SasSubscriberProfile.fromJson(Map<String, dynamic> json) {
     return SasSubscriberProfile(
-      nationalId: _asStr(json['nationalId'] ?? json['national_id']),
-      fullNameQuad: _asStr(json['fullNameQuad'] ?? json['full_name_quad']),
-      birthDate: _asStr(json['birthDate'] ?? json['birth_date']),
-      gender: _asStr(json['gender']),
-      altPhone: _asStr(json['altPhone'] ?? json['alt_phone']),
-      whatsappNumber:
-          _asStr(json['whatsappNumber'] ?? json['whatsapp_number']),
-      email: _asStr(json['email']),
-      addressDetail: _asStr(json['addressDetail'] ?? json['address_detail']),
-      latitude: _asStr(json['latitude']),
-      longitude: _asStr(json['longitude']),
-      propertyType: _asStr(json['propertyType'] ?? json['property_type']),
-      landmark: _asStr(json['landmark']),
+      nationalId:
+          _asStr(_pick(json, ['nationalId', 'national_id', 'NationalId'])),
+      fullNameQuad: _asStr(
+          _pick(json, ['fullNameQuad', 'full_name_quad', 'FullNameQuad'])),
+      birthDate:
+          _asStr(_pick(json, ['birthDate', 'birth_date', 'BirthDate'])),
+      gender: _asStr(_pick(json, ['gender', 'Gender'])),
+      altPhone: _asStr(_pick(json, ['altPhone', 'alt_phone', 'AltPhone'])),
+      whatsappNumber: _asStr(_pick(
+          json, ['whatsappNumber', 'whatsapp_number', 'WhatsappNumber'])),
+      email: _asStr(_pick(json, ['email', 'Email'])),
+      addressDetail: _asStr(
+          _pick(json, ['addressDetail', 'address_detail', 'AddressDetail'])),
+      latitude: _asStr(_pick(json, ['latitude', 'Latitude'])),
+      longitude: _asStr(_pick(json, ['longitude', 'Longitude'])),
+      propertyType: _asStr(
+          _pick(json, ['propertyType', 'property_type', 'PropertyType'])),
+      landmark: _asStr(_pick(json, ['landmark', 'Landmark'])),
+      regionId: _asStr(_pick(json, ['regionId', 'region_id', 'RegionId'])),
+      regionName:
+          _asStr(_pick(json, ['regionName', 'region_name', 'RegionName'])),
     );
   }
 
+  SasSubscriberProfile copyWith({String? regionId, String? regionName}) =>
+      SasSubscriberProfile(
+        nationalId: nationalId,
+        fullNameQuad: fullNameQuad,
+        birthDate: birthDate,
+        gender: gender,
+        altPhone: altPhone,
+        whatsappNumber: whatsappNumber,
+        email: email,
+        addressDetail: addressDetail,
+        latitude: latitude,
+        longitude: longitude,
+        propertyType: propertyType,
+        landmark: landmark,
+        regionId: regionId ?? this.regionId,
+        regionName: regionName ?? this.regionName,
+      );
+
   /// الحمولة المرسَلة في `PUT profile` (بأسماء camelCase كما يتوقّعها العقد).
+  /// regionId يُرسَل null عند الفراغ (إلغاء الربط).
   Map<String, dynamic> toSaveJson() => {
         'nationalId': nationalId,
         'fullNameQuad': fullNameQuad,
@@ -133,7 +193,125 @@ class SasSubscriberProfile {
         'longitude': longitude,
         'propertyType': propertyType,
         'landmark': landmark,
+        'regionId': regionId.isEmpty ? null : regionId,
       };
+}
+
+/// منطقة مشتركي الساس — بيانات رئيسية على مستوى الشركة. أجور صيانة ثابتة تُطبَّق تلقائياً.
+class SasRegion {
+  final String id;
+  final String name;
+  final String code;
+  final String governorate;
+  final String city;
+  final num maintenanceFee;
+  final bool isActive;
+  final String notes;
+  final int subscribersCount;
+
+  const SasRegion({
+    required this.id,
+    required this.name,
+    this.code = '',
+    this.governorate = '',
+    this.city = '',
+    this.maintenanceFee = 0,
+    this.isActive = true,
+    this.notes = '',
+    this.subscribersCount = 0,
+  });
+
+  factory SasRegion.fromJson(Map<String, dynamic> json) => SasRegion(
+        id: _asStr(_pick(json, ['id', 'Id'])),
+        name: _asStr(_pick(json, ['name', 'Name'])),
+        code: _asStr(_pick(json, ['code', 'Code'])),
+        governorate:
+            _asStr(_pick(json, ['governorate', 'Governorate'])),
+        city: _asStr(_pick(json, ['city', 'City'])),
+        maintenanceFee: _asNum(_pick(
+                json, ['maintenanceFee', 'maintenance_fee', 'MaintenanceFee'])) ??
+            0,
+        isActive:
+            (_pick(json, ['isActive', 'is_active', 'IsActive']) ?? true) == true,
+        notes: _asStr(_pick(json, ['notes', 'Notes'])),
+        subscribersCount: (_asNum(_pick(json, [
+                  'subscribersCount',
+                  'subscribers_count',
+                  'SubscribersCount',
+                ])) ??
+                0)
+            .toInt(),
+      );
+
+  Map<String, dynamic> toSaveJson() => {
+        'name': name,
+        'code': code,
+        'governorate': governorate,
+        'city': city,
+        'maintenanceFee': maintenanceFee,
+        'isActive': isActive,
+        'notes': notes,
+      };
+}
+
+/// صفّ في تقرير الأرباح (منطقة/باقة/إجمالي). الربح = المحصّل − الكلفة.
+class SasProfitRow {
+  final String label;
+  final int count;
+  final num cost;
+  final num profit;
+  final num revenue;
+
+  const SasProfitRow({
+    required this.label,
+    this.count = 0,
+    this.cost = 0,
+    this.profit = 0,
+    this.revenue = 0,
+  });
+
+  factory SasProfitRow.fromJson(Map<String, dynamic> json) {
+    final rawCount = _pick(json, ['count', 'Count']) ?? 0;
+    return SasProfitRow(
+      label: _asStr(_pick(json, ['label', 'Label'])),
+      count: rawCount is num
+          ? rawCount.toInt()
+          : int.tryParse('$rawCount') ?? 0,
+      cost: _asNum(_pick(json, ['cost', 'Cost'])) ?? 0,
+      profit: _asNum(_pick(json, ['profit', 'Profit'])) ?? 0,
+      revenue: _asNum(_pick(json, ['revenue', 'Revenue'])) ?? 0,
+    );
+  }
+}
+
+/// تقرير أرباح الساس (إجمالي + تفصيل حسب المنطقة والباقة).
+class SasProfitReport {
+  final SasProfitRow totals;
+  final List<SasProfitRow> byRegion;
+  final List<SasProfitRow> byPackage;
+
+  const SasProfitReport({
+    required this.totals,
+    this.byRegion = const [],
+    this.byPackage = const [],
+  });
+
+  factory SasProfitReport.fromJson(Map<String, dynamic> json) {
+    List<SasProfitRow> rows(dynamic v) => (v is List)
+        ? v
+            .whereType<Map>()
+            .map((e) => SasProfitRow.fromJson(e.cast<String, dynamic>()))
+            .toList()
+        : const [];
+    final t = _pick(json, ['totals', 'Totals']);
+    return SasProfitReport(
+      totals: t is Map
+          ? SasProfitRow.fromJson(t.cast<String, dynamic>())
+          : const SasProfitRow(label: 'الإجمالي'),
+      byRegion: rows(_pick(json, ['byRegion', 'by_region', 'ByRegion'])),
+      byPackage: rows(_pick(json, ['byPackage', 'by_package', 'ByPackage'])),
+    );
+  }
 }
 
 // ════════════════════════ كشف حساب المواطن ════════════════════════
@@ -160,14 +338,17 @@ class SasCitizenCharge {
 
   factory SasCitizenCharge.fromJson(Map<String, dynamic> json) {
     return SasCitizenCharge(
-      id: _asStr(json['id'] ?? json['Id']),
-      createdAt: _asStr(json['createdAt'] ?? json['created_at']),
-      planName: _asStr(json['planName'] ?? json['plan_name']),
-      operationType: _asStr(json['operationType'] ?? json['operation_type']),
-      amount: _asNum(json['amount']),
-      currency: (json['currency'] ?? 'IQD').toString(),
-      journalEntryId:
-          (json['journalEntryId'] ?? json['journal_entry_id'])?.toString(),
+      id: _asStr(_pick(json, ['id', 'Id'])),
+      createdAt:
+          _asStr(_pick(json, ['createdAt', 'created_at', 'CreatedAt'])),
+      planName: _asStr(_pick(json, ['planName', 'plan_name', 'PlanName'])),
+      operationType: _asStr(
+          _pick(json, ['operationType', 'operation_type', 'OperationType'])),
+      amount: _asNum(_pick(json, ['amount', 'Amount'])),
+      currency: _asStr(_pick(json, ['currency', 'Currency']) ?? 'IQD'),
+      journalEntryId: _pick(json,
+              ['journalEntryId', 'journal_entry_id', 'JournalEntryId'])
+          ?.toString(),
     );
   }
 }
@@ -204,13 +385,15 @@ class SasCitizenPayment {
 
   factory SasCitizenPayment.fromJson(Map<String, dynamic> json) {
     return SasCitizenPayment(
-      id: _asStr(json['id'] ?? json['Id']),
-      createdAt: _asStr(json['createdAt'] ?? json['created_at']),
-      amount: _asNum(json['amount']),
-      method: _asStr(json['method']),
-      note: _asStr(json['note']),
-      journalEntryId:
-          (json['journalEntryId'] ?? json['journal_entry_id'])?.toString(),
+      id: _asStr(_pick(json, ['id', 'Id'])),
+      createdAt:
+          _asStr(_pick(json, ['createdAt', 'created_at', 'CreatedAt'])),
+      amount: _asNum(_pick(json, ['amount', 'Amount'])),
+      method: _asStr(_pick(json, ['method', 'Method'])),
+      note: _asStr(_pick(json, ['note', 'Note'])),
+      journalEntryId: _pick(json,
+              ['journalEntryId', 'journal_entry_id', 'JournalEntryId'])
+          ?.toString(),
     );
   }
 }
@@ -234,8 +417,8 @@ class SasCitizenStatement {
     final json = (raw['data'] is Map)
         ? (raw['data'] as Map).cast<String, dynamic>()
         : raw;
-    final rawCharges = json['charges'];
-    final rawPayments = json['payments'];
+    final rawCharges = _pick(json, ['charges', 'Charges']);
+    final rawPayments = _pick(json, ['payments', 'Payments']);
     return SasCitizenStatement(
       charges: (rawCharges is List)
           ? rawCharges
@@ -250,7 +433,7 @@ class SasCitizenStatement {
                   (e) => SasCitizenPayment.fromJson(e.cast<String, dynamic>()))
               .toList()
           : const [],
-      balance: _asNum(json['balance']) ?? 0,
+      balance: _asNum(_pick(json, ['balance', 'Balance'])) ?? 0,
     );
   }
 }
@@ -272,10 +455,12 @@ class SasPaymentResult {
         ? (raw['data'] as Map).cast<String, dynamic>()
         : raw;
     return SasPaymentResult(
-      paymentId: _asStr(json['paymentId'] ?? json['payment_id']),
-      journalEntryId:
-          (json['journalEntryId'] ?? json['journal_entry_id'])?.toString(),
-      balance: _asNum(json['balance']) ?? 0,
+      paymentId:
+          _asStr(_pick(json, ['paymentId', 'payment_id', 'PaymentId'])),
+      journalEntryId: _pick(json,
+              ['journalEntryId', 'journal_entry_id', 'JournalEntryId'])
+          ?.toString(),
+      balance: _asNum(_pick(json, ['balance', 'Balance'])) ?? 0,
     );
   }
 }
@@ -296,10 +481,15 @@ class SasDebtor {
 
   factory SasDebtor.fromJson(Map<String, dynamic> json) {
     return SasDebtor(
-      subscriberUid:
-          _asStr(json['subscriberUid'] ?? json['subscriber_uid'] ?? json['uid']),
-      name: _asStr(json['name'] ?? json['username']),
-      balance: _asNum(json['balance']) ?? 0,
+      subscriberUid: _asStr(_pick(json, [
+        'subscriberUid',
+        'subscriber_uid',
+        'SubscriberUid',
+        'uid',
+        'Uid',
+      ])),
+      name: _asStr(_pick(json, ['name', 'Name', 'username', 'Username'])),
+      balance: _asNum(_pick(json, ['balance', 'Balance'])) ?? 0,
     );
   }
 }

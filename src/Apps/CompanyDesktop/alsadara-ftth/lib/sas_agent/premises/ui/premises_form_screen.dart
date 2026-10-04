@@ -151,7 +151,9 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
         appBar: _appBar(editing),
         body: Form(
           key: _form,
-          child: ListView(
+          child: SasContentWrap(
+            maxWidth: 760,
+            child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
               _section('العنوان الوصفي', Icons.location_city_rounded,
@@ -224,6 +226,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
               ),
             ],
           ),
+          ),
         ),
       ),
     );
@@ -232,6 +235,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
   PreferredSizeWidget _appBar(bool editing) {
     return AppBar(
       elevation: 0,
+      backgroundColor: AppTheme.primaryColor,
       flexibleSpace: const DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(

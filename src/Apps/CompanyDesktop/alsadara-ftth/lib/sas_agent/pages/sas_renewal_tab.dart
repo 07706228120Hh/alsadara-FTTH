@@ -603,12 +603,15 @@ class _SasRenewalTabState extends State<SasRenewalTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _controls(),
-        Expanded(child: _body()),
-        if (_candidates.isNotEmpty) _bottomBar(),
-      ],
+    return SasContentWrap(
+      maxWidth: 1000,
+      child: Column(
+        children: [
+          _controls(),
+          Expanded(child: _body()),
+          if (_candidates.isNotEmpty) _bottomBar(),
+        ],
+      ),
     );
   }
 

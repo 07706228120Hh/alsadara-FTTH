@@ -42,6 +42,17 @@ class _SettingsTextScalePageState extends State<SettingsTextScalePage> {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 50,
+        backgroundColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Colors.white),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
+            ),
+          ),
+        ),
         title: Text(
           'حجم النص داخل التطبيق',
           style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600),

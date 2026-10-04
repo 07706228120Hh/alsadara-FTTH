@@ -237,6 +237,7 @@ class _SasSubscriberFormPageState extends State<SasSubscriberFormPage> {
         backgroundColor: SasUi.pageBg,
         appBar: AppBar(
           elevation: 0,
+          backgroundColor: AppTheme.primaryColor,
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

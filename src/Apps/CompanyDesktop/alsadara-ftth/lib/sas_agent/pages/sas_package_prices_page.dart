@@ -13,11 +13,17 @@ import '../widgets/sas_metrics.dart';
 import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_state_views.dart';
 
-/// صفحة «أسعار الباقات» — إدارة كلفة/سعر بيع كلّ باقة وحساب ربحها.
+/// صفحة «أسعار الباقات» — يحدّد الوكيل **سعر البيع** لكلّ باقة (ما يُحصَّل من
+/// المشترك).
 ///
-/// تعرض قائمة الباقات (من `getPackagePrices`) ببطاقات قابلة للتعديل:
-/// اسم الباقة · كلفة (قابلة للتعديل) · سعر بيع (قابل للتعديل) · ربح (محسوب،
-/// للعرض) · مفعّل (مفتاح). زر «حفظ» يرسل الكلّ عبر `savePackagePrices`.
+/// النموذج: الوكيل يُدخل سعر البيع فقط. السعر الأساسي (الكلفة) ديناميكي يُجلب
+/// تلقائياً وقت التجديد من الساس (المبلغ الفعلي المخصوم من رصيد الصفحة)، والربح
+/// يُحسب خادمياً = سعر البيع + أجور الصيانة − الأساسي. لذا لا تُعرض الكلفة ولا
+/// الربح في البطاقة.
+///
+/// تعرض قائمة الباقات (من `getPackagePrices`) ببطاقات مدمجة قابلة للتعديل:
+/// اسم الباقة + مفتاح التفعيل (في صف) + حقل سعر البيع أسفله. زر «حفظ» يرسل الكلّ
+/// عبر `savePackagePrices`.
 ///
 /// التعديل محكوم بصلاحية `sas_agent` (الحماية النهائية في الخادم).
 class SasPackagePricesPage extends StatefulWidget {
@@ -134,6 +140,7 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
         backgroundColor: SasUi.pageBg,
         appBar: AppBar(
           elevation: 0,
+          backgroundColor: AppTheme.primaryColor,
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -179,8 +186,10 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 820),
         child: ListView(
-          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 14.h),
+          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 96.h),
           children: [
+            _accountStrip(),
+            SizedBox(height: 10.h),
             _hint(),
             SizedBox(height: 12.h),
             for (int i = 0; i < _items.length; i++) ...[
@@ -189,6 +198,46 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  /// شريط علوي صغير يوضّح أن الأسعار خاصة بالحساب النشط الحالي.
+  Widget _accountStrip() {
+    final name = widget.account.label.trim().isNotEmpty
+        ? widget.account.label.trim()
+        : widget.account.username;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+        border:
+            Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.account_circle_rounded,
+              color: AppTheme.primaryColor, size: 20.sp),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: GoogleFonts.cairo(
+                    fontSize: 12.5.sp, color: Colors.grey[800]),
+                children: [
+                  const TextSpan(text: 'الباقات لحساب: '),
+                  TextSpan(
+                    text: name,
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.primaryColor),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -208,8 +257,9 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
           SizedBox(width: 8.w),
           Expanded(
             child: Text(
-              'عدّل الكلفة وسعر البيع لكل باقة؛ يُحسب الربح تلقائياً. فعّل/عطّل '
-              'الباقة من المفتاح، ثم اضغط «حفظ».',
+              'حدّد سعر البيع لكل باقة (يُحصَّل من المشترك). السعر الأساسي يُخصم '
+              'تلقائياً من رصيد الصفحة وقت التجديد، والربح = سعر البيع + أجور '
+              'الصيانة − الأساسي. فعّل/عطّل الباقة من المفتاح، ثم اضغط «حفظ».',
               style: GoogleFonts.cairo(
                   fontSize: 12.sp, color: Colors.grey[800], height: 1.5),
             ),
@@ -220,9 +270,6 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
   }
 
   Widget _priceCard(SasPackagePrice p) {
-    final profit = p.profit;
-    final profitColor =
-        profit > 0 ? AppTheme.successColor : (profit < 0 ? AppTheme.errorColor : Colors.blueGrey);
     return Container(
       padding: EdgeInsets.all(14.w),
       decoration: SasUi.card(),
@@ -248,13 +295,13 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
                       color: const Color(0xFF1A1A2E)),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              SizedBox(width: 8.w),
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('مفعّل',
                       style: GoogleFonts.cairo(
-                          fontSize: 10.5.sp, color: Colors.grey[600])),
+                          fontSize: 11.sp, color: Colors.grey[600])),
                   Switch(
                     value: p.isActive,
                     activeThumbColor: AppTheme.successColor,
@@ -269,35 +316,15 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
-          Row(
-            children: [
-              Expanded(
-                child: _numField(
-                  label: 'الكلفة',
-                  initial: p.cost,
-                  enabled: _canManage,
-                  onChanged: (v) => setState(() {
-                    p.cost = v;
-                    _dirty = true;
-                  }),
-                ),
-              ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: _numField(
-                  label: 'سعر البيع',
-                  initial: p.sellingPrice,
-                  enabled: _canManage,
-                  onChanged: (v) => setState(() {
-                    p.sellingPrice = v;
-                    _dirty = true;
-                  }),
-                ),
-              ),
-              SizedBox(width: 10.w),
-              Expanded(child: _profitChip(profit, profitColor)),
-            ],
+          SizedBox(height: 8.h),
+          _numField(
+            label: 'سعر البيع (يُحصَّل من المشترك)',
+            initial: p.sellingPrice,
+            enabled: _canManage,
+            onChanged: (v) => setState(() {
+              p.sellingPrice = v;
+              _dirty = true;
+            }),
           ),
         ],
       ),
@@ -324,32 +351,6 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
       ),
       onChanged: (t) => onChanged(num.tryParse(t.trim()) ?? 0),
-    );
-  }
-
-  Widget _profitChip(num profit, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('الربح',
-              style: GoogleFonts.cairo(fontSize: 11.5.sp, color: Colors.grey[600])),
-          SizedBox(height: 2.h),
-          Directionality(
-            textDirection: TextDirection.ltr,
-            child: Text(_fmt(profit),
-                style: GoogleFonts.robotoMono(
-                    fontSize: 14.sp, fontWeight: FontWeight.w800, color: color)),
-          ),
-        ],
-      ),
     );
   }
 

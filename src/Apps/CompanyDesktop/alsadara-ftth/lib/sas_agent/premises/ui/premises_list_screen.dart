@@ -120,12 +120,15 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
                     style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
               )
             : null,
-        body: Column(
-          children: [
-            _searchBar(),
-            _filters(),
-            Expanded(child: _list()),
-          ],
+        body: SasContentWrap(
+          maxWidth: 1000,
+          child: Column(
+            children: [
+              _searchBar(),
+              _filters(),
+              Expanded(child: _list()),
+            ],
+          ),
         ),
       ),
     );
@@ -135,6 +138,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
     return AppBar(
       elevation: 0,
       toolbarHeight: 62,
+      backgroundColor: AppTheme.primaryColor,
       flexibleSpace: const DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(

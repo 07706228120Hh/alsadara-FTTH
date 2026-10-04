@@ -118,7 +118,16 @@ class SASClient:
 
     # ── الأساسيات ──
     def _headers(self) -> Dict[str, str]:
-        h = {"Accept": "application/json"}
+        # رؤوس شبيهة بالمتصفّح: بعض نقاط SAS4 (مثل user/traffic) تحرسها لارافيل بـ
+        # X-Requested-With وتُرجع 200 بجسم فارغ بدونها. Origin/Referer من أصل اللوحة.
+        origin = self.base_url.split("/admin/", 1)[0]
+        h = {
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "Origin": origin,
+            "Referer": origin + "/admin/",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Sadara-SAS-Agent",
+        }
         if self._token:
             h["Authorization"] = f"Bearer {self._token}"
         return h
@@ -153,7 +162,13 @@ class SASClient:
         try:
             return r.json()
         except ValueError:
-            raise SASError(f"استجابة غير JSON من {route}: {_snip(r.text)}")
+            # تشخيص: اكشف لماذا فشل التحليل (نوع المحتوى/الترميز/الطول/أوّل البايتات).
+            ct = r.headers.get("content-type", "")
+            ce = r.headers.get("content-encoding", "")
+            raw = bytes(r.content[:160])
+            raise SASError(
+                f"استجابة غير JSON من {route} "
+                f"(ct={ct}; ce={ce}; len={len(r.content)}; raw={raw!r})")
 
     async def login(self) -> str:
         data = await self.post("login", {"username": self.username, "password": self.password})

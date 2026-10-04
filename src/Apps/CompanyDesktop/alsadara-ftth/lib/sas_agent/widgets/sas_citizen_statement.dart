@@ -503,6 +503,7 @@ class SasCitizenStatementScreen extends StatelessWidget {
         backgroundColor: SasUi.pageBg,
         appBar: AppBar(
           elevation: 0,
+          backgroundColor: AppTheme.primaryColor,
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

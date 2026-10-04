@@ -105,6 +105,9 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 // FTTH Sync Background Service (مزامنة FTTH تلقائية)
 builder.Services.AddHostedService<Sadara.API.Services.FtthSyncBackgroundService>();
 
+// SAS Sync Background Service (مزامنة الساس الدورية — نموذج «محلي أولاً»)
+builder.Services.AddHostedService<Sadara.API.Services.SasSyncBackgroundService>();
+
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 

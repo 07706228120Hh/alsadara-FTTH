@@ -91,11 +91,14 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
         ),
         body: _loading
             ? const SasLoadingView(message: 'جاري تحميل القوالب…')
-            : ListView.separated(
-                padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 20.h),
-                itemCount: _templates.length,
-                separatorBuilder: (_, __) => SizedBox(height: 10.h),
-                itemBuilder: (_, i) => _templateCard(_templates[i]),
+            : SasContentWrap(
+                maxWidth: 860,
+                child: ListView.separated(
+                  padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 20.h),
+                  itemCount: _templates.length,
+                  separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                  itemBuilder: (_, i) => _templateCard(_templates[i]),
+                ),
               ),
       ),
     );
@@ -299,7 +302,9 @@ class _TemplateEditorState extends State<_TemplateEditor> {
             ),
           ],
         ),
-        body: ListView(
+        body: SasContentWrap(
+          maxWidth: 760,
+          child: ListView(
           padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
           children: [
             Container(
@@ -373,6 +378,7 @@ class _TemplateEditorState extends State<_TemplateEditor> {
               ),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -387,6 +393,7 @@ PreferredSizeWidget _waAppBar(
 }) {
   return AppBar(
     elevation: 0,
+    backgroundColor: AppTheme.primaryColor,
     flexibleSpace: const DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(

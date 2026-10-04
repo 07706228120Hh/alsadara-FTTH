@@ -25,11 +25,18 @@ class SasSubscriber {
     this.raw = const {},
   });
 
-  /// معرّف المشترك في نظام الساس (من الحقل الخام) — يُستخدم لفتح التفاصيل/الإجراءات.
+  /// معرّف المشترك في نظام الساس (uid) — يُستخدم لفتح التفاصيل/الإجراءات.
+  /// المصدر الحيّ يستخدم `id`؛ المصدر المحلي (local_subscribers) يستخدم `sub_id`.
   /// يعيد نصاً فارغاً إن غاب المعرّف.
   String get id {
-    final v = raw['id'] ?? raw['user_id'] ?? raw['userId'] ?? raw['Id'];
-    return v?.toString() ?? '';
+    final v = raw['id'] ??
+        raw['sub_id'] ??
+        raw['subId'] ??
+        raw['user_id'] ??
+        raw['userId'] ??
+        raw['Id'];
+    final s = v?.toString() ?? '';
+    return (s == '0') ? '' : s; // 0 = مُدخَل يدوي بلا معرّف ساس
   }
 
   /// الاسم الكامل (قد يكون فارغاً).
@@ -58,7 +65,10 @@ class SasSubscriber {
     final onlineRaw = json['online_status'] ?? json['online'];
     return SasSubscriber(
       username: (json['username'] ?? json['user'] ?? '').toString(),
-      firstName: (json['firstname'] ?? json['firstName'] ?? '').toString(),
+      // المصدر الحيّ: firstname/lastname؛ المصدر المحلي: حقل `name` مفرد.
+      firstName:
+          (json['firstname'] ?? json['firstName'] ?? json['name'] ?? '')
+              .toString(),
       lastName: (json['lastname'] ?? json['lastName'] ?? '').toString(),
       profile: _profileName(json),
       expiration:

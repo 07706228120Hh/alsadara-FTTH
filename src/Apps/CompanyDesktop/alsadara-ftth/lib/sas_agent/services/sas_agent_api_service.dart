@@ -238,20 +238,31 @@ class SasAgentApiService {
   /// المشتركون المحليون (سريع، من قاعدة الصدارة بعد المزامنة) —
   /// `GET accounts/{id}/subscribers-local`.
   ///
+  /// [search] بحث نصّي حُر (اسم/معرّف المشترك).
+  /// [status] فلتر الحالة: `active` / `expired` (اختياري، null = الكل).
+  /// [profile] فلتر الباقة/البروفايل (اختياري).
   /// [expiring] فلتر عدّاد الانتهاء: overdue/today/soon3/soon7 (اختياري).
   Future<SasLocalSubscribersPage> getLocalSubscribers(
     String id, {
     String? search,
     String? status,
+    String? profile,
     String? expiring,
     int? page,
     int? count,
   }) async {
     final params = <String>[];
-    if (search != null && search.isNotEmpty) params.add('search=$search');
-    if (status != null && status.isNotEmpty) params.add('status=$status');
+    if (search != null && search.isNotEmpty) {
+      params.add('search=${Uri.encodeQueryComponent(search)}');
+    }
+    if (status != null && status.isNotEmpty) {
+      params.add('status=${Uri.encodeQueryComponent(status)}');
+    }
+    if (profile != null && profile.isNotEmpty) {
+      params.add('profile=${Uri.encodeQueryComponent(profile)}');
+    }
     if (expiring != null && expiring.isNotEmpty) {
-      params.add('expiring=$expiring');
+      params.add('expiring=${Uri.encodeQueryComponent(expiring)}');
     }
     if (page != null) params.add('page=$page');
     if (count != null) params.add('count=$count');
@@ -451,6 +462,48 @@ class SasAgentApiService {
     return res['success'] != false;
   }
 
+  // ============================================================
+  //  المناطق (SasRegion) — بيانات رئيسية على مستوى الشركة
+  //  (company-scoped: لا تحتاج معرّف حساب)
+  // ============================================================
+
+  /// قائمة مناطق الشركة (مع عدد المشتركين) — `GET regions`.
+  Future<List<SasRegion>> getRegions() async {
+    final res = await _api.get('$_base/regions');
+    final list = _asMapList(res['data'] ?? res['rows'] ?? res['items'] ?? res);
+    return list.map(SasRegion.fromJson).toList();
+  }
+
+  /// إنشاء منطقة — `POST regions`. تعيد المنطقة المنشأة أو null.
+  Future<SasRegion?> createRegion(SasRegion region) async {
+    final res = await _api.post('$_base/regions', body: region.toSaveJson());
+    final data = res['data'];
+    if (data is Map) return SasRegion.fromJson(data.cast<String, dynamic>());
+    return null;
+  }
+
+  /// تعديل منطقة — `PUT regions/{rid}`.
+  Future<bool> updateRegion(String rid, SasRegion region) async {
+    final res = await _api.put('$_base/regions/$rid', body: region.toSaveJson());
+    return res['success'] != false;
+  }
+
+  /// حذف منطقة (ناعم) — `DELETE regions/{rid}`. يفشل إن كانت مرتبطة بمشتركين.
+  Future<bool> deleteRegion(String rid) async {
+    final res = await _api.delete('$_base/regions/$rid');
+    return res['success'] == true;
+  }
+
+  /// تقرير أرباح الساس للشركة ضمن فترة — `GET reports/profits`.
+  Future<SasProfitReport> getProfitsReport({DateTime? from, DateTime? to}) async {
+    final qs = <String>[];
+    if (from != null) qs.add('from=${from.toUtc().toIso8601String()}');
+    if (to != null) qs.add('to=${to.toUtc().toIso8601String()}');
+    final suffix = qs.isEmpty ? '' : '?${qs.join('&')}';
+    final res = await _api.get('$_base/reports/profits$suffix');
+    return SasProfitReport.fromJson(_asMapKeepTop(res));
+  }
+
   /// جلب معلومات المواطن الموسّعة — `GET accounts/{id}/users/{uid}/profile`.
   Future<SasSubscriberProfile> getSubscriberProfile(
       String id, String uid) async {
@@ -606,6 +659,15 @@ class SasAgentApiService {
     return _asMapKeepTop(res);
   }
 
+  /// يُعلّم سجل اشتراك الساس بأن رسالة واتساب أُرسلت فعلاً (IsWhatsAppSent=true).
+  /// idempotent وصامت الفشل عند المستدعي (لا يُفشل العملية الأساسية).
+  Future<void> reportWhatsAppSent(String id, int logId) async {
+    await _api.post(
+      '$_base/accounts/$id/subscription-logs/$logId/whatsapp-sent',
+      body: const {},
+    );
+  }
+
   /// إجراء جماعي على عدة مشتركين على الحساب نفسه.
   Future<Map<String, dynamic>> usersBulkAction(
     String id,
@@ -694,6 +756,24 @@ class SasAgentApiService {
   Future<bool> deleteManager(String id, String mid) async {
     final res = await _api.delete('$_base/accounts/$id/managers/$mid');
     return res['success'] != false;
+  }
+
+  // ============================================================
+  //  مستكشف الساس: فكّ حمولات مشفّرة دفعةً واحدة
+  // ============================================================
+
+  /// يفكّ دفعة حمولات ساس مشفّرة (مستكشف الساس) — `POST explorer/decrypt`.
+  ///
+  /// فكّ AES يجري **داخل الخدمة** بمفتاح SAS4 الثابت (بلا اعتماد، محصورة
+  /// بالمسؤول خادمياً). [items] قائمة الحمولات المشفّرة (base64). يعيد قائمة
+  /// نتائج بالترتيب نفسه: `{ok:true, text:"..."}` أو `{ok:false, error:"..."}`.
+  Future<List<Map<String, dynamic>>> decryptPayloads(List<String> items) async {
+    final res = await _api.post('$_base/explorer/decrypt', body: {'items': items});
+    final data = res['data'];
+    final list = (data is Map ? data['results'] : null) ?? res['results'];
+    return (list is List)
+        ? list.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList()
+        : const [];
   }
 
   // ============================================================

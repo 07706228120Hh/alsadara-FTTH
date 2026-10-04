@@ -749,7 +749,21 @@ class _ExportPageState extends State<ExportPage>
       return Scaffold(
         appBar: AppBar(
           toolbarHeight: 50,
-          iconTheme: const IconThemeData(size: 20),
+          backgroundColor: Colors.transparent,
+          iconTheme: const IconThemeData(size: 20, color: Colors.white),
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF283593),
+                  Color(0xFF1976D2),
+                  Color(0xFF64B5F6)
+                ],
+              ),
+            ),
+          ),
           title: const Text('تصدير البيانات',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         ),

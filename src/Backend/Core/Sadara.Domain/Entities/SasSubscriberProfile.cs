@@ -48,6 +48,12 @@ public class SasSubscriberProfile : BaseEntity<Guid>, ITenantScoped
 
     // ============ موقع/عقار ============
 
+    /// <summary>
+    /// معرّف المنطقة التي يتبعها المشترك (<see cref="SasRegion"/>) — يُربط يدوياً من نموذج المشترك.
+    /// أساس تطبيق أجور الصيانة تلقائياً وتجميع التقارير حسب المنطقة. null = بلا منطقة.
+    /// </summary>
+    public Guid? RegionId { get; set; }
+
     /// <summary>تفاصيل العنوان</summary>
     public string? AddressDetail { get; set; }
 

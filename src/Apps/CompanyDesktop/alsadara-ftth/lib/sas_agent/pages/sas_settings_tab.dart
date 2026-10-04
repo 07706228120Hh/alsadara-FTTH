@@ -9,10 +9,13 @@ import '../premises/ui/premises_list_screen.dart';
 import '../whatsapp/whatsapp.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
+import 'sas_accounts_page.dart';
 import 'sas_admin_agents_page.dart';
 import 'sas_debtors_page.dart';
 import 'sas_explorer_page.dart';
 import 'sas_package_prices_page.dart';
+import 'sas_profits_page.dart';
+import 'sas_regions_page.dart';
 
 /// تبويب «الإعدادات» — مركز إعداد وحدة «وكيل الساس» بثيم منصّة الصدارة.
 ///
@@ -31,24 +34,32 @@ class SasSettingsTab extends StatefulWidget {
   /// الحساب المحدّد حالياً (قد يكون null إن لم يُحدَّد بعد).
   final SasAccount? selected;
 
-  /// ينتقل لتبويب «الحسابات» لإدارة/تحديد حساب ساس.
-  final VoidCallback? onGoToAccounts;
+  /// يُستدعى عند تحديد/تعديل/إنشاء حساب من قسم «حسابات الساس» في الإعدادات،
+  /// ليحدّث سياق الشِّل (الحساب النشط) فتُعاد بقية التبويبات بالحساب الجديد.
+  final ValueChanged<SasAccount>? onSelectAccount;
 
   const SasSettingsTab({
     super.key,
     this.selected,
-    this.onGoToAccounts,
+    this.onSelectAccount,
   });
 
   @override
   State<SasSettingsTab> createState() => _SasSettingsTabState();
 }
 
-class _SasSettingsTabState extends State<SasSettingsTab> {
+class _SasSettingsTabState extends State<SasSettingsTab>
+    with SingleTickerProviderStateMixin {
   final _api = SadaraApiService.instance;
 
   bool? _healthOk;
   bool _checking = false;
+
+  /// وحدة التبويبات — يُحسب عددها في [initState] (الإشراف تبويب شرطي للأدمن).
+  late final TabController _tabController;
+
+  /// أوصاف التبويبات المُفعَّلة (مرتّبة) — يُبنى في [initState] حسب [_isAdmin].
+  late final List<_SettingsTab> _tabs;
 
   /// هل المستخدم الحالي أدمن (CompanyAdmin/Admin/Manager)؟ لإظهار مدخل الإشراف.
   /// إخفاء المدخل تحسينٌ للتجربة فقط؛ الحماية النهائية في الخادم (يرد 403 لغيرهم).
@@ -57,7 +68,119 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
   @override
   void initState() {
     super.initState();
+    _tabs = _buildTabs();
+    _tabController = TabController(length: _tabs.length, vsync: this);
     _checkHealth();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  /// يبني قائمة التبويبات المنطقية — الإشراف يُدرَج فقط للأدمن (تبويب شرطي).
+  List<_SettingsTab> _buildTabs() {
+    return <_SettingsTab>[
+      _SettingsTab(
+        label: 'عام',
+        icon: Icons.tune_rounded,
+        builder: () => [
+          _section(
+            title: 'الحساب',
+            icon: Icons.badge_rounded,
+            body: _accountCard(),
+          ),
+          _section(
+            title: 'الخادم',
+            icon: Icons.dns_rounded,
+            gradient: AppTheme.greenGradient,
+            body: _serverCard(),
+          ),
+          _section(
+            title: 'حول الوحدة',
+            icon: Icons.info_outline_rounded,
+            body: _aboutCard(),
+          ),
+        ],
+      ),
+      _SettingsTab(
+        label: 'حسابات الساس',
+        icon: Icons.hub_rounded,
+        builder: () => [
+          _section(
+            title: 'حسابات الساس',
+            icon: Icons.hub_rounded,
+            body: _sasAccountsCard(),
+          ),
+        ],
+      ),
+      _SettingsTab(
+        label: 'التسعير والمحاسبة',
+        icon: Icons.point_of_sale_rounded,
+        builder: () => [
+          _section(
+            title: 'التسعير والمحاسبة',
+            icon: Icons.point_of_sale_rounded,
+            gradient: AppTheme.orangeGradient,
+            body: _accountingCard(),
+          ),
+        ],
+      ),
+      _SettingsTab(
+        label: 'الواتساب',
+        icon: Icons.chat_rounded,
+        builder: () => [
+          _section(
+            title: 'الواتساب',
+            icon: Icons.chat_rounded,
+            gradient: AppTheme.greenGradient,
+            body: _whatsappCard(),
+          ),
+        ],
+      ),
+      _SettingsTab(
+        label: 'أدوات',
+        icon: Icons.build_rounded,
+        builder: () => [
+          _section(
+            title: 'أدوات',
+            icon: Icons.build_rounded,
+            gradient: AppTheme.orangeGradient,
+            body: _toolsCard(),
+          ),
+          _section(
+            title: 'متقدّم — ميزات محفوظة',
+            icon: Icons.inventory_2_rounded,
+            note: Padding(
+              padding: EdgeInsets.fromLTRB(4.w, 0, 4.w, 8.h),
+              child: Text(
+                'هذه القدرات محفوظة في الخادم للاستفادة منها لاحقاً — غير مفعّلة '
+                'في واجهة الوكيل حالياً.',
+                style: GoogleFonts.cairo(
+                  fontSize: 12.sp,
+                  color: Colors.grey[600],
+                  height: 1.5,
+                ),
+              ),
+            ),
+            body: _preservedCard(),
+          ),
+        ],
+      ),
+      if (_isAdmin)
+        _SettingsTab(
+          label: 'الإشراف',
+          icon: Icons.admin_panel_settings_rounded,
+          builder: () => [
+            _section(
+              title: 'الإشراف',
+              icon: Icons.admin_panel_settings_rounded,
+              body: _adminCard(),
+            ),
+          ],
+        ),
+    ];
   }
 
   Future<void> _checkHealth() async {
@@ -81,119 +204,123 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
+  /// قسم = رأس أنيق + بطاقة محتواه، كوحدة واحدة متماسكة لتوزيعها على الأعمدة.
+  Widget _section({
+    required String title,
+    required IconData icon,
+    List<Color> gradient = AppTheme.blueGradient,
+    Widget? note,
+    required Widget body,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SasSectionHeader(title: title, icon: icon, gradient: gradient),
+        SizedBox(height: note != null ? 6.h : 10.h),
+        if (note != null) note,
+        body,
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _checkHealth,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 28.h),
-        children: [
-          _banner(),
-          SizedBox(height: 16.h),
-
-          // ── الحساب ──
-          const SasSectionHeader(title: 'الحساب', icon: Icons.badge_rounded),
-          SizedBox(height: 10.h),
-          _accountCard(),
-
-          SizedBox(height: 20.h),
-
-          // ── الخادم ──
-          const SasSectionHeader(
-            title: 'الخادم',
-            icon: Icons.dns_rounded,
-            gradient: AppTheme.greenGradient,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // البانر + شريط التبويبات ثابتان أعلى الشاشة؛ محتوى كل تبويب يُمرَّر مستقلاً.
+        Padding(
+          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 0),
+          child: SasContentWrap(maxWidth: 1180, child: _banner()),
+        ),
+        SizedBox(height: 12.h),
+        SasContentWrap(maxWidth: 1180, child: _tabBar()),
+        SizedBox(height: 4.h),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              for (final t in _tabs) _tabContent(t.builder()),
+            ],
           ),
-          SizedBox(height: 10.h),
-          _serverCard(),
+        ),
+      ],
+    );
+  }
 
-          SizedBox(height: 20.h),
-
-          // ── حسابات الساس ──
-          const SasSectionHeader(
-            title: 'حسابات الساس',
-            icon: Icons.hub_rounded,
+  /// شريط تبويبات احترافي متجاوب (قابل للتمرير إن ضاق) بثيم الصدارة:
+  /// مؤشّر بتدرّج أزرق، نص/أيقونة أبيض للمحدّد ورمادي (Slate) لغير المحدّد.
+  Widget _tabBar() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 14.w),
+      padding: EdgeInsets.all(5.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(SasUi.radius.r),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.16), width: 1.2),
+        boxShadow: SasUi.cardShadow(),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        dividerColor: Colors.transparent,
+        padding: EdgeInsets.zero,
+        labelPadding: EdgeInsets.symmetric(horizontal: 4.w),
+        indicatorSize: TabBarIndicatorSize.tab,
+        splashBorderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+        indicator: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: AppTheme.blueGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          SizedBox(height: 10.h),
-          _sasAccountsCard(),
-
-          SizedBox(height: 20.h),
-
-          // ── التسعير والمحاسبة ──
-          const SasSectionHeader(
-            title: 'التسعير والمحاسبة',
-            icon: Icons.point_of_sale_rounded,
-            gradient: AppTheme.orangeGradient,
-          ),
-          SizedBox(height: 10.h),
-          _accountingCard(),
-
-          SizedBox(height: 20.h),
-
-          // ── الواتساب ──
-          const SasSectionHeader(
-            title: 'الواتساب',
-            icon: Icons.chat_rounded,
-            gradient: AppTheme.greenGradient,
-          ),
-          SizedBox(height: 10.h),
-          _whatsappCard(),
-
-          SizedBox(height: 20.h),
-
-          // ── أدوات ──
-          const SasSectionHeader(
-            title: 'أدوات',
-            icon: Icons.build_rounded,
-            gradient: AppTheme.orangeGradient,
-          ),
-          SizedBox(height: 10.h),
-          _toolsCard(),
-
-          // ── إدارة الوكلاء (للمشرفين) — تظهر للأدمن فقط ──
-          if (_isAdmin) ...[
-            SizedBox(height: 20.h),
-            const SasSectionHeader(
-              title: 'الإشراف',
-              icon: Icons.admin_panel_settings_rounded,
-              gradient: AppTheme.blueGradient,
-            ),
-            SizedBox(height: 10.h),
-            _adminCard(),
-          ],
-
-          SizedBox(height: 20.h),
-
-          // ── متقدّم — ميزات محفوظة ──
-          const SasSectionHeader(
-            title: 'متقدّم — ميزات محفوظة',
-            icon: Icons.inventory_2_rounded,
-          ),
-          SizedBox(height: 6.h),
-          Padding(
-            padding: EdgeInsets.fromLTRB(4.w, 0, 4.w, 8.h),
-            child: Text(
-              'هذه القدرات محفوظة في الخادم للاستفادة منها لاحقاً — غير مفعّلة '
-              'في واجهة الوكيل حالياً.',
-              style: GoogleFonts.cairo(
-                fontSize: 12.sp,
-                color: Colors.grey[600],
-                height: 1.5,
+          borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+          boxShadow: SasUi.cardShadow(AppTheme.primaryColor),
+        ),
+        labelColor: Colors.white,
+        unselectedLabelColor: const Color(0xFF64748B),
+        labelStyle: GoogleFonts.cairo(fontSize: 13.sp, fontWeight: FontWeight.w800),
+        unselectedLabelStyle:
+            GoogleFonts.cairo(fontSize: 13.sp, fontWeight: FontWeight.w700),
+        tabs: [
+          for (final t in _tabs)
+            Tab(
+              height: 44.h,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12.w),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(t.icon, size: 18.sp),
+                    SizedBox(width: 7.w),
+                    Text(t.label),
+                  ],
+                ),
               ),
             ),
-          ),
-          _preservedCard(),
-
-          SizedBox(height: 20.h),
-
-          // ── حول ──
-          const SasSectionHeader(
-            title: 'حول الوحدة',
-            icon: Icons.info_outline_rounded,
-          ),
-          SizedBox(height: 10.h),
-          _aboutCard(),
         ],
+      ),
+    );
+  }
+
+  /// محتوى تبويب: قائمة أقسامه قابلة للتمرير مستقلاً مع عرض محدود على العريض،
+  /// وسحب-للتحديث يعيد فحص صحّة الخادم.
+  Widget _tabContent(List<Widget> sections) {
+    return RefreshIndicator(
+      onRefresh: _checkHealth,
+      child: SasContentWrap(
+        maxWidth: 1180,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 28.h),
+          children: [
+            for (int i = 0; i < sections.length; i++) ...[
+              if (i > 0) SizedBox(height: 20.h),
+              sections[i],
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -403,11 +530,23 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
             iconColor: AppTheme.primaryColor,
             title: 'إدارة حسابات الساس',
             subtitle: 'ربط · تعديل · حذف · اختبار · مزامنة · تحديد الحساب الفعّال',
-            onTap: widget.onGoToAccounts,
+            onTap: _openAccountsManager,
           ),
         ],
       ),
     );
+  }
+
+  /// يفتح شاشة إدارة حسابات الساس (ربط/تعديل/حذف/اختبار/مزامنة/تحديد) بثيم
+  /// الصدارة؛ أي اختيار داخلها يُمرَّر لسياق الشِّل عبر [onSelectAccount] ليصبح
+  /// الحساب النشط في الترويسة وبقية التبويبات.
+  void _openAccountsManager() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _SasAccountsManagerScreen(
+        selected: widget.selected,
+        onSelect: (acc) => widget.onSelectAccount?.call(acc),
+      ),
+    ));
   }
 
   // ─────────────────────────── التسعير والمحاسبة ───────────────────────────
@@ -430,6 +569,24 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
             onTap: acc == null
                 ? null
                 : () => _open(SasPackagePricesPage(account: acc)),
+          ),
+          const Divider(height: 1),
+          _tile(
+            icon: Icons.map_rounded,
+            iconColor: AppTheme.accentColor,
+            title: 'المناطق وأجور الصيانة',
+            subtitle:
+                'مناطق الشركة ومبلغ صيانة ثابت لكل منطقة يُطبَّق تلقائياً على مشتركيها',
+            onTap: () => _open(const SasRegionsPage()),
+          ),
+          const Divider(height: 1),
+          _tile(
+            icon: Icons.insights_rounded,
+            iconColor: AppTheme.successColor,
+            title: 'تقرير الأرباح',
+            subtitle:
+                'أرباح الساس للشركة ضمن فترة — إجمالي وتفصيل حسب المنطقة والباقة',
+            onTap: () => _open(const SasProfitsPage()),
           ),
           const Divider(height: 1),
           _tile(
@@ -484,18 +641,21 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          _tile(
-            icon: Icons.travel_explore_rounded,
-            iconColor: AppTheme.infoColor,
-            title: 'مستكشف الساس — التقاط الطلبات',
-            subtitle: acc == null
-                ? 'حدّد حساباً أولاً لفتح المستكشف'
-                : 'متصفّح مدمج يفتح لوحة الساس ويلتقط طلبات الـ API لتحليلها',
-            onTap: acc == null
-                ? null
-                : () => _open(SasExplorerPage(account: acc)),
-          ),
-          const Divider(height: 1),
+          // مستكشف الساس المتقدّم — أداة اكتشاف/أمن للمسؤول فقط (الباكند محصور بالمسؤول أيضاً).
+          if (_isAdmin) ...[
+            _tile(
+              icon: Icons.travel_explore_rounded,
+              iconColor: AppTheme.infoColor,
+              title: 'مستكشف الساس المتقدّم (للمسؤول)',
+              subtitle: acc == null
+                  ? 'حدّد حساباً أولاً لفتح المستكشف'
+                  : 'التقاط وفكّ تشفير طلبات SAS4 + كتالوج API + تحليل البنية والأمان',
+              onTap: acc == null
+                  ? null
+                  : () => _open(SasExplorerPage(account: acc)),
+            ),
+            const Divider(height: 1),
+          ],
           _tile(
             icon: Icons.maps_home_work_rounded,
             iconColor: AppTheme.warningColor,
@@ -697,6 +857,78 @@ class _SasSettingsTabState extends State<SasSettingsTab> {
         return r.isEmpty ? '—' : r;
     }
   }
+}
+
+/// شاشة مستقلّة تستضيف [SasAccountsPage] (إدارة حسابات الساس) بثيم الصدارة —
+/// تُفتح من بطاقة «حسابات الساس» في الإعدادات بعد نقل تبويب «الحسابات» إليها.
+///
+/// تحتفظ بالحساب المحدَّد محلياً للتظليل، وتُمرّر كل اختيار لسياق الشِّل عبر
+/// [onSelect] ليصبح الحساب النشط في الترويسة وبقية التبويبات فوراً.
+class _SasAccountsManagerScreen extends StatefulWidget {
+  final SasAccount? selected;
+  final ValueChanged<SasAccount> onSelect;
+
+  const _SasAccountsManagerScreen({
+    required this.selected,
+    required this.onSelect,
+  });
+
+  @override
+  State<_SasAccountsManagerScreen> createState() =>
+      _SasAccountsManagerScreenState();
+}
+
+class _SasAccountsManagerScreenState
+    extends State<_SasAccountsManagerScreen> {
+  late SasAccount? _selected = widget.selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: SasUi.pageBg,
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          iconTheme: const IconThemeData(color: Colors.white),
+          flexibleSpace: const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: AppTheme.blueGradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          title: Text('حسابات الساس',
+              style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.w800, fontSize: 17.sp)),
+        ),
+        body: SasAccountsPage(
+          selected: _selected,
+          onSelect: (acc) {
+            setState(() => _selected = acc);
+            widget.onSelect(acc);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// وصف تبويب في شاشة الإعدادات — عنوان وأيقونة ومُنشئ أقسامه (يُبنى كسولاً عند
+/// عرض التبويب فيلتقط أحدث حالة: الحساب المحدّد وصحّة الخادم).
+class _SettingsTab {
+  final String label;
+  final IconData icon;
+  final List<Widget> Function() builder;
+  const _SettingsTab({
+    required this.label,
+    required this.icon,
+    required this.builder,
+  });
 }
 
 /// وصف ميزة محفوظة (مؤجّلة) تُعرَض كمدخل غير مفعّل.

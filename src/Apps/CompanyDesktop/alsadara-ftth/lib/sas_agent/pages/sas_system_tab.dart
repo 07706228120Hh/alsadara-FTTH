@@ -311,7 +311,8 @@ class _SystemOverviewState extends State<_SystemOverview> {
     }
     return RefreshIndicator(
       onRefresh: _refreshManual,
-      child: ListView(
+      child: SasContentWrap(
+        child: ListView(
         padding: EdgeInsets.all(14.w),
         children: [
           const SasSectionHeader(
@@ -337,6 +338,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
           SizedBox(height: 10.h),
           _packagesSection(),
         ],
+        ),
       ),
     );
   }
@@ -840,11 +842,14 @@ class _LogListState extends State<_LogList> {
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.separated(
-        padding: EdgeInsets.all(12.w),
-        itemCount: _rows.length,
-        separatorBuilder: (_, __) => SizedBox(height: 6.h),
-        itemBuilder: (_, i) => _logCard(_rows[i]),
+      child: SasContentWrap(
+        maxWidth: 1000,
+        child: ListView.separated(
+          padding: EdgeInsets.all(12.w),
+          itemCount: _rows.length,
+          separatorBuilder: (_, __) => SizedBox(height: 6.h),
+          itemBuilder: (_, i) => _logCard(_rows[i]),
+        ),
       ),
     );
   }

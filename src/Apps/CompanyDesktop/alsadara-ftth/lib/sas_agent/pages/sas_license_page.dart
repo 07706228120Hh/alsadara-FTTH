@@ -62,6 +62,7 @@ class _SasLicensePageState extends State<SasLicensePage> {
         appBar: AppBar(
           elevation: 0,
           toolbarHeight: 56,
+          backgroundColor: AppTheme.primaryColor,
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

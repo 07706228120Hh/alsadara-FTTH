@@ -128,6 +128,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
         backgroundColor: SasUi.pageBg,
         appBar: AppBar(
           elevation: 0,
+          backgroundColor: AppTheme.primaryColor,
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -154,30 +155,33 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
         ),
         body: _loading
             ? const SasLoadingView(message: 'جاري تحميل الإعدادات…')
-            : ListView(
-                padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
-                children: [
-                  SasSectionHeader(
-                    title: 'نمط الإرسال',
-                    icon: Icons.send_rounded,
-                    gradient: const [_kWaGreen, Color(0xFF128C7E)],
-                  ),
-                  SizedBox(height: 12.h),
-                  for (final m in WaMode.values) _modeCard(m),
-                  if (_mode == WaMode.server) ...[
-                    SizedBox(height: 18.h),
+            : SasContentWrap(
+                maxWidth: 820,
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
+                  children: [
                     SasSectionHeader(
-                      title: 'الخادم المحلي',
-                      icon: Icons.dns_rounded,
+                      title: 'نمط الإرسال',
+                      icon: Icons.send_rounded,
+                      gradient: const [_kWaGreen, Color(0xFF128C7E)],
                     ),
                     SizedBox(height: 12.h),
-                    _serverSettingsCard(),
-                    SizedBox(height: 12.h),
-                    _serverStatusCard(),
+                    for (final m in WaMode.values) _modeCard(m),
+                    if (_mode == WaMode.server) ...[
+                      SizedBox(height: 18.h),
+                      SasSectionHeader(
+                        title: 'الخادم المحلي',
+                        icon: Icons.dns_rounded,
+                      ),
+                      SizedBox(height: 12.h),
+                      _serverSettingsCard(),
+                      SizedBox(height: 12.h),
+                      _serverStatusCard(),
+                    ],
+                    SizedBox(height: 18.h),
+                    _templatesButton(),
                   ],
-                  SizedBox(height: 18.h),
-                  _templatesButton(),
-                ],
+                ),
               ),
       ),
     );

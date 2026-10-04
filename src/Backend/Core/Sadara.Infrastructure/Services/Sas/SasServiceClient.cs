@@ -321,12 +321,13 @@ public class SasServiceClient : ISasServiceClient
         string accountId,
         string? search = null,
         string? status = null,
+        string? profile = null,
         string? expiring = null,
         int? page = null,
         int? count = null,
         CancellationToken cancellationToken = default)
         => PostBodyForRawAsync("/subscribers/local",
-            new { accountId, search, status, expiring, page, count }, cancellationToken);
+            new { accountId, search, status, profile, expiring, page, count }, cancellationToken);
 
     public Task<string> GetSubscribersSummaryAsync(
         string accountId,
@@ -624,6 +625,13 @@ public class SasServiceClient : ISasServiceClient
                 companyId,
                 accountIds = accountIds?.ToArray() ?? Array.Empty<string>()
             }, cancellationToken);
+
+    public Task<string> DecryptPayloadsAsync(
+        IEnumerable<string> items,
+        CancellationToken cancellationToken = default)
+        => PostBodyForRawAsync("/explorer/decrypt",
+            new { items = items?.ToArray() ?? Array.Empty<string>() },
+            cancellationToken);
 
     /// <summary>
     /// ينادي مسار خدمة الساس ممرِّراً الاعتماد + وسائط الاستعلام في الجسم، ويعيد JSON خاماً.

@@ -42,7 +42,8 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
 
-  _Source _source = _Source.live;
+  // «محلي أولاً»: نبدأ دائماً من اللقطة المحلية (عرض فوري بلا تأخير)، ثم نزامن بصمت.
+  _Source _source = _Source.local;
 
   /// فلتر عدّاد الانتهاء الفعّال (للمصدر المحلي): overdue/today/soon3/soon7.
   String? _expiring;
@@ -53,7 +54,15 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
 
   bool _loading = true;
   bool _syncing = false;
+  /// تحديث خلفي جارٍ (مزامنة صامتة لا تحجب العرض).
+  bool _refreshing = false;
   String? _error;
+
+  /// آخر مزامنة خلفية تلقائية لكل حساب (لمنع التكرار عند التنقّل السريع بين التبويبات).
+  static final Map<String, DateTime> _lastAutoSync = {};
+
+  /// أدنى فاصل بين مزامنتين خلفيّتين تلقائيّتين عند الفتح (الخدمة الخلفية تتكفّل بالدوري).
+  static const Duration _autoSyncThrottle = Duration(minutes: 2);
 
   /// اشتراك ناقل التحديث المشترك — يعيد التحميل عند أي عملية/مزامنة.
   StreamSubscription<SasRefreshEvent>? _busSub;
@@ -66,8 +75,31 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
       _source = _Source.local;
       _expiring = widget.initialExpiring;
     }
-    _load();
+    // محلي أولاً: اعرض اللقطة فوراً ثم زامن بصمت من SAS4 (تحديث خلفي عند الفتح).
+    _load().then((_) => _maybeAutoRefresh());
     _busSub = SasRefreshBus.instance.stream.listen(_onBusEvent);
+  }
+
+  /// مزامنة خلفية صامتة عند فتح القائمة (محلي فقط) — بلا حجب العرض، مع كبح التكرار.
+  /// الفشل صامت (تبقى اللقطة المحلية معروضة)؛ الخدمة الخلفية في الخادم تتكفّل بالدوري.
+  Future<void> _maybeAutoRefresh() async {
+    if (!mounted || _source != _Source.local || _syncing || _refreshing) return;
+    final last = _lastAutoSync[widget.account.id];
+    if (last != null && DateTime.now().difference(last) < _autoSyncThrottle) {
+      return; // زامنّا حديثاً — لا داعي
+    }
+    setState(() => _refreshing = true);
+    try {
+      final r = await _api.syncAccount(widget.account.id);
+      _lastAutoSync[widget.account.id] = DateTime.now();
+      if (!mounted) return;
+      _expiryCounts = r.expiry;
+      await _load(silent: true); // أعد الجلب دون وميض تحميل
+    } catch (_) {
+      // صامت: اللقطة المحلية تبقى معروضة
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
   }
 
   /// عند إشعار الناقل الخاص بهذا الحساب: أعد تحميل القائمة الحالية موضعياً (بلا
@@ -110,9 +142,9 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
   String _clean(Object e) =>
       e.toString().replaceFirst('Exception: ', '').trim();
 
-  Future<void> _load() async {
+  Future<void> _load({bool silent = false}) async {
     setState(() {
-      _loading = true;
+      if (!silent) _loading = true;
       _error = null;
     });
     final search =
@@ -150,15 +182,6 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
   void _onSearchChanged(String _) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 450), _load);
-  }
-
-  void _switchSource(_Source s) {
-    if (_source == s) return;
-    setState(() {
-      _source = s;
-      if (s == _Source.live) _expiring = null; // الفلتر خاص بالمحلي.
-    });
-    _load();
   }
 
   void _onExpiringSelected(String? key) {
@@ -227,7 +250,9 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return SasContentWrap(
+      maxWidth: 1100,
+      child: Column(
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 4.h),
@@ -256,22 +281,19 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
             ],
           ),
         ),
+        // قائمة موحّدة (محلي أولاً + تحديث خلفي) — بلا مُبدّل مصدر.
+        // شرائح فلتر الانتهاء تبقى (كلها على المصدر المحلي).
         Padding(
-          padding: EdgeInsets.fromLTRB(14.w, 8.h, 14.w, 6.h),
-          child: _sourceToggle(),
-        ),
-        if (_source == _Source.local) ...[
-          Padding(
-            padding: EdgeInsets.fromLTRB(14.w, 2.h, 14.w, 6.h),
-            child: SasExpiryChips(
-              counts: _expiryCounts,
-              selected: _expiring,
-              onSelect: _onExpiringSelected,
-            ),
+          padding: EdgeInsets.fromLTRB(14.w, 2.h, 14.w, 6.h),
+          child: SasExpiryChips(
+            counts: _expiryCounts,
+            selected: _expiring,
+            onSelect: _onExpiringSelected,
           ),
-        ],
+        ),
         Expanded(child: _body()),
       ],
+      ),
     );
   }
 
@@ -349,84 +371,18 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
     );
   }
 
-  /// مبدّل مصدر العرض (مباشر/محلي) بنمط segmented أنيق.
-  Widget _sourceToggle() {
-    Widget seg(String label, IconData icon, _Source s) {
-      final sel = _source == s;
-      return Expanded(
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-            onTap: () => _switchSource(s),
-            child: Container(
-              padding: EdgeInsets.symmetric(vertical: 9.h),
-              decoration: BoxDecoration(
-                gradient: sel
-                    ? const LinearGradient(
-                        colors: AppTheme.blueGradient,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon,
-                      size: 16.sp,
-                      color: sel ? Colors.white : Colors.grey[600]),
-                  SizedBox(width: 6.w),
-                  Text(
-                    label,
-                    style: GoogleFonts.cairo(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w800,
-                      color: sel ? Colors.white : Colors.grey[700],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        boxShadow: SasUi.cardShadow(),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        children: [
-          seg('مباشر من الساس', Icons.cloud_sync_rounded, _Source.live),
-          seg('محلي سريع', Icons.bolt_rounded, _Source.local),
-        ],
-      ),
-    );
-  }
-
   Widget _body() {
     if (_loading) return const SasLoadingView(message: 'جاري جلب المشتركين…');
     if (_error != null) return SasErrorView(message: _error!, onRetry: _load);
     if (_rows.isEmpty) {
       return SasEmptyView(
-        message: _source == _Source.local
-            ? 'لا مشتركون محليّون — نفّذ «مزامنة» أولاً'
-            : 'لا يوجد مشتركون لعرضهم',
+        message: 'لا مشتركون بعد — اضغط «تحديث» لجلبهم من الساس',
         icon: Icons.people_outline_rounded,
-        action: _source == _Source.local
-            ? OutlinedButton.icon(
-                onPressed: _syncing ? null : _quickSync,
-                icon: const Icon(Icons.sync_rounded),
-                label: Text('مزامنة الآن', style: GoogleFonts.cairo()),
-              )
-            : null,
+        action: OutlinedButton.icon(
+          onPressed: _syncing ? null : _quickSync,
+          icon: const Icon(Icons.sync_rounded),
+          label: Text('تحديث الآن', style: GoogleFonts.cairo()),
+        ),
       );
     }
     return RefreshIndicator(
@@ -436,17 +392,38 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
           if (_source == _Source.local)
             Padding(
               padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 0),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  _expiring == null
-                      ? 'إجمالي محلي: $_localTotal · معروض: ${_rows.length}'
-                      : 'مُفلتَر (${_rows.length}) من إجمالي محلي $_localTotal',
-                  style: GoogleFonts.cairo(
-                      fontSize: 11.sp,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w600),
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _expiring == null
+                          ? 'إجمالي محلي: $_localTotal · معروض: ${_rows.length}'
+                          : 'مُفلتَر (${_rows.length}) من إجمالي محلي $_localTotal',
+                      style: GoogleFonts.cairo(
+                          fontSize: 11.sp,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (_refreshing)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 11.w,
+                          height: 11.w,
+                          child: const CircularProgressIndicator(
+                              strokeWidth: 2, color: AppTheme.infoColor),
+                        ),
+                        SizedBox(width: 6.w),
+                        Text('يُحدّث من الساس…',
+                            style: GoogleFonts.cairo(
+                                fontSize: 10.5.sp,
+                                color: AppTheme.infoColor,
+                                fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                ],
               ),
             ),
           Expanded(
@@ -474,8 +451,11 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
         child: Container(
           padding: EdgeInsets.all(12.w),
           decoration: SasUi.card(),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                children: [
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -520,25 +500,27 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // اسم المستخدم (المعرّف) + الاسم الكامل بارزاً تحته.
                     Text(
                       s.username.isEmpty ? '-' : s.username,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
-                          fontSize: 14.sp,
+                      style: GoogleFonts.robotoMono(
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.w800,
                           color: const Color(0xFF1A1A2E)),
                     ),
-                    SizedBox(height: 3.h),
-                    Text(
-                      '${s.fullName.isEmpty ? '' : '${s.fullName} · '}باقة: ${s.profileLabel}'
-                      '${s.expiration != null ? ' · انتهاء: ${s.expiration}' : ''}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
-                          fontSize: 11.5.sp,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500),
-                    ),
+                    if (s.fullName.isNotEmpty) ...[
+                      SizedBox(height: 2.h),
+                      Text(
+                        s.fullName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.cairo(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF475569),
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -549,7 +531,64 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
               ),
             ],
           ),
+          SizedBox(height: 10.h),
+          // حقول المشترك كشرائح واضحة (باقة · انتهاء · هاتف · اتصال).
+          Wrap(
+            spacing: 7.w,
+            runSpacing: 6.h,
+            children: [
+              _infoChip(
+                  Icons.inventory_2_rounded, s.profileLabel, AppTheme.infoColor),
+              if (s.expiration != null && s.expiration!.trim().isNotEmpty)
+                _infoChip(Icons.event_busy_rounded, s.expiration!,
+                    AppTheme.warningColor),
+              if (_phoneOf(s).isNotEmpty)
+                _infoChip(Icons.phone_rounded, _phoneOf(s),
+                    AppTheme.successColor,
+                    ltr: true),
+              if (s.online)
+                _infoChip(Icons.wifi_rounded, 'متصل', AppTheme.successColor),
+            ],
+          ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  /// رقم هاتف المشترك من الحقول الخام (إن توفّر).
+  String _phoneOf(SasSubscriber s) =>
+      (s.raw['phone'] ?? s.raw['phone_norm'] ?? s.raw['mobile'] ?? '')
+          .toString()
+          .trim();
+
+  /// شريحة حقل صغيرة (أيقونة + نص) بلون موحّد.
+  Widget _infoChip(IconData icon, String text, Color color,
+      {bool ltr = false}) {
+    final label = Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: GoogleFonts.cairo(
+          fontSize: 10.5.sp, fontWeight: FontWeight.w700, color: color),
+    );
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.5.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12.sp, color: color),
+          SizedBox(width: 4.w),
+          ltr
+              ? Directionality(textDirection: TextDirection.ltr, child: label)
+              : label,
+        ],
       ),
     );
   }

@@ -65,7 +65,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
   @override
   void initState() {
     super.initState();
-    _innerTabs = TabController(length: 9, vsync: this);
+    _innerTabs = TabController(length: 10, vsync: this);
     _loadMain();
   }
 
@@ -107,7 +107,10 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
 
   // ─── تشغيل إجراء موحّد مع رسالة نجاح/فشل + إعادة تحميل ───
 
-  Future<void> _run(Future<dynamic> Function() call, String okMsg) async {
+  /// [sync]: بعد عملية تُغيّر البيانات، نزامن اللقطة المحلية (SAS4→محلي) ونُشعر بقية
+  /// التبويبات المفتوحة لتتحدّث فوراً (نموذج «كل إجراء يحدّث مصدره واللقطة»). Ping=false.
+  Future<void> _run(Future<dynamic> Function() call, String okMsg,
+      {bool sync = true}) async {
     setState(() => _busy = true);
     try {
       final res = await call();
@@ -119,6 +122,11 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       if (mounted) {
         _toast('تم: $msg');
         await _loadMain();
+        if (sync) {
+          // معزول: فشل المزامنة لا يُسقط نجاح العملية.
+          await SasRefreshBus.instance
+              .syncAndNotify(_aid, reason: 'action-$okMsg');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -154,6 +162,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         backgroundColor: SasUi.pageBg,
         appBar: AppBar(
           elevation: 0,
+          backgroundColor: AppTheme.primaryColor,
           flexibleSpace: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -200,19 +209,24 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
   }
 
   Widget _buildBody(Map<String, dynamic> d) {
+    // الترويسة مثبّتة بالأعلى، والتبويبات تملأ بقية الشاشة (أول تبويب: الإجراءات).
+    // عرض واسع يستغلّ الشاشة الكاملة على الحاسوب (المحتوى الداخلي متجاوب بالأعمدة).
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 980),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
+        constraints: const BoxConstraints(maxWidth: 1600),
+        child: Column(
           children: [
-            _headerCard(d),
-            SizedBox(height: 12.h),
-            _actionBar(),
-            SizedBox(height: 12.h),
-            _fieldCards(d),
-            SizedBox(height: 12.h),
-            _innerTabsCard(),
+            Padding(
+              padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 0),
+              child: _headerCard(d),
+            ),
+            SizedBox(height: 10.h),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 14.h),
+                child: _innerTabsCard(d),
+              ),
+            ),
           ],
         ),
       ),
@@ -338,53 +352,69 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     );
   }
 
-  // ─── شريط الإجراءات ───
+  // ─── تبويب «الإجراءات» (الأول): أزرار مجمّعة + ملخّص معلومات كمربّعات ───
 
-  Widget _actionBar() {
+  Widget _actionsTab(Map<String, dynamic> d) {
+    return ListView(
+      padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 20.h),
+      children: [
+        // عمليات الاشتراك.
+        _actionGroup('عمليات الاشتراك', Icons.bolt_rounded,
+            AppTheme.blueGradient, [
+          _actionBtn('تفعيل', Icons.play_arrow_rounded, AppTheme.successColor,
+              _busy ? null : _doActivate),
+          _actionBtn('تمديد', Icons.event_available_rounded, AppTheme.infoColor,
+              _busy ? null : _doExtend),
+          _actionBtn('تغيير الباقة', Icons.swap_horiz_rounded,
+              AppTheme.accentColor, _busy ? null : _doChangeProfile),
+          _actionBtn('إضافة ترافيك', Icons.speed_rounded, AppTheme.infoColor,
+              _busy ? null : _doAddTraffic),
+        ]),
+        SizedBox(height: 12.h),
+        // الرصيد.
+        _actionGroup('الرصيد', Icons.account_balance_wallet_rounded,
+            AppTheme.greenGradient, [
+          _actionBtn('إيداع رصيد', Icons.add_card_rounded,
+              AppTheme.successColor,
+              _busy ? null : () => _doBalance('deposit', 'إيداع رصيد')),
+          _actionBtn('سحب رصيد', Icons.money_off_rounded, AppTheme.warningColor,
+              _busy ? null : () => _doBalance('withdraw', 'سحب رصيد')),
+        ]),
+        SizedBox(height: 12.h),
+        // إدارة (تشمل الإجراءات الحسّاسة).
+        _actionGroup('إدارة', Icons.settings_rounded,
+            AppTheme.orangeGradient, [
+          _actionBtn('تعديل', Icons.edit_rounded, AppTheme.primaryColor,
+              _busy ? null : _doEdit),
+          _actionBtn('إعادة تسمية', Icons.drive_file_rename_outline_rounded,
+              Colors.blueGrey, _busy ? null : _doRename),
+          _actionBtn('Ping', Icons.network_ping_rounded, Colors.blueGrey,
+              _busy ? null : _doPing),
+          _actionBtn('استرداد', Icons.receipt_long_rounded,
+              AppTheme.warningColor, _busy ? null : _doRefund,
+              outlined: true),
+          _actionBtn('حذف', Icons.delete_outline_rounded, AppTheme.errorColor,
+              _busy ? null : _doDelete,
+              outlined: true, danger: true),
+        ]),
+        SizedBox(height: 14.h),
+        // ملخّص المعلومات (مربّعات شبكة 2×).
+        _infoCards(d),
+      ],
+    );
+  }
+
+  Widget _actionGroup(
+      String title, IconData icon, List<Color> gradient, List<Widget> buttons) {
     return Container(
       padding: EdgeInsets.all(14.w),
       decoration: SasUi.card(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SasSectionHeader(
-            title: 'الإجراءات',
-            icon: Icons.bolt_rounded,
-            gradient: AppTheme.blueGradient,
-          ),
+          SasSectionHeader(title: title, icon: icon, gradient: gradient),
           SizedBox(height: 12.h),
-          Wrap(
-            spacing: 8.w,
-            runSpacing: 8.h,
-            children: [
-              _actionBtn('تفعيل', Icons.play_arrow_rounded,
-                  AppTheme.successColor, _busy ? null : _doActivate),
-              _actionBtn('تمديد', Icons.event_available_rounded,
-                  AppTheme.infoColor, _busy ? null : _doExtend),
-              _actionBtn('تغيير الباقة', Icons.swap_horiz_rounded,
-                  AppTheme.accentColor, _busy ? null : _doChangeProfile),
-              _actionBtn('إضافة ترافيك', Icons.speed_rounded,
-                  AppTheme.infoColor, _busy ? null : _doAddTraffic),
-              _actionBtn('إيداع رصيد', Icons.add_card_rounded,
-                  AppTheme.successColor,
-                  _busy ? null : () => _doBalance('deposit', 'إيداع رصيد')),
-              _actionBtn('سحب رصيد', Icons.money_off_rounded,
-                  AppTheme.warningColor,
-                  _busy ? null : () => _doBalance('withdraw', 'سحب رصيد')),
-              _actionBtn('إعادة تسمية', Icons.drive_file_rename_outline_rounded,
-                  Colors.blueGrey, _busy ? null : _doRename),
-              _actionBtn('Ping', Icons.network_ping_rounded, Colors.blueGrey,
-                  _busy ? null : _doPing),
-              _actionBtn('تعديل', Icons.edit_rounded, AppTheme.primaryColor,
-                  _busy ? null : _doEdit),
-              _actionBtn('استرداد', Icons.receipt_long_rounded,
-                  AppTheme.warningColor, _busy ? null : _doRefund,
-                  outlined: true),
-              _actionBtn('حذف', Icons.delete_outline_rounded,
-                  AppTheme.errorColor, _busy ? null : _doDelete,
-                  outlined: true, danger: true),
-            ],
-          ),
+          Wrap(spacing: 8.w, runSpacing: 8.h, children: buttons),
         ],
       ),
     );
@@ -422,13 +452,13 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     );
   }
 
-  // ─── بطاقات الحقول ───
+  // ─── بطاقات المعلومات (مربّعات شبكة 2×) ───
 
-  Widget _fieldCards(Map<String, dynamic> d) {
+  Widget _infoCards(Map<String, dynamic> d) {
     final ov = _overview;
     return Column(
       children: [
-        _fieldSection('الهوية', Icons.badge_rounded, AppTheme.blueGradient, [
+        _infoGrid('الهوية', Icons.badge_rounded, AppTheme.blueGradient, [
           _fv('المستخدم', d['username'], mono: true),
           _fv('الاسم الأول', d['firstname']),
           _fv('الاسم الأخير', d['lastname']),
@@ -436,7 +466,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           _fv('رقم العقد', d['contract_id'], mono: true),
         ]),
         SizedBox(height: 12.h),
-        _fieldSection('التواصل', Icons.phone_rounded, AppTheme.greenGradient, [
+        _infoGrid('التواصل', Icons.phone_rounded, AppTheme.greenGradient, [
           _fv('الهاتف', d['phone'], mono: true),
           _fv('البريد الإلكتروني', d['email']),
           _fv('المدينة', d['city']),
@@ -445,7 +475,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           _fv('الدولة', d['country']),
         ]),
         SizedBox(height: 12.h),
-        _fieldSection('الاشتراك', Icons.wifi_rounded, AppTheme.orangeGradient, [
+        _infoGrid('الاشتراك', Icons.wifi_rounded, AppTheme.orangeGradient, [
           _fv('الباقة', ov?['profile_name'] ?? d['profile_id']),
           _fv('الحالة', _statusLabel(d['status'] ?? ov?['status'])),
           _fv('تاريخ الانتهاء', d['expiration'], mono: true),
@@ -457,7 +487,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           _fv('المجموعة', d['group_id']),
         ]),
         SizedBox(height: 12.h),
-        _fieldSection('الشبكة', Icons.lan_rounded,
+        _infoGrid('الشبكة', Icons.lan_rounded,
             const [Color(0xFF7B1FA2), Color(0xFF9C27B0)], [
           _fv('IP ثابت', d['static_ip'], mono: true),
           _fv('آخر عنوان IP', d['last_ip_address'], mono: true),
@@ -468,7 +498,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
               mono: true),
         ]),
         SizedBox(height: 12.h),
-        _fieldSection('التواريخ والملاحظات', Icons.history_rounded,
+        _infoGrid('التواريخ والملاحظات', Icons.history_rounded,
             const [Color(0xFF455A64), Color(0xFF607D8B)], [
           _fv('آخر اتصال', d['last_online'], mono: true),
           _fv('تاريخ الإنشاء', d['created_at'], mono: true),
@@ -482,7 +512,9 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
   _FieldVal _fv(String label, dynamic value, {bool mono = false}) =>
       _FieldVal(label: label, value: value, mono: mono);
 
-  Widget _fieldSection(
+  /// قسم معلومات: ترويسة + مربّعات القيم في شبكة **متجاوبة** (عدد الأعمدة حسب
+  /// عرض الشاشة: 1 على الهاتف الضيّق حتى 4 على الحاسوب العريض). تُهمَل القيم الفارغة.
+  Widget _infoGrid(
       String title, IconData icon, List<Color> gradient, List<_FieldVal> fields) {
     final nonEmpty = fields
         .where((f) => f.value != null && '${f.value}'.trim().isNotEmpty)
@@ -500,51 +532,71 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                 style: GoogleFonts.cairo(
                     fontSize: 12.sp, color: Colors.grey[500]))
           else
-            for (final f in nonEmpty) _fieldRow(f),
+            LayoutBuilder(
+              builder: (ctx, c) {
+                const double minBox = 240; // أدنى عرض مريح للمربّع
+                const double gap = 8;
+                final cols = (c.maxWidth / minBox).floor().clamp(1, 4);
+                final boxW = (c.maxWidth - gap * (cols - 1)) / cols;
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: [
+                    for (final f in nonEmpty)
+                      SizedBox(width: boxW, child: _infoBox(f)),
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _fieldRow(_FieldVal f) {
+  /// مربّع معلومة واحدة: المفتاح (أعلى، رمادي) + القيمة (أسفل، بارزة).
+  Widget _infoBox(_FieldVal f) {
     final strVal = '${f.value ?? '—'}';
     final isEmpty = strVal.trim().isEmpty || strVal == 'null';
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 5.h),
-      child: Row(
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 9.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F9FC),
+        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.14)),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 150.w,
-            child: Text(f.label,
-                style: GoogleFonts.cairo(
-                    fontSize: 12.sp,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600)),
-          ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: f.mono
-                ? Directionality(
-                    textDirection: TextDirection.ltr,
+          Text(f.label,
+              style: GoogleFonts.cairo(
+                  fontSize: 10.5.sp,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600)),
+          SizedBox(height: 3.h),
+          f.mono
+              ? Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
                     child: Text(isEmpty ? '—' : strVal,
                         style: GoogleFonts.robotoMono(
-                            fontSize: 12.5.sp,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w700,
                             color: isEmpty
                                 ? Colors.grey[400]
                                 : const Color(0xFF1A1A2E)),
                         overflow: TextOverflow.ellipsis),
-                  )
-                : Text(isEmpty ? '—' : strVal,
-                    style: GoogleFonts.cairo(
-                        fontSize: 13.sp,
-                        color: isEmpty
-                            ? Colors.grey[400]
-                            : const Color(0xFF1A1A2E),
-                        fontWeight:
-                            isEmpty ? FontWeight.w400 : FontWeight.w700),
-                    overflow: TextOverflow.ellipsis),
-          ),
+                  ),
+                )
+              : Text(isEmpty ? '—' : strVal,
+                  style: GoogleFonts.cairo(
+                      fontSize: 12.5.sp,
+                      color: isEmpty
+                          ? Colors.grey[400]
+                          : const Color(0xFF1A1A2E),
+                      fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis),
         ],
       ),
     );
@@ -552,7 +604,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
 
   // ─── التبويبات الفرعية ───
 
-  Widget _innerTabsCard() {
+  Widget _innerTabsCard(Map<String, dynamic> d) {
     return Container(
       decoration: SasUi.card(),
       clipBehavior: Clip.antiAlias,
@@ -583,6 +635,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
               unselectedLabelStyle:
                   GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 12.5),
               tabs: const [
+                Tab(text: 'الإجراءات'),
                 Tab(text: 'معلومات المواطن'),
                 Tab(text: 'كشف الحساب'),
                 Tab(text: 'السجل'),
@@ -595,11 +648,11 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
               ],
             ),
           ),
-          SizedBox(
-            height: 340.h,
+          Expanded(
             child: TabBarView(
               controller: _innerTabs,
               children: [
+                _actionsTab(d),
                 _CitizenInfoTab(aid: _aid, uid: _uid),
                 SasCitizenStatementView(
                   accountId: _aid,
@@ -665,17 +718,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                     ('comment', 'ملاحظة'),
                   ],
                 ),
-                _IndexListTab(
-                  aid: _aid,
-                  path: 'user/traffic',
-                  payload: {'user_id': _uid},
-                  emptyMsg: 'لا سجلّات ترافيك',
-                  cols: const [
-                    ('date', 'التاريخ'),
-                    ('rx', 'تنزيل'),
-                    ('tx', 'رفع'),
-                  ],
-                ),
+                _TrafficTab(aid: _aid, uid: _uid),
               ],
             ),
           ),
@@ -690,19 +733,23 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
   //   جلب السعر (activationData) → حوار تحصيل غنيّ → activateBilled →
   //   إعادة تحميل (الانتهاء الجديد) → طباعة ثم واتساب (خلفياً، معزول).
 
-  Future<void> _doActivate() => _runBilledAction(
-        action: 'activate',
-        operationType: 'تم تفعيل اشتراك',
-        confirmColor: AppTheme.successColor,
-      );
+  Future<void> _doActivate() async {
+    // المدة (1..60) تُجمع الآن ضمن الحوار الموحّد (تفعيل + تحصيل) لا بنافذة منفصلة.
+    await _runBilledAction(
+      action: 'activate',
+      operationType: 'تفعيل اشتراك',
+      confirmText: 'تفعيل وتحصيل',
+      needsMonths: true,
+      confirmColor: AppTheme.successColor,
+    );
+  }
 
   Future<void> _doExtend() async {
-    final months = await _askMonths(title: 'تمديد الخدمة', confirmText: 'متابعة');
-    if (months == null) return;
     await _runBilledAction(
       action: 'extend',
-      operationType: 'تم التمديد',
-      months: months,
+      operationType: 'تمديد الخدمة',
+      confirmText: 'تمديد وتحصيل',
+      needsMonths: true,
       confirmColor: AppTheme.infoColor,
     );
   }
@@ -743,7 +790,8 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     }
     await _runBilledAction(
       action: 'changeProfile',
-      operationType: 'تم تغيير الباقة',
+      operationType: 'تغيير الباقة',
+      confirmText: 'تغيير وتحصيل',
       profileId: profileId,
       profileNameHint: chosen['name']?.toString(),
       confirmColor: AppTheme.accentColor,
@@ -752,33 +800,13 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
 
   String? get _username => widget.username ?? _detail?['username']?.toString();
 
-  /// حوار إدخال عدد الأشهر (للتمديد) — يعيد عدداً ≥ 1 أو null عند الإلغاء.
-  Future<int?> _askMonths(
-      {required String title, required String confirmText}) async {
-    final ctl = TextEditingController(text: '1');
-    return showDialog<int>(
-      context: context,
-      builder: (ctx) => _InputDialog(
-        title: title,
-        controller: ctl,
-        label: 'عدد الأشهر',
-        keyboard: TextInputType.number,
-        digitsOnly: true,
-        confirmText: confirmText,
-        parse: (t) {
-          final n = int.tryParse(t.trim()) ?? 1;
-          return n < 1 ? 1 : n;
-        },
-      ),
-    );
-  }
-
   /// الخط المفوتر الموحّد: يجلب السعر، يعرض حوار التحصيل، ينفّذ `activateBilled`،
   /// يعيد التحميل، ثم يُطلق الطباعة/الواتساب خلفياً.
   Future<void> _runBilledAction({
     required String action,
     required String operationType,
-    int? months,
+    bool needsMonths = false,
+    String confirmText = 'تأكيد وتحصيل',
     String? profileId,
     String? profileNameHint,
     Color confirmColor = AppTheme.primaryColor,
@@ -811,17 +839,19 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                 _detail?['profile_id'])
             ?.toString();
 
-    // 2) حوار التحصيل الغنيّ.
+    // 2) الحوار الموحّد: المدة (عند الحاجة) + معلومات العملية + التحصيل.
     final collection = await _showCollectionDialog(
       operationType: operationType,
+      confirmText: confirmText,
       planName: planName,
-      months: months,
+      needsMonths: needsMonths,
       price: price,
       vat: vat,
       managerBalance: managerBalance,
       confirmColor: confirmColor,
     );
     if (collection == null || !mounted) return;
+    final months = collection.months;
 
     // 3) التنفيذ المفوتر ثم إعادة التحميل + ما بعد التفعيل (طباعة/واتساب).
     setState(() => _busy = true);
@@ -850,13 +880,26 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       final receipt = (res['receipt'] is Map)
           ? (res['receipt'] as Map).cast<String, dynamic>()
           : <String, dynamic>{};
-      // ما بعد التحصيل (طباعة ثم واتساب) عبر المساعد المشترك — كلٌّ معزول.
-      await SasBillingPostActions.run(
+      // ما بعد التحصيل (طباعة صامتة ثم واتساب) — كلٌّ معزول، مع تغذية راجعة.
+      final post = await SasBillingPostActions.run(
         receipt,
         customerName: _subscriberFullName(),
         phone: _subscriberPhone(),
-        newExpiration: _detail?['expiration']?.toString(),
+        // تاريخ الانتهاء الجديد من الإيصال الخادمي (أدقّ من قراءة _detail التي
+        // تعتمد على توقيت مزامنة SAS4)، مع fallback إلى التفاصيل.
+        newExpiration:
+            (receipt['endDate'] ?? _detail?['expiration'])?.toString(),
       );
+      if (mounted) _showPostActionFeedback(post);
+      // تثبيت حالة الإرسال خادمياً (IsWhatsAppSent) عند الإرسال الفعلي — معزول.
+      final logId = _asNum(res['logId'])?.toInt();
+      if (logId != null && post.wa == SasWaOutcome.sent) {
+        try {
+          await _api.reportWhatsAppSent(_aid, logId);
+        } catch (_) {
+          // تعذّر التبليغ — لا يُفشل العملية (العرض المحلي يبقى صحيحاً).
+        }
+      }
     } catch (e) {
       if (mounted) {
         _toast('فشل: ${e.toString().replaceFirst('Exception: ', '').trim()}',
@@ -865,6 +908,20 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// تغذية راجعة موحّدة بعد التفعيل: حالة الطباعة + حالة الواتساب.
+  void _showPostActionFeedback(SasPostActionResult post) {
+    final parts = <String>[
+      post.printOk ? 'طُبع الإيصال ✓' : 'تعذّرت الطباعة ✗',
+    ];
+    if (post.wa != SasWaOutcome.notAttempted && post.waLabel.isNotEmpty) {
+      parts.add(post.waLabel);
+    }
+    final isProblem = !post.printOk ||
+        post.wa == SasWaOutcome.failed ||
+        post.wa == SasWaOutcome.notReady;
+    _toast(parts.join('  •  '), isError: isProblem);
   }
 
   /// رقم هاتف المشترك من التفاصيل (خام، يُطبَّع لاحقاً عند الإرسال).
@@ -970,6 +1027,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     await _run(
       () => _api.userAction(_aid, _uid, 'ping'),
       'تم إرسال Ping',
+      sync: false, // Ping قراءة فقط — لا يُغيّر بيانات المشترك
     );
   }
 
@@ -1101,21 +1159,40 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
 
   // ─── حوار التحصيل الغنيّ (على نمط FTTH) ───
 
-  /// يعرض ملخّص العملية (المشترك/الباقة/المدة/السعر/رصيد الوكيل) + منتقي نوع
-  /// التحصيل + حقلَي أجور الصيانة والخصم اليدوي (اختياريان). يتحقّق من كفاية
-  /// الرصيد قبل الإتاحة. يعيد [_SasCollection] عند التأكيد أو null عند الإلغاء.
+  /// الحوار الموحّد لعملية مفوترة: المدة (عند الحاجة) + ملخّص غنيّ
+  /// (المشترك/الباقة/المدة/السعر/VAT/الإجمالي للتحصيل/رصيد الوكيل) + منتقي نوع
+  /// التحصيل + حقلَي أجور الصيانة والخصم اليدوي (اختياريان). الإجمالي يُحدَّث حيّاً.
+  /// يتحقّق من كفاية الرصيد قبل الإتاحة. يعيد [_SasCollection] أو null عند الإلغاء.
   Future<_SasCollection?> _showCollectionDialog({
     required String operationType,
+    String confirmText = 'تأكيد وتحصيل',
     String? planName,
-    int? months,
+    bool needsMonths = false,
     num? price,
     num? vat,
     num? managerBalance,
     Color confirmColor = AppTheme.primaryColor,
   }) {
+    final monthsCtl = TextEditingController(text: '1');
     String collectionType = 'cash';
     final maintenanceCtl = TextEditingController();
     final discountCtl = TextEditingController();
+
+    // عدد الأشهر الحالي (≥ 1) من الحقل.
+    int currentMonths() {
+      final n = int.tryParse(monthsCtl.text.trim()) ?? 1;
+      return n < 1 ? 1 : n;
+    }
+
+    // الإجمالي للتحصيل التقريبي = السعر + أجور الصيانة − الخصم اليدوي.
+    // (السعر النهائي يُحسب خادمياً؛ هذا عرض استرشادي فوري.)
+    num? previewTotal() {
+      if (price == null) return null;
+      final maint = num.tryParse(maintenanceCtl.text.trim()) ?? 0;
+      final disc = num.tryParse(discountCtl.text.trim()) ?? 0;
+      final t = price + maint - disc;
+      return t < 0 ? 0 : t;
+    }
 
     // رصيد كافٍ؟ (السعر ≤ رصيد الوكيل) — إن تعذّر السعر/الرصيد نسمح بالمتابعة.
     bool sufficient() {
@@ -1130,15 +1207,16 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         child: StatefulBuilder(
           builder: (ctx, setLocal) {
             final enough = sufficient();
+            final total = previewTotal();
             return AlertDialog(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(SasUi.radius)),
               title: Row(
                 children: [
-                  Icon(Icons.point_of_sale_rounded, color: confirmColor, size: 24),
+                  Icon(Icons.bolt_rounded, color: confirmColor, size: 24),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text('تأكيد التحصيل — $operationType',
+                    child: Text(operationType,
                         style: GoogleFonts.cairo(
                             fontWeight: FontWeight.w800, color: confirmColor)),
                   ),
@@ -1151,6 +1229,29 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (needsMonths) ...[
+                        TextField(
+                          controller: monthsCtl,
+                          autofocus: true,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          onChanged: (_) => setLocal(() {}),
+                          style: GoogleFonts.cairo(
+                              fontWeight: FontWeight.w700, fontSize: 14),
+                          decoration: InputDecoration(
+                            labelText: 'عدد الأشهر',
+                            labelStyle: GoogleFonts.cairo(
+                                color: Colors.grey[600], fontSize: 12),
+                            isDense: true,
+                            border: OutlineInputBorder(
+                                borderRadius:
+                                    BorderRadius.circular(SasUi.radiusSm)),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -1162,10 +1263,11 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                         child: Column(
                           children: [
                             _summaryRow('المشترك', _username ?? _uid, mono: true),
+                            _summaryRow('الاسم', _subscriberFullName()),
                             if (planName != null && planName.trim().isNotEmpty)
                               _summaryRow('الباقة', planName),
-                            if (months != null)
-                              _summaryRow('المدة', '$months شهر'),
+                            if (needsMonths)
+                              _summaryRow('المدة', '${currentMonths()} شهر'),
                             _summaryRow(
                                 'السعر',
                                 price != null
@@ -1175,6 +1277,9 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                                 color: confirmColor),
                             if (vat != null && vat > 0)
                               _summaryRow('ضريبة (VAT)', _money(vat)),
+                            if (total != null)
+                              _summaryRow('الإجمالي للتحصيل', _money(total),
+                                  strong: true, color: confirmColor),
                             _summaryRow(
                               'رصيد الوكيل',
                               managerBalance != null
@@ -1216,12 +1321,14 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                         children: [
                           Expanded(
                             child: _miniField(
-                                maintenanceCtl, 'أجور صيانة (اختياري)'),
+                                maintenanceCtl, 'أجور صيانة (اختياري)',
+                                onChanged: (_) => setLocal(() {})),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: _miniField(
-                                discountCtl, 'خصم يدوي (اختياري)'),
+                                discountCtl, 'خصم يدوي (اختياري)',
+                                onChanged: (_) => setLocal(() {})),
                           ),
                         ],
                       ),
@@ -1259,6 +1366,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                       ? () => Navigator.pop(
                             ctx,
                             _SasCollection(
+                              months: needsMonths ? currentMonths() : null,
                               collectionType: collectionType,
                               maintenanceFee:
                                   num.tryParse(maintenanceCtl.text.trim()),
@@ -1268,7 +1376,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                           )
                       : null,
                   style: FilledButton.styleFrom(backgroundColor: confirmColor),
-                  child: Text('تأكيد وتحصيل',
+                  child: Text(confirmText,
                       style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
                 ),
               ],
@@ -1276,7 +1384,11 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           },
         ),
       ),
-    );
+    ).whenComplete(() {
+      monthsCtl.dispose();
+      maintenanceCtl.dispose();
+      discountCtl.dispose();
+    });
   }
 
   Widget _summaryRow(String label, String value,
@@ -1329,13 +1441,15 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     );
   }
 
-  Widget _miniField(TextEditingController ctl, String label) {
+  Widget _miniField(TextEditingController ctl, String label,
+      {ValueChanged<String>? onChanged}) {
     return TextField(
       controller: ctl,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
       ],
+      onChanged: onChanged,
       style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 13),
       decoration: InputDecoration(
         labelText: label,
@@ -1411,13 +1525,16 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
 
 // ─── نتيجة حوار التحصيل ───
 
-/// اختيار المستخدم في حوار التحصيل: نوع التحصيل + الحقول الاختيارية.
+/// اختيار المستخدم في الحوار الموحّد: المدة (عند الحاجة) + نوع التحصيل +
+/// الحقول الاختيارية.
 class _SasCollection {
-  final String collectionType; // cash | credit | agent
+  final int? months; // عدد الأشهر (null لتغيير الباقة الذي لا يحتاج مدة)
+  final String collectionType; // cash | credit | agent | citizen
   final num? maintenanceFee;
   final num? manualDiscount;
 
   const _SasCollection({
+    this.months,
     required this.collectionType,
     this.maintenanceFee,
     this.manualDiscount,
@@ -1611,6 +1728,10 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
   final _landmark = TextEditingController();
   String _gender = '';
 
+  // المناطق (للربط اليدوي) — تُجلب مرّة مع البروفايل.
+  List<SasRegion> _regions = const [];
+  String? _regionId; // GUID المنطقة المختارة (null = بلا منطقة)
+
   bool get _canManage => PermissionManager.instance.canAdd('sas_agent');
 
   @override
@@ -1647,8 +1768,14 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       _error = null;
     });
     try {
-      final p = await _api.getSubscriberProfile(widget.aid, widget.uid);
+      // جلب البروفايل والمناطق معاً (المناطق على مستوى الشركة — لا تعتمد الحساب).
+      final results = await Future.wait([
+        _api.getSubscriberProfile(widget.aid, widget.uid),
+        _api.getRegions(),
+      ]);
       if (!mounted) return;
+      final p = results[0] as SasSubscriberProfile;
+      final regions = results[1] as List<SasRegion>;
       _nationalId.text = p.nationalId;
       _fullNameQuad.text = p.fullNameQuad;
       _birthDate.text = p.birthDate;
@@ -1662,6 +1789,12 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       _landmark.text = p.landmark;
       setState(() {
         _gender = p.gender;
+        _regions = regions;
+        // لا نختار منطقة غير موجودة في القائمة (تفادي خطأ Dropdown).
+        _regionId = (p.regionId.isNotEmpty &&
+                regions.any((r) => r.id == p.regionId))
+            ? p.regionId
+            : null;
         _loading = false;
       });
     } catch (e) {
@@ -1690,6 +1823,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       longitude: _longitude.text.trim(),
       propertyType: _propertyType.text.trim(),
       landmark: _landmark.text.trim(),
+      regionId: _regionId ?? '',
     );
     try {
       final ok =
@@ -1748,6 +1882,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
               SizedBox(height: 12.h),
               _group('الموقع / العقار', Icons.location_on_rounded,
                   AppTheme.orangeGradient, [
+                _regionField(),
                 _field(_address, 'تفاصيل العنوان'),
                 _field(_propertyType, 'نوع العقار'),
                 _field(_landmark, 'أقرب نقطة دالّة'),
@@ -1785,10 +1920,22 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
         children: [
           SasSectionHeader(title: title, icon: icon, gradient: gradient),
           SizedBox(height: 12.h),
-          for (int i = 0; i < fields.length; i++) ...[
-            if (i > 0) SizedBox(height: 10.h),
-            fields[i],
-          ],
+          // شبكة حقول متجاوبة: حتى 3 أعمدة على الحاسوب العريض، عمود واحد على الهاتف.
+          LayoutBuilder(
+            builder: (ctx, c) {
+              const double minW = 300;
+              const double gap = 10;
+              final cols = (c.maxWidth / minW).floor().clamp(1, 3);
+              final w = (c.maxWidth - gap * (cols - 1)) / cols;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final f in fields) SizedBox(width: w, child: f),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -1812,6 +1959,42 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
       ),
+    );
+  }
+
+  /// منسدلة اختيار المنطقة (مع عرض أجور الصيانة لكل منطقة).
+  Widget _regionField() {
+    return DropdownButtonFormField<String?>(
+      initialValue: _regionId,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'المنطقة (تحدّد أجور الصيانة تلقائياً)',
+        labelStyle:
+            GoogleFonts.cairo(color: Colors.grey[600], fontSize: 12.sp),
+        isDense: true,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+      ),
+      items: [
+        DropdownMenuItem<String?>(
+          value: null,
+          child: Text('— بلا منطقة —',
+              style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.w600, fontSize: 13.sp)),
+        ),
+        for (final r in _regions)
+          DropdownMenuItem<String?>(
+            value: r.id,
+            child: Text(
+              r.maintenanceFee > 0
+                  ? '${r.name}  ·  صيانة ${r.maintenanceFee}'
+                  : r.name,
+              style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.w600, fontSize: 13.sp),
+            ),
+          ),
+      ],
+      onChanged: _canManage ? (v) => setState(() => _regionId = v) : null,
     );
   }
 
@@ -1887,7 +2070,6 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
 class _IndexListTab extends StatefulWidget {
   final String aid;
   final String path;
-  final Map<String, dynamic> payload;
   final List<(String, String)> cols;
   final String emptyMsg;
 
@@ -1896,7 +2078,6 @@ class _IndexListTab extends StatefulWidget {
     required this.path,
     required this.cols,
     required this.emptyMsg,
-    this.payload = const {},
   });
 
   @override
@@ -1916,16 +2097,15 @@ class _IndexListTabState extends State<_IndexListTab> {
 
   Future<void> _load() async {
     try {
-      // مسارات index/* تدعم الترقيم؛ user/traffic يقبل الحمولة الممرّرة كما هي.
+      // مسارات index/* تدعم الترقيم.
       final payload = widget.path.startsWith('index/')
-          ? {
+          ? <String, dynamic>{
               'page': 1,
               'count': 30,
               'direction': 'desc',
               'search': '',
-              ...widget.payload,
             }
-          : widget.payload;
+          : <String, dynamic>{};
       final res = await _api.sasPost(widget.aid, widget.path, payload: payload);
       final rows = sasExtractList(res);
       if (mounted) setState(() => _rows = rows);
@@ -1995,6 +2175,208 @@ class _IndexListTabState extends State<_IndexListTab> {
           ),
         );
       },
+    );
+  }
+}
+
+// ─── تبويب الترافيك (استهلاك 31 يوماً: rx/tx/total) ───
+
+/// يعرض استهلاك المشترك لآخر 31 يوماً من نقطة `user/traffic` في الساس
+/// (استجابة: {data:{rx[],tx[],total[],free_traffic[]}} — اليوم أولاً).
+/// إجمالي + قائمة يومية بأشرطة نسبية. يمرّر user_id **عدداً** (متطلّب الساس).
+class _TrafficTab extends StatefulWidget {
+  final String aid;
+  final String uid;
+  const _TrafficTab({required this.aid, required this.uid});
+
+  @override
+  State<_TrafficTab> createState() => _TrafficTabState();
+}
+
+class _TrafficTabState extends State<_TrafficTab> {
+  final _api = SasAgentApiService.instance;
+  bool _loading = true;
+  String? _error;
+  List<num> _rx = const [];
+  List<num> _tx = const [];
+  List<num> _total = const [];
+
+  // الشهر/السنة المعروضان (الساس يطلبهما؛ المصفوفات مفهرسة بيوم الشهر).
+  late int _month;
+  late int _year;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _month = now.month;
+    _year = now.year;
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      // الساس يتطلّب user_id (رقماً) + month + year (وإلا 422).
+      final uidNum = int.tryParse(widget.uid) ?? widget.uid;
+      final raw = await _api.sasPost(widget.aid, 'user/traffic',
+          payload: {'user_id': uidNum, 'month': _month, 'year': _year});
+      final map = (raw is Map) ? raw : const {};
+      final data = (map['data'] is Map)
+          ? (map['data'] as Map)
+          : (map['Data'] is Map ? map['Data'] as Map : const {});
+      List<num> nums(dynamic v) => (v is List)
+          ? v.map((e) => (e is num) ? e : (num.tryParse('$e') ?? 0)).toList()
+          : const [];
+      if (!mounted) return;
+      setState(() {
+        _rx = nums(data['rx']);
+        _tx = nums(data['tx']);
+        _total = nums(data['total']);
+        _loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '').trim();
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  /// تنسيق بايت → B/KB/MB/GB.
+  String _fmtBytes(num b) {
+    final v = b.toDouble();
+    if (v >= 1024 * 1024 * 1024) return '${(v / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    if (v >= 1024 * 1024) return '${(v / (1024 * 1024)).toStringAsFixed(2)} MB';
+    if (v >= 1024) return '${(v / 1024).toStringAsFixed(1)} KB';
+    return '${v.toStringAsFixed(0)} B';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const SasLoadingView(message: 'جاري جلب الترافيك…');
+    if (_error != null) {
+      return SasErrorView(message: 'تعذّر جلب الترافيك: $_error', onRetry: _load);
+    }
+    final n = _total.isNotEmpty
+        ? _total.length
+        : (_rx.length > _tx.length ? _rx.length : _tx.length);
+    if (n == 0) {
+      return const SasEmptyView(
+          message: 'لا سجلّات ترافيك', icon: Icons.speed_rounded);
+    }
+    num sum(List<num> l) => l.fold<num>(0, (a, b) => a + b);
+    final totRx = sum(_rx), totTx = sum(_tx);
+    final totAll = _total.isNotEmpty ? sum(_total) : (totRx + totTx);
+    final maxDay = _total.isNotEmpty
+        ? _total.fold<num>(0, (a, b) => b > a ? b : a)
+        : 1;
+
+    return ListView(
+      padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 16.h),
+      children: [
+        // إجمالي 31 يوماً.
+        Container(
+          padding: EdgeInsets.all(14.w),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: AppTheme.blueGradient),
+            borderRadius: BorderRadius.circular(SasUi.radius.r),
+          ),
+          child: Row(
+            children: [
+              _tMetric('الإجمالي', _fmtBytes(totAll)),
+              _tMetric('التنزيل', _fmtBytes(totRx)),
+              _tMetric('الرفع', _fmtBytes(totTx)),
+            ],
+          ),
+        ),
+        SizedBox(height: 12.h),
+        Text('استهلاك شهر $_month/$_year (لكل يوم)',
+            style: GoogleFonts.cairo(
+                fontWeight: FontWeight.w700,
+                fontSize: 12.sp,
+                color: Colors.grey[700])),
+        SizedBox(height: 8.h),
+        // المصفوفة مفهرسة بيوم الشهر: index 0 = يوم 1. نعرض أيام الشهر الفعلية فقط.
+        for (int i = 0; i < n && i < _daysInMonth; i++) _dayRow(i, maxDay),
+      ],
+    );
+  }
+
+  /// عدد أيام الشهر المعروض (لتفادي عرض خانات فارغة بعد نهاية الشهر).
+  int get _daysInMonth => DateTime(_year, _month + 1, 0).day;
+
+  Widget _tMetric(String label, String value) => Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: GoogleFonts.cairo(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 11.sp)),
+            SizedBox(height: 3.h),
+            Text(value,
+                style: GoogleFonts.cairo(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5.sp)),
+          ],
+        ),
+      );
+
+  Widget _dayRow(int i, num maxDay) {
+    final rx = i < _rx.length ? _rx[i] : 0;
+    final tx = i < _tx.length ? _tx[i] : 0;
+    final tot = i < _total.length ? _total[i] : (rx + tx);
+    final frac = maxDay > 0 ? (tot / maxDay).clamp(0.0, 1.0).toDouble() : 0.0;
+    final day = i + 1; // المصفوفة مفهرسة بيوم الشهر (0 = يوم 1)
+    final now = DateTime.now();
+    final isToday = day == now.day && _month == now.month && _year == now.year;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 5.h),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 64.w,
+            child: Text(isToday ? '$day (اليوم)' : 'يوم $day',
+                style: GoogleFonts.cairo(
+                    fontSize: 11.sp,
+                    fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+                    color: isToday ? AppTheme.primaryColor : Colors.grey[700])),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6.r),
+              child: Stack(
+                children: [
+                  Container(height: 18.h, color: Colors.grey.withValues(alpha: 0.10)),
+                  FractionallySizedBox(
+                    widthFactor: frac == 0 ? 0.001 : frac,
+                    child: Container(
+                      height: 18.h,
+                      decoration: const BoxDecoration(
+                          gradient: LinearGradient(colors: AppTheme.blueGradient)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(width: 8.w),
+          SizedBox(
+            width: 92.w,
+            child: Text(_fmtBytes(tot),
+                textAlign: TextAlign.end,
+                style: GoogleFonts.robotoMono(
+                    fontSize: 10.5.sp, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
     );
   }
 }
