@@ -21,7 +21,7 @@ class SadaraApiService {
   static String get _prodBaseUrl => '${ApiConfig.vpsBaseUrl}/api';
 
   /// استخدام بيئة التطوير أو الإنتاج
-  static const bool _isProduction = false; // [تشغيل محلي مؤقت — يُعاد إلى true بعد الاختبار]
+  static const bool _isProduction = true; // [إنتاج — فرع الإصدار release/v2.4.0]
 
   /// رابط API الفعلي
   static String get baseUrl => _isProduction ? _prodBaseUrl : _devBaseUrl;
