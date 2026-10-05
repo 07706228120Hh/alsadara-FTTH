@@ -151,3 +151,6 @@ new_wf_id.txt
 appsettings.Production.json
 .dpkeys/
 run-local-dev.ps1
+.claude/settings.local.json
+/tmp_*.json
+*-CREDENTIALS.json
