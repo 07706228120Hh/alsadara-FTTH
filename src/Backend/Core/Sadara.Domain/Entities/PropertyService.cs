@@ -42,6 +42,20 @@ public class PropertyService : BaseEntity<Guid>, ITenantScoped
     /// <summary>ملاحظات.</summary>
     public string? Notes { get; set; }
 
+    // ============ حقول خاصة بالنوع ============
+
+    /// <summary>اسم الوكيل (خاص بخدمة الإنترنت).</summary>
+    public string? AgentName { get; set; }
+
+    /// <summary>رقم الحساب (خاص بخدمة الماستر).</summary>
+    public string? AccountNumber { get; set; }
+
+    /// <summary>مسار صورة الماستر (خاص بخدمة الماستر) — ملف خاص يُخدَم عبر نقطة مُصرّحة.</summary>
+    public string? MasterPhotoPath { get; set; }
+
+    /// <summary>مسار صورة هوية الأحوال المدنية (حسّاس) — ملف خاص يُخدَم عبر نقطة مُصرّحة فقط.</summary>
+    public string? CivilIdPhotoPath { get; set; }
+
     // ============ العلاقات ============
 
     /// <summary>العقار المرتبط.</summary>

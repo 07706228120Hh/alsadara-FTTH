@@ -28,15 +28,18 @@ public class PropertiesController : ControllerBase
     private readonly SadaraDbContext _db;
     private readonly ICurrentTenant _tenant;
     private readonly ILogger<PropertiesController> _logger;
+    private readonly IWebHostEnvironment _env;
 
     public PropertiesController(
         SadaraDbContext db,
         ICurrentTenant tenant,
-        ILogger<PropertiesController> logger)
+        ILogger<PropertiesController> logger,
+        IWebHostEnvironment env)
     {
         _db = db;
         _tenant = tenant;
         _logger = logger;
+        _env = env;
     }
 
     // ============ حرّاس النطاق (نفس نمط SasAgentController) ============
@@ -180,6 +183,10 @@ public class PropertiesController : ControllerBase
             GovCode = request.GovCode,
             Governorate = request.Governorate.Trim(),
             Area = (request.Area ?? string.Empty).Trim(),
+            Address2 = Nullify(request.Address2),
+            Address3 = Nullify(request.Address3),
+            OwnerName = Nullify(request.OwnerName),
+            OwnerPhone = Nullify(request.OwnerPhone),
             District = (request.District ?? string.Empty).Trim(),
             Landmark = Nullify(request.Landmark),
             AddressDetails = Nullify(request.AddressDetails),
@@ -205,6 +212,10 @@ public class PropertiesController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(request.Governorate)) p.Governorate = request.Governorate.Trim();
         if (request.Area != null) p.Area = request.Area.Trim();
+        if (request.Address2 != null) p.Address2 = Nullify(request.Address2);
+        if (request.Address3 != null) p.Address3 = Nullify(request.Address3);
+        if (request.OwnerName != null) p.OwnerName = Nullify(request.OwnerName);
+        if (request.OwnerPhone != null) p.OwnerPhone = Nullify(request.OwnerPhone);
         if (request.District != null) p.District = request.District.Trim();
         p.Landmark = Nullify(request.Landmark) ?? p.Landmark;
         p.AddressDetails = Nullify(request.AddressDetails) ?? p.AddressDetails;
@@ -330,7 +341,11 @@ public class PropertiesController : ControllerBase
             Status = request.Status ?? PropertyServiceStatus.Active,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
-            Notes = Nullify(request.Notes)
+            Notes = Nullify(request.Notes),
+            AgentName = Nullify(request.AgentName),
+            AccountNumber = Nullify(request.AccountNumber),
+            MasterPhotoPath = Nullify(request.MasterPhotoPath),
+            CivilIdPhotoPath = Nullify(request.CivilIdPhotoPath)
         };
         await _db.PropertyServices.AddAsync(svc, ct);
         await _db.SaveChangesAsync(ct);
@@ -354,6 +369,10 @@ public class PropertiesController : ControllerBase
         if (request.StartDate.HasValue) svc.StartDate = request.StartDate;
         if (request.EndDate.HasValue) svc.EndDate = request.EndDate;
         if (request.Notes != null) svc.Notes = Nullify(request.Notes);
+        if (request.AgentName != null) svc.AgentName = Nullify(request.AgentName);
+        if (request.AccountNumber != null) svc.AccountNumber = Nullify(request.AccountNumber);
+        if (request.MasterPhotoPath != null) svc.MasterPhotoPath = Nullify(request.MasterPhotoPath);
+        if (request.CivilIdPhotoPath != null) svc.CivilIdPhotoPath = Nullify(request.CivilIdPhotoPath);
         svc.UpdatedAt = DateTime.UtcNow;
         _db.PropertyServices.Update(svc);
         await _db.SaveChangesAsync(ct);
@@ -513,6 +532,63 @@ public class PropertiesController : ControllerBase
         });
     }
 
+    // ============ صور خاصة (الماستر/الهوية) — تخزين معزول بالشركة + عرض مُصرّح فقط ============
+
+    /// <summary>
+    /// رفع صورة خاصة بالعقار/الخدمة (صورة ماستر أو هوية أحوال مدنية). تُخزَّن تحت مجلد الشركة
+    /// (عزل)، وتُرجع اسم الملف فقط — يُحفَظ في حقل الخدمة. الصور الحسّاسة لا تُخدَم كـstatic عام.
+    /// </summary>
+    [HttpPost("upload-image")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UploadImage(IFormFile file, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, message = "لا يوجد ملف" });
+
+        var allowed = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!allowed.Contains((file.ContentType ?? string.Empty).ToLowerInvariant()))
+            return BadRequest(new { success = false, message = "نوع الملف غير مسموح (JPG/PNG/WEBP فقط)" });
+
+        var dir = Path.Combine(_env.ContentRootPath, "uploads", "properties", companyId.ToString("N"));
+        Directory.CreateDirectory(dir);
+
+        var ext = Path.GetExtension(file.FileName);
+        if (ext.Length > 5 || string.IsNullOrEmpty(ext)) ext = ".jpg";
+        var fileName = $"{Guid.NewGuid():N}{ext}";
+        var fullPath = Path.Combine(dir, fileName);
+        using (var stream = new FileStream(fullPath, FileMode.Create))
+            await file.CopyToAsync(stream, ct);
+
+        // يُرجع اسم الملف (يُحفَظ في الحقل) + مسار العرض المُصرّح.
+        return Ok(new { success = true, data = new { fileName, url = $"/api/properties/image/{fileName}" } });
+    }
+
+    /// <summary>عرض صورة خاصة — مُصرّح + معزول بالشركة (المسار يُشتقّ من شركة المتصل، لا يُمرَّر).</summary>
+    [HttpGet("image/{fileName}")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public IActionResult GetImage(string fileName)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        // حماية من اجتياز المسار: نأخذ اسم الملف فقط.
+        var safe = Path.GetFileName(fileName ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(safe))
+            return BadRequest(new { success = false, message = "اسم ملف غير صالح" });
+
+        var fullPath = Path.Combine(_env.ContentRootPath, "uploads", "properties", companyId.ToString("N"), safe);
+        if (!System.IO.File.Exists(fullPath))
+            return NotFound(new { success = false, message = "الصورة غير موجودة" });
+
+        var mime = Path.GetExtension(safe).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => "image/jpeg"
+        };
+        return PhysicalFile(fullPath, mime);
+    }
+
     // ============ مساعدات ============
 
     private async Task<Property?> GetOwnedPropertyAsync(Guid id, Guid companyId, CancellationToken ct) =>
@@ -547,7 +623,13 @@ public class PropertiesController : ControllerBase
                 status = s.Status.ToString(),
                 startDate = s.StartDate,
                 endDate = s.EndDate,
-                notes = s.Notes
+                notes = s.Notes,
+                agentName = s.AgentName,
+                accountNumber = s.AccountNumber,
+                hasMasterPhoto = !string.IsNullOrEmpty(s.MasterPhotoPath),
+                masterPhotoPath = s.MasterPhotoPath,
+                hasCivilIdPhoto = !string.IsNullOrEmpty(s.CivilIdPhotoPath),
+                civilIdPhotoPath = s.CivilIdPhotoPath
             })
             .ToListAsync(ct);
 
@@ -577,6 +659,10 @@ public class PropertiesController : ControllerBase
         govCode = x.GovCode,
         governorate = x.Governorate,
         area = x.Area,
+        address2 = x.Address2,
+        address3 = x.Address3,
+        ownerName = x.OwnerName,
+        ownerPhone = x.OwnerPhone,
         district = x.District,
         landmark = x.Landmark,
         addressDetails = x.AddressDetails,
@@ -595,6 +681,10 @@ public record PropertyUpsertRequest(
     int GovCode,
     string Governorate,
     string? Area,
+    string? Address2,
+    string? Address3,
+    string? OwnerName,
+    string? OwnerPhone,
     string? District,
     string? Landmark,
     string? AddressDetails,
@@ -610,7 +700,7 @@ public record LinkResidentRequest(
     ResidentRelationship? Relationship,
     bool? IsPrimary);
 
-/// <summary>طلب إضافة/تعديل خدمة عقار (موصّل عام).</summary>
+/// <summary>طلب إضافة/تعديل خدمة عقار (موصّل عام + حقول خاصة بالنوع).</summary>
 public record UpsertServiceRequest(
     PropertyServiceType? ServiceType,
     PropertyServiceProvider? ProviderType,
@@ -619,7 +709,11 @@ public record UpsertServiceRequest(
     PropertyServiceStatus? Status,
     DateTime? StartDate,
     DateTime? EndDate,
-    string? Notes);
+    string? Notes,
+    string? AgentName,
+    string? AccountNumber,
+    string? MasterPhotoPath,
+    string? CivilIdPhotoPath);
 
 /// <summary>طلب إنشاء مهمة (طلب خدمة) مرتبطة بعقار.</summary>
 public record CreatePropertyTaskRequest(
