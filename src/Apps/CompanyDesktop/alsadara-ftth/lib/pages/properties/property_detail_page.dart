@@ -32,6 +32,11 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
   bool _loading = true;
   String? _error;
 
+  // المهام المرتبطة بالعقار (نظام المهام).
+  List<PropertyTaskHit> _tasks = const [];
+  bool _tasksLoading = false;
+  String? _tasksError;
+
   bool get _canManage =>
       PermissionManager.instance.canAdd('property_registry');
   bool get _canDelete =>
@@ -57,6 +62,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         _details = d;
         _loading = false;
       });
+      _loadTasks();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -185,6 +191,45 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     }
   }
 
+  // ─────────────────────────── المهام المرتبطة ───────────────────────────
+
+  Future<void> _loadTasks() async {
+    setState(() {
+      _tasksLoading = true;
+      _tasksError = null;
+    });
+    try {
+      final t = await _api.getTasks(widget.propertyId);
+      if (!mounted) return;
+      setState(() {
+        _tasks = t;
+        _tasksLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _tasksError = '$e';
+        _tasksLoading = false;
+      });
+    }
+  }
+
+  Future<void> _createTask() async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: FractionallySizedBox(
+          heightFactor: 0.92,
+          child: _TaskFormSheet(propertyId: widget.propertyId),
+        ),
+      ),
+    );
+    if (created == true) _loadTasks();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -234,6 +279,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           _residentsCard(d.residents),
           const SizedBox(height: 12),
           _servicesCard(d.services),
+          const SizedBox(height: 12),
+          _tasksCard(),
           const SizedBox(height: 24),
         ],
       ),
@@ -565,6 +612,134 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           ),
       ],
     );
+  }
+
+  Widget _tasksCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: PropUi.card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PropSectionHeader(
+            title: 'المهام المرتبطة',
+            icon: Icons.assignment_rounded,
+            gradient: AppTheme.greenGradient,
+            trailingText: '${_tasks.length}',
+            action: _canManage
+                ? TextButton.icon(
+                    onPressed: _createTask,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text('إنشاء مهمة',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  )
+                : null,
+          ),
+          const SizedBox(height: 10),
+          if (_tasksLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: PropLoadingView(),
+            )
+          else if (_tasksError != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('تعذّر تحميل المهام: $_tasksError',
+                        style: GoogleFonts.cairo(
+                            color: AppTheme.errorColor,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                  TextButton.icon(
+                    onPressed: _loadTasks,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: Text('إعادة',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            )
+          else if (_tasks.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                'لا مهام مرتبطة بعد — أنشئ مهمة (صيانة/تركيب…) لهذا العقار.',
+                style: GoogleFonts.cairo(
+                    color: Colors.grey[600], fontWeight: FontWeight.w600),
+              ),
+            )
+          else
+            for (int i = 0; i < _tasks.length; i++) ...[
+              if (i > 0) const Divider(height: 14),
+              _taskRow(_tasks[i]),
+            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _taskRow(PropertyTaskHit t) {
+    final statusColor = _taskStatusColor(t.status);
+    final meta = [
+      if (t.department.trim().isNotEmpty) t.department,
+      if (t.technicianName.trim().isNotEmpty) t.technicianName,
+      if (t.priority > 0) 'أولوية ${t.priority}',
+      if (t.requestedAt.trim().isNotEmpty) _shortDate(t.requestedAt),
+    ].join(' · ');
+    return Row(
+      children: [
+        PropUi.gradientBadge(
+          icon: Icons.assignment_turned_in_rounded,
+          colors: AppTheme.greenGradient,
+          size: 36,
+          iconSize: 18,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                t.requestNumber.isEmpty ? 'طلب #${t.id}' : t.requestNumber,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.w800, color: PropUi.ink),
+              ),
+              if (meta.trim().isNotEmpty)
+                Text(
+                  meta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        PropBadge(label: t.statusLabel, color: statusColor),
+      ],
+    );
+  }
+
+  Color _taskStatusColor(String status) => switch (status.toLowerCase()) {
+        'completed' || 'approved' => AppTheme.successColor,
+        'inprogress' || 'assigned' => AppTheme.primaryColor,
+        'pending' || 'reviewing' || 'onhold' => AppTheme.warningColor,
+        'cancelled' || 'rejected' => AppTheme.errorColor,
+        _ => Colors.grey,
+      };
+
+  String _shortDate(String raw) {
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return raw;
+    final l = dt.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${l.year}-${two(l.month)}-${two(l.day)}';
   }
 
   Widget _kv(String k, String v) {
@@ -1002,6 +1177,320 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
       ],
     );
   }
+
+  Widget _field(TextEditingController c, String label,
+      {IconData? icon, int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: c,
+        maxLines: maxLines,
+        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.cairo(),
+          prefixIcon: icon == null
+              ? null
+              : Icon(icon, color: AppTheme.primaryColor, size: 20),
+          isDense: true,
+          filled: true,
+          fillColor: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────── ورقة إنشاء مهمة ───────────────────────
+
+class _TaskFormSheet extends StatefulWidget {
+  final String propertyId;
+  const _TaskFormSheet({required this.propertyId});
+
+  @override
+  State<_TaskFormSheet> createState() => _TaskFormSheetState();
+}
+
+class _TaskFormSheetState extends State<_TaskFormSheet> {
+  final _api = PropertyApiService.instance;
+  final _department = TextEditingController();
+  final _technician = TextEditingController();
+  final _note = TextEditingController();
+
+  List<ServiceLookup> _services = const [];
+  bool _loading = true;
+  String? _loadError;
+  bool _saving = false;
+
+  int? _serviceId;
+  int? _operationId;
+  int _priority = 3;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLookups();
+  }
+
+  @override
+  void dispose() {
+    _department.dispose();
+    _technician.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  List<OperationLookup> get _operations {
+    if (_serviceId == null) return const [];
+    final svc = _services.where((s) => s.id == _serviceId);
+    return svc.isEmpty ? const [] : svc.first.operations;
+  }
+
+  Future<void> _loadLookups() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final r = await _api.getServiceLookups();
+      if (!mounted) return;
+      setState(() {
+        _services = r;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = '$e';
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _save() async {
+    if (_serviceId == null || _operationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('اختر الخدمة والعملية أولاً',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+            backgroundColor: AppTheme.warningColor),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final reqNo = await _api.createTask(
+        widget.propertyId,
+        serviceId: _serviceId!,
+        operationTypeId: _operationId!,
+        priority: _priority,
+        department: _department.text,
+        technician: _technician.text,
+        note: _note.text,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                reqNo != null && reqNo.isNotEmpty
+                    ? 'تمّ إنشاء المهمة — رقم الطلب $reqNo'
+                    : 'تمّ إنشاء المهمة',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+            backgroundColor: AppTheme.successColor),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('تعذّر إنشاء المهمة: $e', style: GoogleFonts.cairo()),
+            backgroundColor: AppTheme.errorColor),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: PropUi.pageBg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('إنشاء مهمة لهذا العقار',
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.w800, fontSize: 16)),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _loading
+                ? const PropLoadingView(message: 'جارٍ تحميل الخدمات…')
+                : _loadError != null
+                    ? PropErrorView(message: _loadError!, onRetry: _loadLookups)
+                    : _form(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _form() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      children: [
+        _label('الخدمة'),
+        if (_services.isEmpty)
+          Text('لا توجد خدمات متاحة',
+              style: GoogleFonts.cairo(
+                  color: Colors.grey[600], fontWeight: FontWeight.w600))
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              for (final s in _services)
+                ChoiceChip(
+                  label: Text(s.nameAr,
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                          color: _serviceId == s.id
+                              ? Colors.white
+                              : const Color(0xFF475569))),
+                  selected: _serviceId == s.id,
+                  showCheckmark: false,
+                  backgroundColor: Colors.white,
+                  selectedColor: AppTheme.primaryColor,
+                  side: BorderSide(
+                      color: _serviceId == s.id
+                          ? AppTheme.primaryColor
+                          : Colors.grey.withValues(alpha: 0.25)),
+                  onSelected: (_) => setState(() {
+                    _serviceId = s.id;
+                    _operationId = null; // إعادة ضبط العملية عند تغيير الخدمة
+                  }),
+                ),
+            ],
+          ),
+        const SizedBox(height: 14),
+        _label('العملية'),
+        if (_serviceId == null)
+          Text('اختر خدمة لعرض عملياتها',
+              style: GoogleFonts.cairo(
+                  color: Colors.grey[600], fontWeight: FontWeight.w600))
+        else if (_operations.isEmpty)
+          Text('لا توجد عمليات لهذه الخدمة',
+              style: GoogleFonts.cairo(
+                  color: Colors.grey[600], fontWeight: FontWeight.w600))
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              for (final op in _operations)
+                ChoiceChip(
+                  label: Text(op.nameAr,
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                          color: _operationId == op.id
+                              ? Colors.white
+                              : const Color(0xFF475569))),
+                  selected: _operationId == op.id,
+                  showCheckmark: false,
+                  backgroundColor: Colors.white,
+                  selectedColor: AppTheme.primaryColor,
+                  side: BorderSide(
+                      color: _operationId == op.id
+                          ? AppTheme.primaryColor
+                          : Colors.grey.withValues(alpha: 0.25)),
+                  onSelected: (_) => setState(() => _operationId = op.id),
+                ),
+            ],
+          ),
+        const SizedBox(height: 14),
+        _label('الأولوية'),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (int p = 1; p <= 5; p++)
+              ChoiceChip(
+                label: Text('$p',
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
+                        color: _priority == p
+                            ? Colors.white
+                            : const Color(0xFF475569))),
+                selected: _priority == p,
+                showCheckmark: false,
+                backgroundColor: Colors.white,
+                selectedColor: AppTheme.primaryColor,
+                side: BorderSide(
+                    color: _priority == p
+                        ? AppTheme.primaryColor
+                        : Colors.grey.withValues(alpha: 0.25)),
+                onSelected: (_) => setState(() => _priority = p),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _field(_department, 'القسم (اختياري)', icon: Icons.apartment_rounded),
+        _field(_technician, 'الفني (اختياري)', icon: Icons.engineering_rounded),
+        _field(_note, 'ملاحظة (اختياري)',
+            icon: Icons.notes_rounded, maxLines: 3),
+        const SizedBox(height: 10),
+        FilledButton.icon(
+          onPressed: _saving ? null : _save,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+          icon: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.add_task_rounded),
+          label: Text('إنشاء',
+              style:
+                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 15)),
+        ),
+      ],
+    );
+  }
+
+  Widget _label(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(t,
+            style: GoogleFonts.cairo(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: Colors.grey[700])),
+      );
 
   Widget _field(TextEditingController c, String label,
       {IconData? icon, int maxLines = 1}) {

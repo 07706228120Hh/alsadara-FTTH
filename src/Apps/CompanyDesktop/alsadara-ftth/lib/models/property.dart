@@ -80,6 +80,102 @@ class PropertyService {
   String get statusLabel => serviceStatusLabelOf(status);
 }
 
+/// مهمة (طلب) مرتبطة بعقار — من نظام المهام عبر `/properties/{id}/tasks`.
+class PropertyTaskHit {
+  final String id;
+  final String requestNumber;
+  final String status; // Pending / Assigned / Completed …
+  final String department;
+  final String technicianName;
+  final int priority; // 1..5 (0 = غير محدّد)
+  final String address;
+  final String area;
+  final String contactPhone;
+  final String requestedAt;
+
+  const PropertyTaskHit({
+    required this.id,
+    required this.requestNumber,
+    required this.status,
+    required this.department,
+    required this.technicianName,
+    required this.priority,
+    required this.address,
+    required this.area,
+    required this.contactPhone,
+    required this.requestedAt,
+  });
+
+  factory PropertyTaskHit.fromJson(Map<String, dynamic> j) => PropertyTaskHit(
+        id: _str(_pick(j, ['id', 'Id'])),
+        requestNumber:
+            _str(_pick(j, ['requestNumber', 'RequestNumber', 'request_number'])),
+        status: _str(_pick(j, ['status', 'Status'])),
+        department: _str(_pick(j, ['department', 'Department'])),
+        technicianName: _str(
+            _pick(j, ['technicianName', 'TechnicianName', 'technician_name'])),
+        priority: _asInt(_pick(j, ['priority', 'Priority'])),
+        address: _str(_pick(j, ['address', 'Address'])),
+        area: _str(_pick(j, ['area', 'Area'])),
+        contactPhone: _str(
+            _pick(j, ['contactPhone', 'ContactPhone', 'contact_phone'])),
+        requestedAt: _str(_pick(
+            j, ['requestedAt', 'RequestedAt', 'requested_at', 'createdAt',
+                'CreatedAt', 'created_at'])),
+      );
+
+  String get statusLabel => taskStatusLabelOf(status);
+}
+
+/// عملية ضمن خدمة — لمنتقي إنشاء المهمة.
+class OperationLookup {
+  final int id;
+  final String nameAr;
+  final bool requiresTechnician;
+
+  const OperationLookup({
+    required this.id,
+    required this.nameAr,
+    required this.requiresTechnician,
+  });
+
+  factory OperationLookup.fromJson(Map<String, dynamic> j) => OperationLookup(
+        id: _asInt(_pick(j, ['id', 'Id'])),
+        nameAr: _str(_pick(j, ['nameAr', 'NameAr', 'name_ar'])),
+        requiresTechnician: _pick(j, [
+              'requiresTechnician',
+              'RequiresTechnician',
+              'requires_technician'
+            ]) ==
+            true,
+      );
+}
+
+/// خدمة + عملياتها — لمنتقي إنشاء المهمة (`/properties/service-lookups`).
+class ServiceLookup {
+  final int id;
+  final String nameAr;
+  final List<OperationLookup> operations;
+
+  const ServiceLookup({
+    required this.id,
+    required this.nameAr,
+    required this.operations,
+  });
+
+  factory ServiceLookup.fromJson(Map<String, dynamic> j) {
+    final opsRaw = (_pick(j, ['operations', 'Operations']) as List?) ?? const [];
+    return ServiceLookup(
+      id: _asInt(_pick(j, ['id', 'Id'])),
+      nameAr: _str(_pick(j, ['nameAr', 'NameAr', 'name_ar'])),
+      operations: opsRaw
+          .whereType<Map>()
+          .map((e) => OperationLookup.fromJson(e.cast<String, dynamic>()))
+          .toList(),
+    );
+  }
+}
+
 /// العقار — عنوان وطني (QR + NPN + IqPin) + موقع + تصنيف.
 class Property {
   final String id;
@@ -224,6 +320,17 @@ const Map<String, String> kServiceStatusLabels = {
   'Suspended': 'موقوف',
   'Ended': 'منتهٍ',
 };
+const Map<String, String> kTaskStatusLabels = {
+  'Pending': 'قيد الانتظار',
+  'Reviewing': 'قيد المراجعة',
+  'Approved': 'موافَق',
+  'Assigned': 'مُسندة',
+  'InProgress': 'قيد التنفيذ',
+  'Completed': 'مكتملة',
+  'Cancelled': 'ملغاة',
+  'Rejected': 'مرفوضة',
+  'OnHold': 'معلّقة',
+};
 
 String _label(Map<String, String> map, String v) {
   if (map.containsKey(v)) return map[v]!;
@@ -240,6 +347,7 @@ String relationshipLabelOf(String v) => _label(kRelationshipLabels, v);
 String serviceTypeLabelOf(String v) => _label(kServiceTypeLabels, v);
 String providerTypeLabelOf(String v) => _label(kProviderTypeLabels, v);
 String serviceStatusLabelOf(String v) => _label(kServiceStatusLabels, v);
+String taskStatusLabelOf(String v) => _label(kTaskStatusLabels, v);
 
 // ─────────────────────────── محوّلات آمنة ───────────────────────────
 

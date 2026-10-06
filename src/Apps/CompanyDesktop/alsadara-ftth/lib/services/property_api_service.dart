@@ -228,6 +228,59 @@ class PropertyApiService {
     await _api.delete('/properties/$propertyId/services/$serviceId');
   }
 
+  // ─────────────────────────── المهام المرتبطة ───────────────────────────
+
+  /// مهام (طلبات) العقار المرتبطة من نظام المهام.
+  Future<List<PropertyTaskHit>> getTasks(String propertyId) async {
+    final res = await _api.get('/properties/$propertyId/tasks');
+    final data = (res['data'] as List?) ?? const [];
+    return data
+        .whereType<Map>()
+        .map((e) => PropertyTaskHit.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  /// الخدمات وعملياتها — لمنتقي إنشاء مهمة مرتبطة بالعقار.
+  Future<List<ServiceLookup>> getServiceLookups() async {
+    final res = await _api.get('/properties/service-lookups');
+    final data = (res['data'] as List?) ?? const [];
+    return data
+        .whereType<Map>()
+        .map((e) => ServiceLookup.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  /// إنشاء مهمة مرتبطة بعقار — يُرجع رقم الطلب (requestNumber) عند النجاح.
+  /// الباكند يملأ العنوان/الهاتف/المواطن من العقار تلقائياً.
+  Future<String?> createTask(
+    String propertyId, {
+    required int serviceId,
+    required int operationTypeId,
+    int? priority,
+    String? department,
+    String? technician,
+    String? note,
+  }) async {
+    final res = await _api.post('/properties/$propertyId/tasks', body: {
+      'serviceId': serviceId,
+      'operationTypeId': operationTypeId,
+      if (priority != null) 'priority': priority,
+      if (department != null && department.trim().isNotEmpty)
+        'department': department.trim(),
+      if (technician != null && technician.trim().isNotEmpty)
+        'technician': technician.trim(),
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+    });
+    final data = res['data'];
+    if (data is Map) {
+      return (data['requestNumber'] ??
+              data['RequestNumber'] ??
+              data['request_number'])
+          ?.toString();
+    }
+    return null;
+  }
+
   // ─────────────────────────── داخلي ───────────────────────────
 
   PropertyDetails _parseDetails(Map<String, dynamic> res) {
