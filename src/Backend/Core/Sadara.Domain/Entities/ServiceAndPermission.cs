@@ -336,7 +336,12 @@ public class ServiceRequest : BaseEntity<Guid>
     
     /// <summary>الفني المعين (إذا كان نوع العملية يحتاج فني)</summary>
     public Guid? TechnicianId { get; set; }
-    
+
+    // ============ العقار (سجل العقارات) ============
+
+    /// <summary>العقار المرتبط بالطلب — اختياري (توجيه فني لعقار عبر QR الدائم)</summary>
+    public Guid? PropertyId { get; set; }
+
     // ============ التقييم ============
     
     /// <summary>تقييم المواطن (1-5)</summary>
@@ -357,7 +362,8 @@ public class ServiceRequest : BaseEntity<Guid>
     public virtual InternetPlan? InternetPlan { get; set; }
     public virtual User? AssignedTo { get; set; }
     public virtual User? Technician { get; set; }
-    
+    public virtual Property? Property { get; set; }
+
     public virtual ICollection<ServiceRequestComment> Comments { get; set; } = new List<ServiceRequestComment>();
     public virtual ICollection<ServiceRequestAttachment> Attachments { get; set; } = new List<ServiceRequestAttachment>();
     public virtual ICollection<ServiceRequestStatusHistory> StatusHistory { get; set; } = new List<ServiceRequestStatusHistory>();

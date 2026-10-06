@@ -930,6 +930,9 @@ public class SadaraDbContext : DbContext
             entity.HasOne(e => e.Agent).WithMany().HasForeignKey(e => e.AgentId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.AssignedTo).WithMany().HasForeignKey(e => e.AssignedToId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.Technician).WithMany().HasForeignKey(e => e.TechnicianId).OnDelete(DeleteBehavior.SetNull);
+            // ربط العقار (سجل العقارات) — اختياري؛ حذف العقار لا يحذف الطلب (SetNull)
+            entity.HasIndex(e => e.PropertyId);
+            entity.HasOne(e => e.Property).WithMany().HasForeignKey(e => e.PropertyId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
         });
 
         // ServiceRequestComment (تعليق على طلب)

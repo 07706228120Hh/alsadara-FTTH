@@ -375,6 +375,144 @@ public class PropertiesController : ControllerBase
         return Ok(new { success = true, message = "تمت إزالة الخدمة" });
     }
 
+    // ============ ربط المهام (ServiceRequest) — توجيه فني لعقار ============
+
+    /// <summary>مهام العقار: طلبات الخدمة المرتبطة بالعقار (معزولة بالشركة).</summary>
+    [HttpGet("{id:guid}/tasks")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetPropertyTasks(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        if (await GetOwnedPropertyAsync(id, companyId, ct) == null)
+            return NotFound(new { success = false, message = "العقار غير موجود" });
+
+        var rows = await _db.ServiceRequests.AsNoTracking()
+            .Where(r => r.PropertyId == id && r.CompanyId == companyId)
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new
+            {
+                id = r.Id,
+                requestNumber = r.RequestNumber,
+                status = r.Status.ToString(),
+                department = r.Department,
+                technicianName = r.TechnicianName,
+                priority = r.Priority,
+                address = r.Address,
+                area = r.Area,
+                contactPhone = r.ContactPhone,
+                requestedAt = r.RequestedAt,
+                createdAt = r.CreatedAt
+            })
+            .ToListAsync(ct);
+        return Ok(new { success = true, data = rows });
+    }
+
+    /// <summary>الخدمات والعمليات المتاحة (لمنتقي «إنشاء مهمة لعقار»).</summary>
+    [HttpGet("service-lookups")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetServiceLookups(CancellationToken ct)
+    {
+        if (!TryResolveScope(out _, out _, out var denied)) return denied!;
+        var ops = await _db.ServiceOperations.AsNoTracking()
+            .Where(so => so.IsActive && so.Service.IsActive)
+            .Select(so => new
+            {
+                serviceId = so.ServiceId,
+                serviceName = so.Service.NameAr,
+                operationTypeId = so.OperationTypeId,
+                operationName = so.OperationType.NameAr,
+                requiresTechnician = so.OperationType.RequiresTechnician
+            })
+            .ToListAsync(ct);
+
+        var services = ops
+            .GroupBy(o => new { o.serviceId, o.serviceName })
+            .Select(g => new
+            {
+                id = g.Key.serviceId,
+                nameAr = g.Key.serviceName,
+                operations = g.Select(o => new
+                {
+                    id = o.operationTypeId,
+                    nameAr = o.operationName,
+                    requiresTechnician = o.requiresTechnician
+                }).ToList()
+            })
+            .ToList();
+        return Ok(new { success = true, data = services });
+    }
+
+    /// <summary>
+    /// إنشاء مهمة (طلب خدمة) مرتبطة بالعقار. يملأ العنوان/المنطقة/الهاتف/المواطن من العقار
+    /// وساكنه الأساسي تلقائياً، ويضع <c>PropertyId</c> للربط الدائم.
+    /// </summary>
+    [HttpPost("{id:guid}/tasks")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> CreatePropertyTask(Guid id, [FromBody] CreatePropertyTaskRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied)) return denied!;
+        var p = await GetOwnedPropertyAsync(id, companyId, ct);
+        if (p == null) return NotFound(new { success = false, message = "العقار غير موجود" });
+
+        // تحقّق أن الخدمة/العملية موجودتان ومفعّلتان (عزل مرجعي).
+        var opOk = await _db.ServiceOperations.AsNoTracking()
+            .AnyAsync(so => so.ServiceId == request.ServiceId && so.OperationTypeId == request.OperationTypeId
+                         && so.IsActive && so.Service.IsActive, ct);
+        if (!opOk) return BadRequest(new { success = false, message = "الخدمة أو العملية غير متاحة" });
+
+        // الساكن الأساسي (إن وُجد) لتعبئة المواطن والهاتف.
+        var primary = await _db.PropertyResidents.AsNoTracking()
+            .Where(r => r.PropertyId == id && r.CompanyId == companyId)
+            .OrderByDescending(r => r.IsPrimary)
+            .Join(_db.Citizens.AsNoTracking(), r => r.CitizenId, c => c.Id,
+                  (r, c) => new { c.Id, c.PhoneNumber })
+            .FirstOrDefaultAsync(ct);
+
+        var address = string.Join("، ",
+            new[] { p.Governorate, p.Area, p.District, p.Landmark, p.AddressDetails }
+            .Where(s => !string.IsNullOrWhiteSpace(s)));
+
+        var req = new ServiceRequest
+        {
+            Id = Guid.NewGuid(),
+            RequestNumber = $"{DateTime.UtcNow:yyMMddHHmm}{Random.Shared.Next(1000, 9999)}",
+            ServiceId = request.ServiceId,
+            OperationTypeId = request.OperationTypeId,
+            CitizenId = primary?.Id,
+            CompanyId = companyId,
+            PropertyId = id,
+            Department = Nullify(request.Department),
+            TechnicianName = Nullify(request.Technician),
+            Address = Nullify(address),
+            City = Nullify(p.Governorate),
+            Area = Nullify(p.Area),
+            ContactPhone = primary?.PhoneNumber,
+            Status = ServiceRequestStatus.Pending,
+            StatusNote = Nullify(request.Note),
+            Priority = request.Priority is >= 1 and <= 5 ? request.Priority!.Value : 3,
+            RequestedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _db.ServiceRequests.AddAsync(req, ct);
+        await _db.ServiceRequestStatusHistories.AddAsync(new ServiceRequestStatusHistory
+        {
+            ServiceRequestId = req.Id,
+            FromStatus = ServiceRequestStatus.Pending,
+            ToStatus = ServiceRequestStatus.Pending,
+            Note = "تم إنشاء المهمة من سجل العقارات",
+            ChangedById = userId,
+            CreatedAt = DateTime.UtcNow
+        }, ct);
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            success = true,
+            data = new { id = req.Id, requestNumber = req.RequestNumber, status = req.Status.ToString() },
+            message = "تم إنشاء المهمة وربطها بالعقار"
+        });
+    }
+
     // ============ مساعدات ============
 
     private async Task<Property?> GetOwnedPropertyAsync(Guid id, Guid companyId, CancellationToken ct) =>
@@ -482,3 +620,12 @@ public record UpsertServiceRequest(
     DateTime? StartDate,
     DateTime? EndDate,
     string? Notes);
+
+/// <summary>طلب إنشاء مهمة (طلب خدمة) مرتبطة بعقار.</summary>
+public record CreatePropertyTaskRequest(
+    int ServiceId,
+    int OperationTypeId,
+    int? Priority,
+    string? Department,
+    string? Technician,
+    string? Note);
