@@ -134,6 +134,9 @@ class PropertyApiService {
     String ownerPhone = '',
     String address2 = '',
     String address3 = '',
+    String? regionId,
+    String? address2Id,
+    String? address3Id,
   }) async {
     final res = await _api.post('/properties', body: {
       'govCode': govCode,
@@ -151,6 +154,9 @@ class PropertyApiService {
       'ownerPhone': ownerPhone,
       'address2': address2,
       'address3': address3,
+      'regionId': regionId,
+      'address2Id': address2Id,
+      'address3Id': address3Id,
     });
     final data = res['data'];
     if (data is Map) {
@@ -318,7 +324,136 @@ class PropertyApiService {
     return null;
   }
 
+  // ─────────────────────────── المناطق ───────────────────────────
+
+  /// قائمة المناطق (المستوى الأعلى) — معزولة بالشركة في الباكند.
+  Future<List<PropRegion>> getRegions() async {
+    final res = await _api.get('/properties/regions');
+    final data = (res['data'] as List?) ?? const [];
+    return data
+        .whereType<Map>()
+        .map((e) => PropRegion.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  /// إنشاء منطقة — يُرجع معرّفها عند النجاح.
+  Future<String?> createRegion({
+    required String name,
+    String? code,
+    String? governorate,
+    String? city,
+    num maintenanceFee = 0,
+    bool isActive = true,
+    String? notes,
+  }) async {
+    final res = await _api.post('/properties/regions', body: {
+      'name': name,
+      if (code != null) 'code': code,
+      if (governorate != null) 'governorate': governorate,
+      if (city != null) 'city': city,
+      'maintenanceFee': maintenanceFee,
+      'isActive': isActive,
+      if (notes != null) 'notes': notes,
+    });
+    return _extractId(res);
+  }
+
+  /// تعديل منطقة — يُرسل فقط الحقول المُمرَّرة عبر [patch].
+  Future<void> updateRegion(String id, Map<String, dynamic> patch) async {
+    await _api.put('/properties/regions/$id', body: patch);
+  }
+
+  /// حذف منطقة — قد يرمي الخادم 409 إن كانت مرتبطة (الرسالة تُمرَّر كما هي).
+  Future<void> deleteRegion(String id) async {
+    await _api.delete('/properties/regions/$id');
+  }
+
+  // ─────────────────────────── العنوان 2 ───────────────────────────
+
+  /// عناوين المستوى الثاني تحت منطقة.
+  Future<List<AddressNode>> getAddress2(String regionId) async {
+    final res = await _api
+        .get('/properties/address2?regionId=${Uri.encodeQueryComponent(regionId)}');
+    final data = (res['data'] as List?) ?? const [];
+    return data
+        .whereType<Map>()
+        .map((e) =>
+            AddressNode.fromJson(e.cast<String, dynamic>(), parentId: regionId))
+        .toList();
+  }
+
+  /// إنشاء عنوان 2 تحت منطقة — يُرجع معرّفه.
+  Future<String?> createAddress2(String regionId, String name,
+      {bool isActive = true}) async {
+    final res = await _api.post('/properties/address2', body: {
+      'parentId': regionId,
+      'name': name,
+      'isActive': isActive,
+    });
+    return _extractId(res);
+  }
+
+  /// تعديل عنوان 2.
+  Future<void> updateAddress2(String id, {String? name, bool? isActive}) async {
+    await _api.put('/properties/address2/$id', body: {
+      if (name != null) 'name': name,
+      if (isActive != null) 'isActive': isActive,
+    });
+  }
+
+  /// حذف عنوان 2 — قد يرمي الخادم 409 (الرسالة تُمرَّر كما هي).
+  Future<void> deleteAddress2(String id) async {
+    await _api.delete('/properties/address2/$id');
+  }
+
+  // ─────────────────────────── العنوان 3 ───────────────────────────
+
+  /// عناوين المستوى الثالث تحت عنوان 2.
+  Future<List<AddressNode>> getAddress3(String address2Id) async {
+    final res = await _api.get(
+        '/properties/address3?address2Id=${Uri.encodeQueryComponent(address2Id)}');
+    final data = (res['data'] as List?) ?? const [];
+    return data
+        .whereType<Map>()
+        .map((e) => AddressNode.fromJson(e.cast<String, dynamic>(),
+            parentId: address2Id))
+        .toList();
+  }
+
+  /// إنشاء عنوان 3 تحت عنوان 2 — يُرجع معرّفه.
+  Future<String?> createAddress3(String address2Id, String name,
+      {bool isActive = true}) async {
+    final res = await _api.post('/properties/address3', body: {
+      'parentId': address2Id,
+      'name': name,
+      'isActive': isActive,
+    });
+    return _extractId(res);
+  }
+
+  /// تعديل عنوان 3.
+  Future<void> updateAddress3(String id, {String? name, bool? isActive}) async {
+    await _api.put('/properties/address3/$id', body: {
+      if (name != null) 'name': name,
+      if (isActive != null) 'isActive': isActive,
+    });
+  }
+
+  /// حذف عنوان 3 — قد يرمي الخادم 409 (الرسالة تُمرَّر كما هي).
+  Future<void> deleteAddress3(String id) async {
+    await _api.delete('/properties/address3/$id');
+  }
+
   // ─────────────────────────── داخلي ───────────────────────────
+
+  /// يستخرج المعرّف المُنشأ من استجابة `{success,id}` أو `{data:{id}}`.
+  String? _extractId(Map<String, dynamic> res) {
+    final data = res['data'];
+    if (data is Map) {
+      return (data['id'] ?? data['Id'])?.toString();
+    }
+    return (res['id'] ?? res['Id'])?.toString();
+  }
 
   PropertyDetails _parseDetails(Map<String, dynamic> res) {
     // الاستجابة: {success,data:{عقار}, residents:[...], services:[...]}

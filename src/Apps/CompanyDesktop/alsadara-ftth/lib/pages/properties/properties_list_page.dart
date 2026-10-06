@@ -11,6 +11,7 @@ import '../../models/property.dart';
 import '../../permissions/permission_manager.dart';
 import '../../services/property_api_service.dart';
 import '../../theme/app_theme.dart';
+import 'location_master_page.dart';
 import 'property_detail_page.dart';
 import 'property_form_page.dart';
 import 'property_ui.dart';
@@ -98,6 +99,12 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
     if (saved == true) _load();
   }
 
+  Future<void> _openLocationMaster() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const LocationMasterPage()),
+    );
+  }
+
   Future<void> _open(Property p) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => PropertyDetailPage(propertyId: p.id)),
@@ -115,6 +122,11 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
           'سجل العقارات',
           leadingIcon: Icons.home_work_rounded,
           actions: [
+            IconButton(
+              tooltip: 'المناطق والعناوين',
+              onPressed: _openLocationMaster,
+              icon: const Icon(Icons.layers_rounded, color: Colors.white),
+            ),
             IconButton(
               tooltip: 'تحديث',
               onPressed: _loading ? null : () => _load(page: _page),

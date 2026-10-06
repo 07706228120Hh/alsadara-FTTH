@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/property.dart';
 import '../../services/property_api_service.dart';
 import '../../theme/app_theme.dart';
+import 'location_master_page.dart';
 import 'property_ui.dart';
 
 /// محافظات العراق مع رمز المحافظة (GovCode) المطابق لمحرّك العنونة بالباكند.
@@ -47,12 +48,6 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
   final _form = GlobalKey<FormState>();
 
   late int _govCode = _resolveGovCode();
-  late final _area =
-      TextEditingController(text: widget.existing?.area ?? '');
-  late final _address2 =
-      TextEditingController(text: widget.existing?.address2 ?? '');
-  late final _address3 =
-      TextEditingController(text: widget.existing?.address3 ?? '');
   late final _ownerName =
       TextEditingController(text: widget.existing?.ownerName ?? '');
   late final _ownerPhone =
@@ -67,6 +62,18 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
   double? _lon;
   bool _locating = false;
   bool _saving = false;
+
+  // ─── البنية الهرمية للمواقع (المنطقة → العنوان 2 → العنوان 3) ───
+  List<PropRegion> _regions = const [];
+  List<AddressNode> _address2Options = const [];
+  List<AddressNode> _address3Options = const [];
+  String? _regionId;
+  String? _address2Id;
+  String? _address3Id;
+  bool _loadingRegions = true;
+  bool _loadingA2 = false;
+  bool _loadingA3 = false;
+  String? _locError;
 
   int _resolveGovCode() {
     final e = widget.existing;
@@ -96,21 +103,123 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     super.initState();
     _lat = widget.existing?.latitude;
     _lon = widget.existing?.longitude;
+    _loadRegions();
   }
 
   @override
   void dispose() {
-    for (final c in [
-      _area,
-      _address2,
-      _address3,
-      _ownerName,
-      _ownerPhone,
-      _notes
-    ]) {
+    for (final c in [_ownerName, _ownerPhone, _notes]) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// يحمّل المناطق، ثم — عند التعديل — يعيد اختيار المنطقة/العناوين المطابقة تِباعاً.
+  Future<void> _loadRegions() async {
+    setState(() {
+      _loadingRegions = true;
+      _locError = null;
+    });
+    try {
+      final regions = await _api.getRegions();
+      if (!mounted) return;
+      final preset = widget.existing?.regionId;
+      final hasPreset =
+          preset != null && regions.any((r) => r.id == preset);
+      setState(() {
+        _regions = regions;
+        _regionId = hasPreset ? preset : null;
+        _loadingRegions = false;
+      });
+      if (hasPreset) {
+        await _loadAddress2(initial: widget.existing?.address2Id);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _locError = '$e';
+        _loadingRegions = false;
+      });
+    }
+  }
+
+  /// يحمّل عناوين (2) للمنطقة الحالية. [initial] يُعاد اختياره إن وُجد (للتعديل).
+  Future<void> _loadAddress2({String? initial}) async {
+    final rid = _regionId;
+    if (rid == null) return;
+    setState(() {
+      _loadingA2 = true;
+      _address2Options = const [];
+      _address2Id = null;
+      _address3Options = const [];
+      _address3Id = null;
+    });
+    try {
+      final list = await _api.getAddress2(rid);
+      if (!mounted) return;
+      final has = initial != null && list.any((a) => a.id == initial);
+      setState(() {
+        _address2Options = list;
+        _address2Id = has ? initial : null;
+        _loadingA2 = false;
+      });
+      if (has) {
+        await _loadAddress3(initial: widget.existing?.address3Id);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingA2 = false);
+      _msg('تعذّر تحميل العنوان 2: $e', err: true);
+    }
+  }
+
+  /// يحمّل عناوين (3) للعنوان 2 الحالي. [initial] يُعاد اختياره إن وُجد.
+  Future<void> _loadAddress3({String? initial}) async {
+    final a2 = _address2Id;
+    if (a2 == null) return;
+    setState(() {
+      _loadingA3 = true;
+      _address3Options = const [];
+      _address3Id = null;
+    });
+    try {
+      final list = await _api.getAddress3(a2);
+      if (!mounted) return;
+      final has = initial != null && list.any((a) => a.id == initial);
+      setState(() {
+        _address3Options = list;
+        _address3Id = has ? initial : null;
+        _loadingA3 = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingA3 = false);
+      _msg('تعذّر تحميل العنوان 3: $e', err: true);
+    }
+  }
+
+  String? get _regionName {
+    if (_regionId == null) return null;
+    for (final r in _regions) {
+      if (r.id == _regionId) return r.name;
+    }
+    return null;
+  }
+
+  String? get _address2Name {
+    if (_address2Id == null) return null;
+    for (final a in _address2Options) {
+      if (a.id == _address2Id) return a.name;
+    }
+    return null;
+  }
+
+  String? get _address3Name {
+    if (_address3Id == null) return null;
+    for (final a in _address3Options) {
+      if (a.id == _address3Id) return a.name;
+    }
+    return null;
   }
 
   Future<void> _useMyLocation() async {
@@ -149,11 +258,15 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     if (!(_form.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
     try {
+      // اللقطات النصّية = أسماء المختارات (تظهر على بطاقة الـQR/الطباعة).
+      final areaSnap = _regionName ?? '';
+      final a2Snap = _address2Name ?? '';
+      final a3Snap = _address3Name ?? '';
       if (widget.existing == null) {
         await _api.create(
           govCode: _govCode,
           governorate: _govName,
-          area: _area.text.trim(),
+          area: areaSnap,
           district: '',
           landmark: '',
           addressDetails: '',
@@ -164,14 +277,17 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
           notes: _notes.text.trim(),
           ownerName: _ownerName.text.trim(),
           ownerPhone: _ownerPhone.text.trim(),
-          address2: _address2.text.trim(),
-          address3: _address3.text.trim(),
+          address2: a2Snap,
+          address3: a3Snap,
+          regionId: _regionId,
+          address2Id: _address2Id,
+          address3Id: _address3Id,
         );
       } else {
         await _api.update(widget.existing!.id, {
           'govCode': _govCode,
           'governorate': _govName,
-          'area': _area.text.trim(),
+          'area': areaSnap,
           'latitude': _lat,
           'longitude': _lon,
           'propertyType': _property,
@@ -179,8 +295,11 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
           'notes': _notes.text.trim(),
           'ownerName': _ownerName.text.trim(),
           'ownerPhone': _ownerPhone.text.trim(),
-          'address2': _address2.text.trim(),
-          'address3': _address3.text.trim(),
+          'address2': a2Snap,
+          'address3': a3Snap,
+          'regionId': _regionId,
+          'address2Id': _address2Id,
+          'address3Id': _address3Id,
         });
       }
       if (mounted) Navigator.of(context).pop(true);
@@ -217,20 +336,36 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const PropSectionHeader(
-                    title: 'العنوان الوصفي',
-                    icon: Icons.location_city_rounded,
-                    gradient: AppTheme.blueGradient),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: PropSectionHeader(
+                          title: 'العنوان الوصفي',
+                          icon: Icons.location_city_rounded,
+                          gradient: AppTheme.blueGradient),
+                    ),
+                    TextButton.icon(
+                      onPressed: _openLocationMaster,
+                      icon: const Icon(Icons.layers_rounded, size: 18),
+                      label: Text('إدارة المناطق',
+                          style:
+                              GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
                 _panel([
                   _dropdown(),
                   const SizedBox(height: 12),
-                  _text(_area, 'المنطقة',
-                      icon: Icons.location_on_outlined, requiredField: true),
-                  _text(_address2, 'العنوان 2',
-                      icon: Icons.signpost_rounded),
-                  _text(_address3, 'العنوان 3',
-                      icon: Icons.add_road_rounded),
+                  if (_locError != null) ...[
+                    _locErrorRow(),
+                    const SizedBox(height: 12),
+                  ],
+                  _regionDropdown(),
+                  const SizedBox(height: 12),
+                  _address2Dropdown(),
+                  const SizedBox(height: 12),
+                  _address3Dropdown(),
                 ]),
                 const SizedBox(height: 16),
                 const PropSectionHeader(
@@ -336,6 +471,155 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     );
   }
 
+  Future<void> _openLocationMaster() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const LocationMasterPage()),
+    );
+    if (!mounted) return;
+    // قد تتغيّر المناطق/العناوين بعد الإدارة → أعِد التحميل مع الإبقاء على الاختيار.
+    final keepRegion = _regionId;
+    final keepA2 = _address2Id;
+    final keepA3 = _address3Id;
+    await _loadRegions();
+    if (!mounted || keepRegion == null) return;
+    if (_regions.any((r) => r.id == keepRegion)) {
+      setState(() => _regionId = keepRegion);
+      await _loadAddress2(initial: keepA2);
+      if (mounted && keepA2 != null && _address2Id == keepA2) {
+        await _loadAddress3(initial: keepA3);
+      }
+    }
+  }
+
+  Widget _locErrorRow() {
+    return Row(
+      children: [
+        const Icon(Icons.error_outline_rounded,
+            size: 18, color: AppTheme.errorColor),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text('تعذّر تحميل المناطق — $_locError',
+              style: GoogleFonts.cairo(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.errorColor)),
+        ),
+        TextButton(
+          onPressed: _loadRegions,
+          child: Text('إعادة',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+        ),
+      ],
+    );
+  }
+
+  Widget _regionDropdown() {
+    return DropdownButtonFormField<String?>(
+      initialValue: _regionId,
+      isExpanded: true,
+      style: GoogleFonts.cairo(fontWeight: FontWeight.w600, color: PropUi.ink),
+      decoration: InputDecoration(
+        labelText: 'المنطقة',
+        labelStyle: GoogleFonts.cairo(),
+        prefixIcon: _loadingRegions
+            ? const _MiniSpinner()
+            : const Icon(Icons.location_on_outlined,
+                color: AppTheme.primaryColor),
+        isDense: true,
+      ),
+      items: [
+        DropdownMenuItem(
+            value: null,
+            child: Text('— بلا منطقة —',
+                style: GoogleFonts.cairo(color: Colors.grey[600]))),
+        for (final r in _regions)
+          DropdownMenuItem(
+              value: r.id, child: Text(r.name, style: GoogleFonts.cairo())),
+      ],
+      onChanged: _loadingRegions
+          ? null
+          : (v) {
+              setState(() => _regionId = v);
+              if (v == null) {
+                setState(() {
+                  _address2Options = const [];
+                  _address2Id = null;
+                  _address3Options = const [];
+                  _address3Id = null;
+                });
+              } else {
+                _loadAddress2();
+              }
+            },
+    );
+  }
+
+  Widget _address2Dropdown() {
+    final enabled = _regionId != null && !_loadingA2;
+    return DropdownButtonFormField<String?>(
+      initialValue: _address2Id,
+      isExpanded: true,
+      style: GoogleFonts.cairo(fontWeight: FontWeight.w600, color: PropUi.ink),
+      decoration: InputDecoration(
+        labelText: 'العنوان 2',
+        labelStyle: GoogleFonts.cairo(),
+        prefixIcon: _loadingA2
+            ? const _MiniSpinner()
+            : const Icon(Icons.signpost_rounded, color: AppTheme.primaryColor),
+        isDense: true,
+      ),
+      items: [
+        DropdownMenuItem(
+            value: null,
+            child: Text('— بلا عنوان 2 —',
+                style: GoogleFonts.cairo(color: Colors.grey[600]))),
+        for (final a in _address2Options)
+          DropdownMenuItem(
+              value: a.id, child: Text(a.name, style: GoogleFonts.cairo())),
+      ],
+      onChanged: enabled
+          ? (v) {
+              setState(() => _address2Id = v);
+              if (v == null) {
+                setState(() {
+                  _address3Options = const [];
+                  _address3Id = null;
+                });
+              } else {
+                _loadAddress3();
+              }
+            }
+          : null,
+    );
+  }
+
+  Widget _address3Dropdown() {
+    final enabled = _address2Id != null && !_loadingA3;
+    return DropdownButtonFormField<String?>(
+      initialValue: _address3Id,
+      isExpanded: true,
+      style: GoogleFonts.cairo(fontWeight: FontWeight.w600, color: PropUi.ink),
+      decoration: InputDecoration(
+        labelText: 'العنوان 3',
+        labelStyle: GoogleFonts.cairo(),
+        prefixIcon: _loadingA3
+            ? const _MiniSpinner()
+            : const Icon(Icons.add_road_rounded, color: AppTheme.primaryColor),
+        isDense: true,
+      ),
+      items: [
+        DropdownMenuItem(
+            value: null,
+            child: Text('— بلا عنوان 3 —',
+                style: GoogleFonts.cairo(color: Colors.grey[600]))),
+        for (final a in _address3Options)
+          DropdownMenuItem(
+              value: a.id, child: Text(a.name, style: GoogleFonts.cairo())),
+      ],
+      onChanged: enabled ? (v) => setState(() => _address3Id = v) : null,
+    );
+  }
+
   Widget _locationRow() {
     final hasLoc = _lat != null && _lon != null;
     return Column(
@@ -435,7 +719,6 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     int maxLines = 1,
     TextInputType? keyboard,
     IconData? icon,
-    bool requiredField = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -444,9 +727,6 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         maxLines: maxLines,
         keyboardType: keyboard,
         style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
-        validator: requiredField
-            ? (v) => (v == null || v.trim().isEmpty) ? 'حقل مطلوب' : null
-            : null,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.cairo(),
@@ -455,6 +735,24 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               : Icon(icon, color: AppTheme.primaryColor, size: 20),
           isDense: true,
         ),
+      ),
+    );
+  }
+}
+
+/// مؤشّر تحميل صغير يحل محل أيقونة prefix في القوائم المنسدلة أثناء الجلب.
+class _MiniSpinner extends StatelessWidget {
+  const _MiniSpinner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(12),
+      child: SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(
+            strokeWidth: 2, color: AppTheme.primaryColor),
       ),
     );
   }

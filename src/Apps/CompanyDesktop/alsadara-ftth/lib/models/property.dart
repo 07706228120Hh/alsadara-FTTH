@@ -215,6 +215,78 @@ class ServiceLookup {
   }
 }
 
+/// منطقة (المستوى الأعلى في البنية الهرمية للمواقع) — `SasRegion` المشترك،
+/// معزولة بالشركة في الباكند. تتضمّن أجر الصيانة الشهري (maintenanceFee).
+class PropRegion {
+  final String id;
+  final String name;
+  final String? code;
+  final String? governorate;
+  final String? city;
+  final num maintenanceFee;
+  final bool isActive;
+
+  const PropRegion({
+    required this.id,
+    required this.name,
+    this.code,
+    this.governorate,
+    this.city,
+    this.maintenanceFee = 0,
+    this.isActive = true,
+  });
+
+  factory PropRegion.fromJson(Map<String, dynamic> j) => PropRegion(
+        id: _str(_pick(j, ['id', 'Id'])),
+        name: _str(_pick(j, ['name', 'Name'])),
+        code: _pickOrNull(j, ['code', 'Code']),
+        governorate: _pickOrNull(j, ['governorate', 'Governorate']),
+        city: _pickOrNull(j, ['city', 'City']),
+        maintenanceFee: _asNum(
+            _pick(j, ['maintenanceFee', 'MaintenanceFee', 'maintenance_fee'])),
+        isActive:
+            _pick(j, ['isActive', 'IsActive', 'is_active']) != false,
+      );
+}
+
+/// عقدة عنوان هرمية (العنوان 2 أو العنوان 3) تحت منطقة/عنوان أعلى.
+///
+/// [parentId] قد يأتي باسم `regionId` (للعنوان 2) أو `address2Id` (للعنوان 3)؛
+/// يُمرَّر صراحةً عبر [fromJson] أو يُقرأ من أيٍّ منها.
+class AddressNode {
+  final String id;
+  final String parentId;
+  final String name;
+  final bool isActive;
+
+  const AddressNode({
+    required this.id,
+    required this.parentId,
+    required this.name,
+    this.isActive = true,
+  });
+
+  factory AddressNode.fromJson(Map<String, dynamic> j, {String? parentId}) =>
+      AddressNode(
+        id: _str(_pick(j, ['id', 'Id'])),
+        parentId: parentId ??
+            _str(_pick(j, [
+              'parentId',
+              'ParentId',
+              'parent_id',
+              'regionId',
+              'RegionId',
+              'region_id',
+              'address2Id',
+              'Address2Id',
+              'address2_id',
+            ])),
+        name: _str(_pick(j, ['name', 'Name'])),
+        isActive:
+            _pick(j, ['isActive', 'IsActive', 'is_active']) != false,
+      );
+}
+
 /// العقار — عنوان وطني (QR + NPN + IqPin) + موقع + تصنيف.
 class Property {
   final String id;
@@ -236,6 +308,11 @@ class Property {
   final String? ownerPhone;
   final String? address2;
   final String? address3;
+
+  /// معرّفات البنية الهرمية للمواقع (Guid) — إضافةً للّقطات النصّية أعلاه.
+  final String? regionId;
+  final String? address2Id;
+  final String? address3Id;
   final double? latitude;
   final double? longitude;
   final String propertyType; // Residential / Commercial
@@ -269,6 +346,9 @@ class Property {
     this.ownerPhone,
     this.address2,
     this.address3,
+    this.regionId,
+    this.address2Id,
+    this.address3Id,
     this.latitude,
     this.longitude,
     required this.propertyType,
@@ -310,6 +390,11 @@ class Property {
           _pickOrNull(j, ['ownerPhone', 'OwnerPhone', 'owner_phone']),
       address2: _pickOrNull(j, ['address2', 'Address2', 'address_2']),
       address3: _pickOrNull(j, ['address3', 'Address3', 'address_3']),
+      regionId: _pickOrNull(j, ['regionId', 'RegionId', 'region_id']),
+      address2Id:
+          _pickOrNull(j, ['address2Id', 'Address2Id', 'address2_id']),
+      address3Id:
+          _pickOrNull(j, ['address3Id', 'Address3Id', 'address3_id']),
       latitude: _asDouble(_pick(j, ['latitude', 'Latitude', 'lat', 'Lat'])),
       longitude: _asDouble(_pick(j, ['longitude', 'Longitude', 'lon', 'Lon'])),
       propertyType:
@@ -437,4 +522,9 @@ double? _asDouble(dynamic v) {
   if (v == null) return null;
   if (v is num) return v.toDouble();
   return double.tryParse(v.toString());
+}
+
+num _asNum(dynamic v) {
+  if (v is num) return v;
+  return num.tryParse('${v ?? ''}') ?? 0;
 }
