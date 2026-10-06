@@ -20,7 +20,7 @@ import '../../services/notification_service.dart';
 import '../../ftth/widgets/floating_toolbar.dart';
 import '../home_page.dart';
 import '../super_admin/super_admin_dashboard.dart';
-import '../offline_router_setup_page.dart';
+import '../../network_quality/network_quality_home_page.dart';
 
 // ============================================
 // نماذج البيانات
@@ -1119,7 +1119,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r)),
         ),
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const OfflineRouterSetupPage()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const NetworkToolsHomePage()));
         },
       ),
     );

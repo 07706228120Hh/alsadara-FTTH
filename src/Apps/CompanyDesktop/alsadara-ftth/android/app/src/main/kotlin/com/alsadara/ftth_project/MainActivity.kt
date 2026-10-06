@@ -2,7 +2,10 @@ package com.alsadara.ftth_project
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -16,6 +19,7 @@ class MainActivity : FlutterActivity() {
     private val MOCK_CHANNEL = "com.alsadara/mock_detector"
     private val INSTALL_CHANNEL = "com.alsadara/installer"
     private val BATTERY_CHANNEL = "com.alsadara.ftth_project/battery"
+    private val NETQUALITY_CHANNEL = "com.alsadara.ftth_project/netquality"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -117,5 +121,54 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        // Network Quality channel — قراءة إشارة WiFi لأداة فحص الجودة
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NETQUALITY_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getWifiInfo" -> {
+                        try {
+                            result.success(readWifiInfo())
+                        } catch (e: Exception) {
+                            result.error("WIFI_ERROR", e.message, null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun readWifiInfo(): Map<String, Any?> {
+        val map = HashMap<String, Any?>()
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val wifiManager =
+            applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
+        // التحقق أن الاتصال الحالي عبر WiFi
+        var onWifi = false
+        try {
+            val network = cm.activeNetwork
+            val caps = cm.getNetworkCapabilities(network)
+            onWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        } catch (_: Exception) {
+        }
+
+        val info = wifiManager.connectionInfo
+        if (info == null || info.networkId == -1) {
+            map["connected"] = onWifi
+            return map
+        }
+
+        map["connected"] = true
+        map["ssid"] = info.ssid
+        map["bssid"] = info.bssid
+        map["rssi"] = info.rssi
+        map["linkSpeed"] = info.linkSpeed // Mbps
+        map["signalLevel"] = WifiManager.calculateSignalLevel(info.rssi, 100)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            map["frequency"] = info.frequency // MHz
+        }
+        return map
     }
 }

@@ -384,19 +384,22 @@ class PropertyApiService {
 
   /// إنشاء عنوان 2 تحت منطقة — يُرجع معرّفه.
   Future<String?> createAddress2(String regionId, String name,
-      {bool isActive = true}) async {
+      {num maintenanceFee = 0, bool isActive = true}) async {
     final res = await _api.post('/properties/address2', body: {
       'parentId': regionId,
       'name': name,
+      'maintenanceFee': maintenanceFee,
       'isActive': isActive,
     });
     return _extractId(res);
   }
 
-  /// تعديل عنوان 2.
-  Future<void> updateAddress2(String id, {String? name, bool? isActive}) async {
+  /// تعديل عنوان 2 — يُرسل فقط الحقول المُمرَّرة.
+  Future<void> updateAddress2(String id,
+      {String? name, num? maintenanceFee, bool? isActive}) async {
     await _api.put('/properties/address2/$id', body: {
       if (name != null) 'name': name,
+      if (maintenanceFee != null) 'maintenanceFee': maintenanceFee,
       if (isActive != null) 'isActive': isActive,
     });
   }
@@ -422,19 +425,22 @@ class PropertyApiService {
 
   /// إنشاء عنوان 3 تحت عنوان 2 — يُرجع معرّفه.
   Future<String?> createAddress3(String address2Id, String name,
-      {bool isActive = true}) async {
+      {num maintenanceFee = 0, bool isActive = true}) async {
     final res = await _api.post('/properties/address3', body: {
       'parentId': address2Id,
       'name': name,
+      'maintenanceFee': maintenanceFee,
       'isActive': isActive,
     });
     return _extractId(res);
   }
 
-  /// تعديل عنوان 3.
-  Future<void> updateAddress3(String id, {String? name, bool? isActive}) async {
+  /// تعديل عنوان 3 — يُرسل فقط الحقول المُمرَّرة.
+  Future<void> updateAddress3(String id,
+      {String? name, num? maintenanceFee, bool? isActive}) async {
     await _api.put('/properties/address3/$id', body: {
       if (name != null) 'name': name,
+      if (maintenanceFee != null) 'maintenanceFee': maintenanceFee,
       if (isActive != null) 'isActive': isActive,
     });
   }
@@ -442,6 +448,33 @@ class PropertyApiService {
   /// حذف عنوان 3 — قد يرمي الخادم 409 (الرسالة تُمرَّر كما هي).
   Future<void> deleteAddress3(String id) async {
     await _api.delete('/properties/address3/$id');
+  }
+
+  // ─────────────────────────── أجر الصيانة التراكمي ───────────────────────────
+
+  /// يحسب أجر الصيانة الإجمالي التراكمي (منطقة + عنوان2 + عنوان3) عبر الخادم.
+  ///
+  /// كل المعاملات اختيارية؛ المجموع = جمع المستويات المُمرَّرة الموجودة.
+  /// يُرجع `data.total` كـ[num] (0 إن لم يُمرَّر أي مستوى أو غابت القيمة).
+  Future<num> computeMaintenanceFee({
+    String? regionId,
+    String? address2Id,
+    String? address3Id,
+  }) async {
+    final params = <String, String>{
+      if (regionId != null && regionId.isNotEmpty) 'regionId': regionId,
+      if (address2Id != null && address2Id.isNotEmpty) 'address2Id': address2Id,
+      if (address3Id != null && address3Id.isNotEmpty) 'address3Id': address3Id,
+    };
+    if (params.isEmpty) return 0;
+    final query = params.entries
+        .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+    final res = await _api.get('/properties/maintenance-fee?$query');
+    final data = (res['data'] as Map?)?.cast<String, dynamic>();
+    final total = data?['total'] ?? data?['Total'] ?? res['total'] ?? res['Total'];
+    if (total is num) return total;
+    return num.tryParse('${total ?? ''}') ?? 0;
   }
 
   // ─────────────────────────── داخلي ───────────────────────────

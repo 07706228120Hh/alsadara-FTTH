@@ -248,7 +248,8 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
     final r = await _showNodeDialog('عنوان 2 جديد');
     if (r == null) return;
     try {
-      await _api.createAddress2(region.id, r.name, isActive: r.isActive);
+      await _api.createAddress2(region.id, r.name,
+          maintenanceFee: r.maintenanceFee, isActive: r.isActive);
       if (!mounted) return;
       _msg('أُضيف العنوان');
       await _reloadAddress2();
@@ -262,7 +263,10 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
     final r = await _showNodeDialog('تعديل عنوان 2', existing: node);
     if (r == null) return;
     try {
-      await _api.updateAddress2(node.id, name: r.name, isActive: r.isActive);
+      await _api.updateAddress2(node.id,
+          name: r.name,
+          maintenanceFee: r.maintenanceFee,
+          isActive: r.isActive);
       if (!mounted) return;
       _msg('حُفظت التعديلات');
       await _reloadAddress2();
@@ -292,7 +296,8 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
     final r = await _showNodeDialog('عنوان 3 جديد');
     if (r == null) return;
     try {
-      await _api.createAddress3(a2.id, r.name, isActive: r.isActive);
+      await _api.createAddress3(a2.id, r.name,
+          maintenanceFee: r.maintenanceFee, isActive: r.isActive);
       if (!mounted) return;
       _msg('أُضيف العنوان');
       await _reloadAddress3();
@@ -306,7 +311,10 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
     final r = await _showNodeDialog('تعديل عنوان 3', existing: node);
     if (r == null) return;
     try {
-      await _api.updateAddress3(node.id, name: r.name, isActive: r.isActive);
+      await _api.updateAddress3(node.id,
+          name: r.name,
+          maintenanceFee: r.maintenanceFee,
+          isActive: r.isActive);
       if (!mounted) return;
       _msg('حُفظت التعديلات');
       await _reloadAddress3();
@@ -689,23 +697,35 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Flexible(
-                          child: Text(n.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.cairo(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                  color: PropUi.ink)),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(n.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.cairo(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                      color: PropUi.ink)),
+                            ),
+                            const SizedBox(width: 8),
+                            PropBadge(
+                              label: n.isActive ? 'نشط' : 'موقوف',
+                              color: n.isActive
+                                  ? AppTheme.successColor
+                                  : Colors.grey,
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        PropBadge(
-                          label: n.isActive ? 'نشط' : 'موقوف',
-                          color:
-                              n.isActive ? AppTheme.successColor : Colors.grey,
-                        ),
+                        if (n.maintenanceFee > 0) ...[
+                          const SizedBox(height: 4),
+                          _tag('أجر: ${_fmtFee(n.maintenanceFee)}',
+                              AppTheme.warningColor),
+                        ],
                       ],
                     ),
                   ),
@@ -785,8 +805,10 @@ class _RegionInput {
 
 class _NodeInput {
   final String name;
+  final num maintenanceFee;
   final bool isActive;
-  const _NodeInput({required this.name, this.isActive = true});
+  const _NodeInput(
+      {required this.name, this.maintenanceFee = 0, this.isActive = true});
 }
 
 // ─────────────────────────── حوار المنطقة ───────────────────────────
@@ -944,18 +966,31 @@ class _NodeDialog extends StatefulWidget {
 class _NodeDialogState extends State<_NodeDialog> {
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.existing?.name ?? '');
+  late final _fee = TextEditingController(
+      text: widget.existing == null
+          ? ''
+          : _feeText(widget.existing!.maintenanceFee));
   late bool _active = widget.existing?.isActive ?? true;
+
+  static String _feeText(num v) {
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toString();
+  }
 
   @override
   void dispose() {
     _name.dispose();
+    _fee.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (!(_form.currentState?.validate() ?? false)) return;
-    Navigator.of(context)
-        .pop(_NodeInput(name: _name.text.trim(), isActive: _active));
+    Navigator.of(context).pop(_NodeInput(
+      name: _name.text.trim(),
+      maintenanceFee: num.tryParse(_fee.text.trim()) ?? 0,
+      isActive: _active,
+    ));
   }
 
   @override
@@ -981,6 +1016,27 @@ class _NodeDialogState extends State<_NodeDialog> {
                     labelText: 'الاسم',
                     labelStyle: GoogleFonts.cairo(),
                     prefixIcon: const Icon(Icons.signpost_rounded,
+                        color: AppTheme.primaryColor, size: 20),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _fee,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+                  validator: (v) {
+                    final t = (v ?? '').trim();
+                    if (t.isNotEmpty && num.tryParse(t) == null) {
+                      return 'أدخل رقماً صحيحاً';
+                    }
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'أجر الصيانة الشهري',
+                    labelStyle: GoogleFonts.cairo(),
+                    prefixIcon: const Icon(Icons.payments_rounded,
                         color: AppTheme.primaryColor, size: 20),
                     isDense: true,
                   ),

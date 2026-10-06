@@ -257,12 +257,16 @@ class AddressNode {
   final String id;
   final String parentId;
   final String name;
+
+  /// أجر الصيانة الشهري لهذا المستوى (تراكمي مع الأعلى) — افتراضي 0.
+  final num maintenanceFee;
   final bool isActive;
 
   const AddressNode({
     required this.id,
     required this.parentId,
     required this.name,
+    this.maintenanceFee = 0,
     this.isActive = true,
   });
 
@@ -282,6 +286,8 @@ class AddressNode {
               'address2_id',
             ])),
         name: _str(_pick(j, ['name', 'Name'])),
+        maintenanceFee: _asNum(
+            _pick(j, ['maintenanceFee', 'MaintenanceFee', 'maintenance_fee'])),
         isActive:
             _pick(j, ['isActive', 'IsActive', 'is_active']) != false,
       );

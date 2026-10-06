@@ -41,6 +41,10 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
   bool _tasksLoading = false;
   String? _tasksError;
 
+  // أجر الصيانة الإجمالي التراكمي (مشتقّ للعرض فقط) — إن كان للعقار منطقة.
+  num? _totalFee;
+  bool _feeLoading = false;
+
   bool get _canManage =>
       PermissionManager.instance.canAdd('property_registry');
   bool get _canDelete =>
@@ -67,6 +71,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         _loading = false;
       });
       _loadTasks();
+      _loadTotalFee();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -215,6 +220,32 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         _tasksError = '$e';
         _tasksLoading = false;
       });
+    }
+  }
+
+  /// يحسب أجر الصيانة الإجمالي التراكمي للعقار (إن كان له منطقة) — عرض فقط.
+  Future<void> _loadTotalFee() async {
+    final p = _p;
+    final rid = p?.regionId;
+    if (rid == null || rid.isEmpty) {
+      if (mounted) setState(() => _totalFee = null);
+      return;
+    }
+    setState(() => _feeLoading = true);
+    try {
+      final total = await _api.computeMaintenanceFee(
+        regionId: rid,
+        address2Id: p?.address2Id,
+        address3Id: p?.address3Id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _totalFee = total;
+        _feeLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _feeLoading = false);
     }
   }
 
@@ -399,6 +430,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           _kv('العنوان 3', p.address3 ?? ''),
           _kv('اسم صاحب الدار', p.ownerName ?? ''),
           _kv('هاتف صاحب الدار', p.ownerPhone ?? ''),
+          if ((p.regionId ?? '').isNotEmpty) _feeRow(),
           if (p.notes.trim().isNotEmpty) _kv('ملاحظات', p.notes),
           if (p.latitude != null && p.longitude != null) ...[
             const SizedBox(height: 10),
@@ -913,6 +945,42 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     final l = dt.toLocal();
     String two(int n) => n.toString().padLeft(2, '0');
     return '${l.year}-${two(l.month)}-${two(l.day)}';
+  }
+
+  /// صفّ «أجر الصيانة الإجمالي» التراكمي (منطقة + عنوان2 + عنوان3) — عرض فقط.
+  Widget _feeRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text('أجر الصيانة',
+                style: GoogleFonts.cairo(
+                    color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          ),
+          Expanded(
+            child: _feeLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppTheme.warningColor),
+                  )
+                : Text('${_fmtFee(_totalFee ?? 0)} د.ع  (تراكمي)',
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.warningColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmtFee(num v) {
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toString();
   }
 
   Widget _kv(String k, String v) {

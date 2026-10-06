@@ -75,6 +75,11 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
   bool _loadingA3 = false;
   String? _locError;
 
+  // أجر الصيانة الإجمالي التراكمي (منطقة + عنوان2 + عنوان3) — للعرض فقط.
+  num? _totalFee;
+  bool _loadingFee = false;
+  int _feeReq = 0; // عدّاد لتجاهل استجابات طلبات قديمة (آخر طلب يفوز)
+
   int _resolveGovCode() {
     final e = widget.existing;
     if (e == null) return _governorates.first.key;
@@ -133,6 +138,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
       });
       if (hasPreset) {
         await _loadAddress2(initial: widget.existing?.address2Id);
+        if (!mounted) return;
+        await _refreshTotalFee();
       }
     } catch (e) {
       if (!mounted) return;
@@ -220,6 +227,43 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
       if (a.id == _address3Id) return a.name;
     }
     return null;
+  }
+
+  /// يعيد حساب أجر الصيانة الإجمالي التراكمي عبر الخادم عند تغيّر أي مستوى.
+  /// آخر طلب يفوز (عبر [_feeReq]) لتفادي تعارض الاستجابات المتأخّرة.
+  Future<void> _refreshTotalFee() async {
+    final rid = _regionId;
+    if (rid == null) {
+      if (mounted) {
+        setState(() {
+          _totalFee = null;
+          _loadingFee = false;
+        });
+      }
+      return;
+    }
+    final reqId = ++_feeReq;
+    setState(() => _loadingFee = true);
+    try {
+      final total = await _api.computeMaintenanceFee(
+        regionId: rid,
+        address2Id: _address2Id,
+        address3Id: _address3Id,
+      );
+      if (!mounted || reqId != _feeReq) return;
+      setState(() {
+        _totalFee = total;
+        _loadingFee = false;
+      });
+    } catch (_) {
+      if (!mounted || reqId != _feeReq) return;
+      setState(() => _loadingFee = false);
+    }
+  }
+
+  String _fmtFee(num v) {
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toString();
   }
 
   Future<void> _useMyLocation() async {
@@ -366,6 +410,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                   _address2Dropdown(),
                   const SizedBox(height: 12),
                   _address3Dropdown(),
+                  if (_regionId != null) ...[
+                    const SizedBox(height: 12),
+                    _feeSummary(),
+                  ],
                 ]),
                 const SizedBox(height: 16),
                 const PropSectionHeader(
@@ -547,8 +595,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                   _address3Options = const [];
                   _address3Id = null;
                 });
+                _refreshTotalFee();
               } else {
                 _loadAddress2();
+                _refreshTotalFee();
               }
             },
     );
@@ -585,8 +635,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                   _address3Options = const [];
                   _address3Id = null;
                 });
+                _refreshTotalFee();
               } else {
                 _loadAddress3();
+                _refreshTotalFee();
               }
             }
           : null,
@@ -616,7 +668,63 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
           DropdownMenuItem(
               value: a.id, child: Text(a.name, style: GoogleFonts.cairo())),
       ],
-      onChanged: enabled ? (v) => setState(() => _address3Id = v) : null,
+      onChanged: enabled
+          ? (v) {
+              setState(() => _address3Id = v);
+              _refreshTotalFee();
+            }
+          : null,
+    );
+  }
+
+  /// بطاقة ملخّص «أجر الصيانة الإجمالي» (تراكمي: منطقة + عنوان2 + عنوان3).
+  /// مشتقّة للعرض فقط — لا تُحفظ على العقار.
+  Widget _feeSummary() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.warningColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border:
+            Border.all(color: AppTheme.warningColor.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.payments_rounded,
+              color: AppTheme.warningColor, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('أجر الصيانة الإجمالي',
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: PropUi.ink)),
+                Text('تراكمي: منطقة + عنوان 2 + عنوان 3',
+                    style: GoogleFonts.cairo(
+                        fontSize: 11, color: Colors.grey[600])),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (_loadingFee)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppTheme.warningColor),
+            )
+          else
+            Text('${_fmtFee(_totalFee ?? 0)} د.ع',
+                style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    color: AppTheme.warningColor)),
+        ],
+      ),
     );
   }
 
