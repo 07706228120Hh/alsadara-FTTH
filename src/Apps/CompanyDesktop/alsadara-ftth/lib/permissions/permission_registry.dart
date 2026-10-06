@@ -1054,6 +1054,18 @@ class PermissionRegistry {
       allowedActions: ['view', 'add', 'edit', 'delete'],
     ),
 
+    // ─── سجل العقارات المستقل (بوّابة /api/properties) ───
+    PermissionEntry(
+      key: 'property_registry',
+      labelAr: 'سجل العقارات',
+      description:
+          'تسجيل العقارات بعنوان وطني (QR + NPN) وربط المواطنين والخدمات',
+      icon: Icons.home_work_rounded,
+      category: 'الوكلاء',
+      // view: عرض العقارات · add/edit/delete: إدارة العقارات/المواطنين/الخدمات (manage في الخادم)
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+
     // ─── واتساب ───
     PermissionEntry(
       key: 'whatsapp',

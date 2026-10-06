@@ -120,7 +120,8 @@ public class PropertiesController : ControllerBase
         var p = await _db.Properties.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
         if (p == null) return NotFound(new { success = false, message = "العقار غير موجود" });
-        return Ok(new { success = true, data = ToDto(p) });
+        var (residents, services) = await LoadLinksAsync(p.Id, companyId, ct);
+        return Ok(new { success = true, data = ToDto(p), residents, services });
     }
 
     /// <summary>حلّ الـQR الدائم → العقار + ملخّص (المواطنون/الخدمات تُضاف في المراحل التالية).</summary>
@@ -136,7 +137,8 @@ public class PropertiesController : ControllerBase
         var p = await _db.Properties.AsNoTracking()
             .FirstOrDefaultAsync(x => x.QrToken == t && x.CompanyId == companyId, ct);
         if (p == null) return NotFound(new { success = false, message = "لا عقار بهذا الرمز" });
-        return Ok(new { success = true, data = ToDto(p), residents = Array.Empty<object>(), services = Array.Empty<object>() });
+        var (residents, services) = await LoadLinksAsync(p.Id, companyId, ct);
+        return Ok(new { success = true, data = ToDto(p), residents, services });
     }
 
     /// <summary>إنشاء عقار: يخصّص NPN ذرّياً لكل محافظة + QrToken دائم + IqPin من الإحداثيات.</summary>
@@ -239,7 +241,180 @@ public class PropertiesController : ControllerBase
         return Ok(new { success = true, message = "تم حذف العقار" });
     }
 
+    // ============ المواطنون المرتبطون (إعادة استخدام Citizen) ============
+
+    /// <summary>بحث عن مواطني الشركة لربطهم بعقار (للمنتقي).</summary>
+    [HttpGet("citizens")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> SearchCitizens([FromQuery] string? q, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var query = _db.Citizens.AsNoTracking().Where(c => c.CompanyId == companyId && !c.IsDeleted);
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var s = q.Trim();
+            query = query.Where(c => c.FullName.Contains(s) || c.PhoneNumber.Contains(s));
+        }
+        var rows = await query.OrderBy(c => c.FullName).Take(30)
+            .Select(c => new { id = c.Id, name = c.FullName, phone = c.PhoneNumber, district = c.District })
+            .ToListAsync(ct);
+        return Ok(new { success = true, data = rows });
+    }
+
+    /// <summary>ربط مواطن بعقار (مالك/مستأجر/ساكن).</summary>
+    [HttpPost("{id:guid}/residents")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> LinkResident(Guid id, [FromBody] LinkResidentRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        if (await GetOwnedPropertyAsync(id, companyId, ct) == null)
+            return NotFound(new { success = false, message = "العقار غير موجود" });
+        // تحقّق أن المواطن ضمن الشركة (عزل).
+        var citizenOk = await _db.Citizens.AsNoTracking()
+            .AnyAsync(c => c.Id == request.CitizenId && c.CompanyId == companyId && !c.IsDeleted, ct);
+        if (!citizenOk) return BadRequest(new { success = false, message = "المواطن غير موجود في شركتك" });
+        // منع التكرار.
+        var exists = await _db.PropertyResidents.AsNoTracking()
+            .AnyAsync(r => r.PropertyId == id && r.CitizenId == request.CitizenId && !r.IsDeleted, ct);
+        if (exists) return Conflict(new { success = false, message = "المواطن مرتبط بالعقار مسبقاً" });
+
+        var res = new PropertyResident
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = companyId,
+            PropertyId = id,
+            CitizenId = request.CitizenId,
+            Relationship = request.Relationship ?? ResidentRelationship.Owner,
+            IsPrimary = request.IsPrimary ?? false
+        };
+        await _db.PropertyResidents.AddAsync(res, ct);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, id = res.Id, message = "تم ربط المواطن" });
+    }
+
+    /// <summary>فكّ ربط مواطن عن عقار (ناعم).</summary>
+    [HttpDelete("{id:guid}/residents/{residentId:guid}")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UnlinkResident(Guid id, Guid residentId, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var r = await _db.PropertyResidents
+            .FirstOrDefaultAsync(x => x.Id == residentId && x.PropertyId == id && x.CompanyId == companyId, ct);
+        if (r == null) return NotFound(new { success = false, message = "الربط غير موجود" });
+        r.IsDeleted = true; r.DeletedAt = DateTime.UtcNow;
+        _db.PropertyResidents.Update(r);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم فكّ الربط" });
+    }
+
+    // ============ خدمات العقار (موصّل عام) ============
+
+    /// <summary>إضافة خدمة لعقار (إنترنت/ماستر/…).</summary>
+    [HttpPost("{id:guid}/services")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> AddService(Guid id, [FromBody] UpsertServiceRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        if (await GetOwnedPropertyAsync(id, companyId, ct) == null)
+            return NotFound(new { success = false, message = "العقار غير موجود" });
+
+        var svc = new PropertyService
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = companyId,
+            PropertyId = id,
+            ServiceType = request.ServiceType ?? PropertyServiceType.Internet,
+            ProviderType = request.ProviderType ?? PropertyServiceProvider.Sas,
+            ProviderRefId = Nullify(request.ProviderRefId),
+            SubscriberRef = Nullify(request.SubscriberRef),
+            Status = request.Status ?? PropertyServiceStatus.Active,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate,
+            Notes = Nullify(request.Notes)
+        };
+        await _db.PropertyServices.AddAsync(svc, ct);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, id = svc.Id, message = "تمت إضافة الخدمة" });
+    }
+
+    /// <summary>تعديل خدمة عقار (الحالة/التواريخ/المرجع).</summary>
+    [HttpPut("{id:guid}/services/{serviceId:guid}")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UpdateService(Guid id, Guid serviceId, [FromBody] UpsertServiceRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var svc = await _db.PropertyServices
+            .FirstOrDefaultAsync(x => x.Id == serviceId && x.PropertyId == id && x.CompanyId == companyId, ct);
+        if (svc == null) return NotFound(new { success = false, message = "الخدمة غير موجودة" });
+        if (request.ServiceType.HasValue) svc.ServiceType = request.ServiceType.Value;
+        if (request.ProviderType.HasValue) svc.ProviderType = request.ProviderType.Value;
+        if (request.ProviderRefId != null) svc.ProviderRefId = Nullify(request.ProviderRefId);
+        if (request.SubscriberRef != null) svc.SubscriberRef = Nullify(request.SubscriberRef);
+        if (request.Status.HasValue) svc.Status = request.Status.Value;
+        if (request.StartDate.HasValue) svc.StartDate = request.StartDate;
+        if (request.EndDate.HasValue) svc.EndDate = request.EndDate;
+        if (request.Notes != null) svc.Notes = Nullify(request.Notes);
+        svc.UpdatedAt = DateTime.UtcNow;
+        _db.PropertyServices.Update(svc);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم تحديث الخدمة" });
+    }
+
+    /// <summary>إزالة خدمة عقار (ناعم).</summary>
+    [HttpDelete("{id:guid}/services/{serviceId:guid}")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> RemoveService(Guid id, Guid serviceId, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var svc = await _db.PropertyServices
+            .FirstOrDefaultAsync(x => x.Id == serviceId && x.PropertyId == id && x.CompanyId == companyId, ct);
+        if (svc == null) return NotFound(new { success = false, message = "الخدمة غير موجودة" });
+        svc.IsDeleted = true; svc.DeletedAt = DateTime.UtcNow;
+        _db.PropertyServices.Update(svc);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تمت إزالة الخدمة" });
+    }
+
     // ============ مساعدات ============
+
+    private async Task<Property?> GetOwnedPropertyAsync(Guid id, Guid companyId, CancellationToken ct) =>
+        await _db.Properties.FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == companyId, ct);
+
+    /// <summary>يحمّل المواطنين (مع بيانات Citizen) والخدمات المرتبطة بعقار للعرض.</summary>
+    private async Task<(List<object> residents, List<object> services)> LoadLinksAsync(Guid propertyId, Guid companyId, CancellationToken ct)
+    {
+        var residents = await _db.PropertyResidents.AsNoTracking()
+            .Where(r => r.PropertyId == propertyId && r.CompanyId == companyId)
+            .Join(_db.Citizens.AsNoTracking(), r => r.CitizenId, c => c.Id, (r, c) => new
+            {
+                id = r.Id,
+                citizenId = c.Id,
+                name = c.FullName,
+                phone = c.PhoneNumber,
+                relationship = r.Relationship.ToString(),
+                isPrimary = r.IsPrimary
+            })
+            .ToListAsync(ct);
+
+        var services = await _db.PropertyServices.AsNoTracking()
+            .Where(s => s.PropertyId == propertyId && s.CompanyId == companyId)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => new
+            {
+                id = s.Id,
+                serviceType = s.ServiceType.ToString(),
+                providerType = s.ProviderType.ToString(),
+                providerRefId = s.ProviderRefId,
+                subscriberRef = s.SubscriberRef,
+                status = s.Status.ToString(),
+                startDate = s.StartDate,
+                endDate = s.EndDate,
+                notes = s.Notes
+            })
+            .ToListAsync(ct);
+
+        return (residents.Cast<object>().ToList(), services.Cast<object>().ToList());
+    }
 
     private static string? Nullify(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
@@ -289,4 +464,21 @@ public record PropertyUpsertRequest(
     double? Longitude,
     PropertyType? PropertyType,
     PropertyOwnership? Ownership,
+    string? Notes);
+
+/// <summary>طلب ربط مواطن (Citizen موجود) بعقار.</summary>
+public record LinkResidentRequest(
+    Guid CitizenId,
+    ResidentRelationship? Relationship,
+    bool? IsPrimary);
+
+/// <summary>طلب إضافة/تعديل خدمة عقار (موصّل عام).</summary>
+public record UpsertServiceRequest(
+    PropertyServiceType? ServiceType,
+    PropertyServiceProvider? ProviderType,
+    string? ProviderRefId,
+    string? SubscriberRef,
+    PropertyServiceStatus? Status,
+    DateTime? StartDate,
+    DateTime? EndDate,
     string? Notes);
