@@ -541,7 +541,9 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.PhoneNumber).IsUnique();
+            // تفرّد الهاتف لكل شركة (لا عالمياً) + استثناء المحذوفين (إعادة استخدام هاتف موظف محذوف).
+            entity.HasIndex(e => new { e.CompanyId, e.PhoneNumber }).IsUnique()
+                .HasFilter("\"IsDeleted\" = false");
             entity.HasIndex(e => e.Email);
             entity.Property(e => e.FullName).HasMaxLength(100).IsRequired();
             entity.Property(e => e.PhoneNumber).HasMaxLength(20).IsRequired();

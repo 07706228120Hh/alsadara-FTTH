@@ -1240,17 +1240,19 @@ public class InternalDataController : ControllerBase
         if (currentCount >= company.MaxUsers)
             return BadRequest(new { success = false, message = $"تم الوصول للحد الأقصى للموظفين ({company.MaxUsers})" });
 
-        // التحقق من رقم الهاتف
-        var existingPhone = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.PhoneNumber == request.PhoneNumber && !u.IsDeleted);
+        // التحقق من رقم الهاتف — لكل شركة (لا عالمياً): يسمح بنفس الرقم في شركات مختلفة
+        var existingPhone = await _unitOfWork.Users.FirstOrDefaultAsync(
+            u => u.PhoneNumber == request.PhoneNumber && u.CompanyId == id && !u.IsDeleted);
         if (existingPhone != null)
-            return BadRequest(new { success = false, message = "رقم الهاتف مستخدم بالفعل" });
+            return BadRequest(new { success = false, message = "رقم الهاتف مستخدم بالفعل في هذه الشركة" });
 
-        // التحقق من البريد الإلكتروني
+        // التحقق من البريد الإلكتروني — لكل شركة
         if (!string.IsNullOrEmpty(request.Email))
         {
-            var existingEmail = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Email == request.Email && !u.IsDeleted);
+            var existingEmail = await _unitOfWork.Users.FirstOrDefaultAsync(
+                u => u.Email == request.Email && u.CompanyId == id && !u.IsDeleted);
             if (existingEmail != null)
-                return BadRequest(new { success = false, message = "البريد الإلكتروني مستخدم بالفعل" });
+                return BadRequest(new { success = false, message = "البريد الإلكتروني مستخدم بالفعل في هذه الشركة" });
         }
 
         // توليد كود أمان بصمة فريد تلقائياً
