@@ -49,12 +49,14 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
   late int _govCode = _resolveGovCode();
   late final _area =
       TextEditingController(text: widget.existing?.area ?? '');
-  late final _district =
-      TextEditingController(text: widget.existing?.district ?? '');
-  late final _landmark =
-      TextEditingController(text: widget.existing?.landmark ?? '');
-  late final _details =
-      TextEditingController(text: widget.existing?.addressDetails ?? '');
+  late final _address2 =
+      TextEditingController(text: widget.existing?.address2 ?? '');
+  late final _address3 =
+      TextEditingController(text: widget.existing?.address3 ?? '');
+  late final _ownerName =
+      TextEditingController(text: widget.existing?.ownerName ?? '');
+  late final _ownerPhone =
+      TextEditingController(text: widget.existing?.ownerPhone ?? '');
   late final _notes =
       TextEditingController(text: widget.existing?.notes ?? '');
   late String _ownership = _normalize(
@@ -98,7 +100,14 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
 
   @override
   void dispose() {
-    for (final c in [_area, _district, _landmark, _details, _notes]) {
+    for (final c in [
+      _area,
+      _address2,
+      _address3,
+      _ownerName,
+      _ownerPhone,
+      _notes
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -145,28 +154,33 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
           govCode: _govCode,
           governorate: _govName,
           area: _area.text.trim(),
-          district: _district.text.trim(),
-          landmark: _landmark.text.trim(),
-          addressDetails: _details.text.trim(),
+          district: '',
+          landmark: '',
+          addressDetails: '',
           latitude: _lat,
           longitude: _lon,
           propertyType: _property,
           ownership: _ownership,
           notes: _notes.text.trim(),
+          ownerName: _ownerName.text.trim(),
+          ownerPhone: _ownerPhone.text.trim(),
+          address2: _address2.text.trim(),
+          address3: _address3.text.trim(),
         );
       } else {
         await _api.update(widget.existing!.id, {
           'govCode': _govCode,
           'governorate': _govName,
           'area': _area.text.trim(),
-          'district': _district.text.trim(),
-          'landmark': _landmark.text.trim(),
-          'addressDetails': _details.text.trim(),
           'latitude': _lat,
           'longitude': _lon,
           'propertyType': _property,
           'ownership': _ownership,
           'notes': _notes.text.trim(),
+          'ownerName': _ownerName.text.trim(),
+          'ownerPhone': _ownerPhone.text.trim(),
+          'address2': _address2.text.trim(),
+          'address3': _address3.text.trim(),
         });
       }
       if (mounted) Navigator.of(context).pop(true);
@@ -213,12 +227,23 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                   const SizedBox(height: 12),
                   _text(_area, 'المنطقة',
                       icon: Icons.location_on_outlined, requiredField: true),
-                  _text(_district, 'الحيّ / المحلّة',
-                      icon: Icons.map_rounded, requiredField: true),
-                  _text(_landmark, 'أقرب نقطة دالة',
-                      icon: Icons.push_pin_rounded),
-                  _text(_details, 'تفاصيل العنوان (زقاق/دار)',
-                      icon: Icons.signpost_rounded, maxLines: 2),
+                  _text(_address2, 'العنوان 2',
+                      icon: Icons.signpost_rounded),
+                  _text(_address3, 'العنوان 3',
+                      icon: Icons.add_road_rounded),
+                ]),
+                const SizedBox(height: 16),
+                const PropSectionHeader(
+                    title: 'صاحب الدار',
+                    icon: Icons.person_pin_circle_rounded,
+                    gradient: AppTheme.orangeGradient),
+                const SizedBox(height: 10),
+                _panel([
+                  _text(_ownerName, 'اسم صاحب الدار',
+                      icon: Icons.person_outline_rounded),
+                  _text(_ownerPhone, 'رقم هاتف صاحب الدار',
+                      icon: Icons.phone_rounded,
+                      keyboard: TextInputType.phone),
                 ]),
                 const SizedBox(height: 16),
                 const PropSectionHeader(

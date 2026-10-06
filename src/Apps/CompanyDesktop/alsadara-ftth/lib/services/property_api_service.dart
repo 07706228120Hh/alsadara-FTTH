@@ -4,6 +4,8 @@
 /// نظام أساسي (core) — ليس وحدة الساس. لا tokens ثابتة ولا منطق عرض هنا.
 library;
 
+import 'dart:io';
+
 import '../models/property.dart';
 import 'sadara_api_service.dart';
 
@@ -128,6 +130,10 @@ class PropertyApiService {
     required String propertyType,
     required String ownership,
     String notes = '',
+    String ownerName = '',
+    String ownerPhone = '',
+    String address2 = '',
+    String address3 = '',
   }) async {
     final res = await _api.post('/properties', body: {
       'govCode': govCode,
@@ -141,6 +147,10 @@ class PropertyApiService {
       'propertyType': propertyType,
       'ownership': ownership,
       'notes': notes,
+      'ownerName': ownerName,
+      'ownerPhone': ownerPhone,
+      'address2': address2,
+      'address3': address3,
     });
     final data = res['data'];
     if (data is Map) {
@@ -204,6 +214,10 @@ class PropertyApiService {
     String? startDate,
     String? endDate,
     String notes = '',
+    String agentName = '',
+    String accountNumber = '',
+    String? masterPhotoPath,
+    String? civilIdPhotoPath,
   }) async {
     await _api.post('/properties/$propertyId/services', body: {
       'serviceType': serviceType,
@@ -214,7 +228,30 @@ class PropertyApiService {
       'startDate': startDate,
       'endDate': endDate,
       'notes': notes,
+      'agentName': agentName,
+      'accountNumber': accountNumber,
+      'masterPhotoPath': masterPhotoPath,
+      'civilIdPhotoPath': civilIdPhotoPath,
     });
+  }
+
+  // ─────────────────────────── الصور (حسّاسة/مُصرّحة) ───────────────────────────
+
+  /// رفع صورة خدمة (ماستر/هوية) — multipart، الحقل `file`.
+  /// يُرجع اسم الملف المحفوظ (data.fileName) ليُخزَّن في مسار الصورة.
+  Future<String?> uploadImage(File file) async {
+    final res = await _api.uploadFile('/properties/upload-image', file);
+    final data = res['data'];
+    if (data is Map) {
+      return (data['fileName'] ?? data['FileName'] ?? data['file_name'])
+          ?.toString();
+    }
+    return (res['fileName'] ?? res['FileName'])?.toString();
+  }
+
+  /// تحميل بايتات صورة مُصرّحة (Bearer يُحقن تلقائياً) — لا URL عام.
+  Future<List<int>> imageBytes(String fileName) {
+    return _api.getBytes('/properties/image/$fileName');
   }
 
   /// تعديل خدمة (جزئي).

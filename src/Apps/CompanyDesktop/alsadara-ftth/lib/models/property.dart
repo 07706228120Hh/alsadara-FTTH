@@ -47,6 +47,22 @@ class PropertyService {
   final String endDate;
   final String notes;
 
+  /// اسم الوكيل (لخدمة الإنترنت).
+  final String? agentName;
+
+  /// رقم الحساب (لخدمة الماستر).
+  final String? accountNumber;
+
+  /// اسم ملف صورة الماستر (حسّاس — يُعرض عبر imageBytes المُصرّح فقط).
+  final String? masterPhotoPath;
+
+  /// اسم ملف صورة هوية الأحوال المدنية (حسّاس — عبر imageBytes).
+  final String? civilIdPhotoPath;
+
+  /// مؤشّرات توافر الصور في الاستجابة (دون كشف المسار للعرض العام).
+  final bool hasMasterPhoto;
+  final bool hasCivilIdPhoto;
+
   const PropertyService({
     required this.id,
     required this.serviceType,
@@ -57,6 +73,12 @@ class PropertyService {
     required this.startDate,
     required this.endDate,
     required this.notes,
+    this.agentName,
+    this.accountNumber,
+    this.masterPhotoPath,
+    this.civilIdPhotoPath,
+    this.hasMasterPhoto = false,
+    this.hasCivilIdPhoto = false,
   });
 
   factory PropertyService.fromJson(Map<String, dynamic> j) => PropertyService(
@@ -73,6 +95,23 @@ class PropertyService {
         startDate: _str(_pick(j, ['startDate', 'StartDate', 'start_date'])),
         endDate: _str(_pick(j, ['endDate', 'EndDate', 'end_date'])),
         notes: _str(_pick(j, ['notes', 'Notes'])),
+        agentName:
+            _pickOrNull(j, ['agentName', 'AgentName', 'agent_name']),
+        accountNumber: _pickOrNull(
+            j, ['accountNumber', 'AccountNumber', 'account_number']),
+        masterPhotoPath: _pickOrNull(
+            j, ['masterPhotoPath', 'MasterPhotoPath', 'master_photo_path']),
+        civilIdPhotoPath: _pickOrNull(j,
+            ['civilIdPhotoPath', 'CivilIdPhotoPath', 'civil_id_photo_path']),
+        hasMasterPhoto:
+            _pick(j, ['hasMasterPhoto', 'HasMasterPhoto', 'has_master_photo']) ==
+                true,
+        hasCivilIdPhoto: _pick(j, [
+              'hasCivilIdPhoto',
+              'HasCivilIdPhoto',
+              'has_civil_id_photo'
+            ]) ==
+            true,
       );
 
   String get serviceTypeLabel => serviceTypeLabelOf(serviceType);
@@ -191,6 +230,12 @@ class Property {
   final String district;
   final String landmark;
   final String addressDetails;
+
+  /// حقول العنوان/المالك الجديدة (اختيارية).
+  final String? ownerName;
+  final String? ownerPhone;
+  final String? address2;
+  final String? address3;
   final double? latitude;
   final double? longitude;
   final String propertyType; // Residential / Commercial
@@ -220,6 +265,10 @@ class Property {
     required this.district,
     required this.landmark,
     required this.addressDetails,
+    this.ownerName,
+    this.ownerPhone,
+    this.address2,
+    this.address3,
     this.latitude,
     this.longitude,
     required this.propertyType,
@@ -256,6 +305,11 @@ class Property {
       landmark: _str(_pick(j, ['landmark', 'Landmark'])),
       addressDetails: _str(
           _pick(j, ['addressDetails', 'AddressDetails', 'address_details'])),
+      ownerName: _pickOrNull(j, ['ownerName', 'OwnerName', 'owner_name']),
+      ownerPhone:
+          _pickOrNull(j, ['ownerPhone', 'OwnerPhone', 'owner_phone']),
+      address2: _pickOrNull(j, ['address2', 'Address2', 'address_2']),
+      address3: _pickOrNull(j, ['address3', 'Address3', 'address_3']),
       latitude: _asDouble(_pick(j, ['latitude', 'Latitude', 'lat', 'Lat'])),
       longitude: _asDouble(_pick(j, ['longitude', 'Longitude', 'lon', 'Lon'])),
       propertyType:
@@ -361,6 +415,14 @@ dynamic _pick(Map<String, dynamic> j, List<String> keys) {
     if (v != null) return v;
   }
   return null;
+}
+
+/// مثل [_pick] لكن يُرجع نصاً اختيارياً (null إن غاب أو كان فارغاً).
+String? _pickOrNull(Map<String, dynamic> j, List<String> keys) {
+  final v = _pick(j, keys);
+  if (v == null) return null;
+  final s = v.toString();
+  return s.trim().isEmpty ? null : s;
 }
 
 String _str(dynamic v) => (v ?? '').toString();

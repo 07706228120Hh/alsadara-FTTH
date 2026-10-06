@@ -4,8 +4,12 @@
 /// نظام أساسي ينادي بوّابة الصدارة `/api/properties`. بثيم الصدارة، RTL.
 library;
 
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -391,9 +395,10 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           const Divider(height: 24),
           _kv('المحافظة', p.governorate),
           _kv('المنطقة', p.area),
-          _kv('الحيّ', p.district),
-          _kv('أقرب نقطة', p.landmark),
-          _kv('التفاصيل', p.addressDetails),
+          _kv('العنوان 2', p.address2 ?? ''),
+          _kv('العنوان 3', p.address3 ?? ''),
+          _kv('اسم صاحب الدار', p.ownerName ?? ''),
+          _kv('هاتف صاحب الدار', p.ownerPhone ?? ''),
           if (p.notes.trim().isNotEmpty) _kv('ملاحظات', p.notes),
           if (p.latitude != null && p.longitude != null) ...[
             const SizedBox(height: 10),
@@ -561,56 +566,224 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
       'suspended' => AppTheme.warningColor,
       _ => Colors.grey,
     };
-    return Row(
+    final isInternet = s.serviceType.toLowerCase() == 'internet';
+    final isMaster = s.serviceType.toLowerCase() == 'master';
+
+    // سطر فرعي حسب نوع الخدمة.
+    final extra = <String>[
+      if (isInternet &&
+          (s.agentName ?? '').trim().isNotEmpty)
+        'الوكيل: ${s.agentName!.trim()}',
+      if (isMaster &&
+          (s.accountNumber ?? '').trim().isNotEmpty)
+        'رقم الحساب: ${s.accountNumber!.trim()}',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        PropUi.gradientBadge(
-          icon: switch (s.serviceType.toLowerCase()) {
-            'internet' => Icons.wifi_rounded,
-            'master' => Icons.cable_rounded,
-            'iptv' => Icons.live_tv_rounded,
-            _ => Icons.miscellaneous_services_rounded,
-          },
-          colors: AppTheme.blueGradient,
-          size: 36,
-          iconSize: 18,
+        Row(
+          children: [
+            PropUi.gradientBadge(
+              icon: switch (s.serviceType.toLowerCase()) {
+                'internet' => Icons.wifi_rounded,
+                'master' => Icons.cable_rounded,
+                'iptv' => Icons.live_tv_rounded,
+                _ => Icons.miscellaneous_services_rounded,
+              },
+              colors: AppTheme.blueGradient,
+              size: 36,
+              iconSize: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    [s.serviceTypeLabel, s.providerTypeLabel]
+                        .where((x) => x.trim().isNotEmpty && x != '—')
+                        .join(' · '),
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w800, color: PropUi.ink),
+                  ),
+                  if ([s.subscriberRef, s.providerRefId]
+                      .any((x) => x.trim().isNotEmpty))
+                    Text(
+                      [s.subscriberRef, s.providerRefId]
+                          .where((x) => x.trim().isNotEmpty)
+                          .join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.cairo(
+                          fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  for (final line in extra)
+                    Text(
+                      line,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.cairo(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primaryColor),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            PropBadge(label: s.statusLabel, color: statusColor),
+            if (_canManage)
+              IconButton(
+                tooltip: 'حذف الخدمة',
+                onPressed: () => _deleteService(s),
+                icon: const Icon(Icons.delete_outline_rounded,
+                    size: 20, color: AppTheme.errorColor),
+              ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
+        if (isMaster && (s.hasMasterPhoto || s.hasCivilIdPhoto)) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 46),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                if (s.hasMasterPhoto && (s.masterPhotoPath ?? '').isNotEmpty)
+                  _imageThumb(s.masterPhotoPath!, 'صورة الماستر'),
+                if (s.hasCivilIdPhoto &&
+                    (s.civilIdPhotoPath ?? '').isNotEmpty)
+                  _imageThumb(s.civilIdPhotoPath!, 'هوية الأحوال المدنية'),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// مصغّرة صورة مُصرّحة (عبر imageBytes) قابلة للنقر للعرض الكامل.
+  Widget _imageThumb(String fileName, String label) {
+    return InkWell(
+      onTap: () => _showFullImage(fileName, label),
+      borderRadius: BorderRadius.circular(10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: 72,
+              height: 72,
+              child: FutureBuilder<List<int>>(
+                future: _api.imageBytes(fileName),
+                builder: (context, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return Container(
+                      color: Colors.grey.withValues(alpha: 0.12),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    );
+                  }
+                  if (snap.hasError || snap.data == null) {
+                    return Container(
+                      color: Colors.grey.withValues(alpha: 0.12),
+                      child: const Icon(Icons.broken_image_rounded,
+                          color: Colors.grey),
+                    );
+                  }
+                  return Image.memory(
+                    Uint8List.fromList(snap.data!),
+                    fit: BoxFit.cover,
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: 72,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  GoogleFonts.cairo(fontSize: 10, color: Colors.grey[600]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showFullImage(String fileName, String label) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                [s.serviceTypeLabel, s.providerTypeLabel]
-                    .where((x) => x.trim().isNotEmpty && x != '—')
-                    .join(' · '),
-                style: GoogleFonts.cairo(
-                    fontWeight: FontWeight.w800, color: PropUi.ink),
-              ),
-              if ([s.subscriberRef, s.providerRefId]
-                  .any((x) => x.trim().isNotEmpty))
-                Text(
-                  [s.subscriberRef, s.providerRefId]
-                      .where((x) => x.trim().isNotEmpty)
-                      .join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
-                      fontSize: 12, color: Colors.grey[600]),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 6, 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(label,
+                          style: GoogleFonts.cairo(
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white)),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white),
+                    ),
+                  ],
                 ),
+              ),
+              Flexible(
+                child: FutureBuilder<List<int>>(
+                  future: _api.imageBytes(fileName),
+                  builder: (context, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                    if (snap.hasError || snap.data == null) {
+                      return Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Text('تعذّر تحميل الصورة',
+                            style: GoogleFonts.cairo(color: Colors.white)),
+                      );
+                    }
+                    return InteractiveViewer(
+                      child: Image.memory(
+                        Uint8List.fromList(snap.data!),
+                        fit: BoxFit.contain,
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
-        const SizedBox(width: 6),
-        PropBadge(label: s.statusLabel, color: statusColor),
-        if (_canManage)
-          IconButton(
-            tooltip: 'حذف الخدمة',
-            onPressed: () => _deleteService(s),
-            icon: const Icon(Icons.delete_outline_rounded,
-                size: 20, color: AppTheme.errorColor),
-          ),
-      ],
+      ),
     );
   }
 
@@ -1018,18 +1191,82 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
   final _subscriberRef = TextEditingController();
   final _providerRefId = TextEditingController();
   final _notes = TextEditingController();
+  final _agentName = TextEditingController();
+  final _accountNumber = TextEditingController();
 
   String _serviceType = kServiceTypeLabels.keys.first; // Internet
   String _providerType = kProviderTypeLabels.keys.first; // Sas
   String _status = kServiceStatusLabels.keys.first; // Active
   bool _saving = false;
 
+  // صور الماستر (أسماء ملفات بعد الرفع) + حالة الرفع.
+  String? _masterPhotoPath;
+  String? _civilIdPhotoPath;
+  bool _uploadingMaster = false;
+  bool _uploadingCivilId = false;
+
+  bool get _isInternet => _serviceType.toLowerCase() == 'internet';
+  bool get _isMaster => _serviceType.toLowerCase() == 'master';
+
   @override
   void dispose() {
     _subscriberRef.dispose();
     _providerRefId.dispose();
     _notes.dispose();
+    _agentName.dispose();
+    _accountNumber.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAndUpload({required bool master}) async {
+    try {
+      final picked =
+          await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (picked == null) return;
+      if (!mounted) return;
+      setState(() {
+        if (master) {
+          _uploadingMaster = true;
+        } else {
+          _uploadingCivilId = true;
+        }
+      });
+      final fileName = await _api.uploadImage(File(picked.path));
+      if (!mounted) return;
+      setState(() {
+        if (master) {
+          _masterPhotoPath = fileName;
+          _uploadingMaster = false;
+        } else {
+          _civilIdPhotoPath = fileName;
+          _uploadingCivilId = false;
+        }
+      });
+      if (fileName == null || fileName.isEmpty) {
+        _toast('تعذّر رفع الصورة', err: true);
+      } else {
+        _toast('تمّ رفع الصورة');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (master) {
+          _uploadingMaster = false;
+        } else {
+          _uploadingCivilId = false;
+        }
+      });
+      _toast('تعذّر رفع الصورة: $e', err: true);
+    }
+  }
+
+  void _toast(String m, {bool err = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+          backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor),
+    );
   }
 
   Future<void> _save() async {
@@ -1043,6 +1280,10 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
         providerRefId: _providerRefId.text.trim(),
         status: _status,
         notes: _notes.text.trim(),
+        agentName: _isInternet ? _agentName.text.trim() : '',
+        accountNumber: _isMaster ? _accountNumber.text.trim() : '',
+        masterPhotoPath: _isMaster ? _masterPhotoPath : null,
+        civilIdPhotoPath: _isMaster ? _civilIdPhotoPath : null,
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -1112,6 +1353,30 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                     icon: Icons.badge_rounded),
                 _field(_providerRefId, 'معرّف المزوّد (اختياري)',
                     icon: Icons.tag_rounded),
+                // حقول شرطية حسب نوع الخدمة
+                if (_isInternet)
+                  _field(_agentName, 'اسم الوكيل',
+                      icon: Icons.support_agent_rounded),
+                if (_isMaster) ...[
+                  _field(_accountNumber, 'رقم الحساب',
+                      icon: Icons.account_balance_wallet_rounded),
+                  _uploadRow(
+                    label: 'صورة الماستر',
+                    icon: Icons.cable_rounded,
+                    uploading: _uploadingMaster,
+                    fileName: _masterPhotoPath,
+                    onPick: () => _pickAndUpload(master: true),
+                  ),
+                  const SizedBox(height: 10),
+                  _uploadRow(
+                    label: 'صورة هوية الأحوال المدنية',
+                    icon: Icons.badge_outlined,
+                    uploading: _uploadingCivilId,
+                    fileName: _civilIdPhotoPath,
+                    onPick: () => _pickAndUpload(master: false),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _field(_notes, 'ملاحظات', icon: Icons.notes_rounded,
                     maxLines: 2),
                 const SizedBox(height: 10),
@@ -1196,6 +1461,70 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
           filled: true,
           fillColor: Colors.white,
         ),
+      ),
+    );
+  }
+
+  /// صفّ رفع صورة: زرّ رفع + مؤشّر تقدّم + حالة نجاح (اسم الملف المحفوظ).
+  Widget _uploadRow({
+    required String label,
+    required IconData icon,
+    required bool uploading,
+    required String? fileName,
+    required VoidCallback onPick,
+  }) {
+    final done = fileName != null && fileName.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: done
+                ? AppTheme.successColor.withValues(alpha: 0.4)
+                : Colors.grey.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(done ? Icons.check_circle_rounded : icon,
+              size: 20,
+              color: done ? AppTheme.successColor : AppTheme.primaryColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label,
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w700, fontSize: 13)),
+                Text(
+                  done ? 'تمّ الرفع' : 'لم تُرفع بعد',
+                  style: GoogleFonts.cairo(
+                      fontSize: 11,
+                      color: done ? AppTheme.successColor : Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: uploading ? null : onPick,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            icon: uploading
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : Icon(done ? Icons.refresh_rounded : Icons.upload_rounded,
+                    size: 16),
+            label: Text(done ? 'تغيير' : 'رفع',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+          ),
+        ],
       ),
     );
   }
