@@ -168,6 +168,12 @@ public class SadaraDbContext : DbContext
     public DbSet<SasCitizenPayment> SasCitizenPayments => Set<SasCitizenPayment>();
     public DbSet<SasRegion> SasRegions => Set<SasRegion>();
 
+    // ==================== Property Registry (سجل العقارات المستقل) ====================
+    public DbSet<Property> Properties => Set<Property>();
+    public DbSet<PropertyResident> PropertyResidents => Set<PropertyResident>();
+    public DbSet<PropertyService> PropertyServices => Set<PropertyService>();
+    public DbSet<PropertyNpnCounter> PropertyNpnCounters => Set<PropertyNpnCounter>();
+
     // ==================== Inventory System (نظام المخازن والمواد) ====================
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<InventoryCategory> InventoryCategories => Set<InventoryCategory>();
@@ -431,6 +437,41 @@ public class SadaraDbContext : DbContext
         // مُضاعِف القيم المالية (SAS4→دينار حقيقي): افتراضي 1000 — يُطبَّق على الصفوف القائمة عند الهجرة.
         modelBuilder.Entity<SasAccount>().Property(x => x.AmountMultiplier)
             .HasPrecision(18, 2).HasDefaultValue(1000m);
+
+        // ==================== سجل العقارات المستقل (Property Registry) ====================
+        // العقار: نواة محايدة محورها QR دائم. عزل بالشركة + فهارس تطابق/تفرّد.
+        modelBuilder.Entity<Property>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<Property>().HasIndex(x => x.QrToken).IsUnique();
+        modelBuilder.Entity<Property>().HasIndex(x => new { x.CompanyId, x.Npn }).IsUnique();
+        modelBuilder.Entity<Property>().HasIndex(x => new { x.CompanyId, x.CreatedByUserId });
+        modelBuilder.Entity<Property>().Property(x => x.PropertyType).HasConversion<int>();
+        modelBuilder.Entity<Property>().Property(x => x.Ownership).HasConversion<int>();
+        modelBuilder.Entity<Property>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+
+        // ربط المواطن بالعقار (إعادة استخدام Citizen). FK Property=Cascade، Citizen=Restrict (لا حذف متسلسل).
+        modelBuilder.Entity<PropertyResident>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<PropertyResident>().HasIndex(x => new { x.CompanyId, x.PropertyId });
+        modelBuilder.Entity<PropertyResident>().HasIndex(x => new { x.PropertyId, x.CitizenId }).IsUnique();
+        modelBuilder.Entity<PropertyResident>().Property(x => x.Relationship).HasConversion<int>();
+        modelBuilder.Entity<PropertyResident>()
+            .HasOne(x => x.Property).WithMany(p => p.Residents).HasForeignKey(x => x.PropertyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PropertyResident>()
+            .HasOne(x => x.Citizen).WithMany().HasForeignKey(x => x.CitizenId).OnDelete(DeleteBehavior.Restrict);
+
+        // موصّل الخدمة العام للعقار (إنترنت/ماستر/…). FK Property=Cascade.
+        modelBuilder.Entity<PropertyService>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<PropertyService>().HasIndex(x => new { x.CompanyId, x.PropertyId });
+        modelBuilder.Entity<PropertyService>().HasIndex(x => new { x.PropertyId, x.ServiceType });
+        modelBuilder.Entity<PropertyService>().Property(x => x.ServiceType).HasConversion<int>();
+        modelBuilder.Entity<PropertyService>().Property(x => x.ProviderType).HasConversion<int>();
+        modelBuilder.Entity<PropertyService>().Property(x => x.Status).HasConversion<int>();
+        modelBuilder.Entity<PropertyService>()
+            .HasOne(x => x.Property).WithMany(p => p.Services).HasForeignKey(x => x.PropertyId).OnDelete(DeleteBehavior.Cascade);
+
+        // عدّاد NPN الذرّي لكل محافظة (ليس مُستأجَراً؛ المفتاح = GovCode).
+        modelBuilder.Entity<PropertyNpnCounter>().HasKey(x => x.GovCode);
+        modelBuilder.Entity<PropertyNpnCounter>().Property(x => x.GovCode).ValueGeneratedNever();
 
         // تسعير باقات الساس (كلفة/سعر بيع → ربح): فهرس فريد (شركة + حساب + بروفايل) لمنع تكرار تسعير الباقة.
         modelBuilder.Entity<SasPackagePrice>().HasQueryFilter(x => !x.IsDeleted);
