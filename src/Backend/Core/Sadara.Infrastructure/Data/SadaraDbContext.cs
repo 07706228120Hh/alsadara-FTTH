@@ -478,11 +478,13 @@ public class SadaraDbContext : DbContext
         // بنية المواقع الهرمية: المنطقة(SasRegion) → العنوان 2 → العنوان 3. معزولة بالشركة.
         modelBuilder.Entity<PropertyAddress2>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<PropertyAddress2>().HasIndex(x => new { x.CompanyId, x.RegionId });
+        modelBuilder.Entity<PropertyAddress2>().Property(x => x.MaintenanceFee).HasPrecision(18, 2);
         modelBuilder.Entity<PropertyAddress2>()
             .HasOne(x => x.Region).WithMany().HasForeignKey(x => x.RegionId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<PropertyAddress3>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<PropertyAddress3>().HasIndex(x => new { x.CompanyId, x.Address2Id });
+        modelBuilder.Entity<PropertyAddress3>().Property(x => x.MaintenanceFee).HasPrecision(18, 2);
         modelBuilder.Entity<PropertyAddress3>()
             .HasOne(x => x.Address2).WithMany(a => a.Children).HasForeignKey(x => x.Address2Id).OnDelete(DeleteBehavior.Cascade);
 

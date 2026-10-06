@@ -15,6 +15,9 @@ public class PropertyAddress2 : BaseEntity<Guid>, ITenantScoped
     /// <summary>اسم العنوان 2.</summary>
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>أجر الصيانة على هذا المستوى (يُجمع تراكمياً مع المنطقة والعنوان 3).</summary>
+    public decimal MaintenanceFee { get; set; }
+
     /// <summary>هل نشط؟</summary>
     public bool IsActive { get; set; } = true;
 

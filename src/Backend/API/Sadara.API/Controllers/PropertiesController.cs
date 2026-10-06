@@ -698,7 +698,7 @@ public class PropertiesController : ControllerBase
         var rows = await _db.PropertyAddress2s.AsNoTracking()
             .Where(a => a.CompanyId == companyId && a.RegionId == regionId)
             .OrderBy(a => a.Name)
-            .Select(a => new { id = a.Id, regionId = a.RegionId, name = a.Name, isActive = a.IsActive })
+            .Select(a => new { id = a.Id, regionId = a.RegionId, name = a.Name, maintenanceFee = a.MaintenanceFee, isActive = a.IsActive })
             .ToListAsync(ct);
         return Ok(new { success = true, data = rows });
     }
@@ -717,7 +717,9 @@ public class PropertiesController : ControllerBase
         var node = new PropertyAddress2
         {
             Id = Guid.NewGuid(), CompanyId = companyId,
-            RegionId = request.ParentId, Name = name, IsActive = request.IsActive ?? true
+            RegionId = request.ParentId, Name = name,
+            MaintenanceFee = Math.Max(0, request.MaintenanceFee),
+            IsActive = request.IsActive ?? true
         };
         await _db.PropertyAddress2s.AddAsync(node, ct);
         await _db.SaveChangesAsync(ct);
@@ -734,6 +736,7 @@ public class PropertiesController : ControllerBase
         if (node == null) return NotFound(new { success = false, message = "العنوان غير موجود" });
         var name = Nullify(request?.Name);
         if (name != null) node.Name = name;
+        if (request?.MaintenanceFee is decimal f2) node.MaintenanceFee = Math.Max(0, f2);
         if (request?.IsActive != null) node.IsActive = request.IsActive.Value;
         node.UpdatedAt = DateTime.UtcNow;
         _db.PropertyAddress2s.Update(node);
@@ -768,7 +771,7 @@ public class PropertiesController : ControllerBase
         var rows = await _db.PropertyAddress3s.AsNoTracking()
             .Where(a => a.CompanyId == companyId && a.Address2Id == address2Id)
             .OrderBy(a => a.Name)
-            .Select(a => new { id = a.Id, address2Id = a.Address2Id, name = a.Name, isActive = a.IsActive })
+            .Select(a => new { id = a.Id, address2Id = a.Address2Id, name = a.Name, maintenanceFee = a.MaintenanceFee, isActive = a.IsActive })
             .ToListAsync(ct);
         return Ok(new { success = true, data = rows });
     }
@@ -787,7 +790,9 @@ public class PropertiesController : ControllerBase
         var node = new PropertyAddress3
         {
             Id = Guid.NewGuid(), CompanyId = companyId,
-            Address2Id = request.ParentId, Name = name, IsActive = request.IsActive ?? true
+            Address2Id = request.ParentId, Name = name,
+            MaintenanceFee = Math.Max(0, request.MaintenanceFee),
+            IsActive = request.IsActive ?? true
         };
         await _db.PropertyAddress3s.AddAsync(node, ct);
         await _db.SaveChangesAsync(ct);
@@ -804,6 +809,7 @@ public class PropertiesController : ControllerBase
         if (node == null) return NotFound(new { success = false, message = "العنوان غير موجود" });
         var name = Nullify(request?.Name);
         if (name != null) node.Name = name;
+        if (request?.MaintenanceFee is decimal f3) node.MaintenanceFee = Math.Max(0, f3);
         if (request?.IsActive != null) node.IsActive = request.IsActive.Value;
         node.UpdatedAt = DateTime.UtcNow;
         _db.PropertyAddress3s.Update(node);
@@ -825,6 +831,43 @@ public class PropertiesController : ControllerBase
         _db.PropertyAddress3s.Update(node);
         await _db.SaveChangesAsync(ct);
         return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    /// <summary>
+    /// احتساب أجر الصيانة التراكمي لمسار موقع: المجموع = أجر المنطقة + أجر العنوان 2 + أجر العنوان 3
+    /// (كل مستوى مُمرَّر وموجود يضيف مبلغه). يُرجع التفصيل والمجموع.
+    /// </summary>
+    [HttpGet("maintenance-fee")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> ComputeMaintenanceFee(
+        [FromQuery] Guid? regionId, [FromQuery] Guid? address2Id, [FromQuery] Guid? address3Id,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        decimal regionFee = 0, a2Fee = 0, a3Fee = 0;
+
+        if (regionId is Guid rid && rid != Guid.Empty)
+            regionFee = await _db.SasRegions.AsNoTracking()
+                .Where(r => r.Id == rid && r.CompanyId == companyId && !r.IsDeleted)
+                .Select(r => (decimal?)r.MaintenanceFee).FirstOrDefaultAsync(ct) ?? 0;
+        if (address2Id is Guid a2 && a2 != Guid.Empty)
+            a2Fee = await _db.PropertyAddress2s.AsNoTracking()
+                .Where(a => a.Id == a2 && a.CompanyId == companyId)
+                .Select(a => (decimal?)a.MaintenanceFee).FirstOrDefaultAsync(ct) ?? 0;
+        if (address3Id is Guid a3 && a3 != Guid.Empty)
+            a3Fee = await _db.PropertyAddress3s.AsNoTracking()
+                .Where(a => a.Id == a3 && a.CompanyId == companyId)
+                .Select(a => (decimal?)a.MaintenanceFee).FirstOrDefaultAsync(ct) ?? 0;
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                regionFee, address2Fee = a2Fee, address3Fee = a3Fee,
+                total = regionFee + a2Fee + a3Fee
+            }
+        });
     }
 
     // ============ مساعدات ============
@@ -982,4 +1025,5 @@ public record RegionUpsertRequest(
 public record AddressNodeUpsertRequest(
     Guid ParentId,
     string? Name,
+    decimal MaintenanceFee,
     bool? IsActive);
