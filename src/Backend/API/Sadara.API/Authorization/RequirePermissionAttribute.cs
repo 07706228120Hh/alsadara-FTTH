@@ -136,6 +136,18 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
             {
                 if (actions.TryGetValue(action, out var val) && GetBool(val))
                     return true;
+
+                // الإجراء "manage" (مستخدَم حصراً في بوّابة الساز للكتابة) يُكافئ قدرة
+                // الكتابة: يُلبّى بأي من add/edit/delete — لأن نظام الصلاحيات يمنح
+                // add/edit/delete ولا يملك مفتاح "manage" (بحسب تصميم السجل والتعليق فيه).
+                // محصور بإجراء "manage" فقط ⇒ لا أثر على بقية الميزات (view/add/edit/delete...).
+                if (action == "manage")
+                {
+                    if ((actions.TryGetValue("add", out var addVal) && GetBool(addVal)) ||
+                        (actions.TryGetValue("edit", out var editVal) && GetBool(editVal)) ||
+                        (actions.TryGetValue("delete", out var delVal) && GetBool(delVal)))
+                        return true;
+                }
             }
 
             // 2. إذا كان مفتاح فرعي (مثل accounting.journals)، فحص الأب

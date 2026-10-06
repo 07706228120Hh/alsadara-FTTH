@@ -611,8 +611,37 @@ public class InternalDataController : ControllerBase
         _unitOfWork.Companies.Update(company);
         await _unitOfWork.SaveChangesAsync();
 
-        return Ok(new { 
-            success = true, 
+        // منح ميزات الشركة المُرخّصة تلقائياً لمديري الشركة (CompanyAdmin فأعلى) —
+        // إضافةً فقط (لا يُلغى أي منح قائم). بهذا يرى مدير الشركة أي خدمة يُرخّصها
+        // السوبر أدمن ويستخدمها فوراً كبقية الخدمات، دون منح يدوي لكل مدير.
+        // معزول وغير حاجب: فشله لا يُسقط تحديث ميزات الشركة.
+        try
+        {
+            var admins = await _unitOfWork.Users.AsQueryable()
+                .Where(u => u.CompanyId == id && !u.IsDeleted && u.Role >= UserRole.CompanyAdmin)
+                .ToListAsync();
+            if (admins.Count > 0)
+            {
+                foreach (var admin in admins)
+                {
+                    admin.FirstSystemPermissionsV2 =
+                        MergeEnabledIntoUserPerms(admin.FirstSystemPermissionsV2, company.EnabledFirstSystemFeaturesV2);
+                    admin.SecondSystemPermissionsV2 =
+                        MergeEnabledIntoUserPerms(admin.SecondSystemPermissionsV2, company.EnabledSecondSystemFeaturesV2);
+                    admin.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.Users.Update(admin);
+                }
+                await _unitOfWork.SaveChangesAsync();
+            }
+        }
+        catch (Exception exGrant)
+        {
+            _logger.LogWarning(exGrant,
+                "تعذّر المنح التلقائي لميزات الشركة {CompanyId} لمديريها (غير حاجب)", id);
+        }
+
+        return Ok(new {
+            success = true,
             message = "تم تحديث صلاحيات V2 للشركة بنجاح",
             data = new {
                 company.Id,
@@ -621,6 +650,47 @@ public class InternalDataController : ControllerBase
                 company.EnabledSecondSystemFeaturesV2
             }
         });
+    }
+
+    /// <summary>
+    /// يدمج ميزات الشركة المُرخّصة (feature→action→bool) داخل صلاحيات مستخدم V2،
+    /// إضافةً فقط: يضيف كل إجراء مُفعَّل (true) ولا يُلغي أي إجراء قائم.
+    /// يعيد JSON المحدَّث، أو قيمة المستخدم كما هي عند غياب ميزات الشركة/الخطأ.
+    /// </summary>
+    private static string? MergeEnabledIntoUserPerms(string? userJson, string? companyEnabledJson)
+    {
+        if (string.IsNullOrWhiteSpace(companyEnabledJson)) return userJson;
+        try
+        {
+            var companyEnabled = System.Text.Json.JsonSerializer
+                .Deserialize<Dictionary<string, Dictionary<string, bool>>>(companyEnabledJson)
+                ?? new Dictionary<string, Dictionary<string, bool>>();
+
+            var userPerms = string.IsNullOrWhiteSpace(userJson)
+                ? new Dictionary<string, Dictionary<string, bool>>()
+                : (System.Text.Json.JsonSerializer
+                    .Deserialize<Dictionary<string, Dictionary<string, bool>>>(userJson)
+                    ?? new Dictionary<string, Dictionary<string, bool>>());
+
+            foreach (var (feature, actions) in companyEnabled)
+            {
+                if (!userPerms.TryGetValue(feature, out var userActions))
+                {
+                    userActions = new Dictionary<string, bool>();
+                    userPerms[feature] = userActions;
+                }
+                foreach (var (action, allowed) in actions)
+                {
+                    if (allowed) userActions[action] = true; // إضافة فقط
+                }
+            }
+
+            return System.Text.Json.JsonSerializer.Serialize(userPerms);
+        }
+        catch
+        {
+            return userJson; // عند أي خطأ في التحليل، أبقِ صلاحيات المستخدم كما هي
+        }
     }
 
     /// <summary>

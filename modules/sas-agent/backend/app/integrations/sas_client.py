@@ -91,16 +91,21 @@ def is_cert_error(exc: BaseException) -> bool:
 
 class SASClient:
     def __init__(self, host: str, username: str, password: str, *,
-                 https: bool = False, timeout: float = 20.0, verify_tls: bool = True,
+                 https: bool = True, timeout: float = 20.0, verify_tls: bool = False,
                  transport: Optional[httpx.BaseTransport] = None):
+        # افتراضي https (خوادم SAS4 الحديثة خلف HTTPS/Cloudflare) + verify_tls=False
+        # (شهادات SAS4 كثيراً ما تكون موقّعة ذاتياً) — مطابقٌ لمسار التفعيل المثبت.
+        # للخوادم القديمة http فقط: مرّر العنوان بصيغة "http://host" أو https=False صراحةً.
         # transport: مقبس اختبار — يُمرَّر httpx.MockTransport لمحاكاة خادم SAS بلا شبكة.
         # تطبيع العنوان: يقبل host فقط أو رابطاً كاملاً ملصوقاً (https://host/... )
         raw = (host or "").strip()
         forced_https = raw.lower().startswith("https://")
+        forced_http = raw.lower().startswith("http://")   # احترام http الصريح (خوادم قديمة)
         raw = re.sub(r"^https?://", "", raw)          # إزالة البروتوكول إن وُجد
         raw = raw.split("/")[0]                          # إبقاء المضيف (والمنفذ) فقط
         raw = raw.rstrip(":/").strip()                   # إزالة ":" أو "/" زائدة
-        scheme = "https" if (https or forced_https) else "http"
+        # الأولوية: http:// صريح ← http؛ وإلا https إن طُلب/أُجبر؛ وإلا http.
+        scheme = "http" if forced_http else ("https" if (https or forced_https) else "http")
         self.base_url = f"{scheme}://{raw}/admin/api/index.php/api/"
         self.username = username
         self.password = password
