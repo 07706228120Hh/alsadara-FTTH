@@ -132,7 +132,8 @@ public class SasAgentController : ControllerBase
                     x.Username,
                     x.AccountType,
                     x.IsActive,
-                    x.LastSyncAt))
+                    x.LastSyncAt,
+                    x.AmountMultiplier))
                 .ToListAsync(ct);
 
             return Ok(new { success = true, data = accounts, total = accounts.Count });
@@ -167,7 +168,9 @@ public class SasAgentController : ControllerBase
                 Username = request.Username.Trim(),
                 PasswordEncrypted = _secretProtector.Protect(request.Password ?? string.Empty),
                 AccountType = request.AccountType,
-                IsActive = request.IsActive ?? true
+                IsActive = request.IsActive ?? true,
+                // مُضاعِف القيم المالية (افتراضي 1000 لمزوّدي SAS4 الذين يُرجعون بالآلاف).
+                AmountMultiplier = (request.AmountMultiplier is > 0) ? request.AmountMultiplier.Value : 1000m
             };
 
             await _db.SasAccounts.AddAsync(account, ct);
@@ -176,7 +179,7 @@ public class SasAgentController : ControllerBase
             // نعيد DTO بلا كلمة مرور.
             var dto = new SasAccountDto(
                 account.Id, account.Label, account.ServerUrl, account.Username,
-                account.AccountType, account.IsActive, account.LastSyncAt);
+                account.AccountType, account.IsActive, account.LastSyncAt, account.AmountMultiplier);
 
             return Ok(new { success = true, data = dto, message = "تم ربط حساب الساس بنجاح" });
         }
@@ -206,6 +209,7 @@ public class SasAgentController : ControllerBase
             if (!string.IsNullOrWhiteSpace(request.Username)) account.Username = request.Username.Trim();
             if (request.AccountType.HasValue) account.AccountType = request.AccountType.Value;
             if (request.IsActive.HasValue) account.IsActive = request.IsActive.Value;
+            if (request.AmountMultiplier is > 0) account.AmountMultiplier = request.AmountMultiplier.Value;
 
             // إعادة التشفير فقط عند إرسال كلمة مرور جديدة غير فارغة.
             if (!string.IsNullOrEmpty(request.Password))
@@ -514,6 +518,54 @@ public class SasAgentController : ControllerBase
     public Task<IActionResult> GetPackages(Guid id, CancellationToken ct)
         => PassThroughAsync(id, (acc, pwd, token) =>
             _sasClient.GetPackagesAsync(acc.ServerUrl, acc.Username, pwd, token), null, ct);
+
+    /// <summary>
+    /// جلب موظفي شركة الحساب الصالحين للتوجيه (نوع التحصيل «فني») — قراءة (view).
+    ///
+    /// العزل: <see cref="GetOwnedAccountAsync"/> (الحساب مملوك: شركة + مالك + غير محذوف) ثم
+    /// فلترة الموظفين بشركة الحساب نفسها (<c>account.CompanyId</c>) حصراً — لا بشركة التوكن مباشرةً
+    /// (دفاع بالعمق: القائمة مربوطة بالحساب المملوك لا بالسياق). يُعاد الموظفون النشطون غير المحذوفين
+    /// من غير المواطنين فقط. استُرشد بمنطق <c>GET /api/service-requests/task-staff</c> لكن معزولاً بشركة الحساب.
+    ///
+    /// الرد: <c>{ success, data:[{ id, name, phone }] }</c> مرتّب بالاسم. بلا أسرار.
+    /// </summary>
+    [HttpGet("accounts/{id}/technicians")]
+    [RequirePermission("sas_agent", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetTechnicians(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied))
+            return denied!;
+
+        var account = await GetOwnedAccountAsync(id, companyId, userId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            // موظفو شركة الحساب (العزل من الحساب المملوك) النشطون غير المحذوفين — بلا مواطنين.
+            var list = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.CompanyId == account.CompanyId
+                            && u.IsActive
+                            && !u.IsDeleted
+                            && u.Role != UserRole.Citizen)
+                .OrderBy(u => u.FullName)
+                .Select(u => new
+                {
+                    id = u.Id,
+                    name = u.FullName,
+                    phone = u.PhoneNumber
+                })
+                .ToListAsync(ct);
+
+            return Ok(new { success = true, data = list });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب موظفي التوجيه لحساب الساس");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
 
     // ==================== تسعير الباقات (المرحلة 1 — نظام الأرباح) ====================
     // معزولة بالعزل الثلاثي عبر GetOwnedAccountAsync (شركة + مالك + غير محذوف).
@@ -1884,11 +1936,14 @@ public class SasAgentController : ControllerBase
 
         // قائمة سماح لنوع التحصيل (مطابق لمنطق المحاسبة الموحّد). «citizen» = آجل على ذمة المشترك (دفتر الذمم).
         var collectionType = string.IsNullOrWhiteSpace(request.CollectionType) ? "cash" : request.CollectionType.Trim().ToLowerInvariant();
-        if (collectionType is not ("cash" or "credit" or "agent" or "citizen"))
-            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent | citizen)" });
+        if (collectionType is not ("cash" or "credit" or "agent" or "citizen" or "technician"))
+            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent | citizen | technician)" });
 
         if (collectionType == "agent" && (!request.LinkedAgentId.HasValue || request.LinkedAgentId.Value == Guid.Empty))
             return BadRequest(new { success = false, message = "يجب تحديد الوكيل عند اختيار نوع التحصيل 'وكيل'" });
+
+        if (collectionType == "technician" && (!request.LinkedTechnicianId.HasValue || request.LinkedTechnicianId.Value == Guid.Empty))
+            return BadRequest(new { success = false, message = "يجب تحديد الفني عند اختيار نوع التحصيل 'فني'" });
 
         // تحقّق المدة للإجراءات التي تتطلّبها.
         var months = request.Months;
@@ -1992,6 +2047,27 @@ public class SasAgentController : ControllerBase
         var safePhone = Trim(req.Phone);
         var note = Trim(req.Note);
 
+        // 1.ب) حارس عزل مالي (قبل أي أثر على SAS4): عند التحصيل «فني»/«وكيل» يجب أن يكون
+        //      الطرف المدين ضمن شركة الحساب — وإلا رفض صريح. المحرّك المحاسبي المشترك يجلب
+        //      الفني/الوكيل بـ GetByIdAsync بلا فلتر شركة، فنفرض العزل هنا لمنع إسناد ذمّة
+        //      لفني/وكيل شركة أخرى أو إنشاء سجلّ/حركة يتيمة بمعرّف غير صالح.
+        if (collectionType == "technician")
+        {
+            var techOk = req.LinkedTechnicianId.HasValue && req.LinkedTechnicianId.Value != Guid.Empty &&
+                await _db.Users.AsNoTracking().AnyAsync(
+                    u => u.Id == req.LinkedTechnicianId.Value && u.CompanyId == account.CompanyId && !u.IsDeleted, ct);
+            if (!techOk)
+                return SasBilledResult.AsFailure(400, "الفني المحدّد غير موجود في شركتك", transactionId);
+        }
+        else if (collectionType == "agent")
+        {
+            var agentOk = req.LinkedAgentId.HasValue && req.LinkedAgentId.Value != Guid.Empty &&
+                await _db.Agents.AsNoTracking().AnyAsync(
+                    a => a.Id == req.LinkedAgentId.Value && a.CompanyId == account.CompanyId && !a.IsDeleted, ct);
+            if (!agentOk)
+                return SasBilledResult.AsFailure(400, "الوكيل المحدّد غير موجود في شركتك", transactionId);
+        }
+
         // 2) جلب السعر خادمياً من activationData (لا نثق بالعميل في السعر).
         //    للـ extend قد لا يعيد سعراً — نستخدم activationData نفسه؛ إن غاب يبقى 0 (منطق بديل في المحاسبة).
         decimal basePrice = 0;
@@ -2002,6 +2078,11 @@ public class SasAgentController : ControllerBase
             var activationRaw = await _sasClient.SasGetAsync(
                 account.ServerUrl, account.Username, pwd, $"user/activationData/{uid}", ct);
             (basePrice, planName, activationProfileId) = ParseActivationData(activationRaw);
+            // تطبيع السعر من وحدة SAS4 (قد تكون بالآلاف) إلى الدينار الحقيقي عبر مُضاعِف
+            // الحساب (افتراضي 1000). يُطبَّق هنا عند المنبع فتتّسق كل الطبقات (السجل + القيد
+            // المحاسبي + العرض) مع محاسبة FTTH بالدينار الكامل. القيم اليدوية (الصيانة/الخصم)
+            // والتسعير اليدوي (SasPackagePrice) بالدينار الحقيقي أصلاً فلا تُضرب.
+            basePrice *= account.AmountMultiplier;
         }
         catch (SasServiceUnavailableException)
         {
@@ -2058,6 +2139,26 @@ public class SasAgentController : ControllerBase
         var netFromCompany = basePrice; // CompanyDiscount=0
         var collectedAmount = netFromCompany + maintenanceFee - manualDiscount; // ما يدفعه العميل
 
+        // اسم المشغّل الحالي (المتصل) لحقل ActivatedBy — استعلام واحد AsNoTracking؛ null عند التعذّر.
+        var activatedByName = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.FullName)
+            .FirstOrDefaultAsync(ct);
+
+        // اسم الفني المرتبط (عند التحصيل «فني») — من نفس شركة الحساب (دفاع بالعمق)؛ null عند التعذّر.
+        var isTechnician = collectionType == "technician";
+        var linkedTechnicianId = isTechnician ? req.LinkedTechnicianId : null;
+        string? technicianName = null;
+        if (isTechnician && linkedTechnicianId.HasValue && linkedTechnicianId.Value != Guid.Empty)
+        {
+            technicianName = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == linkedTechnicianId.Value && u.CompanyId == account.CompanyId)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync(ct);
+        }
+
         var log = new SubscriptionLog
         {
             Source = SubscriptionLogSource.Sas,
@@ -2082,6 +2183,11 @@ public class SasAgentController : ControllerBase
             FtthTransactionId = transactionId,
             SessionId = transactionId,
             LinkedAgentId = collectionType == "agent" ? req.LinkedAgentId : null,
+            // التوجيه «فني»: ربط الفني + اسمه (لعرضه في سجل الحركات وتقارير الإسناد).
+            LinkedTechnicianId = linkedTechnicianId,
+            TechnicianName = technicianName,
+            // اسم المشغّل المنفّذ للعملية (المتصل) — لعرض عمود «نفّذ بواسطة».
+            ActivatedBy = activatedByName,
             ActivationDate = DateTime.UtcNow,
             SubscriptionNotes = note,
             // الإجراء الخام (activate|extend|changeProfile) مخزَّن حرفياً لعرضه في سجل الحركات بلا migration.
@@ -2106,6 +2212,8 @@ public class SasAgentController : ControllerBase
                 SystemDiscountEnabled = req.SystemDiscountEnabled,
                 CollectionType = collectionType,
                 LinkedAgentId = collectionType == "agent" ? req.LinkedAgentId : null,
+                // التوجيه «فني»: يمرَّر LinkedTechnicianId ليعالجه المحرّك المحاسبي (مدين 1140 + TechnicianTransaction).
+                LinkedTechnicianId = linkedTechnicianId,
                 // الذمة تُقيَّد على المشترك نفسه بمفتاح (SasAccountId:SubscriberUid) عند collectionType=citizen.
                 CitizenKey = collectionType == "citizen" ? CitizenKey(account.Id, uid) : null,
                 PlanName = log.PlanName,
@@ -2186,11 +2294,14 @@ public class SasAgentController : ControllerBase
         var collectionType = string.IsNullOrWhiteSpace(request.CollectionType)
             ? "cash"
             : request.CollectionType.Trim().ToLowerInvariant();
-        if (collectionType is not ("cash" or "credit" or "agent" or "citizen"))
-            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent | citizen)" });
+        if (collectionType is not ("cash" or "credit" or "agent" or "citizen" or "technician"))
+            return BadRequest(new { success = false, message = "نوع تحصيل غير مدعوم (المتاح: cash | credit | agent | citizen | technician)" });
 
         if (collectionType == "agent" && (!request.LinkedAgentId.HasValue || request.LinkedAgentId.Value == Guid.Empty))
             return BadRequest(new { success = false, message = "يجب تحديد الوكيل عند اختيار نوع التحصيل 'وكيل'" });
+
+        if (collectionType == "technician" && (!request.LinkedTechnicianId.HasValue || request.LinkedTechnicianId.Value == Guid.Empty))
+            return BadRequest(new { success = false, message = "يجب تحديد الفني عند اختيار نوع التحصيل 'فني'" });
 
         // تحقّق المدة (مطلوبة للتفعيل/التمديد).
         var months = request.Months;
@@ -2242,6 +2353,7 @@ public class SasAgentController : ControllerBase
                 ManualDiscount: request.ManualDiscount,
                 SystemDiscountEnabled: request.SystemDiscountEnabled,
                 LinkedAgentId: collectionType == "agent" ? request.LinkedAgentId : null,
+                LinkedTechnicianId: collectionType == "technician" ? request.LinkedTechnicianId : null,
                 Phone: null,
                 SubscriberUsername: null,
                 TransactionId: Guid.NewGuid().ToString("N"),
@@ -2382,9 +2494,25 @@ public class SasAgentController : ControllerBase
                     l.Currency,
                     l.CollectionType,
                     l.PaymentStatus,
-                    l.JournalEntryId
+                    l.JournalEntryId,
+                    l.ActivatedBy,
+                    l.TechnicianName,
+                    l.LinkedAgentId
                 })
                 .ToListAsync(ct);
+
+            // أسماء الوكلاء المرتبطين (إن وُجدوا) دفعةً واحدة ضمن شركة الحساب (دفاع بالعمق).
+            var agentIds = rows
+                .Where(r => r.LinkedAgentId.HasValue && r.LinkedAgentId.Value != Guid.Empty)
+                .Select(r => r.LinkedAgentId!.Value)
+                .Distinct()
+                .ToList();
+            var agentNames = agentIds.Count == 0
+                ? new Dictionary<Guid, string>()
+                : await _db.Agents
+                    .AsNoTracking()
+                    .Where(a => agentIds.Contains(a.Id) && a.CompanyId == account.CompanyId)
+                    .ToDictionaryAsync(a => a.Id, a => a.Name, ct);
 
             var data = rows.Select(l => new
             {
@@ -2402,7 +2530,11 @@ public class SasAgentController : ControllerBase
                 currency = l.Currency ?? "IQD",
                 collectionType = l.CollectionType,
                 status = l.PaymentStatus,
-                journalEntryId = l.JournalEntryId
+                journalEntryId = l.JournalEntryId,
+                // أعمدة الإسناد: المشغّل المنفّذ + اسم الفني (عند «فني») + اسم الوكيل (عند «وكيل»).
+                activatedBy = l.ActivatedBy,
+                technicianName = l.TechnicianName,
+                agentName = (l.LinkedAgentId.HasValue && agentNames.TryGetValue(l.LinkedAgentId.Value, out var an)) ? an : null
             }).ToList();
 
             return Ok(new { success = true, total, data });
@@ -3555,7 +3687,8 @@ public record SasAccountDto(
     string Username,
     SasAccountType AccountType,
     bool IsActive,
-    DateTime? LastSyncAt);
+    DateTime? LastSyncAt,
+    decimal AmountMultiplier = 1000m);
 
 /// <summary>طلب ربط حساب ساس جديد.</summary>
 public record CreateSasAccountRequest(
@@ -3564,7 +3697,8 @@ public record CreateSasAccountRequest(
     string Username,
     string? Password,
     SasAccountType AccountType,
-    bool? IsActive);
+    bool? IsActive,
+    decimal? AmountMultiplier = null);
 
 /// <summary>طلب تعديل حساب ساس — كل الحقول اختيارية؛ Password فقط عند التغيير.</summary>
 public record UpdateSasAccountRequest(
@@ -3573,7 +3707,8 @@ public record UpdateSasAccountRequest(
     string? Username,
     string? Password,
     SasAccountType? AccountType,
-    bool? IsActive);
+    bool? IsActive,
+    decimal? AmountMultiplier = null);
 
 /// <summary>طلب تجديد جماعي — معرّفات المشتركين وعدد الأشهر وبروفايل اختياري ومعاينة (dryRun).</summary>
 public record BulkRenewRequest(
@@ -3600,6 +3735,7 @@ public record SasActionRequest(
 /// <param name="ManualDiscount">خصم يدوي اختياري للعميل (≥0).</param>
 /// <param name="SystemDiscountEnabled">هل خصم الشركة مفعّل (افتراضي true).</param>
 /// <param name="LinkedAgentId">الوكيل المرتبط (مطلوب عند CollectionType=agent).</param>
+/// <param name="LinkedTechnicianId">الفني المرتبط (مطلوب عند CollectionType=technician).</param>
 /// <param name="Phone">هاتف المشترك (اختياري — للإيصال/الواتساب لاحقاً).</param>
 /// <param name="SubscriberUsername">اسم مستخدم المشترك (اختياري — للإيصال).</param>
 /// <param name="TransactionId">معرّف عملية للـ idempotency (اختياري — يُولَّد خادمياً إن غاب).</param>
@@ -3613,6 +3749,7 @@ public record SasActivateBilledRequest(
     decimal? ManualDiscount,
     bool SystemDiscountEnabled = true,
     Guid? LinkedAgentId = null,
+    Guid? LinkedTechnicianId = null,
     string? Phone = null,
     string? SubscriberUsername = null,
     string? TransactionId = null,
@@ -3638,6 +3775,7 @@ public record SasBulkActionRequest(
 /// <param name="ManualDiscount">خصم يدوي اختياري لكل مشترك (≥0).</param>
 /// <param name="SystemDiscountEnabled">هل خصم الشركة مفعّل (افتراضي true).</param>
 /// <param name="LinkedAgentId">الوكيل المرتبط (مطلوب عند CollectionType=agent).</param>
+/// <param name="LinkedTechnicianId">الفني المرتبط (مطلوب عند CollectionType=technician).</param>
 public record SasBulkBilledRequest(
     List<string> SubscriberIds,
     string Action = "extend",
@@ -3647,7 +3785,8 @@ public record SasBulkBilledRequest(
     decimal? MaintenanceFee = null,
     decimal? ManualDiscount = null,
     bool SystemDiscountEnabled = true,
-    Guid? LinkedAgentId = null);
+    Guid? LinkedAgentId = null,
+    Guid? LinkedTechnicianId = null);
 
 /// <summary>طلب يحمل حمولة JSON حرّة (إنشاء/تعديل مشترك) تُمرَّر كما هي لخدمة الساس.</summary>
 public record SasPayloadRequest(

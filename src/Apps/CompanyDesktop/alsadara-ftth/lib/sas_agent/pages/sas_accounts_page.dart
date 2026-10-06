@@ -98,6 +98,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
           password: result.password,
           accountType: result.accountType,
           isActive: result.isActive,
+          amountMultiplier: result.amountMultiplier,
         );
         _snack('تم ربط حساب الساس بنجاح');
         await reload();
@@ -111,6 +112,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
           password: result.password, // فارغة = بلا تغيير
           accountType: result.accountType,
           isActive: result.isActive,
+          amountMultiplier: result.amountMultiplier,
         );
         _snack('تم تعديل حساب الساس بنجاح');
         await reload();

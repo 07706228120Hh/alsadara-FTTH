@@ -53,6 +53,10 @@ class SasAccount {
   final bool isActive;
   final DateTime? lastSyncAt;
 
+  /// مُضاعِف القيم المالية من SAS4 إلى الدينار الحقيقي (افتراضي 1000؛ بعض المزوّدين
+  /// يُرجعون بالآلاف: 16 = 16,000). يُستخدم لعرض السعر/الرصيد بالدينار الكامل.
+  final num amountMultiplier;
+
   const SasAccount({
     required this.id,
     required this.label,
@@ -61,6 +65,7 @@ class SasAccount {
     required this.accountType,
     required this.isActive,
     this.lastSyncAt,
+    this.amountMultiplier = 1000,
   });
 
   /// اسم للعرض: التسمية إن وُجدت وإلا اسم المستخدم.
@@ -83,6 +88,11 @@ class SasAccount {
       ),
       isActive: (json['isActive'] ?? json['IsActive'] ?? true) == true,
       lastSyncAt: sync,
+      amountMultiplier: () {
+        final m = json['amountMultiplier'] ?? json['AmountMultiplier'];
+        final parsed = m is num ? m : num.tryParse(m?.toString() ?? '');
+        return (parsed != null && parsed > 0) ? parsed : 1000;
+      }(),
     );
   }
 }

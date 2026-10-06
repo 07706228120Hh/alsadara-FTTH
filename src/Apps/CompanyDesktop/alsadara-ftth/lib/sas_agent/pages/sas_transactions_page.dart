@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
 import '../models/sas_transaction.dart';
 import '../services/sas_agent_api_service.dart';
+import '../widgets/sas_format.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 
@@ -293,7 +294,7 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
           SizedBox(height: 10.h),
           Divider(height: 1, color: Colors.grey.withValues(alpha: 0.12)),
           SizedBox(height: 8.h),
-          // السطر السفلي: الباقة · نوع التحصيل · التاريخ.
+          // السطر السفلي: الباقة · نوع التحصيل · على مَن · المُنفِّذ · التاريخ.
           Wrap(
             spacing: 16.w,
             runSpacing: 6.h,
@@ -301,8 +302,14 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
               _chip(Icons.wifi_rounded, 'الباقة',
                   t.planName.isEmpty ? '—' : t.planName),
               _chip(Icons.point_of_sale_rounded, 'التحصيل', t.collectionTypeAr),
+              // «على مَن»: اسم الفنّي/الوكيل أو «المواطن» (يظهر فقط عند وجود إسناد).
+              if (t.assigneeAr.isNotEmpty)
+                _chip(_assigneeIcon(t.collectionType), 'على مَن', t.assigneeAr),
+              // المُنفِّذ (مختِم الحركة) — يظهر عند توفّره فقط.
+              if (t.activatedBy.isNotEmpty)
+                _chip(Icons.badge_rounded, 'المُنفِّذ', t.activatedBy),
               _chip(Icons.schedule_rounded, 'التاريخ',
-                  t.createdAt.isEmpty ? '—' : t.createdAt,
+                  t.createdAt.isEmpty ? '—' : sasDash(t.createdAt),
                   mono: true),
             ],
           ),
@@ -334,6 +341,20 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
                     color: const Color(0xFF1A1A2E))),
       ],
     );
+  }
+
+  /// أيقونة «على مَن» حسب نوع التحصيل (فنّي/وكيل/مواطن).
+  IconData _assigneeIcon(String collectionType) {
+    switch (collectionType) {
+      case 'technician':
+        return Icons.engineering_rounded;
+      case 'agent':
+        return Icons.store_rounded;
+      case 'citizen':
+        return Icons.person_pin_rounded;
+      default:
+        return Icons.person_outline_rounded;
+    }
   }
 
   Color _actionColor(String action) {

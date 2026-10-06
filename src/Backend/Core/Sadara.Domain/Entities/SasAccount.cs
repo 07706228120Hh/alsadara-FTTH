@@ -34,6 +34,14 @@ public class SasAccount : BaseEntity<Guid>, ITenantScoped
     /// <summary>نوع الحساب: صفحة وكيل (SasManager) أو نظام ساس (SasUser)</summary>
     public SasAccountType AccountType { get; set; }
 
+    /// <summary>
+    /// مُضاعِف القيم المالية القادمة من نظام SAS4 إلى الدينار الحقيقي.
+    /// بعض مزوّدي SAS4 يُرجعون القيم بوحدة الآلاف (16 = 16,000 دينار)؛ هذا المُضاعِف
+    /// (افتراضي 1000) يُطبَّق على السعر/الرصيد القادمَين من الساس لتوحيدهما مع محاسبة
+    /// الصدارة (الدينار الكامل). اضبطه 1 للمزوّدين الذين يُرجعون الدينار مباشرةً.
+    /// </summary>
+    public decimal AmountMultiplier { get; set; } = 1000m;
+
     /// <summary>هل الحساب مفعّل؟</summary>
     public bool IsActive { get; set; } = true;
 

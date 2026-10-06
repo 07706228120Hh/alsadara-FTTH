@@ -16,6 +16,9 @@ class SasAccountFormResult {
   final SasAccountType accountType;
   final bool isActive;
 
+  /// مُضاعِف القيم المالية من SAS4 إلى الدينار الحقيقي (افتراضي 1000).
+  final num amountMultiplier;
+
   const SasAccountFormResult({
     required this.label,
     required this.serverUrl,
@@ -23,6 +26,7 @@ class SasAccountFormResult {
     required this.password,
     required this.accountType,
     required this.isActive,
+    this.amountMultiplier = 1000,
   });
 }
 
@@ -45,6 +49,7 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
   late final TextEditingController _serverCtrl;
   late final TextEditingController _userCtrl;
   final _passCtrl = TextEditingController();
+  late final TextEditingController _multiplierCtrl;
 
   late SasAccountType _accountType;
   late bool _isActive;
@@ -61,6 +66,8 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
     _userCtrl = TextEditingController(text: e?.username ?? '');
     _accountType = e?.accountType ?? SasAccountType.sasManager;
     _isActive = e?.isActive ?? true;
+    _multiplierCtrl = TextEditingController(
+        text: (e?.amountMultiplier ?? 1000).toString());
   }
 
   @override
@@ -69,6 +76,7 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
     _serverCtrl.dispose();
     _userCtrl.dispose();
     _passCtrl.dispose();
+    _multiplierCtrl.dispose();
     super.dispose();
   }
 
@@ -82,6 +90,10 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
         password: _passCtrl.text,
         accountType: _accountType,
         isActive: _isActive,
+        amountMultiplier: () {
+          final v = num.tryParse(_multiplierCtrl.text.trim());
+          return (v != null && v > 0) ? v : 1000;
+        }(),
       ),
     );
   }
@@ -273,6 +285,28 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
                         .toList(),
                     onChanged: (v) =>
                         setState(() => _accountType = v ?? _accountType),
+                  ),
+                  SizedBox(height: 12.h),
+                  TextFormField(
+                    controller: _multiplierCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    style: GoogleFonts.cairo(),
+                    decoration: InputDecoration(
+                      labelText: 'مُضاعِف القيمة المالية',
+                      helperText:
+                          'قيم الساس تُضرب بهذا الرقم للدينار الحقيقي (16 → 16000). الافتراضي 1000.',
+                      helperStyle: GoogleFonts.cairo(
+                          fontSize: 11, color: Colors.grey[600]),
+                      prefixIcon: Icon(Icons.calculate_outlined,
+                          color: AppTheme.primaryColor, size: 20.sp),
+                      labelStyle: GoogleFonts.cairo(),
+                    ),
+                    validator: (v) {
+                      final n = num.tryParse((v ?? '').trim());
+                      if (n == null || n <= 0) return 'أدخل رقماً موجباً (مثل 1000)';
+                      return null;
+                    },
                   ),
             SizedBox(height: 4.h),
             SwitchListTile(

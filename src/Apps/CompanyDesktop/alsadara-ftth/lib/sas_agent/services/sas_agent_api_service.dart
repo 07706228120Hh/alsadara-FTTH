@@ -56,6 +56,7 @@ class SasAgentApiService {
     required String password,
     required SasAccountType accountType,
     bool isActive = true,
+    num amountMultiplier = 1000,
   }) async {
     final res = await _api.post('$_base/accounts', body: {
       'label': label,
@@ -64,6 +65,7 @@ class SasAgentApiService {
       'password': password,
       'accountType': accountType.apiValue,
       'isActive': isActive,
+      'amountMultiplier': amountMultiplier,
     });
     final data = res['data'];
     if (data is Map) {
@@ -81,6 +83,7 @@ class SasAgentApiService {
     String? password,
     SasAccountType? accountType,
     bool? isActive,
+    num? amountMultiplier,
   }) async {
     final body = <String, dynamic>{
       if (label != null) 'label': label,
@@ -89,6 +92,7 @@ class SasAgentApiService {
       if (password != null && password.isNotEmpty) 'password': password,
       if (accountType != null) 'accountType': accountType.apiValue,
       if (isActive != null) 'isActive': isActive,
+      if (amountMultiplier != null) 'amountMultiplier': amountMultiplier,
     };
     final res = await _api.put('$_base/accounts/$id', body: body);
     return res['success'] == true;
@@ -98,6 +102,14 @@ class SasAgentApiService {
   Future<bool> deleteAccount(String id) async {
     final res = await _api.delete('$_base/accounts/$id');
     return res['success'] == true;
+  }
+
+  /// قائمة الفنيّين القابلين للإسناد على الحساب —
+  /// `GET accounts/{id}/technicians`. يعيد `data:[{id,name,phone}]` خاماً
+  /// (كلّ عنصر خريطة). العزل (شركة + مالك) يفرضه الخادم.
+  Future<List<Map<String, dynamic>>> getTechnicians(String accountId) async {
+    final res = await _api.get('$_base/accounts/$accountId/technicians');
+    return _asMapList(res['data'] ?? res['rows'] ?? res['items'] ?? res);
   }
 
   // ============================================================
@@ -617,6 +629,8 @@ class SasAgentApiService {
   /// الهوية والعزل (شركة + مالك) مختومان خادمياً. [transactionId] يمنع التكرار.
   ///
   /// [action] أحد: `activate` · `extend` · `changeProfile`.
+  /// [linkedTechnicianId] معرّف الفنّي (GUID نصّي) يُرسَل عند
+  /// `collectionType == "technician"` لإسناد العملية إلى فنّي.
   /// يعيد خريطة الرد الكاملة متضمّنةً `receipt` (operationType/planName/months/
   /// basePrice/maintenanceFee/manualDiscount/collectedAmount/currency/
   /// collectionType/transactionId/activatedByUserId/subscriberUsername).
@@ -631,6 +645,7 @@ class SasAgentApiService {
     num? manualDiscount,
     bool systemDiscountEnabled = true,
     String? linkedAgentId,
+    String? linkedTechnicianId,
     String? phone,
     String? subscriberUsername,
     String? transactionId,
@@ -648,6 +663,8 @@ class SasAgentApiService {
         'systemDiscountEnabled': systemDiscountEnabled,
         if (linkedAgentId != null && linkedAgentId.isNotEmpty)
           'linkedAgentId': linkedAgentId,
+        if (linkedTechnicianId != null && linkedTechnicianId.isNotEmpty)
+          'linkedTechnicianId': linkedTechnicianId,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
         if (subscriberUsername != null && subscriberUsername.isNotEmpty)
           'subscriberUsername': subscriberUsername,

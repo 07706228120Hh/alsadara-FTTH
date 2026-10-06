@@ -824,12 +824,17 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     }
     if (!mounted) return;
 
-    final price = _asNum(actData['n_required_amount'] ??
+    // تطبيع قيم SAS4 (قد تكون بالآلاف) إلى الدينار الحقيقي للعرض — بنفس مُضاعِف
+    // الحساب المستخدَم خادمياً للدفاتر، فيتطابق ما يراه المشغّل مع ما يُسجَّل محاسبياً.
+    final mult = widget.account.amountMultiplier;
+    num? rawPrice = _asNum(actData['n_required_amount'] ??
         actData['required_amount'] ??
         actData['price']);
-    final managerBalance = _asNum(actData['manager_balance'] ??
+    num? rawBalance = _asNum(actData['manager_balance'] ??
         actData['managerBalance'] ??
         actData['balance']);
+    final price = rawPrice == null ? null : rawPrice * mult;
+    final managerBalance = rawBalance == null ? null : rawBalance * mult;
     final vat = _asNum(actData['vat']);
     final planName = (profileNameHint?.trim().isNotEmpty == true)
         ? profileNameHint!.trim()
@@ -866,6 +871,8 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         maintenanceFee: collection.maintenanceFee,
         manualDiscount: collection.manualDiscount,
         systemDiscountEnabled: true,
+        linkedAgentId: collection.linkedAgentId,
+        linkedTechnicianId: collection.linkedTechnicianId,
         phone: _subscriberPhone(),
         subscriberUsername: _username,
         transactionId: _txn(),
@@ -1178,6 +1185,15 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     final maintenanceCtl = TextEditingController();
     final discountCtl = TextEditingController();
 
+    // إسناد العملية: الفنّي عند «فني»، الوكيل عند «وكيل». القوائم تُحمَّل كسولاً
+    // عند اختيار الشريحة المقابلة (أوّل مرّة فقط) ويُخزَّن المختار منها.
+    String? pickedTechnicianId;
+    String? pickedAgentId;
+    List<Map<String, dynamic>>? technicians; // null = لم تُحمَّل بعد
+    List<Map<String, dynamic>>? agents;
+    bool loadingTechs = false;
+    bool loadingAgents = false;
+
     // عدد الأشهر الحالي (≥ 1) من الحقل.
     int currentMonths() {
       final n = int.tryParse(monthsCtl.text.trim()) ?? 1;
@@ -1206,8 +1222,49 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx, setLocal) {
+            // تحميل كسول للفنّيين عند اختيار شريحة «فني» أوّل مرّة.
+            Future<void> ensureTechnicians() async {
+              if (technicians != null || loadingTechs) return;
+              setLocal(() => loadingTechs = true);
+              try {
+                final list = await _api.getTechnicians(_aid);
+                if (ctx.mounted) setLocal(() => technicians = list);
+              } catch (_) {
+                if (ctx.mounted) setLocal(() => technicians = const []);
+              } finally {
+                if (ctx.mounted) setLocal(() => loadingTechs = false);
+              }
+            }
+
+            // تحميل كسول للوكلاء عند اختيار شريحة «وكيل» أوّل مرّة.
+            Future<void> ensureAgents() async {
+              if (agents != null || loadingAgents) return;
+              setLocal(() => loadingAgents = true);
+              try {
+                final list = await _api.getManagers(_aid);
+                if (ctx.mounted) setLocal(() => agents = list);
+              } catch (_) {
+                if (ctx.mounted) setLocal(() => agents = const []);
+              } finally {
+                if (ctx.mounted) setLocal(() => loadingAgents = false);
+              }
+            }
+
+            // الإسناد مكتمل؟ (فنّي مختار عند «فني»، وكيل مختار عند «وكيل»).
+            bool assignmentReady() {
+              if (collectionType == 'technician') {
+                return pickedTechnicianId != null &&
+                    pickedTechnicianId!.isNotEmpty;
+              }
+              if (collectionType == 'agent') {
+                return pickedAgentId != null && pickedAgentId!.isNotEmpty;
+              }
+              return true;
+            }
+
             final enough = sufficient();
             final total = previewTotal();
+            final canConfirm = enough && assignmentReady();
             return AlertDialog(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(SasUi.radius)),
@@ -1310,12 +1367,45 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                               collectionType,
                               (v) => setLocal(() => collectionType = v)),
                           _collectionChip('agent', 'وكيل', collectionType,
-                              (v) => setLocal(() => collectionType = v)),
+                              (v) {
+                            setLocal(() => collectionType = v);
+                            ensureAgents();
+                          }),
+                          _collectionChip('technician', 'فني', collectionType,
+                              (v) {
+                            setLocal(() => collectionType = v);
+                            ensureTechnicians();
+                          }),
                           _collectionChip('citizen', 'آجل (ذمة المواطن)',
                               collectionType,
                               (v) => setLocal(() => collectionType = v)),
                         ],
                       ),
+                      // منتقي الفنّي عند «فني».
+                      if (collectionType == 'technician') ...[
+                        const SizedBox(height: 12),
+                        _assigneePicker(
+                          label: 'اختر الفنّي',
+                          hint: 'لا فنّيون متاحون',
+                          loading: loadingTechs,
+                          items: technicians,
+                          selectedId: pickedTechnicianId,
+                          onChanged: (v) =>
+                              setLocal(() => pickedTechnicianId = v),
+                        ),
+                      ],
+                      // منتقي الوكيل عند «وكيل».
+                      if (collectionType == 'agent') ...[
+                        const SizedBox(height: 12),
+                        _assigneePicker(
+                          label: 'اختر الوكيل',
+                          hint: 'لا وكلاء متاحون',
+                          loading: loadingAgents,
+                          items: agents,
+                          selectedId: pickedAgentId,
+                          onChanged: (v) => setLocal(() => pickedAgentId = v),
+                        ),
+                      ],
                       const SizedBox(height: 14),
                       Row(
                         children: [
@@ -1362,7 +1452,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                       style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
                 ),
                 FilledButton(
-                  onPressed: enough
+                  onPressed: canConfirm
                       ? () => Navigator.pop(
                             ctx,
                             _SasCollection(
@@ -1372,6 +1462,12 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                                   num.tryParse(maintenanceCtl.text.trim()),
                               manualDiscount:
                                   num.tryParse(discountCtl.text.trim()),
+                              linkedTechnicianId: collectionType == 'technician'
+                                  ? pickedTechnicianId
+                                  : null,
+                              linkedAgentId: collectionType == 'agent'
+                                  ? pickedAgentId
+                                  : null,
                             ),
                           )
                       : null,
@@ -1439,6 +1535,89 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm)),
     );
+  }
+
+  /// منتقي مُسنَد إليه (فنّي/وكيل): حالة تحميل، ثم Dropdown بالأسماء، أو رسالة
+  /// فراغ. [items] خرائط خام `{id, name, phone}`؛ [selectedId] المعرّف المختار.
+  Widget _assigneePicker({
+    required String label,
+    required String hint,
+    required bool loading,
+    required List<Map<String, dynamic>>? items,
+    required String? selectedId,
+    required ValueChanged<String?> onChanged,
+  }) {
+    if (loading || items == null) {
+      return Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: AppTheme.primaryColor),
+          ),
+          const SizedBox(width: 10),
+          Text('جارِ تحميل القائمة…',
+              style: GoogleFonts.cairo(
+                  fontSize: 12.5, color: Colors.grey[700])),
+        ],
+      );
+    }
+    if (items.isEmpty) {
+      return Row(
+        children: [
+          Icon(Icons.info_outline_rounded,
+              size: 18, color: AppTheme.warningColor),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(hint,
+                style: GoogleFonts.cairo(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.warningColor)),
+          ),
+        ],
+      );
+    }
+    // لا نُبقي معرّفاً غير موجود في القائمة (تفادي خطأ Dropdown).
+    final value = (selectedId != null &&
+            items.any((e) => '${e['id'] ?? e['_id']}' == selectedId))
+        ? selectedId
+        : null;
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      isExpanded: true,
+      style: GoogleFonts.cairo(
+          fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 12),
+        isDense: true,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(SasUi.radiusSm)),
+      ),
+      items: [
+        for (final e in items)
+          DropdownMenuItem<String>(
+            value: '${e['id'] ?? e['_id']}',
+            child: Text(
+              _assigneeLabel(e),
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+            ),
+          ),
+      ],
+      onChanged: onChanged,
+    );
+  }
+
+  /// نص عرض المُسنَد إليه: الاسم (وإلا المعرّف) + الهاتف إن وُجد.
+  String _assigneeLabel(Map<String, dynamic> e) {
+    final name =
+        (e['name'] ?? e['fullName'] ?? e['username'] ?? e['id'] ?? '—')
+            .toString();
+    final phone = (e['phone'] ?? e['mobile'] ?? '').toString().trim();
+    return phone.isEmpty ? name : '$name — $phone';
   }
 
   Widget _miniField(TextEditingController ctl, String label,
@@ -1529,15 +1708,23 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
 /// الحقول الاختيارية.
 class _SasCollection {
   final int? months; // عدد الأشهر (null لتغيير الباقة الذي لا يحتاج مدة)
-  final String collectionType; // cash | credit | agent | citizen
+  final String collectionType; // cash | credit | agent | citizen | technician
   final num? maintenanceFee;
   final num? manualDiscount;
+
+  /// معرّف الفنّي (GUID) — يُملأ عند collectionType == 'technician'.
+  final String? linkedTechnicianId;
+
+  /// معرّف الوكيل (GUID) — يُملأ عند collectionType == 'agent'.
+  final String? linkedAgentId;
 
   const _SasCollection({
     this.months,
     required this.collectionType,
     this.maintenanceFee,
     this.manualDiscount,
+    this.linkedTechnicianId,
+    this.linkedAgentId,
   });
 }
 

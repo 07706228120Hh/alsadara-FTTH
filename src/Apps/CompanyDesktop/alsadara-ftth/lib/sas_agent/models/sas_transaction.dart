@@ -26,13 +26,22 @@ class SasTransaction {
   final num? collectedAmount;
   final String currency;
 
-  /// نوع التحصيل الخام: `cash` · `credit` · `agent`.
+  /// نوع التحصيل الخام: `cash` · `credit` · `agent` · `citizen` · `technician`.
   final String collectionType;
 
   /// حالة الحركة الخام (مثل `ok`/`success`/`failed`) — تُترجَم عند العرض.
   final String status;
 
   final String? journalEntryId;
+
+  /// اسم مُنفِّذ العملية (المستخدم الذي ختم الحركة).
+  final String activatedBy;
+
+  /// اسم الفنّي المُسنَدة إليه العملية (عند collectionType == technician).
+  final String technicianName;
+
+  /// اسم الوكيل المُسنَدة إليه العملية (عند collectionType == agent).
+  final String agentName;
 
   const SasTransaction({
     required this.id,
@@ -47,6 +56,9 @@ class SasTransaction {
     this.basePrice,
     this.collectedAmount,
     this.journalEntryId,
+    this.activatedBy = '',
+    this.technicianName = '',
+    this.agentName = '',
   });
 
   /// الإجراء بالعربية للعرض.
@@ -72,8 +84,28 @@ class SasTransaction {
         return 'أجل';
       case 'agent':
         return 'وكيل';
+      case 'citizen':
+        return 'ذمة المواطن';
+      case 'technician':
+        return 'فني';
       default:
         return collectionType.isEmpty ? '—' : collectionType;
+    }
+  }
+
+  /// اسم المُسنَدة إليه العملية «على مَن» حسب نوع التحصيل:
+  /// فنّي → اسم الفنّي · وكيل → اسم الوكيل · ذمة المواطن → «المواطن» ·
+  /// غير ذلك → فارغ (لا إسناد).
+  String get assigneeAr {
+    switch (collectionType) {
+      case 'technician':
+        return technicianName.isEmpty ? '—' : technicianName;
+      case 'agent':
+        return agentName.isEmpty ? '—' : agentName;
+      case 'citizen':
+        return 'المواطن';
+      default:
+        return '';
     }
   }
 
@@ -129,6 +161,24 @@ class SasTransaction {
               json['journal_entry_id'] ??
               json['journalId'])
           ?.toString(),
+      activatedBy: (json['activatedBy'] ??
+              json['activated_by'] ??
+              json['activatedByName'] ??
+              json['activated_by_name'] ??
+              '')
+          .toString(),
+      technicianName: (json['technicianName'] ??
+              json['technician_name'] ??
+              json['linkedTechnicianName'] ??
+              json['linked_technician_name'] ??
+              '')
+          .toString(),
+      agentName: (json['agentName'] ??
+              json['agent_name'] ??
+              json['linkedAgentName'] ??
+              json['linked_agent_name'] ??
+              '')
+          .toString(),
     );
   }
 }

@@ -428,6 +428,9 @@ public class SadaraDbContext : DbContext
             .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SasAccount>()
             .HasOne<User>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+        // مُضاعِف القيم المالية (SAS4→دينار حقيقي): افتراضي 1000 — يُطبَّق على الصفوف القائمة عند الهجرة.
+        modelBuilder.Entity<SasAccount>().Property(x => x.AmountMultiplier)
+            .HasPrecision(18, 2).HasDefaultValue(1000m);
 
         // تسعير باقات الساس (كلفة/سعر بيع → ربح): فهرس فريد (شركة + حساب + بروفايل) لمنع تكرار تسعير الباقة.
         modelBuilder.Entity<SasPackagePrice>().HasQueryFilter(x => !x.IsDeleted);
