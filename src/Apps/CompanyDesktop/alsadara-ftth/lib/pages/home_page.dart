@@ -41,6 +41,7 @@ import 'super_admin/sadara_portal_page.dart'; // منصة الصدارة
 import 'accounting/accounting_dashboard_page.dart'; // نظام المحاسبة
 import '../inventory/inventory_page.dart'; // نظام المخازن
 import '../sas_agent/sas_agent_page.dart'; // صفحة وكيل الساس (بوّابة /api/sas-agent)
+import 'properties/properties_list_page.dart'; // سجل العقارات المستقل (بوّابة /api/properties)
 import '../task/follow_up_page.dart'; // صفحة المتابعة
 // import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق — مخفي حالياً
 // شاشتي - معاملات الفني
@@ -2648,6 +2649,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             gradient: [const Color(0xFF00695C), const Color(0xFF00897B)],
             permissionKey: 'sas_agent',
             onTap: () => _navigateTo(const SasAgentPage()),
+          ),
+          // 8c) سجل العقارات المستقل — بوّابة /api/properties
+          _buildEnhancedMenuItem(
+            title: 'سجل العقارات',
+            subtitle: 'عنوان وطني (QR + NPN) ومواطنون وخدمات',
+            icon: Icons.home_work_rounded,
+            gradient: [const Color(0xFF1565C0), const Color(0xFF42A5F5)],
+            permissionKey: 'property_registry',
+            onTap: () => _navigateTo(const PropertiesListPage()),
           ),
           // 9) المتابعة والتقييم
           _buildEnhancedMenuItem(
