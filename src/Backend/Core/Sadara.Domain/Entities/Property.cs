@@ -43,14 +43,23 @@ public class Property : BaseEntity<Guid>, ITenantScoped
     /// <summary>المحافظة.</summary>
     public string Governorate { get; set; } = string.Empty;
 
-    /// <summary>المنطقة (العنوان 1 على بطاقة الـQR).</summary>
+    /// <summary>المنطقة (العنوان 1 على بطاقة الـQR) — لقطة نصّية للعرض/الطباعة.</summary>
     public string Area { get; set; } = string.Empty;
 
-    /// <summary>العنوان 2 (سطر العنوان الثاني على بطاقة الـQR).</summary>
+    /// <summary>العنوان 2 (سطر العنوان الثاني على بطاقة الـQR) — لقطة نصّية.</summary>
     public string? Address2 { get; set; }
 
-    /// <summary>العنوان 3 (سطر العنوان الثالث على بطاقة الـQR).</summary>
+    /// <summary>العنوان 3 (سطر العنوان الثالث على بطاقة الـQR) — لقطة نصّية.</summary>
     public string? Address3 { get; set; }
+
+    /// <summary>المنطقة المختارة (<see cref="SasRegion"/>) — ربط ببيانات المواقع المشتركة (اختياري).</summary>
+    public Guid? RegionId { get; set; }
+
+    /// <summary>العنوان 2 المختار (<see cref="PropertyAddress2"/>) — اختياري.</summary>
+    public Guid? Address2Id { get; set; }
+
+    /// <summary>العنوان 3 المختار (<see cref="PropertyAddress3"/>) — اختياري.</summary>
+    public Guid? Address3Id { get; set; }
 
     /// <summary>اسم صاحب الدار (حقل مباشر على العقار — يظهر على بطاقة الـQR).</summary>
     public string? OwnerName { get; set; }

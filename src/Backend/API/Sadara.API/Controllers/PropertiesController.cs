@@ -185,6 +185,9 @@ public class PropertiesController : ControllerBase
             Area = (request.Area ?? string.Empty).Trim(),
             Address2 = Nullify(request.Address2),
             Address3 = Nullify(request.Address3),
+            RegionId = request.RegionId,
+            Address2Id = request.Address2Id,
+            Address3Id = request.Address3Id,
             OwnerName = Nullify(request.OwnerName),
             OwnerPhone = Nullify(request.OwnerPhone),
             District = (request.District ?? string.Empty).Trim(),
@@ -214,6 +217,9 @@ public class PropertiesController : ControllerBase
         if (request.Area != null) p.Area = request.Area.Trim();
         if (request.Address2 != null) p.Address2 = Nullify(request.Address2);
         if (request.Address3 != null) p.Address3 = Nullify(request.Address3);
+        if (request.RegionId.HasValue) p.RegionId = request.RegionId == Guid.Empty ? null : request.RegionId;
+        if (request.Address2Id.HasValue) p.Address2Id = request.Address2Id == Guid.Empty ? null : request.Address2Id;
+        if (request.Address3Id.HasValue) p.Address3Id = request.Address3Id == Guid.Empty ? null : request.Address3Id;
         if (request.OwnerName != null) p.OwnerName = Nullify(request.OwnerName);
         if (request.OwnerPhone != null) p.OwnerPhone = Nullify(request.OwnerPhone);
         if (request.District != null) p.District = request.District.Trim();
@@ -589,6 +595,238 @@ public class PropertiesController : ControllerBase
         return PhysicalFile(fullPath, mime);
     }
 
+    // ============ بيانات المواقع: المناطق (SasRegion مشترك) + العناوين 2/3 الهرمية ============
+
+    /// <summary>قائمة المناطق (نفس جدول مناطق الساز — مصدر موحّد).</summary>
+    [HttpGet("regions")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetRegions(CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var rows = await _db.SasRegions.AsNoTracking()
+            .Where(r => r.CompanyId == companyId && !r.IsDeleted)
+            .OrderBy(r => r.Name)
+            .Select(r => new
+            {
+                id = r.Id, name = r.Name, code = r.Code,
+                governorate = r.Governorate, city = r.City,
+                maintenanceFee = r.MaintenanceFee, isActive = r.IsActive
+            })
+            .ToListAsync(ct);
+        return Ok(new { success = true, data = rows });
+    }
+
+    /// <summary>إنشاء منطقة (في جدول الساز المشترك).</summary>
+    [HttpPost("regions")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> CreateRegion([FromBody] RegionUpsertRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var name = Nullify(request?.Name);
+        if (name == null) return BadRequest(new { success = false, message = "اسم المنطقة مطلوب" });
+        if (await _db.SasRegions.AnyAsync(x => x.CompanyId == companyId && x.Name == name && !x.IsDeleted, ct))
+            return Conflict(new { success = false, message = "اسم المنطقة مستخدم مسبقاً" });
+
+        var region = new SasRegion
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = companyId,
+            Name = name,
+            Code = Nullify(request!.Code),
+            Governorate = Nullify(request.Governorate),
+            City = Nullify(request.City),
+            MaintenanceFee = Math.Max(0, request.MaintenanceFee),
+            IsActive = request.IsActive ?? true,
+            Notes = Nullify(request.Notes)
+        };
+        await _db.SasRegions.AddAsync(region, ct);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, id = region.Id, message = "تم إنشاء المنطقة" });
+    }
+
+    /// <summary>تعديل منطقة.</summary>
+    [HttpPut("regions/{rid:guid}")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UpdateRegion(Guid rid, [FromBody] RegionUpsertRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var name = Nullify(request?.Name);
+        if (name == null) return BadRequest(new { success = false, message = "اسم المنطقة مطلوب" });
+        var region = await _db.SasRegions.FirstOrDefaultAsync(x => x.Id == rid && x.CompanyId == companyId && !x.IsDeleted, ct);
+        if (region == null) return NotFound(new { success = false, message = "المنطقة غير موجودة" });
+        if (await _db.SasRegions.AnyAsync(x => x.CompanyId == companyId && x.Name == name && x.Id != rid && !x.IsDeleted, ct))
+            return Conflict(new { success = false, message = "اسم المنطقة مستخدم مسبقاً" });
+        region.Name = name;
+        region.Code = Nullify(request!.Code);
+        region.Governorate = Nullify(request.Governorate);
+        region.City = Nullify(request.City);
+        region.MaintenanceFee = Math.Max(0, request.MaintenanceFee);
+        if (request.IsActive.HasValue) region.IsActive = request.IsActive.Value;
+        region.Notes = Nullify(request.Notes);
+        region.UpdatedAt = DateTime.UtcNow;
+        _db.SasRegions.Update(region);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم تحديث المنطقة" });
+    }
+
+    /// <summary>حذف منطقة (ناعم) — يُرفَض إن كانت مرتبطة بمشتركي ساز أو عقارات أو عناوين فرعية.</summary>
+    [HttpDelete("regions/{rid:guid}")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> DeleteRegion(Guid rid, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var region = await _db.SasRegions.FirstOrDefaultAsync(x => x.Id == rid && x.CompanyId == companyId && !x.IsDeleted, ct);
+        if (region == null) return NotFound(new { success = false, message = "المنطقة غير موجودة" });
+        if (await _db.SasSubscriberProfiles.AnyAsync(s => s.RegionId == rid && !s.IsDeleted, ct))
+            return Conflict(new { success = false, message = "لا يمكن الحذف: المنطقة مرتبطة بمشتركين" });
+        if (await _db.Properties.AnyAsync(p => p.RegionId == rid, ct))
+            return Conflict(new { success = false, message = "لا يمكن الحذف: المنطقة مرتبطة بعقارات" });
+        if (await _db.PropertyAddress2s.AnyAsync(a => a.RegionId == rid, ct))
+            return Conflict(new { success = false, message = "لا يمكن الحذف: المنطقة تحتوي عناوين فرعية" });
+        region.IsDeleted = true; region.DeletedAt = DateTime.UtcNow;
+        _db.SasRegions.Update(region);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم حذف المنطقة" });
+    }
+
+    /// <summary>العناوين 2 لمنطقة معيّنة.</summary>
+    [HttpGet("address2")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetAddress2([FromQuery] Guid regionId, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var rows = await _db.PropertyAddress2s.AsNoTracking()
+            .Where(a => a.CompanyId == companyId && a.RegionId == regionId)
+            .OrderBy(a => a.Name)
+            .Select(a => new { id = a.Id, regionId = a.RegionId, name = a.Name, isActive = a.IsActive })
+            .ToListAsync(ct);
+        return Ok(new { success = true, data = rows });
+    }
+
+    /// <summary>إنشاء عنوان 2 تحت منطقة.</summary>
+    [HttpPost("address2")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> CreateAddress2([FromBody] AddressNodeUpsertRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var name = Nullify(request?.Name);
+        if (name == null || request!.ParentId == Guid.Empty)
+            return BadRequest(new { success = false, message = "المنطقة والاسم مطلوبان" });
+        if (!await _db.SasRegions.AnyAsync(r => r.Id == request.ParentId && r.CompanyId == companyId && !r.IsDeleted, ct))
+            return BadRequest(new { success = false, message = "المنطقة غير موجودة" });
+        var node = new PropertyAddress2
+        {
+            Id = Guid.NewGuid(), CompanyId = companyId,
+            RegionId = request.ParentId, Name = name, IsActive = request.IsActive ?? true
+        };
+        await _db.PropertyAddress2s.AddAsync(node, ct);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, id = node.Id, message = "تمت الإضافة" });
+    }
+
+    /// <summary>تعديل عنوان 2.</summary>
+    [HttpPut("address2/{id:guid}")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UpdateAddress2(Guid id, [FromBody] AddressNodeUpsertRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var node = await _db.PropertyAddress2s.FirstOrDefaultAsync(a => a.Id == id && a.CompanyId == companyId, ct);
+        if (node == null) return NotFound(new { success = false, message = "العنوان غير موجود" });
+        var name = Nullify(request?.Name);
+        if (name != null) node.Name = name;
+        if (request?.IsActive != null) node.IsActive = request.IsActive.Value;
+        node.UpdatedAt = DateTime.UtcNow;
+        _db.PropertyAddress2s.Update(node);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    /// <summary>حذف عنوان 2 (ناعم) — يُرفَض إن كان مرتبطاً بعقارات أو عناوين 3.</summary>
+    [HttpDelete("address2/{id:guid}")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> DeleteAddress2(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var node = await _db.PropertyAddress2s.FirstOrDefaultAsync(a => a.Id == id && a.CompanyId == companyId, ct);
+        if (node == null) return NotFound(new { success = false, message = "العنوان غير موجود" });
+        if (await _db.Properties.AnyAsync(p => p.Address2Id == id, ct))
+            return Conflict(new { success = false, message = "لا يمكن الحذف: مرتبط بعقارات" });
+        if (await _db.PropertyAddress3s.AnyAsync(a => a.Address2Id == id, ct))
+            return Conflict(new { success = false, message = "لا يمكن الحذف: يحتوي عناوين فرعية" });
+        node.IsDeleted = true; node.DeletedAt = DateTime.UtcNow;
+        _db.PropertyAddress2s.Update(node);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    /// <summary>العناوين 3 لعنوان 2 معيّن.</summary>
+    [HttpGet("address3")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetAddress3([FromQuery] Guid address2Id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var rows = await _db.PropertyAddress3s.AsNoTracking()
+            .Where(a => a.CompanyId == companyId && a.Address2Id == address2Id)
+            .OrderBy(a => a.Name)
+            .Select(a => new { id = a.Id, address2Id = a.Address2Id, name = a.Name, isActive = a.IsActive })
+            .ToListAsync(ct);
+        return Ok(new { success = true, data = rows });
+    }
+
+    /// <summary>إنشاء عنوان 3 تحت عنوان 2.</summary>
+    [HttpPost("address3")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> CreateAddress3([FromBody] AddressNodeUpsertRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var name = Nullify(request?.Name);
+        if (name == null || request!.ParentId == Guid.Empty)
+            return BadRequest(new { success = false, message = "العنوان 2 والاسم مطلوبان" });
+        if (!await _db.PropertyAddress2s.AnyAsync(a => a.Id == request.ParentId && a.CompanyId == companyId, ct))
+            return BadRequest(new { success = false, message = "العنوان 2 غير موجود" });
+        var node = new PropertyAddress3
+        {
+            Id = Guid.NewGuid(), CompanyId = companyId,
+            Address2Id = request.ParentId, Name = name, IsActive = request.IsActive ?? true
+        };
+        await _db.PropertyAddress3s.AddAsync(node, ct);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, id = node.Id, message = "تمت الإضافة" });
+    }
+
+    /// <summary>تعديل عنوان 3.</summary>
+    [HttpPut("address3/{id:guid}")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UpdateAddress3(Guid id, [FromBody] AddressNodeUpsertRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var node = await _db.PropertyAddress3s.FirstOrDefaultAsync(a => a.Id == id && a.CompanyId == companyId, ct);
+        if (node == null) return NotFound(new { success = false, message = "العنوان غير موجود" });
+        var name = Nullify(request?.Name);
+        if (name != null) node.Name = name;
+        if (request?.IsActive != null) node.IsActive = request.IsActive.Value;
+        node.UpdatedAt = DateTime.UtcNow;
+        _db.PropertyAddress3s.Update(node);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    /// <summary>حذف عنوان 3 (ناعم) — يُرفَض إن كان مرتبطاً بعقارات.</summary>
+    [HttpDelete("address3/{id:guid}")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> DeleteAddress3(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var node = await _db.PropertyAddress3s.FirstOrDefaultAsync(a => a.Id == id && a.CompanyId == companyId, ct);
+        if (node == null) return NotFound(new { success = false, message = "العنوان غير موجود" });
+        if (await _db.Properties.AnyAsync(p => p.Address3Id == id, ct))
+            return Conflict(new { success = false, message = "لا يمكن الحذف: مرتبط بعقارات" });
+        node.IsDeleted = true; node.DeletedAt = DateTime.UtcNow;
+        _db.PropertyAddress3s.Update(node);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
     // ============ مساعدات ============
 
     private async Task<Property?> GetOwnedPropertyAsync(Guid id, Guid companyId, CancellationToken ct) =>
@@ -661,6 +899,9 @@ public class PropertiesController : ControllerBase
         area = x.Area,
         address2 = x.Address2,
         address3 = x.Address3,
+        regionId = x.RegionId,
+        address2Id = x.Address2Id,
+        address3Id = x.Address3Id,
         ownerName = x.OwnerName,
         ownerPhone = x.OwnerPhone,
         district = x.District,
@@ -683,6 +924,9 @@ public record PropertyUpsertRequest(
     string? Area,
     string? Address2,
     string? Address3,
+    Guid? RegionId,
+    Guid? Address2Id,
+    Guid? Address3Id,
     string? OwnerName,
     string? OwnerPhone,
     string? District,
@@ -723,3 +967,19 @@ public record CreatePropertyTaskRequest(
     string? Department,
     string? Technician,
     string? Note);
+
+/// <summary>طلب إنشاء/تعديل منطقة (جدول الساز المشترك).</summary>
+public record RegionUpsertRequest(
+    string? Name,
+    string? Code,
+    string? Governorate,
+    string? City,
+    decimal MaintenanceFee,
+    bool? IsActive,
+    string? Notes);
+
+/// <summary>طلب إنشاء/تعديل عقدة عنوان هرمية (عنوان 2 تحت منطقة، أو عنوان 3 تحت عنوان 2).</summary>
+public record AddressNodeUpsertRequest(
+    Guid ParentId,
+    string? Name,
+    bool? IsActive);

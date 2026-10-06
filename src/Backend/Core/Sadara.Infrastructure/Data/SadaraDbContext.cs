@@ -173,6 +173,8 @@ public class SadaraDbContext : DbContext
     public DbSet<PropertyResident> PropertyResidents => Set<PropertyResident>();
     public DbSet<PropertyService> PropertyServices => Set<PropertyService>();
     public DbSet<PropertyNpnCounter> PropertyNpnCounters => Set<PropertyNpnCounter>();
+    public DbSet<PropertyAddress2> PropertyAddress2s => Set<PropertyAddress2>();
+    public DbSet<PropertyAddress3> PropertyAddress3s => Set<PropertyAddress3>();
 
     // ==================== Inventory System (نظام المخازن والمواد) ====================
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
@@ -472,6 +474,26 @@ public class SadaraDbContext : DbContext
         // عدّاد NPN الذرّي لكل محافظة (ليس مُستأجَراً؛ المفتاح = GovCode).
         modelBuilder.Entity<PropertyNpnCounter>().HasKey(x => x.GovCode);
         modelBuilder.Entity<PropertyNpnCounter>().Property(x => x.GovCode).ValueGeneratedNever();
+
+        // بنية المواقع الهرمية: المنطقة(SasRegion) → العنوان 2 → العنوان 3. معزولة بالشركة.
+        modelBuilder.Entity<PropertyAddress2>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<PropertyAddress2>().HasIndex(x => new { x.CompanyId, x.RegionId });
+        modelBuilder.Entity<PropertyAddress2>()
+            .HasOne(x => x.Region).WithMany().HasForeignKey(x => x.RegionId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PropertyAddress3>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<PropertyAddress3>().HasIndex(x => new { x.CompanyId, x.Address2Id });
+        modelBuilder.Entity<PropertyAddress3>()
+            .HasOne(x => x.Address2).WithMany(a => a.Children).HasForeignKey(x => x.Address2Id).OnDelete(DeleteBehavior.Cascade);
+
+        // ربط العقار ببيانات المواقع (اختياري؛ حذف الموقع لا يحذف العقار).
+        modelBuilder.Entity<Property>().HasIndex(x => x.RegionId);
+        modelBuilder.Entity<Property>()
+            .HasOne<SasRegion>().WithMany().HasForeignKey(x => x.RegionId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<Property>()
+            .HasOne<PropertyAddress2>().WithMany().HasForeignKey(x => x.Address2Id).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<Property>()
+            .HasOne<PropertyAddress3>().WithMany().HasForeignKey(x => x.Address3Id).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
 
         // تسعير باقات الساس (كلفة/سعر بيع → ربح): فهرس فريد (شركة + حساب + بروفايل) لمنع تكرار تسعير الباقة.
         modelBuilder.Entity<SasPackagePrice>().HasQueryFilter(x => !x.IsDeleted);
