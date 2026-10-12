@@ -1,6 +1,6 @@
-# AGENT_SKILLS_MATRIX — مصفوفة مهارات الوكلاء (29 وكيلاً)
+# AGENT_SKILLS_MATRIX — مصفوفة مهارات الوكلاء (30 وكيلاً)
 
-مهارات كل وكيل ونطاقه وتعاوناته في منصة الصدارة. مرجع سريع مكمّل لـ `AGENT_REGISTRY.md`. يشمل 20 وكيل نواة + 9 وكلاء وحدة SAS (بادئة `sas-`).
+مهارات كل وكيل ونطاقه وتعاوناته في منصة الصدارة. مرجع سريع مكمّل لـ `AGENT_REGISTRY.md`. يشمل 21 وكيل نواة + 9 وكلاء وحدة SAS (بادئة `sas-`).
 
 | Agent | Main Skill | Secondary Skills | Allowed Scope | Forbidden Scope | Collaborates With |
 |-------|-----------|------------------|---------------|-----------------|-------------------|
@@ -24,6 +24,7 @@
 | integration-agent | تكاملات خارجية | FTTH، Cloudflare، FCM، SMTP | gateways + طبقة التكامل | الكتابة على FTTH الخارجي | backend, security, devops |
 | product-analysis-agent | تحليل المنتج | متطلبات، أولويات | تحليل + roadmap | كود، نشر | project-manager, ui-ux |
 | penetration-testing-agent | اختبار اختراق دفاعي | تحقّق Auth/authz، CORS، rate-limit، IDOR/tenant isolation، exposed endpoints | بيئة محلية/staging مصرّح بها + تقارير | استهداف خارجي/الإنتاج، destructive/DoS، طباعة/سحب أسرار، تعديل كود بلا طلب | security-auditor, testing-qa, backend, database-postgres, devops |
+| network-quality-agent | وحدة فحص جودة الإنترنت (Flutter معزولة) | قياس ping/jitter/loss/DNS/traceroute/سرعة، إشارة ضوئية Rx/Tx (ONU هواوي/ZTE)، WiFi (native أندرويد/netsh ويندوز)، مواصفات الجهاز، تقييم/درجة/توصيات | `alsadara-ftth/lib/network_quality/**` + قراءة مرجعية للثيم و router_adapter | باقي alsadara-ftth (عدا 3 نقاط إدماج بتنسيق)، منطق الراوتر الإنتاجي، نواة .NET، DB، CitizenWeb، sas-agent، النشر، حزم pub جديدة | mobile-agent, ui-ux, security-auditor, performance |
 | sas-backend-agent | باكند FastAPI للوحدة | routers/services/schemas SAS، تمرير معزّز، أخطاء عربية | `modules/sas-agent/backend/app/{api,services,main,schemas,config}` | نواة .NET، models/migrations، عملاء SAS4، core/security، النشر | sas-database, sas-integration, sas-security, sas-testing, backend-agent |
 | sas-database-agent | SQLModel + Alembic للوحدة | نماذج/هجرات، فهارس، عزل، تشفير أسرار | `modules/sas-agent/backend/{models.py,database.py,migrations,alembic.ini}` | مخطّط PostgreSQL للنواة، هجرات EF Core، منطق API، النشر | sas-backend, sas-security, sas-testing, database-postgres |
 | sas-integration-agent | تكامل SAS4 | تشفير AES/OpenSSL، جلسات SAS، مهلات/أخطاء | `modules/sas-agent/backend/app/integrations/*` + مرجع SAS4 | نواة الصدارة، FTTH/Cloudflare/Firebase، routers/services، core/security | sas-backend, sas-security, sas-database, security-auditor |

@@ -19,6 +19,7 @@
 | معماري (طبقات، حدود، أنماط، حدّ النواة/الوحدة) | `02-architecture-evolution-agent` |
 | تعديل الوكلاء أنفسهم/قواعدهم | `01-agent-trainer-development-manager` |
 | حدود النواة ↔ وحدة SAS (من يملك ماذا) | `00-project-manager` (بمشورة `02-architecture-evolution-agent`) |
+| وحدة «فحص جودة الإنترنت» (`lib/network_quality/**`) | `network-quality-agent` (نقاط الإدماج بتنسيق `mobile-agent`) |
 
 ## حدود الملكية: نواة الصدارة ↔ وحدة SAS
 
@@ -45,6 +46,14 @@
 | طبقة OLT/SNMP المحفوظة (خاملة) | — | sas-olt-legacy-agent (قراءة فقط، بلا تفعيل) |
 
 **التكامل بينهما عبر بوّابة الصدارة `/api/sas-agent/*` فقط** (والـ HTTP الداخلي 127.0.0.1 + `X-Internal-Secret`). أي عمل يمسّ الطرفين يبدأ من `00-project-manager` الذي يوزّعه على مالكَي الجانبين بلا أن يلمس أيٌّ منهما كود الآخر. **قاعدة الملف الواحد** سارية: لا وكيلان على نفس الملف بالتوازي.
+
+## حدود وحدة «فحص جودة الإنترنت» (Network Quality)
+
+وحدة Flutter معزولة أخرى داخل `alsadara-ftth` (أداة ميدانية أوفلاين) يملكها `network-quality-agent` **حصراً** في `src/Apps/CompanyDesktop/alsadara-ftth/lib/network_quality/**`:
+
+- **`network-quality-agent`**: يملك كل كود الوحدة (models/services/pages/widgets). لا يلمس باقي `alsadara-ftth` ولا منطق إعداد الراوتر الإنتاجي (`router_adapter_service.dart` — قراءة مرجعية فقط) ولا نواة .NET/DB/CitizenWeb/وحدة sas-agent، ولا يُدخل حزم pub جديدة، ولا ينشر.
+- **نقاط الإدماج الثلاث المشتركة مع `mobile-agent`** (تُدار بتنسيق عبر `00-project-manager` وبموافقة بشرية): (1) زر الفتح في `lib/pages/login/premium_login_page.dart`؛ (2) إذن `ACCESS_WIFI_STATE` في `AndroidManifest.xml`؛ (3) قناة native `com.alsadara.ftth_project/netquality` في `MainActivity.kt` (الحزمة النشطة `com.alsadara.ftth_project`). أي إذن أندرويد جديد يمرّ على `security-auditor-agent`.
+- **لا تداخل مع وحدة SAS**: `lib/network_quality/**` و`lib/sas_agent/**` منفصلتان تماماً. **قاعدة الملف الواحد** سارية على نقاط الإدماج بين `network-quality-agent` و`mobile-agent`.
 
 ## متى التصعيد
 - أي عملية تحتاج موافقة (نشر، migration إنتاج، push/release، مسّ أسرار) → تُصعّد لطلب موافقة المستخدم عبر project-manager.

@@ -1,4 +1,4 @@
-# AGENT_REGISTRY — سجل الوكلاء (29 وكيلاً: 20 نواة الصدارة + 9 وحدة SAS)
+# AGENT_REGISTRY — سجل الوكلاء (30 وكيلاً: 21 نواة الصدارة + 9 وحدة SAS)
 
 السجل المرجعي لكل وكلاء منصة الصدارة: الدور، متى يُستعمل، نطاقه، صلاحياته. التعارضات تُحسم وفق `AGENT_COLLABORATION_RULES.md`.
 
@@ -26,6 +26,7 @@
 | integration-agent | التكاملات الخارجية | FTTH/Cloudflare/Firebase/SMTP | طبقة التكامل، gateways | الكتابة على FTTH الخارجي، الأسرار | نعم | نعم |
 | product-analysis-agent | تحليل المنتج والمتطلبات | فهم احتياج/أولوية | تحليل، roadmap، متطلبات | كود، نشر | لا | لا |
 | penetration-testing-agent | اختبار اختراق دفاعي تطبيقي ضمن بيئة مصرّح بها | تحقّق عملي من Auth/authz/CORS/rate-limit/admin routes/tenant isolation | بيئة محلية/staging مصرّح بها، قراءة الكود، تقارير في `.claude/reports/` | استهداف خارجي، الإنتاج، destructive/DoS، سحب/طباعة أسرار | لا (إلا بطلب project-manager) | نعم لأي أداة تدخّلية وللبيئة |
+| network-quality-agent | وحدة «فحص جودة الإنترنت» المعزولة (أداة ميدانية أوفلاين) | فحص أداء الإنترنت/الإشارة الضوئية/WiFi/مواصفات الجهاز في تطبيق FTTH | `alsadara-ftth/lib/network_quality/**` حصراً (+ 3 نقاط إدماج بتنسيق: زر الدخول، إذن ACCESS_WIFI_STATE، قناة netquality) | باقي alsadara-ftth، منطق إعداد الراوتر الإنتاجي، نواة .NET، DB، CitizenWeb، وحدة sas-agent، النشر، حزم pub جديدة | نعم (كود الوحدة Flutter) | نعم لنقاط الإدماج/الأذونات/أي حزمة جديدة |
 | **— وكلاء وحدة SAS (بادئة `sas-`) — ملكية حصرية في `modules/sas-agent/**` + `alsadara-ftth/lib/sas_agent/**`** | | | | | | |
 | sas-backend-agent | باكند وحدة SAS (Python/FastAPI) — routers/services/schemas/main | تطوير منطق خدمة الساز (SAS) داخل الوحدة | `modules/sas-agent/backend/app/{api,services,main.py,schemas.py,config.py}` (منطق SAS لا OLT الخامل) | نواة الصدارة .NET، models/migrations، عملاء SAS4، core/security، النشر | نعم (Python الوحدة) | نعم للنشر/عقد البوّابة |
 | sas-database-agent | بيانات وحدة SAS (SQLModel + Alembic) | نماذج/هجرات الوحدة، عزل، تشفير أسرار | `modules/sas-agent/backend/{app/models.py,app/database.py,migrations,alembic.ini}` | مخطّط PostgreSQL للنواة، هجرات EF Core، منطق API، النشر | نعم (models/migrations الوحدة) | نعم لأي تنفيذ إنتاج |
