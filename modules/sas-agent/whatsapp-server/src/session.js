@@ -49,6 +49,9 @@ class SessionManager {
     const puppeteer = {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      // مهلة بروتوكول أطول: تهيئة واتساب-ويب قد تتجاوز الافتراضي على الأجهزة
+      // المحمّلة، فيتفادى خطأ "Runtime.callFunctionOn timed out".
+      protocolTimeout: 180000,
     };
     // استخدم متصفّح النظام (Edge/Chrome) إن وُجد بدل Chromium المضمَّن.
     if (config.chromePath) puppeteer.executablePath = config.chromePath;
@@ -94,7 +97,22 @@ class SessionManager {
     client.initialize().catch((e) => {
       s.state = 'disconnected';
       log(s.tenant, 'initialize failed: ' + (e && e.message));
+      // نظّف المتصفّح المُعلّق عند فشل التهيئة (تفادي تسرّب عمليات Edge).
+      safeDestroy(client);
+      s.client = null;
     });
+  }
+
+  // يعيد تشغيل الجلسة مع الاحتفاظ بالمصادقة (بلا QR) — للتعافي من أخطاء إطار
+  // المتصفّح/البروتوكول (detached Frame) دون أن يفقد المستخدم ربطه.
+  restart(tenant) {
+    const s = this.sessions.get(tenant);
+    if (!s) return;
+    log(tenant, 'restarting session (recovery)');
+    if (s.client) safeDestroy(s.client);
+    s.client = null;
+    s.state = 'initializing';
+    this._boot(s);
   }
 
   // يسجّل خروجاً ويحذف الجلسة (يتطلّب QR جديداً لاحقاً).

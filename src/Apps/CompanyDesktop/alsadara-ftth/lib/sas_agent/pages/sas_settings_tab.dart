@@ -6,7 +6,6 @@ import '../../services/vps_auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
 import '../premises/ui/premises_list_screen.dart';
-import '../whatsapp/whatsapp.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_accounts_page.dart';
@@ -23,7 +22,6 @@ import 'sas_regions_page.dart';
 ///  • الحساب: هوية المستخدم/الوكيل ودوره ونطاقه.
 ///  • الخادم: العنوان الحالي وفحص الاتصال الحيّ.
 ///  • حسابات الساس: تلخيص الحساب المحدّد + مدخل سريع لتبويب «الحسابات».
-///  • الواتساب: إعدادات المُرسِل + القوالب (شاشات wa بثيم الصدارة).
 ///  • مستكشف الساس: متصفّح مدمج يلتقط طلبات الـ API لتحليلها.
 ///  • العقارات: العنوان الوطني (مدخل سريع).
 ///  • متقدّم — ميزات محفوظة: قدرات المنصّة (OLT/المراقبة…) كمداخل مؤجّلة.
@@ -124,18 +122,6 @@ class _SasSettingsTabState extends State<SasSettingsTab>
             icon: Icons.point_of_sale_rounded,
             gradient: AppTheme.orangeGradient,
             body: _accountingCard(),
-          ),
-        ],
-      ),
-      _SettingsTab(
-        label: 'الواتساب',
-        icon: Icons.chat_rounded,
-        builder: () => [
-          _section(
-            title: 'الواتساب',
-            icon: Icons.chat_rounded,
-            gradient: AppTheme.greenGradient,
-            body: _whatsappCard(),
           ),
         ],
       ),
@@ -366,7 +352,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  'الحساب · الخادم · الواتساب · أدوات · ميزات محفوظة',
+                  'الحساب · الخادم · التسعير · أدوات · ميزات محفوظة',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.cairo(
@@ -598,34 +584,6 @@ class _SasSettingsTabState extends State<SasSettingsTab>
             onTap: acc == null
                 ? null
                 : () => _open(SasDebtorsPage(account: acc)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────── الواتساب ───────────────────────────
-
-  Widget _whatsappCard() {
-    return Container(
-      decoration: SasUi.card(),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          _tile(
-            icon: Icons.settings_suggest_rounded,
-            iconColor: AppTheme.successColor,
-            title: 'إعدادات الواتساب',
-            subtitle: 'وضع الإرسال (تطبيق/خادم محلي/Meta) وضبط الاتصال',
-            onTap: () => _open(const WaSettingsScreen()),
-          ),
-          const Divider(height: 1),
-          _tile(
-            icon: Icons.description_rounded,
-            iconColor: AppTheme.infoColor,
-            title: 'قوالب الرسائل',
-            subtitle: 'قوالب التذكير/التجديد القابلة للتعديل بالمتغيّرات',
-            onTap: () => _open(const WaTemplatesScreen()),
           ),
         ],
       ),

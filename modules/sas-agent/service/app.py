@@ -106,6 +106,12 @@ def _init_db() -> None:
             expiration   TEXT    NOT NULL DEFAULT '',
             phone        TEXT    NOT NULL DEFAULT '',
             city         TEXT    NOT NULL DEFAULT '',
+            balance         TEXT NOT NULL DEFAULT '',
+            static_ip       TEXT NOT NULL DEFAULT '',
+            parent_username TEXT NOT NULL DEFAULT '',
+            email           TEXT NOT NULL DEFAULT '',
+            address         TEXT NOT NULL DEFAULT '',
+            created_at      TEXT NOT NULL DEFAULT '',
             company_id   TEXT    NOT NULL DEFAULT '',
             owner_user_id TEXT   NOT NULL DEFAULT '',
             raw_json     TEXT    NOT NULL DEFAULT '{}',
@@ -167,6 +173,35 @@ def _init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_tr_ticket
             ON ticket_replies (ticket_id, created_at);
         """)
+
+        # ── هجرة آمنة idempotent لجدول local_subscribers ─────────────────────
+        # القواعد القديمة لا تملك الأعمدة الإضافية (balance/static_ip/…)؛ نضيفها
+        # عند الإقلاع دون كسر البيانات الموجودة. كلها TEXT بقيمة افتراضية فارغة.
+        _LS_EXTRA_COLS = (
+            ("balance",         "TEXT NOT NULL DEFAULT ''"),
+            ("static_ip",       "TEXT NOT NULL DEFAULT ''"),
+            ("parent_username", "TEXT NOT NULL DEFAULT ''"),
+            ("email",           "TEXT NOT NULL DEFAULT ''"),
+            ("address",         "TEXT NOT NULL DEFAULT ''"),
+            ("created_at",      "TEXT NOT NULL DEFAULT ''"),
+        )
+        try:
+            _existing = {
+                row[1] for row in conn.execute(
+                    "PRAGMA table_info(local_subscribers)").fetchall()
+            }
+        except Exception:
+            _existing = set()
+        for _col, _decl in _LS_EXTRA_COLS:
+            if _col in _existing:
+                continue
+            try:
+                conn.execute(
+                    f"ALTER TABLE local_subscribers ADD COLUMN {_col} {_decl}")
+                logger.info("[DB] أضيف عمود local_subscribers.%s", _col)
+            except Exception as exc:  # pragma: no cover — تسامح مع سباق الإقلاع
+                logger.warning("[DB] تعذّرت إضافة عمود %s: %s", _col, exc)
+
     logger.info("[DB] قاعدة البيانات جاهزة: %s", _DB_PATH)
 
 
@@ -997,14 +1032,29 @@ async def sync(body: SyncRequest) -> Any:
             online  = 1 if str(u.get("online_status") or "").lower() in (
                 "online", "1", "true") else 0
             enabled = 1 if bool(u.get("enabled", True)) else 0
+            # حقول إضافية من الكائن الخام (ليست أسراراً) — تُملأ أعمدةً مباشرة
+            # لتسريع البحث/الفرز بدل الغوص في raw_json.
+            # الوكيل الأب: SAS4 يستخدم «parent» (اسم الوكيل @)؛ fallback احترازي.
+            parent_username = str(
+                u.get("parent")
+                or u.get("parent_username")
+                or u.get("parent_id")
+                or ""
+            )
+            balance    = "" if u.get("balance")    is None else str(u.get("balance"))
+            static_ip  = str(u.get("static_ip")  or "")
+            email      = str(u.get("email")      or "")
+            address    = str(u.get("address")    or "")
+            created_at = str(u.get("created_at") or "")
             # حجب الأسرار في raw_json قبل التخزين
             safe_raw = json.dumps(_redact(u), ensure_ascii=False)
             conn.execute("""
                 INSERT INTO local_subscribers
                     (account_id, sub_id, username, name, profile, status,
                      online, enabled, expiration, phone, city,
+                     balance, static_ip, parent_username, email, address, created_at,
                      company_id, owner_user_id, raw_json, synced_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 account_id, uid,
                 str(u.get("username") or ""),
@@ -1013,6 +1063,7 @@ async def sync(body: SyncRequest) -> Any:
                 str(u.get("expiration") or ""),
                 str(u.get("phone") or ""),
                 str(u.get("city") or ""),
+                balance, static_ip, parent_username, email, address, created_at,
                 company_id, owner_user_id,
                 safe_raw, synced_at,
             ))
@@ -2061,6 +2112,7 @@ async def _fetch_renewal_candidates(
                 "id":       row.get("id"),
                 "username": row.get("username"),
                 "name":     name,
+                "phone":    row.get("phone"),
                 "expiry":   raw_exp,
                 "profile":  row.get("profile") or row.get("profile_name"),
             })

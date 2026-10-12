@@ -1,0 +1,77 @@
+# وحدة فحص جودة الإنترنت (Network Quality)
+
+وحدة معزولة داخل تطبيق الصدارة (alsadara-ftth) لفحص جودة الاتصال بدقّة عالية.
+تعمل على **ويندوز وأندرويد**، وتُفتح من زر «إعداد الراوتر (أوفلاين)» في شاشة الدخول
+← تظهر واجهة رئيسية فيها زرّان: **إعداد الراوتر** (الأداة الحالية) و**فحص جودة الإنترنت** (هذه الوحدة).
+
+## مبدأ العزل
+- كل كود الوحدة تحت `lib/network_quality/**` فقط.
+- التغيير الوحيد خارج المجلد: زر الفتح في `lib/pages/login/premium_login_page.dart`
+  + إذن `ACCESS_WIFI_STATE` وقناة native في `MainActivity.kt` (لقراءة إشارة WiFi).
+- لا تعدّل الوحدة منطق إعداد الراوتر الإنتاجي (`router_adapter_service.dart`) — بل
+  تنفّذ قراءة ضوئية خاصّة بها.
+- لا حزم pub جديدة: تعتمد فقط على الموجود (device_info_plus, http, permission_handler).
+
+## البنية
+```
+network_quality/
+  network_quality_home_page.dart   # الواجهة الرئيسية (الزرّان)
+  models/
+    quality_models.dart            # نماذج الفحص + التقييمات (QualityRating)
+    device_models.dart             # نماذج أجهزة الشبكة (NetworkDevice/DeviceReport/...)
+  services/
+    quality_scorer.dart            # عتبات التقييم + الدرجة الكلّية + التوصيات
+    device_info_service.dart       # مواصفات جهاز الفحص (RAM/CPU/OS) — ثانوي
+    latency_service.dart           # ping/jitter/packet-loss/DNS/traceroute
+    speed_test_service.dart        # سرعة التنزيل/الرفع (Cloudflare)
+    wifi_signal_service.dart       # إشارة WiFi (Android native / Windows netsh)
+    optical_signal_service.dart    # الإشارة الضوئية Rx/Tx من ONU (Huawei/ZTE)
+    oui_service.dart               # تمييز الماركة من الـMAC (OUI أوفلاين)
+    device_credentials_service.dart# اعتماد افتراضي + حفظ يدوي مشفّر لكل جهاز
+    device_discovery_service.dart  # اكتشاف الأجهزة: بوّابة+ARP+مسح+ONU+Double-NAT
+    device_inspector_service.dart  # دخول + قراءة عميقة لكل جهاز (موديل/WAN/ضوئي/متصلين)
+    network_quality_controller.dart# منسّق الفحص الكامل + بثّ التقدّم
+  pages/
+    quality_scan_page.dart         # تشغيل الفحص + تقدّم حيّ
+    quality_results_page.dart      # النتائج: أجهزة الشبكة + الأداء + طي جهاز الفحص
+    device_detail_page.dart        # تفاصيل جهاز + إدخال اعتماد + إعادة فحص
+  widgets/
+    quality_widgets.dart           # ScoreGauge / SectionCard / MetricTile / InfoRow
+assets/network_quality/oui.json    # جدول OUI (MAC→ماركة) أوفلاين
+```
+
+## اكتشاف وفحص أجهزة الشبكة
+الهدف الأساسي: فحص **أجهزة الشبكة** (ONU/ONT + الراوتر + الأجهزة المتصلة) لا حاسبة الفحص.
+- **الاكتشاف**: كشف البوّابة + جدول ARP (أقوى على ويندوز) + مسح واجهات الويب الشائعة +
+  عناوين ONU المعروفة + كشف Double-NAT (ONU خلف الراوتر).
+- **تمييز الماركة**: من الـMAC عبر OUI أوفلاين + من عنوان صفحة الويب.
+- **الاعتمادات**: تُجرَّب الافتراضية تلقائياً لكل ماركة؛ وعند الفشل يُدخل الفني
+  IP+User+Pass يدوياً ويُحفظ مشفّراً (`flutter_secure_storage`) للمرّة القادمة.
+- **الفحص العميق** (قراءة فقط، عبر محوّلات router_adapter الإنتاجية): الموديل/الفيرموير/
+  WAN/PPPoE/WiFi + الإشارة الضوئية للـONU + الأجهزة المتصلة (MikroTik عبر REST؛
+  وبقية الماركات تُغطّى بقائمة ARP العامة).
+- **حدود واقعية**: على أندرويد 10+ جدول ARP محجوب ⇒ نعتمد على البوّابة + عناوين ONU +
+  قائمة عملاء الراوتر؛ وبعض الأجهزة تشفّر واجهتها ⇒ التغطية best-effort وتتحسّن تدريجياً.
+
+## المقاييس والعتبات
+| المقياس | ممتاز | جيد | مقبول | ضعيف |
+|---------|-------|-----|-------|------|
+| Ping | ≤20ms | ≤50 | ≤100 | ≤200 |
+| Jitter | ≤5ms | ≤15 | ≤30 | ≤50 |
+| فقدان الحزم | 0% | ≤1 | ≤2.5 | ≤5 |
+| تنزيل | ≥100Mbps | ≥50 | ≥20 | ≥5 |
+| رفع | ≥50Mbps | ≥20 | ≥10 | ≥2 |
+| DNS | ≤20ms | ≤50 | ≤120 | ≤250 |
+| WiFi RSSI | ≥-50dBm | ≥-60 | ≥-70 | ≥-80 |
+| ضوئي Rx | -8..-24dBm | -24..-27 | -27..-29 | -29..-31 |
+
+أوزان الدرجة الكلّية: أداء الإنترنت 50% · الإشارة الضوئية 25% · WiFi 15% · الجهاز 10%
+(تُعاد موازنة الأوزان تلقائياً عند غياب أي فئة).
+
+## الوكيل المسؤول
+`network-quality-agent` (`.claude/agents/network-quality-agent.md`) — يملك حصراً هذه الوحدة.
+
+## ملاحظات
+- قراءة الإشارة الضوئية تتطلّب اتصالاً مباشراً بالـONU (Huawei/ZTE) على الشبكة المحلية.
+- على أندرويد تحتاج قراءة WiFi إذن الموقع (يُطلب تلقائياً عند بدء الفحص).
+- اختبار السرعة يستهلك بيانات (حتى ~35MB لكل فحص كامل) ويتطلّب إنترنت.

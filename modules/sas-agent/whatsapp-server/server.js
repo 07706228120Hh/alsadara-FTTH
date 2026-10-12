@@ -33,7 +33,30 @@ const server = app.listen(config.port, config.host, () => {
   console.log('  data dir: ' + config.dataDir);
   console.log('  browser : ' + (config.chromePath || 'bundled Chromium'));
   console.log('  link a session: POST /session/default  then scan QR at GET /qr-image/default');
+  // استعادة الجلسات المرتبطة سابقاً تلقائياً عند الإقلاع (بلا QR) — كي يعمل
+  // الإرسال التلقائي (بعد التفعيل/التذكير) دون فتح الإعدادات يدوياً.
+  bootSavedSessions();
 });
+
+// يمسح مجلد المصادقة عن جلسات LocalAuth المحفوظة (مجلدات session-<tenant>) ويهيّئها.
+function bootSavedSessions() {
+  try {
+    const dir = config.sessionDir;
+    if (!dir || !fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const e of entries) {
+      if (e.isDirectory() && e.name.indexOf('session-') === 0) {
+        const tenant = e.name.slice('session-'.length);
+        if (tenant) {
+          console.log('[boot] restoring saved session: ' + tenant);
+          sessions.ensure(tenant);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[boot] restore sessions failed: ' + (err && err.message));
+  }
+}
 
 // تنظيف ملف الـ PID عند الإيقاف.
 function shutdown() {

@@ -4,6 +4,8 @@
 /// في التطبيق سوى ثيم الصدارة (AppTheme) ومحوّل الراوتر (للإشارة الضوئية).
 library;
 
+import 'device_models.dart';
+
 /// تقييم عام لأي مقياس — يُترجم لاحقاً إلى لون ونص عربي.
 enum QualityRating {
   excellent, // ممتاز
@@ -199,6 +201,7 @@ class FullQualityReport {
   final QualityRating overallRating;
   final List<String> recommendations;
   final DateTime timestamp;
+  final DiscoveryResult? discovery; // أجهزة الشبكة المكتشفة والمفحوصة
 
   const FullQualityReport({
     required this.device,
@@ -209,5 +212,6 @@ class FullQualityReport {
     required this.overallRating,
     required this.recommendations,
     required this.timestamp,
+    this.discovery,
   });
 }

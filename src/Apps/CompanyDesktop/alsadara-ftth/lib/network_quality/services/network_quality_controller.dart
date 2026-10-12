@@ -6,8 +6,11 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import '../models/device_models.dart';
 import '../models/quality_models.dart';
+import 'device_discovery_service.dart';
 import 'device_info_service.dart';
+import 'device_inspector_service.dart';
 import 'latency_service.dart';
 import 'optical_signal_service.dart';
 import 'quality_scorer.dart';
@@ -17,6 +20,7 @@ import 'wifi_signal_service.dart';
 /// مرحلة الفحص الحالية (للعرض في الواجهة).
 enum QualityStage {
   idle,
+  devices,
   device,
   wifi,
   optical,
@@ -33,8 +37,10 @@ extension QualityStageX on QualityStage {
     switch (this) {
       case QualityStage.idle:
         return 'جاهز';
+      case QualityStage.devices:
+        return 'اكتشاف أجهزة الشبكة وفحصها';
       case QualityStage.device:
-        return 'قراءة مواصفات الجهاز';
+        return 'قراءة مواصفات جهاز الفحص';
       case QualityStage.wifi:
         return 'فحص إشارة WiFi';
       case QualityStage.optical:
@@ -56,12 +62,14 @@ extension QualityStageX on QualityStage {
 }
 
 class QualityTestOptions {
+  final bool testDevices; // اكتشاف وفحص أجهزة الشبكة
   final bool testOptical;
   final bool testSpeed;
   final bool testTraceroute;
   final String pingHost;
 
   const QualityTestOptions({
+    this.testDevices = true,
     this.testOptical = true,
     this.testSpeed = true,
     this.testTraceroute = false,
@@ -73,6 +81,7 @@ class NetworkQualityController {
   /// callbacks للتحديث الحيّ.
   void Function(QualityStage stage, double overallProgress)? onStage;
   void Function(double mbps, double fraction)? onSpeedTick;
+  void Function(String status)? onDiscoveryStatus;
 
   bool _running = false;
   bool get isRunning => _running;
@@ -84,19 +93,59 @@ class NetworkQualityController {
   }) async {
     _running = true;
     try {
-      // 1. مواصفات الجهاز
-      _emit(QualityStage.device, 0.05);
+      // 1. مواصفات جهاز الفحص (ثانوي)
+      _emit(QualityStage.device, 0.03);
       final device = await DeviceInfoService.collect();
 
-      // 2. WiFi
-      _emit(QualityStage.wifi, 0.15);
+      // 2. اكتشاف أجهزة الشبكة وفحصها العميق
+      DiscoveryResult? discovery;
+      if (options.testDevices) {
+        _emit(QualityStage.devices, 0.08);
+        final disc = DeviceDiscoveryService()
+          ..onStatus = (s) => onDiscoveryStatus?.call(s);
+        discovery = await disc.discover(scanClients: true);
+        // فحص عميق للأجهزة البنيوية (ONU/راوتر/AP) بالاعتماد الافتراضي.
+        final structural = discovery.devices
+            .where((d) => d.isOnu || d.isGateway || d.hasWebUi)
+            .toList();
+        for (var i = 0; i < structural.length; i++) {
+          final d = structural[i];
+          onDiscoveryStatus?.call('فحص ${d.displayName} (${d.ip})...');
+          _emit(QualityStage.devices,
+              0.08 + 0.17 * ((i + 1) / structural.length));
+          await DeviceInspectorService.inspect(d);
+          // بصريات هواوي الحديثة تحتاج دخولاً عبر المتصفح (حارس جلسة) —
+          // تُقرأ لاحقاً في شاشة الفحص عبر WebView مُركَّب خفيّ (onNeedWebViewOptic).
+        }
+      }
+
+      // 3. WiFi
+      _emit(QualityStage.wifi, 0.27);
       final wifi = await WifiSignalService.read();
 
       // 3. الإشارة الضوئية (اختياري)
       OpticalSignalInfo optical = OpticalSignalInfo.none;
       if (options.testOptical) {
-        _emit(QualityStage.optical, 0.25);
+        _emit(QualityStage.optical, 0.33);
         optical = await OpticalSignalService.read();
+        // إن فشلت القراءة الخاملة، استعمل قراءة الـONU المكتشَف (عبر المتصفح).
+        if (!optical.available && discovery != null) {
+          final onu = discovery.devices
+              .where((d) => d.isOnu && d.optical != null)
+              .toList();
+          if (onu.isNotEmpty) {
+            final r = onu.first.optical!;
+            optical = OpticalSignalInfo(
+              available: true,
+              rxPowerDbm: r.rxPowerDbm,
+              txPowerDbm: r.txPowerDbm,
+              voltage: r.voltage,
+              biasCurrentMa: r.biasCurrentMa,
+              temperatureC: r.temperatureC,
+              source: 'ONU ${onu.first.ip}',
+            );
+          }
+        }
       }
 
       // 4. Ping / Jitter / Loss
@@ -160,6 +209,7 @@ class NetworkQualityController {
           d: device,
         ),
         timestamp: now,
+        discovery: discovery,
       );
 
       _emit(QualityStage.done, 1.0);

@@ -1,6 +1,7 @@
 """نماذج قاعدة البيانات (SQLModel)"""
 from datetime import datetime, timezone
 from typing import Optional
+from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field
 
 
@@ -402,3 +403,45 @@ class TicketReply(SQLModel, table=True):
     body: str = ""
     internal: bool = False                                  # ملاحظة داخلية لا يراها المشترك
     ts: datetime = Field(default_factory=utcnow, index=True)
+
+
+# ═══════════════════════ التذكير التلقائي قبل الانتهاء ═══════════════════════
+
+class SasReminderSettings(SQLModel, table=True):
+    """إعدادات «التذكير التلقائي قبل الانتهاء» لمشتركي حساب ساس — صفّ واحد لكل
+    (company_id, owner_user_id, account_id). معزولة بنفس ثلاثي العزل المتّبع
+    (شركة + وكيل مالك + حساب ساس). لا تحتوي أي سرّ، فلا تشفير مطلوب هنا."""
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id", "owner_user_id", "account_id",
+            name="uq_sasremindersettings_scope",
+        ),
+    )
+    id: Optional[int] = Field(default=None, primary_key=True)
+    company_id: int = Field(index=True)                 # شركة مزوّد الوكيل (عزل)
+    owner_user_id: int = Field(index=True)              # الوكيل المالك للإعداد (عزل)
+    account_id: str = Field(default="", index=True)     # معرّف حساب ساس (يطابق account_id في طبقة المشتركين)
+    enabled: bool = Field(default=False)                # هل التذكير مُفعَّل
+    days_before: str = Field(default="1")               # CSV لأيام التذكير قبل الانتهاء مثل "1" أو "1,3"
+    send_hour: int = Field(default=10)                  # ساعة الإرسال (0–23)
+    send_minute: int = Field(default=0)                 # دقيقة الإرسال (0–59)
+    template_id: str = Field(default="reminder")        # قالب الرسالة المستخدم
+    last_run_date: Optional[str] = None                 # "YYYY-MM-DD" لآخر تشغيل ناجح (منع التكرار اليومي)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class SasReminderLog(SQLModel, table=True):
+    """سجلّ تنفيذ دورة تذكير (آلية أو يدوية) لحساب ساس — معزول بثلاثي العزل نفسه."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    company_id: int = Field(index=True)                 # شركة مزوّد الوكيل (عزل)
+    owner_user_id: int = Field(index=True)              # الوكيل المالك (عزل)
+    account_id: str = Field(default="", index=True)     # معرّف حساب ساس
+    executed_at: datetime = Field(default_factory=utcnow, index=True)
+    days_before: int = Field(default=0)                 # عتبة الأيام التي شغّلت هذه الدورة
+    total: int = Field(default=0)                        # إجمالي المشتركين المرشّحين
+    sent: int = Field(default=0)                         # عدد الرسائل المُرسَلة بنجاح
+    failed: int = Field(default=0)                       # عدد الرسائل الفاشلة
+    is_manual: bool = Field(default=False)               # True = تشغيل يدوي، False = مجدول
+    triggered_by: str = Field(default="")               # من شغّلها (نظام/مستخدم)
+    note: Optional[str] = None

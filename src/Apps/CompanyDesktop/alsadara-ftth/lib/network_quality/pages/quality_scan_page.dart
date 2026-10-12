@@ -5,8 +5,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:webview_windows/webview_windows.dart' as wvwin;
 
+import '../models/device_models.dart';
+import '../models/quality_models.dart';
+import '../services/device_credentials_service.dart';
 import '../services/network_quality_controller.dart';
+import '../services/webview_optical_reader.dart';
 import 'quality_results_page.dart';
 
 class QualityScanPage extends StatefulWidget {
@@ -25,11 +30,18 @@ class _QualityScanPageState extends State<QualityScanPage> {
   double _progress = 0;
   double _liveMbps = 0;
   String _error = '';
+  String _discoveryStatus = '';
 
   // خيارات الفحص (يتحكّم بها المستخدم).
+  bool _optDevices = true;
   bool _optFiber = true;
   bool _optSpeed = true;
   bool _optTrace = false;
+
+  // WebView (ويندوز) لقراءة بصريات هواوي — يظهر مرئياً أثناء القراءة فقط.
+  final wvwin.WebviewController _webCtrl = wvwin.WebviewController();
+  bool _webReady = false;
+  bool _webBusy = false;
 
   @override
   void initState() {
@@ -43,6 +55,69 @@ class _QualityScanPageState extends State<QualityScanPage> {
     _controller.onSpeedTick = (mbps, frac) {
       if (mounted) setState(() => _liveMbps = mbps);
     };
+    _controller.onDiscoveryStatus = (s) {
+      if (mounted) setState(() => _discoveryStatus = s);
+    };
+    _initWebView();
+  }
+
+  Future<void> _initWebView() async {
+    if (!Platform.isWindows) return;
+    try {
+      await _webCtrl.initialize();
+      await _webCtrl.setBackgroundColor(Colors.white);
+      if (mounted) setState(() => _webReady = true);
+    } catch (e) {
+      debugPrint('[Scan] webview init failed: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_webReady) {
+      try {
+        _webCtrl.dispose();
+      } catch (_) {}
+    }
+    super.dispose();
+  }
+
+  /// بعد الفحص: اقرأ بصريات ONU هواوي عبر WebView (يظهر مرئياً ~15ث).
+  Future<void> _augmentOptical(FullQualityReport report) async {
+    if (!Platform.isWindows || !_webReady || !_optFiber) return;
+    final devices = report.discovery?.devices;
+    if (devices == null) return;
+    NetworkDevice? onu;
+    for (final d in devices) {
+      final s = '${d.brandGuess} ${d.vendor} ${d.pageTitle}'.toLowerCase();
+      final huawei = s.contains('huawei') ||
+          s.contains('hg8') ||
+          s.contains('echolife') ||
+          d.ip.endsWith('.100.1');
+      if (d.isOnu && d.optical == null && huawei) {
+        onu = d;
+        break;
+      }
+    }
+    if (onu == null) return;
+    // أظهر WebView (WebView2 يحتاج ظهوراً فعلياً كي يعمل).
+    if (mounted) setState(() => _webBusy = true);
+    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      final creds = (await DeviceCredentialsService.candidatesFor(
+              onu.ip, onu.brandGuess.isNotEmpty ? onu.brandGuess : onu.vendor))
+          .map((c) => [c.user, c.pass])
+          .toList();
+      final r = await WebViewOpticalReader.readWith(_webCtrl, onu.ip, creds: creds);
+      if (r != null) {
+        onu.optical = r;
+        onu.error = '';
+      }
+    } catch (e) {
+      debugPrint('[Scan] augment optical error: $e');
+    } finally {
+      if (mounted) setState(() => _webBusy = false);
+    }
   }
 
   Future<void> _ensurePermission() async {
@@ -65,11 +140,14 @@ class _QualityScanPageState extends State<QualityScanPage> {
       final report = await _controller.run(
         now: DateTime.now(),
         options: QualityTestOptions(
+          testDevices: _optDevices,
           testOptical: _optFiber,
           testSpeed: _optSpeed,
           testTraceroute: _optTrace,
         ),
       );
+      // قراءة بصريات هواوي عبر WebView المرئي لحظياً (ويندوز).
+      await _augmentOptical(report);
       if (!mounted) return;
       await Navigator.push(
         context,
@@ -98,14 +176,52 @@ class _QualityScanPageState extends State<QualityScanPage> {
           backgroundColor: _indigo,
           foregroundColor: Colors.white,
         ),
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: _running ? _buildRunning() : _buildIdle(),
-            ),
-          ),
+        body: Stack(
+          children: [
+            // WebView يظهر مرئياً أثناء قراءة البصريات فقط.
+            if (Platform.isWindows && _webReady && _webBusy)
+              Positioned.fill(child: wvwin.Webview(_webCtrl)),
+            if (!_webBusy)
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: _running ? _buildRunning() : _buildIdle(),
+                  ),
+                ),
+              ),
+            if (_webBusy)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  color: _indigo,
+                  child: const Row(
+                    children: [
+                      SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white)),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'جارٍ قراءة الإشارة الضوئية تلقائياً... (لا حاجة لأي تدخّل — سيختفي تلقائياً)',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -126,6 +242,8 @@ class _QualityScanPageState extends State<QualityScanPage> {
           style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.6),
         ),
         const SizedBox(height: 20),
+        _optionTile('اكتشاف وفحص أجهزة الشبكة (ONU/راوتر/المتصلين)', _optDevices,
+            (v) => setState(() => _optDevices = v), Icons.lan_rounded),
         _optionTile('فحص الإشارة الضوئية للفايبر (Rx/Tx)', _optFiber,
             (v) => setState(() => _optFiber = v), Icons.fiber_manual_record),
         _optionTile('قياس سرعة التنزيل/الرفع', _optSpeed,
@@ -223,8 +341,16 @@ class _QualityScanPageState extends State<QualityScanPage> {
         Text(_stage.arabicLabel,
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
         const SizedBox(height: 8),
-        Text('جارٍ الفحص — قد يستغرق حتى دقيقة',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+        if (_stage == QualityStage.devices && _discoveryStatus.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(_discoveryStatus,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          )
+        else
+          Text('جارٍ الفحص — قد يستغرق حتى دقيقة',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
       ],
     );
   }

@@ -8,7 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/responsive_helper.dart';
 import 'models/sas_account.dart';
 import 'pages/sas_dashboard_tab.dart';
-import 'pages/sas_renewal_tab.dart';
+import 'pages/sas_messaging_tab.dart';
 import 'pages/sas_report_tab.dart';
 import 'pages/sas_reports_tab.dart';
 import 'pages/sas_settings_tab.dart';
@@ -17,14 +17,16 @@ import 'pages/sas_system_tab.dart';
 import 'pages/sas_tickets_tab.dart';
 import 'premises/ui/premises_list_screen.dart';
 import 'services/sas_agent_api_service.dart';
+import 'services/sas_reminder_scheduler.dart';
 import 'whatsapp/whatsapp.dart';
 import 'widgets/sas_refresh_bus.dart';
 import 'widgets/sas_state_views.dart';
 
 /// صفحة «وكيل الساس» — شل بتبويبات يعمل على بوّابة الصدارة `/api/sas-agent/*`.
 ///
-/// التبويبات: لوحة · مشتركون · نظام الساس · تقارير · تجديد · تصريح/بلنك ·
-/// تذاكر · إعدادات. إدارة الحسابات انتقلت لتبويب «الإعدادات»، والتبديل بين
+/// التبويبات: لوحة · مشتركون · نظام الساس · تقارير · الرسائل ·
+/// تصريح/بلنك · تذاكر · إعدادات. إدارة الحسابات انتقلت لتبويب «الإعدادات»،
+/// والتبديل بين
 /// الحسابات يتم من مُبدّل الحساب في الترويسة (AppBar).
 /// الظهور محكوم بصلاحية `sas_agent` عبر [PermissionGate.page].
 class SasAgentPage extends StatelessWidget {
@@ -96,12 +98,12 @@ class _SasAgentShellState extends State<_SasAgentShell>
   static const _tabSyncDebounceDelay = Duration(milliseconds: 600);
 
   /// فهارس تبويبات البيانات التي تستفيد من مزامنة عند الدخول (تحتاج حساباً
-  /// محدّداً): لوحة · مشتركون · نظام · تقارير · تجديد · تصريح. تُستثنى: التذاكر
-  /// (6، user-scoped) · الإعدادات (7).
+  /// محدّداً): لوحة · مشتركون · نظام · تقارير · الرسائل · تصريح.
+  /// تُستثنى: التذاكر (6، user-scoped) · الإعدادات (7).
   static const _dataTabIndices = <int>{0, 1, 2, 3, 4, 5};
 
   // مجموعة أيقونات موحّدة (Material rounded بوزن بصري واحد) بترتيب:
-  // لوحة · مشتركون · نظام · تقارير · تجديد · تصريح · تذاكر · إعدادات.
+  // لوحة · مشتركون · نظام · تقارير · الرسائل · تصريح · تذاكر · إعدادات.
   // (تبويب «الحسابات» نُقل لتبويب «الإعدادات»، والتبديل بين الحسابات من
   // مُبدّل الترويسة.) لون المؤشّر للمحدّد متدرّج، ولون موحّد (Slate) لغيره —
   // يُضبطان مركزياً في [_TabBarSurface].
@@ -110,7 +112,7 @@ class _SasAgentShellState extends State<_SasAgentShell>
     _TabDef('مشتركون', Icons.people_rounded),
     _TabDef('نظام الساس', Icons.dns_rounded),
     _TabDef('تقارير', Icons.bar_chart_rounded),
-    _TabDef('تجديد', Icons.autorenew_rounded),
+    _TabDef('الرسائل', Icons.forum_rounded),
     _TabDef('تصريح/بلنك', Icons.balance_rounded),
     _TabDef('تذاكر', Icons.confirmation_number_rounded),
     _TabDef('إعدادات', Icons.settings_rounded),
@@ -139,6 +141,11 @@ class _SasAgentShellState extends State<_SasAgentShell>
               list.firstWhere((a) => a.isActive, orElse: () => list.first);
         }
       });
+      // ابدأ مجدوِل التذكير التلقائي للحساب المحدَّد (يعمل طالما الوحدة مفتوحة؛
+      // الإرسال محكوم بإعداد المستخدم — افتراضياً معطَّل).
+      if (_selected != null) {
+        SasReminderScheduler.instance.start(_selected!);
+      }
     } catch (_) {
       if (mounted) setState(() => _accountsLoading = false);
     }
@@ -146,6 +153,7 @@ class _SasAgentShellState extends State<_SasAgentShell>
 
   @override
   void dispose() {
+    SasReminderScheduler.instance.stop();
     _tabSyncDebounce?.cancel();
     _tab.removeListener(_onTabChanged);
     _tab.dispose();
@@ -171,6 +179,8 @@ class _SasAgentShellState extends State<_SasAgentShell>
     });
     // حساب جديد ⇒ أسقِط ختم المزامنة السابق فتُزامَن عند دخول أوّل تبويب بيانات.
     _lastTabSync.remove(acc.id);
+    // أعد توجيه مجدوِل التذكير للحساب الجديد.
+    SasReminderScheduler.instance.start(acc);
   }
 
   // ─────────────────────── مزامنة عند دخول التبويب ───────────────────────
@@ -384,10 +394,10 @@ class _SasAgentShellState extends State<_SasAgentShell>
               (acc) => SasReportsTab(
                   account: acc, key: ValueKey('reports-${acc.id}')),
             )),
-            // 5) تجديد (مرشّحون + معاينة dryRun → تنفيذ)
+            // 5) الرسائل والواتساب (تذكير · إرسال جماعي · إعدادات · قوالب)
             _framed(_needsAccount(
-              (acc) =>
-                  SasRenewalTab(account: acc, key: ValueKey('renew-${acc.id}')),
+              (acc) => SasMessagingTab(
+                  account: acc, key: ValueKey('messaging-${acc.id}')),
             )),
             // 6) تصريح/بلنك (تقرير الوكيل)
             _framed(_needsAccount(
@@ -666,7 +676,7 @@ class _TabBarSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // مقاسات ثابتة معقولة لسطح المكتب — لا تعتمد على `.sp/.h/.w/.r` المتضخّمة
-    // على النوافذ العريضة. `isScrollable: true` يمنع قطع نصوص التبويبات التسعة.
+    // على النوافذ العريضة. `isScrollable: true` يمنع قطع نصوص التبويبات الثمانية.
     // لون موحّد للأيقونة والنص (أبيض للمحدّد فوق مؤشّر متدرّج، Slate لغيره).
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),

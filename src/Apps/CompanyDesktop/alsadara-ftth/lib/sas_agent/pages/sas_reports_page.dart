@@ -319,9 +319,21 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
   List<Map<String, dynamic>> _perManager = const [];
   String? _managerError;
 
-  // التفعيلات (عدد الشهر)
+  // التفعيلات (عدد الشهر المختار) — مُصفّاة زمنياً بالشهر/السنة.
   int _activationsTotal = 0;
   String? _activationsError;
+  bool _activationsLoading = false;
+  // تفصيل يومي اختياري: (اليوم → العدد).
+  List<MapEntry<int, int>> _activationsDaily = const [];
+
+  // الشهر/السنة للتصفية الزمنية (تخصّ التفعيلات فقط).
+  int _month = DateTime.now().month;
+  int _year = DateTime.now().year;
+
+  static const List<String> _arMonths = [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+  ];
 
   bool _loading = true;
 
@@ -359,16 +371,78 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
       }).catchError((Object e) {
         _managerError = _clean(e);
       }),
-      _api.sasPost(id, 'index/activations',
-          payload: {'page': 1, 'count': 1}).then((r) {
-        final map = r is Map ? r : const {};
-        _activationsTotal = sasInt(map['total']);
-      }).catchError((Object e) {
-        _activationsError = _clean(e);
-      }),
+      _fetchActivations(id),
     ]);
 
     if (mounted) setState(() => _loading = false);
+  }
+
+  /// جلب تفعيلات الشهر/السنة المختارين فقط عبر `report/activations`.
+  /// الرد `Map` فيه `data` قائمة صفوف `{day, profile_id, total}`:
+  ///  • `day==null && profile_id==null` → الإجمالي الكلي للشهر.
+  ///  • `day!=null && profile_id==null` → إجمالي ذلك اليوم (تفصيل يومي).
+  ///  • `profile_id!=null` → تفصيل باقات (يُهمَل هنا).
+  Future<void> _fetchActivations(String id) {
+    return _api.sasPost(id, 'report/activations', payload: {
+      'type': 'daily',
+      'month': _month,
+      'year': _year,
+      'manager_id': -1,
+      'sub_managers': 'true',
+      'activation_method': 'any',
+    }).then((r) {
+      final map = r is Map ? r : const {};
+      final rows = map['data'] is List ? map['data'] as List : const [];
+      int total = 0;
+      final daily = <MapEntry<int, int>>[];
+      for (final raw in rows) {
+        if (raw is! Map) continue;
+        final day = raw['day'];
+        final profileId = raw['profile_id'];
+        if (profileId != null) continue; // تفصيل باقات — يُهمَل.
+        if (day == null) {
+          total = sasInt(raw['total']); // الإجمالي الكلي للشهر.
+        } else {
+          daily.add(MapEntry(sasInt(day), sasInt(raw['total'])));
+        }
+      }
+      daily.sort((a, b) => a.key.compareTo(b.key));
+      _activationsTotal = total;
+      _activationsDaily = daily;
+    }).catchError((Object e) {
+      _activationsError = _clean(e);
+    });
+  }
+
+  /// إعادة تحميل التفعيلات فقط عند تغيّر الشهر/السنة (دون إعادة جلب اللقطات).
+  Future<void> _loadActivations() async {
+    setState(() {
+      _activationsLoading = true;
+      _activationsError = null;
+    });
+    await _fetchActivations(widget.account.id);
+    if (mounted) setState(() => _activationsLoading = false);
+  }
+
+  void _shiftMonth(int delta) {
+    var m = _month + delta;
+    var y = _year;
+    if (m < 1) {
+      m = 12;
+      y -= 1;
+    } else if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    // لا نتجاوز الشهر الحالي.
+    final now = DateTime.now();
+    if (y > now.year || (y == now.year && m > now.month)) return;
+    if (y < 2023) return;
+    setState(() {
+      _month = m;
+      _year = y;
+    });
+    _loadActivations();
   }
 
   @override
@@ -418,6 +492,15 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
                           'manager_name',
                           'parent_id'
                         ], firstLabel: 'الوكيل الفرعي'),
+                        SizedBox(height: 20.h),
+                        SasSectionHeader(
+                          title: 'التفعيلات',
+                          icon: Icons.bolt_rounded,
+                          gradient: AppTheme.orangeGradient,
+                          trailingText: '${_arMonths[_month - 1]} $_year',
+                        ),
+                        SizedBox(height: 10.h),
+                        _activationsSection(),
                       ],
                     ),
                   ),
@@ -448,12 +531,192 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
             value: '$_expired',
             color: AppTheme.errorColor,
             icon: Icons.cancel_rounded),
-        SasStatCard(
-            label: 'تفعيلات الشهر',
-            value: _activationsError != null ? '-' : '$_activationsTotal',
-            color: AppTheme.warningColor,
-            icon: Icons.bolt_rounded),
       ],
+    );
+  }
+
+  /// قسم التفعيلات المُصفّى زمنياً: منتقي الشهر/السنة + إجمالي الشهر +
+  /// تفصيل يومي اختياري. التصفية الزمنية تخصّ هذا القسم فقط.
+  Widget _activationsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _monthPicker(),
+        SizedBox(height: 6.h),
+        Text('ملاحظة: التصفية الزمنية تخصّ «التفعيلات» فقط.',
+            style:
+                GoogleFonts.cairo(fontSize: 10.5.sp, color: Colors.grey[600])),
+        SizedBox(height: 10.h),
+        if (_activationsLoading)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 18.h),
+            child: Center(
+              child: SizedBox(
+                width: 24.w,
+                height: 24.w,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2.4, color: AppTheme.primaryColor),
+              ),
+            ),
+          )
+        else if (_activationsError != null)
+          _inlineError(_activationsError!)
+        else ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: SasStatCard(
+                label: 'إجمالي تفعيلات ${_arMonths[_month - 1]} $_year',
+                value: '$_activationsTotal',
+                color: AppTheme.warningColor,
+                icon: Icons.bolt_rounded),
+          ),
+          SizedBox(height: 10.h),
+          if (_activationsDaily.isEmpty)
+            _inlineEmpty('لا تفعيلات في هذا الشهر')
+          else
+            _dailyTable(),
+        ],
+      ],
+    );
+  }
+
+  /// منتقي الشهر/السنة: أزرار سابق/تالٍ + قائمتان منسدلتان.
+  Widget _monthPicker() {
+    final now = DateTime.now();
+    final years = [for (var y = 2023; y <= now.year; y++) y];
+    final bool atCurrent = _year == now.year && _month == now.month;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+      decoration: SasUi.card(),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'الشهر السابق',
+            visualDensity: VisualDensity.compact,
+            onPressed: _activationsLoading ? null : () => _shiftMonth(-1),
+            icon: const Icon(Icons.chevron_right_rounded),
+            color: AppTheme.primaryColor,
+          ),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _monthDropdown(),
+                SizedBox(width: 8.w),
+                _yearDropdown(years),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'الشهر التالي',
+            visualDensity: VisualDensity.compact,
+            onPressed:
+                (_activationsLoading || atCurrent) ? null : () => _shiftMonth(1),
+            icon: const Icon(Icons.chevron_left_rounded),
+            color: atCurrent ? Colors.grey[350] : AppTheme.primaryColor,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _monthDropdown() {
+    final now = DateTime.now();
+    return DropdownButton<int>(
+      value: _month,
+      underline: const SizedBox.shrink(),
+      borderRadius: BorderRadius.circular(10.r),
+      style: GoogleFonts.cairo(
+          fontSize: 12.5.sp,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF1A1A2E)),
+      items: [
+        for (var m = 1; m <= 12; m++)
+          DropdownMenuItem(
+            value: m,
+            // تعطيل الأشهر المستقبلية ضمن السنة الحالية.
+            enabled: !(_year == now.year && m > now.month),
+            child: Text(_arMonths[m - 1]),
+          ),
+      ],
+      onChanged: _activationsLoading
+          ? null
+          : (m) {
+              if (m == null || m == _month) return;
+              final n = DateTime.now();
+              if (_year == n.year && m > n.month) return;
+              setState(() => _month = m);
+              _loadActivations();
+            },
+    );
+  }
+
+  Widget _yearDropdown(List<int> years) {
+    final now = DateTime.now();
+    return DropdownButton<int>(
+      value: _year,
+      underline: const SizedBox.shrink(),
+      borderRadius: BorderRadius.circular(10.r),
+      style: GoogleFonts.cairo(
+          fontSize: 12.5.sp,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF1A1A2E)),
+      items: [
+        for (final y in years)
+          DropdownMenuItem(value: y, child: Text('$y')),
+      ],
+      onChanged: _activationsLoading
+          ? null
+          : (y) {
+              if (y == null || y == _year) return;
+              var m = _month;
+              // إن أصبح الشهر مستقبلياً بعد تغيير السنة، ثبّته على الشهر الحالي.
+              if (y == now.year && m > now.month) m = now.month;
+              setState(() {
+                _year = y;
+                _month = m;
+              });
+              _loadActivations();
+            },
+    );
+  }
+
+  /// جدول التفصيل اليومي (اليوم → عدد التفعيلات).
+  Widget _dailyTable() {
+    return Container(
+      decoration: SasUi.card(),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 26,
+          headingRowHeight: 44,
+          dataRowMinHeight: 38,
+          dataRowMaxHeight: 48,
+          headingRowColor: WidgetStatePropertyAll(
+              AppTheme.primaryColor.withValues(alpha: 0.06)),
+          headingTextStyle: GoogleFonts.cairo(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.primaryColor),
+          dataTextStyle:
+              GoogleFonts.cairo(fontSize: 12.sp, color: Colors.black87),
+          columns: const [
+            DataColumn(label: Text('اليوم')),
+            DataColumn(label: Text('عدد التفعيلات'), numeric: true),
+          ],
+          rows: [
+            for (final e in _activationsDaily)
+              DataRow(cells: [
+                DataCell(Text('${e.key} ${_arMonths[_month - 1]}')),
+                DataCell(Text('${e.value}',
+                    style: GoogleFonts.cairo(
+                        color: AppTheme.warningColor,
+                        fontWeight: FontWeight.w700))),
+              ]),
+          ],
+        ),
+      ),
     );
   }
 

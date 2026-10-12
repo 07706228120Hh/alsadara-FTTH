@@ -24,8 +24,22 @@ class Sender {
       this.sessions.reportSuccess(tenant);
       return { success: true };
     } catch (e) {
+      const msg = (e && e.message) || 'فشل الإرسال';
+      // أخطاء إطار المتصفّح/البروتوكول ⇒ الجلسة غير مستقرّة — أعد تشغيلها للتعافي
+      // (تحتفظ بالمصادقة بلا QR)، وأبلغ المستخدم ليعيد المحاولة بعد لحظات.
+      if (/detached frame|session closed|protocol error|target closed|execution context|page crashed/i.test(msg)) {
+        try {
+          this.sessions.restart(tenant);
+        } catch (_) {
+          /* ignore */
+        }
+        return {
+          success: false,
+          error: 'الجلسة أُعيد تشغيلها للتعافي — أعد المحاولة بعد لحظات',
+        };
+      }
       this.sessions.reportFailure(tenant);
-      return { success: false, error: (e && e.message) || 'فشل الإرسال' };
+      return { success: false, error: msg };
     }
   }
 

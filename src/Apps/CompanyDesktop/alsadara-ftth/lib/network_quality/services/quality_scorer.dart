@@ -87,12 +87,12 @@ class QualityScorer {
   /// أقوى من -8 (قريب من الصفر) = فيض ضوئي؛ أضعف من -27 = إشارة منخفضة.
   static QualityRating rateOpticalRx(double? dbm) {
     if (dbm == null) return QualityRating.unknown;
-    // القيم أقرب للصفر أقوى. المثالي بين -8 و -24.
-    if (dbm <= -8 && dbm >= -24) return QualityRating.excellent;
-    if (dbm < -24 && dbm >= -27) return QualityRating.good;
-    if (dbm < -27 && dbm >= -29) return QualityRating.fair;
-    if (dbm < -29 && dbm >= -31) return QualityRating.poor;
-    if (dbm < -31) return QualityRating.bad;
+    // القيم أقرب للصفر أقوى (ضمن حدود). عتبات GPON واقعية.
+    if (dbm <= -8 && dbm >= -15) return QualityRating.excellent;
+    if (dbm < -15 && dbm >= -22) return QualityRating.good;
+    if (dbm < -22 && dbm >= -25) return QualityRating.fair;
+    if (dbm < -25 && dbm >= -27) return QualityRating.poor;
+    if (dbm < -27) return QualityRating.bad;
     // أقوى من -8 (فيض زائد قد يُشبع المستقبل)
     if (dbm > -8 && dbm <= -3) return QualityRating.good;
     return QualityRating.poor; // > -3 dBm فيض ضوئي خطير

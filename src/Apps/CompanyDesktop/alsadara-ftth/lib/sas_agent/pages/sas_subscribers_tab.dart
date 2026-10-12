@@ -12,6 +12,7 @@ import '../widgets/sas_metrics.dart';
 import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_report_widgets.dart';
 import '../widgets/sas_state_views.dart';
+import 'sas_bulk_import_page.dart';
 import 'sas_subscriber_detail_page.dart';
 import 'sas_subscriber_form_page.dart';
 
@@ -248,6 +249,17 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
     if (created == true && mounted) _load();
   }
 
+  /// فتح شاشة «رفع مجموعة مشتركين» (استيراد ملف / إدخال متعدّد ثم إنشاء دفعة).
+  Future<void> _openBulkImport() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => SasBulkImportPage(account: widget.account),
+      ),
+    );
+    // أعد التحميل بعد العودة (قد يكون أُنشئ مشتركون؛ ناقل التحديث يبثّ أيضاً).
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return SasContentWrap(
@@ -261,6 +273,25 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
               Expanded(child: _searchBox()),
               SizedBox(width: 10.w),
               _quickSyncButton(),
+              SizedBox(width: 8.w),
+              SizedBox(
+                height: 50.h,
+                child: OutlinedButton.icon(
+                  onPressed: _openBulkImport,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                    side: BorderSide(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.45)),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(SasUi.radius.r)),
+                  ),
+                  icon: Icon(Icons.upload_file_rounded, size: 18.sp),
+                  label: Text('رفع مجموعة',
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.w800, fontSize: 12.5)),
+                ),
+              ),
               SizedBox(width: 8.w),
               SizedBox(
                 height: 50.h,
