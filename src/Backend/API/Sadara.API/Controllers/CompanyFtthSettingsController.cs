@@ -79,8 +79,56 @@ public class CompanyFtthSettingsController : ControllerBase
                 currentDbCount = settings.CurrentDbCount,
                 consecutiveFailures = settings.ConsecutiveFailures,
                 isMasterSyncEnabled = settings.IsMasterSyncEnabled,
+                // إعدادات واتساب FTTH لكل شركة
+                whatsappBulkSystem = settings.WhatsAppBulkSystem,
+                whatsappRenewalSystem = settings.WhatsAppRenewalSystem,
+                whatsappN8nWebhookUrl = settings.WhatsAppN8nWebhookUrl,
             }
         });
+    }
+
+    /// <summary>
+    /// حفظ إعدادات واتساب FTTH لكل شركة (مصدر حقيقة واحد عبر كل الحاسبات).
+    /// لا يتطلب بيانات دخول FTTH — يحدّث حقول واتساب فقط، ويُنشئ صفاً معطّل المزامنة إن لزم.
+    /// </summary>
+    [HttpPut("{companyId}/whatsapp")]
+    public async Task<IActionResult> SaveWhatsAppSettings(Guid companyId, [FromBody] SaveWhatsAppSettingsRequest request)
+    {
+        if (!ValidateApiKey())
+            return Unauthorized(new { success = false, message = "Invalid API Key" });
+
+        var settings = await _unitOfWork.CompanyFtthSettings.AsQueryable()
+            .FirstOrDefaultAsync(x => x.CompanyId == companyId);
+
+        if (settings != null)
+        {
+            // تحديث حقول واتساب فقط — لا نلمس بيانات/إعدادات مزامنة FTTH
+            if (request.WhatsAppBulkSystem != null) settings.WhatsAppBulkSystem = request.WhatsAppBulkSystem;
+            if (request.WhatsAppRenewalSystem != null) settings.WhatsAppRenewalSystem = request.WhatsAppRenewalSystem;
+            if (request.WhatsAppN8nWebhookUrl != null) settings.WhatsAppN8nWebhookUrl = request.WhatsAppN8nWebhookUrl;
+            settings.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.CompanyFtthSettings.Update(settings);
+        }
+        else
+        {
+            // لا يوجد صف بعد — ننشئ صفاً لواتساب فقط مع تعطيل مزامنة FTTH
+            // (المزامنة الخلفية تتخطّى الصف لأن IsAutoSyncEnabled=false وبيانات الدخول فارغة)
+            settings = new CompanyFtthSettings
+            {
+                Id = Guid.NewGuid(),
+                CompanyId = companyId,
+                FtthUsername = string.Empty,
+                FtthPassword = string.Empty,
+                IsAutoSyncEnabled = false,
+                WhatsAppBulkSystem = request.WhatsAppBulkSystem,
+                WhatsAppRenewalSystem = request.WhatsAppRenewalSystem,
+                WhatsAppN8nWebhookUrl = request.WhatsAppN8nWebhookUrl,
+            };
+            await _unitOfWork.CompanyFtthSettings.AddAsync(settings);
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+        return Ok(new { success = true, message = "تم حفظ إعدادات واتساب بنجاح" });
     }
 
     /// <summary>حفظ إعدادات FTTH</summary>
@@ -650,3 +698,8 @@ public record SaveFtthSettingsRequest(
     int SyncStartHour = 6,
     int SyncEndHour = 23,
     bool IsMasterSyncEnabled = false);
+
+public record SaveWhatsAppSettingsRequest(
+    string? WhatsAppBulkSystem = null,
+    string? WhatsAppRenewalSystem = null,
+    string? WhatsAppN8nWebhookUrl = null);

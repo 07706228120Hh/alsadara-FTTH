@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_availability.dart';
+import 'ftth_whatsapp_settings_service.dart';
 
 /// خدمة إرسال رسائل WhatsApp جماعية عبر n8n
 class WhatsAppBulkSenderService {
@@ -13,6 +14,8 @@ class WhatsAppBulkSenderService {
   static Future<void> saveWebhookUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_webhookUrlKey, url);
+    // دفع إلى السيرفر لكل شركة (مصدر الحقيقة عبر الحاسبات)
+    await FtthWhatsAppSettingsService.pushWebhookUrl(url);
     debugPrint('✅ تم حفظ رابط Webhook');
   }
 

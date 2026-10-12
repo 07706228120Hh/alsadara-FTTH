@@ -51,6 +51,33 @@ class FtthSettingsService {
     }
   }
 
+  /// حفظ إعدادات واتساب FTTH لكل شركة (مصدر الحقيقة على السيرفر)
+  /// يُرسل فقط الحقول غير الفارغة؛ لا يتطلب بيانات دخول FTTH.
+  static Future<bool> saveWhatsAppSettings({
+    required String companyId,
+    String? bulkSystem,
+    String? renewalSystem,
+    String? n8nWebhookUrl,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (bulkSystem != null) body['whatsAppBulkSystem'] = bulkSystem;
+      if (renewalSystem != null) body['whatsAppRenewalSystem'] = renewalSystem;
+      if (n8nWebhookUrl != null) body['whatsAppN8nWebhookUrl'] = n8nWebhookUrl;
+      if (body.isEmpty) return true;
+
+      final res = await _client.put(
+        ApiConfig.companyFtthWhatsAppSave(companyId),
+        body,
+        (json) => json,
+        useInternalKey: true,
+      );
+      return res.success;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// اختبار الاتصال
   static Future<Map<String, dynamic>> testConnection(String companyId) async {
     try {

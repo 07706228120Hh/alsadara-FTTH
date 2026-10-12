@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/whatsapp_business_service.dart';
+import '../../services/ftth_whatsapp_settings_service.dart';
 
 /// أنظمة الواتساب المتاحة
 enum WhatsAppSystem {
@@ -80,8 +81,16 @@ class WhatsAppSystemSettingsService {
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyRenewalSystem, _systemToString(renewalSystem));
-      await prefs.setString(_keyBulkSystem, _systemToString(bulkSystem));
+      final bulkStr = _systemToString(bulkSystem);
+      final renewalStr = _systemToString(renewalSystem);
+      await prefs.setString(_keyRenewalSystem, renewalStr);
+      await prefs.setString(_keyBulkSystem, bulkStr);
+
+      // دفع إلى السيرفر لكل شركة (مصدر الحقيقة عبر الحاسبات) — لا يُفشل الحفظ المحلي
+      await FtthWhatsAppSettingsService.pushSystems(
+        bulkSystem: bulkStr,
+        renewalSystem: renewalStr,
+      );
       return true;
     } catch (e) {
       return false;

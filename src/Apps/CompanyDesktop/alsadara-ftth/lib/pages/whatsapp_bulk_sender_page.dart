@@ -3,6 +3,7 @@ import '../services/whatsapp_bulk_sender_service.dart';
 import '../services/whatsapp_business_service.dart';
 import '../services/bulk_messaging_service.dart';
 import '../services/custom_auth_service.dart';
+import '../services/ftth_whatsapp_settings_service.dart';
 import '../whatsapp/services/whatsapp_system_settings_service.dart';
 import 'whatsapp_batch_reports_page.dart';
 import 'whatsapp_business_config_page.dart';
@@ -67,6 +68,9 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
   }
 
   Future<void> _checkConfiguration() async {
+    // اسحب أحدث إعدادات الواتساب من السيرفر (لكل شركة) إلى الـ cache أولاً
+    await FtthWhatsAppSettingsService.syncFromServer();
+
     // قراءة النظام المحدد للإرسال الجماعي من الإعدادات
     final system = await WhatsAppSystemSettingsService.getSystemForOperation(
       WhatsAppOperationType.bulk,

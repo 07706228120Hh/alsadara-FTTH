@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/whatsapp_system_settings_service.dart';
 import '../services/whatsapp_permissions_service.dart' as perms;
+import '../../services/ftth_whatsapp_settings_service.dart';
 
 /// صفحة إعدادات نظام الواتساب المستخدم
 class WhatsAppSystemSettingsPage extends StatefulWidget {
@@ -46,6 +47,9 @@ class _WhatsAppSystemSettingsPageState
     setState(() => _isLoading = true);
 
     try {
+      // اسحب أحدث القيم من السيرفر (لكل شركة) إلى الـ cache قبل العرض
+      await FtthWhatsAppSettingsService.syncFromServer();
+
       final settings = await WhatsAppSystemSettingsService.getSystemSettings();
       _renewalSystem = settings['renewal']!;
       _bulkSystem = settings['bulk']!;

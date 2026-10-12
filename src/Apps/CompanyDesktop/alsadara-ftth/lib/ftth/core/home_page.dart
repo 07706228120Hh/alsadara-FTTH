@@ -58,6 +58,7 @@ import '../../services/badge_service.dart';
 import '../../services/auth/session_manager.dart';
 import '../../services/vps_sync_service.dart';
 import '../../services/vps_upload_service.dart';
+import '../../services/ftth_whatsapp_settings_service.dart';
 import '../../services/auth/auth_context.dart';
 import '../../services/dual_auth_service.dart';
 import '../../services/ftth/ftth_cache_service.dart';
@@ -207,6 +208,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _initializeAnimations();
     _initializeApp();
+    // مزامنة إعدادات واتساب FTTH لكل شركة من السيرفر عند الدخول
+    // (fire-and-forget؛ محميّة بالكامل — تتخطّى بصمت عند غياب الشركة/الاتصال)
+    FtthWhatsAppSettingsService.syncFromServer();
     _startEarlyPrefetch();
     _fetchSearchZones();
     _searchScrollCtrl.addListener(_onSearchScroll);

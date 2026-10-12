@@ -62,6 +62,17 @@ public class CompanyFtthSettings : BaseEntity<Guid>
     /// <summary>العدد الكلي المتوقع</summary>
     public int SyncTotalCount { get; set; }
 
+    // ============ إعدادات واتساب FTTH (لكل شركة — مصدر الحقيقة عبر الحاسبات) ============
+
+    /// <summary>نظام الإرسال الجماعي المستخدم (api / server / app / web)</summary>
+    public string? WhatsAppBulkSystem { get; set; }
+
+    /// <summary>نظام التجديد المستخدم (api / server / app / web)</summary>
+    public string? WhatsAppRenewalSystem { get; set; }
+
+    /// <summary>رابط n8n Webhook لإرسال الرسائل</summary>
+    public string? WhatsAppN8nWebhookUrl { get; set; }
+
     // ============ العلاقات ============
 
     /// <summary>الشركة</summary>

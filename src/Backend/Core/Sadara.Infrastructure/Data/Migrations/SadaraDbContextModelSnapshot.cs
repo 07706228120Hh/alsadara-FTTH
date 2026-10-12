@@ -2069,6 +2069,15 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("WhatsAppBulkSystem")
+                        .HasColumnType("text");
+
+                    b.Property<string>("WhatsAppN8nWebhookUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("WhatsAppRenewalSystem")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId")

@@ -120,6 +120,8 @@ class ApiConfig {
       '/company-ftth-settings/$companyId/detailed-stats';
   static String companyFtthClearData(String companyId) =>
       '/company-ftth-settings/$companyId/clear-data';
+  static String companyFtthWhatsAppSave(String companyId) =>
+      '/company-ftth-settings/$companyId/whatsapp';
 
   // ============================================
   // Endpoints - IPTV Subscribers (مشتركي IPTV)
