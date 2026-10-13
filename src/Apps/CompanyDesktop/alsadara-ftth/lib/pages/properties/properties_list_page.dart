@@ -14,6 +14,7 @@ import '../../theme/app_theme.dart';
 import 'location_master_page.dart';
 import 'property_detail_page.dart';
 import 'property_form_page.dart';
+import 'property_qr_batches_page.dart';
 import 'property_ui.dart';
 
 class PropertiesListPage extends StatefulWidget {
@@ -105,6 +106,109 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
     );
   }
 
+  Future<void> _openQrBatches() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => const PropertyQrBatchesPage()),
+    );
+  }
+
+  /// مسح/إدخال رمز QR: يحلّه عبر الخادم ويوجّه حسب النتيجة:
+  /// - عقار → يفتح التفاصيل.
+  /// - رمز فارغ → يفتح نموذج إنشاء بوضع «رمز فارغ» (مع تمرير الرمز/التسلسل).
+  /// - رمز غير معروف (404) → رسالة «رمز غير معروف».
+  ///
+  /// الإدخال يدعم ماسحات QR على سطح المكتب (تُرسِل الحمولة كنصّ) أو الإدخال اليدوي.
+  Future<void> _scanQr() async {
+    final raw = await showDialog<String>(
+      context: context,
+      builder: (_) => const _QrInputDialog(),
+    );
+    final token = _extractQrToken(raw);
+    if (token == null || token.isEmpty) return;
+
+    _showBlocking('جارٍ البحث عن الرمز…');
+    try {
+      final r = await _api.resolveQr(token);
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // أغلق الحاجب
+      if (r.isProperty) {
+        final p = r.details!.property;
+        await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => PropertyDetailPage(propertyId: p.id)),
+        );
+        if (mounted) _load(page: _page);
+      } else if (r.blank) {
+        if (!_canManage) {
+          _snack('رمز فارغ — لا تملك صلاحية إنشاء عقار', err: true);
+          return;
+        }
+        final saved = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => PropertyFormPage(
+              prefilledQrToken: r.qrToken,
+              prefilledSerial: r.serial,
+            ),
+          ),
+        );
+        if (saved == true && mounted) _load();
+      } else {
+        _snack('رمز غير معروف', err: true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      final msg = '$e';
+      _snack(msg.contains('404') ? 'رمز غير معروف' : 'تعذّر قراءة الرمز: $msg',
+          err: true);
+    }
+  }
+
+  /// يستخرج الرمز من حمولة مطبوعة `SADARA|P:<token>` أو يُعيد النصّ كما هو.
+  String? _extractQrToken(String? raw) {
+    final s = raw?.trim() ?? '';
+    if (s.isEmpty) return null;
+    const prefix = 'SADARA|P:';
+    if (s.startsWith(prefix)) return s.substring(prefix.length).trim();
+    // قد يصل بصيغة أخرى؛ نمرّره كرمز خام (الخادم يحسم صلاحيته).
+    return s;
+  }
+
+  void _showBlocking(String message) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(message,
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _snack(String m, {bool err = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+        backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor,
+      ),
+    );
+  }
+
   Future<void> _open(Property p) async {
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => PropertyDetailPage(propertyId: p.id)),
@@ -122,6 +226,18 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
           'سجل العقارات',
           leadingIcon: Icons.home_work_rounded,
           actions: [
+            IconButton(
+              tooltip: 'مسح/إدخال رمز QR',
+              onPressed: _scanQr,
+              icon: const Icon(Icons.qr_code_scanner_rounded,
+                  color: Colors.white),
+            ),
+            if (_canManage)
+              IconButton(
+                tooltip: 'دفعات QR',
+                onPressed: _openQrBatches,
+                icon: const Icon(Icons.qr_code_2_rounded, color: Colors.white),
+              ),
             IconButton(
               tooltip: 'المناطق والعناوين',
               onPressed: _openLocationMaster,
@@ -380,4 +496,94 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
             style: GoogleFonts.cairo(
                 color: c, fontWeight: FontWeight.w700, fontSize: 11)),
       );
+}
+
+/// حوار مسح/إدخال رمز QR — يستقبل حمولة من ماسح QR (كنصّ) أو إدخالاً يدوياً.
+///
+/// على سطح المكتب، ماسحات الـUSB تُرسِل الحمولة كمفاتيح لوحة مفاتيح؛ الحقل
+/// مركّز تلقائياً ويُرسِل عند Enter.
+class _QrInputDialog extends StatefulWidget {
+  const _QrInputDialog();
+
+  @override
+  State<_QrInputDialog> createState() => _QrInputDialogState();
+}
+
+class _QrInputDialogState extends State<_QrInputDialog> {
+  final _c = TextEditingController();
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.pop(context, _c.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.qr_code_scanner_rounded,
+                color: AppTheme.primaryColor),
+            const SizedBox(width: 8),
+            Text('مسح/إدخال رمز QR',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'امسح لصاقة العنوان الوطني بماسح QR، أو الصق/اكتب الرمز يدوياً.',
+              style:
+                  GoogleFonts.cairo(fontSize: 12.5, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _c,
+              focusNode: _focus,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _submit(),
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+              decoration: InputDecoration(
+                hintText: 'SADARA|P:… أو الرمز',
+                hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
+                prefixIcon: const Icon(Icons.qr_code_rounded,
+                    color: AppTheme.primaryColor),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('إلغاء',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+          ),
+          FilledButton.icon(
+            onPressed: _submit,
+            style:
+                FilledButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            icon: const Icon(Icons.search_rounded, size: 18),
+            label: Text('بحث',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
 }

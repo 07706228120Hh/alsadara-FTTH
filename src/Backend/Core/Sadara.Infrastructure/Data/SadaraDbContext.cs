@@ -175,6 +175,7 @@ public class SadaraDbContext : DbContext
     public DbSet<PropertyNpnCounter> PropertyNpnCounters => Set<PropertyNpnCounter>();
     public DbSet<PropertyAddress2> PropertyAddress2s => Set<PropertyAddress2>();
     public DbSet<PropertyAddress3> PropertyAddress3s => Set<PropertyAddress3>();
+    public DbSet<PropertyQrToken> PropertyQrTokens => Set<PropertyQrToken>();
 
     // ==================== Inventory System (نظام المخازن والمواد) ====================
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
@@ -474,6 +475,19 @@ public class SadaraDbContext : DbContext
         // عدّاد NPN الذرّي لكل محافظة (ليس مُستأجَراً؛ المفتاح = GovCode).
         modelBuilder.Entity<PropertyNpnCounter>().HasKey(x => x.GovCode);
         modelBuilder.Entity<PropertyNpnCounter>().Property(x => x.GovCode).ValueGeneratedNever();
+
+        // مخزون رموز QR المولّدة مسبقاً: توليد دفعات رموز فارغة ثم ملؤها لاحقاً. معزول بالشركة.
+        // فهرس فريد على QrToken (كـProperties)، وفهارس تطابق (شركة+دفعة) و(شركة+حالة).
+        // FK Property=SetNull: حذف العقار لا يحذف الرمز (الرمز دائم؛ يعود فارغاً منطقياً عند فكّ الربط).
+        modelBuilder.Entity<PropertyQrToken>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<PropertyQrToken>().HasIndex(x => x.QrToken).IsUnique();
+        modelBuilder.Entity<PropertyQrToken>().HasIndex(x => new { x.CompanyId, x.BatchId });
+        modelBuilder.Entity<PropertyQrToken>().HasIndex(x => new { x.CompanyId, x.Status });
+        modelBuilder.Entity<PropertyQrToken>().Property(x => x.Status).HasConversion<int>();
+        modelBuilder.Entity<PropertyQrToken>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PropertyQrToken>()
+            .HasOne(x => x.Property).WithMany().HasForeignKey(x => x.PropertyId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
 
         // بنية المواقع الهرمية: المنطقة(SasRegion) → العنوان 2 → العنوان 3. معزولة بالشركة.
         modelBuilder.Entity<PropertyAddress2>().HasQueryFilter(x => !x.IsDeleted);

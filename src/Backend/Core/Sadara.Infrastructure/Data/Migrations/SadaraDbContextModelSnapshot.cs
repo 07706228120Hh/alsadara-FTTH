@@ -5433,6 +5433,63 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("PropertyNpnCounters");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.PropertyQrToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("QrToken")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Serial")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("QrToken")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "BatchId");
+
+                    b.HasIndex("CompanyId", "Status");
+
+                    b.ToTable("PropertyQrTokens");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.PropertyResident", b =>
                 {
                     b.Property<Guid>("Id")
@@ -10269,6 +10326,24 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Address2");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.PropertyQrToken", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Company");
+
+                    b.Navigation("Property");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.PropertyResident", b =>

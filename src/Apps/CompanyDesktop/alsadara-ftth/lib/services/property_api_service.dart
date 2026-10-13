@@ -39,6 +39,106 @@ class PropertyDetails {
   });
 }
 
+/// دفعة رموز QR فارغة مُولَّدة مسبقاً (مخزون) — للطباعة الشبكية ثم الملء بالمسح.
+class PropertyQrBatch {
+  final String batchId;
+  final int count;
+  final int usedCount;
+  final String note;
+  final String createdAt;
+
+  const PropertyQrBatch({
+    required this.batchId,
+    required this.count,
+    required this.usedCount,
+    required this.note,
+    required this.createdAt,
+  });
+
+  int get remaining => (count - usedCount) < 0 ? 0 : (count - usedCount);
+
+  factory PropertyQrBatch.fromJson(Map<String, dynamic> j) => PropertyQrBatch(
+        batchId: (j['batchId'] ?? j['BatchId'] ?? j['id'] ?? j['Id'] ?? '')
+            .toString(),
+        count: _toInt(j['count'] ?? j['Count']),
+        usedCount: _toInt(j['usedCount'] ?? j['UsedCount'] ?? j['used_count']),
+        note: (j['note'] ?? j['Note'] ?? '').toString(),
+        createdAt:
+            (j['createdAt'] ?? j['CreatedAt'] ?? j['created_at'] ?? '').toString(),
+      );
+
+  static int _toInt(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse('${v ?? ''}') ?? 0;
+  }
+}
+
+/// رمز QR ضمن دفعة مخزون — تسلسل + الرمز + حالته (مُستخدم/فارغ).
+class PropertyQrToken {
+  final int serial;
+  final String qrToken;
+  final String status; // Blank / Used (كما يردّها الخادم)
+
+  const PropertyQrToken({
+    required this.serial,
+    required this.qrToken,
+    required this.status,
+  });
+
+  /// حمولة الـQR المطبوعة (نفس صيغة لصاقة العقار).
+  String get payload => 'SADARA|P:$qrToken';
+  bool get isUsed => status.toLowerCase() == 'used';
+
+  factory PropertyQrToken.fromJson(Map<String, dynamic> j) => PropertyQrToken(
+        serial: PropertyQrBatch._toInt(j['serial'] ?? j['Serial']),
+        qrToken: (j['qrToken'] ?? j['QrToken'] ?? j['qr_token'] ?? '').toString(),
+        status: (j['status'] ?? j['Status'] ?? '').toString(),
+      );
+}
+
+/// نتيجة حلّ رمز QR من [PropertyApiService.getByQr]:
+/// إمّا عقار موجود [details]، وإمّا رمز مخزون فارغ ([blank] == true).
+class PropertyQrResolveResult {
+  /// تفاصيل العقار إن كان الرمز مربوطاً بعقار.
+  final PropertyDetails? details;
+
+  /// صحيح إن كان الرمز موجوداً في المخزون لكنه غير مُستخدَم بعد.
+  final bool blank;
+
+  /// رمز الـQR (يُعاد في حالة الفراغ لتمريره لنموذج الإنشاء).
+  final String qrToken;
+
+  /// الرقم التسلسلي ومعرّف الدفعة (للعرض فقط — في حالة الفراغ).
+  final int serial;
+  final String batchId;
+
+  const PropertyQrResolveResult._({
+    this.details,
+    this.blank = false,
+    this.qrToken = '',
+    this.serial = 0,
+    this.batchId = '',
+  });
+
+  bool get isProperty => details != null;
+
+  factory PropertyQrResolveResult.property(PropertyDetails d) =>
+      PropertyQrResolveResult._(details: d);
+
+  factory PropertyQrResolveResult.blankToken({
+    required String qrToken,
+    int serial = 0,
+    String batchId = '',
+  }) =>
+      PropertyQrResolveResult._(
+        blank: true,
+        qrToken: qrToken,
+        serial: serial,
+        batchId: batchId,
+      );
+}
+
 /// نتيجة بحث منتقي المواطن.
 class CitizenHit {
   final String id;
@@ -111,10 +211,104 @@ class PropertyApiService {
     return _parseDetails(res);
   }
 
-  /// حلّ عقار من رمز الـQR الدائم.
+  /// حلّ عقار من رمز الـQR الدائم (استخدام مباشر إن كان الرمز مربوطاً بعقار).
+  ///
+  /// مُبقاة للتوافق — ترمي إن كان الرمز فارغاً (مخزون غير مُستخدم). للتفريق بين
+  /// «عقار» و«رمز فارغ» استخدم [resolveQr].
   Future<PropertyDetails> getByQr(String token) async {
-    final res = await _api.get('/properties/by-qr/${Uri.encodeComponent(token)}');
+    final res =
+        await _api.get('/properties/by-qr/${Uri.encodeComponent(token)}');
+    if (_isBlankTokenResponse(res)) {
+      throw Exception('رمز فارغ — لا عقار مربوط بهذا الرمز بعد');
+    }
     return _parseDetails(res);
+  }
+
+  /// حلّ رمز QR ويُميّز بين عقار موجود ورمز مخزون **فارغ** (blank==true).
+  ///
+  /// - عقار → [PropertyQrResolveResult.isProperty] صحيح مع [details].
+  /// - رمز فارغ → [PropertyQrResolveResult.blank] صحيح مع [qrToken]/[serial].
+  /// - رمز غير معروف (404) → ترمي استثناءً (يعالجه المستدعي كـ«رمز غير معروف»).
+  Future<PropertyQrResolveResult> resolveQr(String token) async {
+    final res =
+        await _api.get('/properties/by-qr/${Uri.encodeComponent(token)}');
+    if (_isBlankTokenResponse(res)) {
+      final data = (res['data'] as Map?)?.cast<String, dynamic>() ?? res;
+      return PropertyQrResolveResult.blankToken(
+        qrToken: (data['qrToken'] ??
+                data['QrToken'] ??
+                data['qr_token'] ??
+                res['qrToken'] ??
+                token)
+            .toString(),
+        serial: _asInt(
+            data['serial'] ?? data['Serial'] ?? res['serial'] ?? res['Serial']),
+        batchId: (data['batchId'] ??
+                data['BatchId'] ??
+                res['batchId'] ??
+                res['BatchId'] ??
+                '')
+            .toString(),
+      );
+    }
+    return PropertyQrResolveResult.property(_parseDetails(res));
+  }
+
+  /// صحيح إن كانت الاستجابة تمثّل رمزاً فارغاً (blank==true) بدل عقار.
+  bool _isBlankTokenResponse(Map<String, dynamic> res) {
+    bool flag(dynamic v) => v == true || '$v'.toLowerCase() == 'true';
+    if (flag(res['blank']) || flag(res['Blank'])) return true;
+    final data = res['data'];
+    if (data is Map) {
+      return flag(data['blank']) || flag(data['Blank']);
+    }
+    return false;
+  }
+
+  // ─────────────────── دفعات رموز QR الفارغة (المخزون) ───────────────────
+
+  /// توليد دفعة رموز QR فارغة مسبقاً بعدد [count] (+ملاحظة اختيارية).
+  /// يُرجع الدفعة المُنشأة. الخادم يفرض العزل/الحدود.
+  Future<PropertyQrBatch> generateQrBatch(int count, {String? note}) async {
+    final res = await _api.post('/properties/qr-batches', body: {
+      'count': count,
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+    });
+    final data = (res['data'] as Map?)?.cast<String, dynamic>() ?? res;
+    return PropertyQrBatch.fromJson(data);
+  }
+
+  /// قائمة دفعات رموز QR (معزولة بالشركة في الخادم).
+  Future<List<PropertyQrBatch>> listQrBatches() async {
+    final res = await _api.get('/properties/qr-batches');
+    final data = (res['data'] as List?) ?? const [];
+    return data
+        .whereType<Map>()
+        .map((e) => PropertyQrBatch.fromJson(e.cast<String, dynamic>()))
+        .toList();
+  }
+
+  /// رموز دفعة محدّدة ضمن نطاق تسلسل [fromSerial]..[toSerial] (اختياريان).
+  /// يُستخدم للطباعة الشبكية على دفعات/صفحات محدودة (تفادي توليد الآلاف دفعةً).
+  Future<List<PropertyQrToken>> getBatchTokens(
+    String batchId, {
+    int? fromSerial,
+    int? toSerial,
+  }) async {
+    final params = <String, String>{
+      if (fromSerial != null) 'fromSerial': '$fromSerial',
+      if (toSerial != null) 'toSerial': '$toSerial',
+    };
+    final query = params.isEmpty
+        ? ''
+        : '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
+    final res = await _api
+        .get('/properties/qr-batches/${Uri.encodeComponent(batchId)}/tokens$query');
+    final data = (res['data'] as List?) ?? const [];
+    return data
+        .whereType<Map>()
+        .map((e) => PropertyQrToken.fromJson(e.cast<String, dynamic>()))
+        .toList();
   }
 
   /// إنشاء عقار جديد — يُرجع معرّف العقار المُنشأ (إن توفّر).
@@ -137,6 +331,7 @@ class PropertyApiService {
     String? regionId,
     String? address2Id,
     String? address3Id,
+    String? qrToken,
   }) async {
     final res = await _api.post('/properties', body: {
       'govCode': govCode,
@@ -157,6 +352,8 @@ class PropertyApiService {
       'regionId': regionId,
       'address2Id': address2Id,
       'address3Id': address3Id,
+      // رمز مخزون مطبوع مسبقاً (اختياري) — يربط العقار بالرمز عند الملء بالمسح.
+      if (qrToken != null && qrToken.trim().isNotEmpty) 'qrToken': qrToken.trim(),
     });
     final data = res['data'];
     if (data is Map) {

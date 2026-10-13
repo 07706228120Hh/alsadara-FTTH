@@ -37,7 +37,19 @@ const List<MapEntry<int, String>> _governorates = [
 
 class PropertyFormPage extends StatefulWidget {
   final Property? existing;
-  const PropertyFormPage({super.key, this.existing});
+
+  /// رمز QR مخزون مطبوع مسبقاً (وضع «ملء رمز فارغ» بعد المسح) — يُربط العقار به.
+  final String? prefilledQrToken;
+
+  /// الرقم التسلسلي للرمز الفارغ (للعرض فقط) — يرافق [prefilledQrToken].
+  final int? prefilledSerial;
+
+  const PropertyFormPage({
+    super.key,
+    this.existing,
+    this.prefilledQrToken,
+    this.prefilledSerial,
+  });
 
   @override
   State<PropertyFormPage> createState() => _PropertyFormPageState();
@@ -326,6 +338,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
           regionId: _regionId,
           address2Id: _address2Id,
           address3Id: _address3Id,
+          qrToken: widget.prefilledQrToken,
         );
       } else {
         await _api.update(widget.existing!.id, {
@@ -380,6 +393,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if ((widget.prefilledQrToken ?? '').isNotEmpty) ...[
+                  _blankQrBanner(),
+                  const SizedBox(height: 14),
+                ],
                 Row(
                   children: [
                     const Expanded(
@@ -484,6 +501,46 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// لافتة تُعلم المستخدم أنه يملأ بيانات عقار مرتبط برمز QR فارغ مطبوع مسبقاً.
+  Widget _blankQrBanner() {
+    final serial = widget.prefilledSerial;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.qr_code_2_rounded,
+              color: AppTheme.primaryColor, size: 24),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('رمز فارغ — أدخل بيانات العقار',
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                        color: PropUi.ink)),
+                Text(
+                  serial != null && serial > 0
+                      ? 'سيُربط العقار بالرمز المطبوع (تسلسل $serial).'
+                      : 'سيُربط العقار بالرمز المطبوع الممسوح.',
+                  style:
+                      GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[700]),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

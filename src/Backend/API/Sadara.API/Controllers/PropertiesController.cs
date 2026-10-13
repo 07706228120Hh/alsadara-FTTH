@@ -139,9 +139,142 @@ public class PropertiesController : ControllerBase
         if (marker >= 0) t = t[(marker + 2)..].Split('|')[0].Trim();
         var p = await _db.Properties.AsNoTracking()
             .FirstOrDefaultAsync(x => x.QrToken == t && x.CompanyId == companyId, ct);
-        if (p == null) return NotFound(new { success = false, message = "لا عقار بهذا الرمز" });
-        var (residents, services) = await LoadLinksAsync(p.Id, companyId, ct);
-        return Ok(new { success = true, data = ToDto(p), residents, services });
+        if (p != null)
+        {
+            var (residents, services) = await LoadLinksAsync(p.Id, companyId, ct);
+            return Ok(new { success = true, data = ToDto(p), residents, services });
+        }
+
+        // لا عقار بالرمز: ابحث في مخزون رموز QR المولّدة مسبقاً (معزول بالشركة، غير محذوف تلقائياً).
+        var stock = await _db.PropertyQrTokens.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.QrToken == t && x.CompanyId == companyId, ct);
+        if (stock == null)
+            return NotFound(new { success = false, message = "لا عقار بهذا الرمز" });
+
+        // رمز مربوط بعقار (Used + PropertyId): حُلّ العقار وأعِده بنفس شكل العقار.
+        if (stock.Status == PropertyQrTokenStatus.Used && stock.PropertyId is Guid linkedId)
+        {
+            var linked = await _db.Properties.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == linkedId && x.CompanyId == companyId, ct);
+            if (linked != null)
+            {
+                var (residents, services) = await LoadLinksAsync(linked.Id, companyId, ct);
+                return Ok(new { success = true, data = ToDto(linked), residents, services });
+            }
+        }
+
+        // رمز فارغ (Unused) أو مربوط بعقار محذوف: أعِد 200 بجسم «فارغ» مميّز للمسح/الملء اللاحق.
+        return Ok(new { success = true, blank = true, qrToken = stock.QrToken, serial = stock.Serial, batchId = stock.BatchId });
+    }
+
+    // ============ مخزون رموز QR المولّدة مسبقاً (دفعات طباعة → ملء لاحق بالمسح) ============
+
+    /// <summary>الحدّ الأقصى لعدد الرموز في دفعة واحدة (حدّ أمان ضد الطلبات الضخمة).</summary>
+    private const int QrBatchMaxCount = 20000;
+
+    /// <summary>حجم دفعة الإدراج المجمّع (لتفادي ضغط الذاكرة/change-tracker مع الدفعات الكبيرة).</summary>
+    private const int QrInsertChunkSize = 2000;
+
+    /// <summary>
+    /// توليد دفعة رموز QR فارغة مسبقاً (مطبوعة لاحقاً، تُملأ عند المسح). يولّد <c>BatchId</c> واحداً
+    /// و<c>count</c> صفوفاً بتسلسل 1..count ورموز فريدة (Guid N). معزول بالشركة + ختم المنشئ.
+    /// </summary>
+    [HttpPost("qr-batches")]
+    [RequirePermission("property_registry", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> CreateQrBatch([FromBody] CreateQrBatchRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var userId, out var denied)) return denied!;
+        if (request.Count < 1 || request.Count > QrBatchMaxCount)
+            return BadRequest(new { success = false, message = $"العدد يجب أن يكون بين 1 و{QrBatchMaxCount}" });
+
+        var batchId = Guid.NewGuid();
+        var note = Nullify(request.Note);
+        var now = DateTime.UtcNow;
+
+        // إدراج مجمّع على دفعات لتفادي ضغط الذاكرة/الـchange-tracker مع الأعداد الكبيرة.
+        try
+        {
+            var buffer = new List<PropertyQrToken>(Math.Min(request.Count, QrInsertChunkSize));
+            for (var serial = 1; serial <= request.Count; serial++)
+            {
+                buffer.Add(new PropertyQrToken
+                {
+                    Id = Guid.NewGuid(),
+                    CompanyId = companyId,
+                    CreatedByUserId = userId,
+                    BatchId = batchId,
+                    Serial = serial,
+                    QrToken = Guid.NewGuid().ToString("N"),
+                    Status = PropertyQrTokenStatus.Unused,
+                    Note = note,
+                    CreatedAt = now
+                });
+                if (buffer.Count >= QrInsertChunkSize)
+                {
+                    await _db.PropertyQrTokens.AddRangeAsync(buffer, ct);
+                    await _db.SaveChangesAsync(ct);
+                    foreach (var e in buffer) _db.Entry(e).State = EntityState.Detached;
+                    buffer.Clear();
+                }
+            }
+            if (buffer.Count > 0)
+            {
+                await _db.PropertyQrTokens.AddRangeAsync(buffer, ct);
+                await _db.SaveChangesAsync(ct);
+                foreach (var e in buffer) _db.Entry(e).State = EntityState.Detached;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "فشل توليد دفعة رموز QR ({Count}) للشركة {Company}", request.Count, companyId);
+            return StatusCode(500, new { success = false, message = "تعذّر توليد دفعة الرموز" });
+        }
+
+        return Ok(new { success = true, data = new { batchId, count = request.Count, note, createdAt = now } });
+    }
+
+    /// <summary>قائمة دفعات رموز الـQR (مجمّعة بالدفعة: العدد الكلي والمستخدَم)، معزولة بالشركة.</summary>
+    [HttpGet("qr-batches")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetQrBatches(CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var rows = await _db.PropertyQrTokens.AsNoTracking()
+            .Where(x => x.CompanyId == companyId)
+            .GroupBy(x => x.BatchId)
+            .Select(g => new
+            {
+                batchId = g.Key,
+                count = g.Count(),
+                usedCount = g.Count(x => x.Status == PropertyQrTokenStatus.Used),
+                note = g.Max(x => x.Note),
+                createdAt = g.Min(x => x.CreatedAt)
+            })
+            .OrderByDescending(x => x.createdAt)
+            .ToListAsync(ct);
+        return Ok(new { success = true, data = rows });
+    }
+
+    /// <summary>رموز دفعة معيّنة للطباعة (معزولة بالشركة، مرتّبة بالتسلسل). يدعم نطاق تسلسل اختياري للطباعة على دفعات.</summary>
+    [HttpGet("qr-batches/{batchId:guid}/tokens")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetQrBatchTokens(
+        Guid batchId,
+        [FromQuery] int? fromSerial,
+        [FromQuery] int? toSerial,
+        CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var query = _db.PropertyQrTokens.AsNoTracking()
+            .Where(x => x.CompanyId == companyId && x.BatchId == batchId);
+        if (fromSerial is int fs) query = query.Where(x => x.Serial >= fs);
+        if (toSerial is int ts) query = query.Where(x => x.Serial <= ts);
+
+        var rows = await query
+            .OrderBy(x => x.Serial)
+            .Select(x => new { serial = x.Serial, qrToken = x.QrToken, status = x.Status.ToString() })
+            .ToListAsync(ct);
+        return Ok(new { success = true, data = rows });
     }
 
     /// <summary>إنشاء عقار: يخصّص NPN ذرّياً لكل محافظة + QrToken دائم + IqPin من الإحداثيات.</summary>
@@ -152,6 +285,22 @@ public class PropertiesController : ControllerBase
         if (!TryResolveScope(out var companyId, out var userId, out var denied)) return denied!;
         if (request.GovCode <= 0 || string.IsNullOrWhiteSpace(request.Governorate))
             return BadRequest(new { success = false, message = "المحافظة ورمزها مطلوبان" });
+
+        // لو مُرِّر رمز من مخزون QR: يجب أن يكون موجوداً للشركة وفارغاً (Unused). نتحقّق ونحجزه ذرّياً
+        // مع إنشاء العقار داخل معاملة واحدة (عقار + تعليم الرمز Used معاً — ذرّية كاملة).
+        var stockToken = Nullify(request.QrToken);
+        PropertyQrToken? stock = null;
+        if (stockToken != null)
+        {
+            stock = await _db.PropertyQrTokens
+                .FirstOrDefaultAsync(x => x.QrToken == stockToken && x.CompanyId == companyId, ct);
+            if (stock == null)
+                return BadRequest(new { success = false, message = "رمز الـQR غير موجود في مخزون شركتك" });
+            if (stock.Status != PropertyQrTokenStatus.Unused || stock.PropertyId != null)
+                return BadRequest(new { success = false, message = "رمز الـQR مُستخدَم مسبقاً" });
+        }
+
+        await using var tx = stock != null ? await _db.Database.BeginTransactionAsync(ct) : null;
 
         // تخصيص NPN ذرّي لكل محافظة عبر upsert+increment في عبارة واحدة (آمن تحت التزامن).
         int seq;
@@ -175,7 +324,8 @@ public class PropertiesController : ControllerBase
             Id = Guid.NewGuid(),
             CompanyId = companyId,
             CreatedByUserId = userId,
-            QrToken = Guid.NewGuid().ToString("N"), // دائم فريد
+            // لو مُرِّر رمز مخزون: استخدمه كما هو (دائم)؛ وإلا ولّد جديداً.
+            QrToken = stock?.QrToken ?? Guid.NewGuid().ToString("N"), // دائم فريد
             Npn = $"{request.GovCode:D2}{seq:D9}",
             NpnDisplay = $"{request.GovCode:D2}-{seq:D9}",
             IqPin = iqPin,
@@ -200,7 +350,18 @@ public class PropertiesController : ControllerBase
             Notes = Nullify(request.Notes)
         };
         await _db.Properties.AddAsync(p, ct);
+
+        // لو من مخزون: علّم الرمز Used واربطه بالعقار الجديد ضمن نفس حفظ المعاملة (ذرّية).
+        if (stock != null)
+        {
+            stock.Status = PropertyQrTokenStatus.Used;
+            stock.PropertyId = p.Id;
+            stock.UpdatedAt = DateTime.UtcNow;
+            _db.PropertyQrTokens.Update(stock);
+        }
+
         await _db.SaveChangesAsync(ct);
+        if (tx != null) await tx.CommitAsync(ct);
         return Ok(new { success = true, data = ToDto(p), message = "تم تسجيل العقار" });
     }
 
@@ -979,7 +1140,15 @@ public record PropertyUpsertRequest(
     double? Longitude,
     PropertyType? PropertyType,
     PropertyOwnership? Ownership,
-    string? Notes);
+    string? Notes,
+    // رمز من مخزون QR المولّد مسبقاً (اختياري). لو مُرِّر: يُستخدَم كرمز العقار الدائم ويُعلَّم Used.
+    // لو غُفل (null): السلوك الحالي (توليد رمز جديد). متوافق رجوعياً.
+    string? QrToken = null);
+
+/// <summary>طلب توليد دفعة رموز QR فارغة مسبقاً (<c>Count</c> بين 1 و20000 + ملاحظة اختيارية).</summary>
+public record CreateQrBatchRequest(
+    int Count,
+    string? Note);
 
 /// <summary>طلب ربط مواطن (Citizen موجود) بعقار.</summary>
 public record LinkResidentRequest(
