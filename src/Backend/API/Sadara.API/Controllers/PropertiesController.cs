@@ -272,7 +272,19 @@ public class PropertiesController : ControllerBase
 
         var rows = await query
             .OrderBy(x => x.Serial)
-            .Select(x => new { serial = x.Serial, qrToken = x.QrToken, status = x.Status.ToString() })
+            .Select(x => new
+            {
+                serial = x.Serial,
+                qrToken = x.QrToken,
+                status = x.Status.ToString(),
+                propertyId = x.PropertyId,
+                npn = x.PropertyId == null
+                    ? null
+                    : _db.Properties
+                        .Where(p => p.Id == x.PropertyId)
+                        .Select(p => p.NpnDisplay)
+                        .FirstOrDefault(),
+            })
             .ToListAsync(ct);
         return Ok(new { success = true, data = rows });
     }

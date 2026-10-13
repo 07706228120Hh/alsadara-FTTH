@@ -11,9 +11,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/property_api_service.dart';
 import '../../theme/app_theme.dart';
+import 'property_sticker.dart';
 import 'property_ui.dart';
 
 class PropertyQrBatchesPage extends StatefulWidget {
@@ -33,11 +35,8 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
   // حدود/افتراضيات التوليد.
   static const int _defaultCount = 10000;
   static const int _maxCount = 20000;
-  // حدّ آمن لعدد الرموز في طباعة واحدة (24 خلية/صفحة → ~42 صفحة).
+  // حدّ آمن لعدد الرموز في طباعة واحدة (20 ستيكر/صفحة → ~50 صفحة).
   static const int _maxTokensPerPrint = 1000;
-  // شبكة الطباعة A4.
-  static const int _cols = 4;
-  static const int _rowsPerPage = 6;
 
   @override
   void initState() {
@@ -101,7 +100,9 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
 
   // ─────────────────────────── الطباعة الشبكية ───────────────────────────
 
-  Future<void> _print(PropertyQrBatch b) async {
+  // preview=true ⇒ يفتح معاينة داخل التطبيق (فيها أزرار طباعة + حفظ/فتح PDF).
+  // preview=false ⇒ طباعة مباشرة عبر حوار النظام.
+  Future<void> _runPrint(PropertyQrBatch b, {required bool preview}) async {
     final range = await showDialog<_PrintRange>(
       context: context,
       builder: (_) => _PrintRangeDialog(
@@ -119,7 +120,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
       return;
     }
 
-    _showBlocking('جارٍ تجهيز الرموز للطباعة…');
+    _showBlocking('جارٍ تجهيز الرموز…');
     try {
       final tokens = await _api.getBatchTokens(
         b.batchId,
@@ -132,12 +133,90 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
         _msg('لا رموز ضمن النطاق المحدّد', err: true);
         return;
       }
-      await _layoutGridPdf(tokens, b);
+      final doc = await _buildGridDoc(tokens, b);
+      if (!mounted) return;
+      if (preview) {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => _PdfPreviewScreen(
+              doc: doc,
+              title: 'دفعة ${_shortId(b.batchId)}',
+            ),
+          ),
+        );
+      } else {
+        await Printing.layoutPdf(onLayout: (_) async => doc.save());
+      }
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
-      _msg('تعذّرت الطباعة: $e', err: true);
+      _msg('تعذّرت العملية: $e', err: true);
     }
+  }
+
+  // تعديل رقم هاتف الطباعة المحفوظ محلياً (يُطبع تحت كل رمز) دون توليد دفعة.
+  Future<void> _editContactPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getString(kPropertyQrContactPhoneKey) ?? '';
+    if (!mounted) return;
+    final ctrl = TextEditingController(text: current);
+    final saved = await showDialog<String>(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.phone_rounded, color: AppTheme.primaryColor),
+              const SizedBox(width: 8),
+              Text('هاتف الطباعة',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+            ],
+          ),
+          content: TextField(
+            controller: ctrl,
+            keyboardType: TextInputType.phone,
+            style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+            decoration: InputDecoration(
+              labelText: 'رقم الهاتف (يُطبع تحت كل رمز)',
+              labelStyle: GoogleFonts.cairo(),
+              helperText: 'يُحفظ محلياً ويُستخدم لكل الطباعات',
+              helperStyle: GoogleFonts.cairo(fontSize: 11),
+              isDense: true,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('إلغاء',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('حفظ',
+                  style: GoogleFonts.cairo(
+                      fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved == null) return;
+    await prefs.setString(kPropertyQrContactPhoneKey, saved);
+    _msg(saved.isEmpty ? 'أُزيل هاتف الطباعة' : 'حُفظ هاتف الطباعة: $saved');
+  }
+
+  // يفتح شاشة الحالات التفصيلية لرموز الدفعة (مستخدَم/فارغ + العقار المرتبط).
+  void _openTokens(PropertyQrBatch b) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _BatchTokensScreen(batch: b),
+      ),
+    );
   }
 
   void _showBlocking(String message) {
@@ -166,25 +245,40 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
     );
   }
 
-  /// يولّد PDF A4 شبكي: 4×6 خلايا/صفحة، كل خلية QR + الرقم التسلسلي للقصّ.
-  Future<void> _layoutGridPdf(
+  /// يبني PDF A4: كل ستيكر 5سم × 5سم بالضبط، مرتّب شبكياً بهوامش صغيرة للقصّ.
+  /// عدد الأعمدة/الصفوف يُحسب من مقاس A4 تلقائياً (≈ 4×5 = 20 ستيكر/صفحة).
+  Future<pw.Document> _buildGridDoc(
       List<PropertyQrToken> tokens, PropertyQrBatch b) async {
-    final base = await PdfGoogleFonts.notoSansArabicRegular();
-    final bold = await PdfGoogleFonts.notoSansArabicBold();
-    final perPage = _cols * _rowsPerPage;
+    // خط Cairo يغطّي العربية واللاتينية معاً فلا تظهر مربّعات لأي رمز.
+    final base = await PdfGoogleFonts.cairoRegular();
+    final bold = await PdfGoogleFonts.cairoBold();
+
+    // رقم هاتف الاتصال المحفوظ محلياً — يُطبع تحت كل رمز (بدل التسلسل).
+    final prefs = await SharedPreferences.getInstance();
+    final phone = (prefs.getString(kPropertyQrContactPhoneKey) ?? '').trim();
+
+    final cm = PdfPageFormat.cm; // نقاط لكل سنتيمتر
+    final cell = 5.0 * cm; // الستيكر 5سم × 5سم بالضبط
+    final gap = 0.1 * cm; // فاصل صغير بين الستيكرات للقصّ
+    final margin = 0.25 * cm; // هامش الصفحة
+    const headerH = 24.0; // ارتفاع العنوان أعلى الصفحة
+
+    final pf = PdfPageFormat.a4;
+    final usableW = pf.width - 2 * margin;
+    final usableH = pf.height - 2 * margin - headerH;
+    final cols = ((usableW + gap) / (cell + gap)).floor().clamp(1, 99);
+    final rows = ((usableH + gap) / (cell + gap)).floor().clamp(1, 99);
+    final perPage = cols * rows;
 
     final doc = pw.Document();
-
     for (int start = 0; start < tokens.length; start += perPage) {
       final slice = tokens.sublist(
           start,
-          (start + perPage) > tokens.length
-              ? tokens.length
-              : (start + perPage));
+          (start + perPage) > tokens.length ? tokens.length : start + perPage);
       doc.addPage(
         pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(18),
+          pageFormat: pf,
+          margin: pw.EdgeInsets.all(margin),
           theme: pw.ThemeData.withFont(base: base, bold: bold),
           build: (ctx) => pw.Directionality(
             textDirection: pw.TextDirection.rtl,
@@ -192,21 +286,28 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
               crossAxisAlignment: pw.CrossAxisAlignment.stretch,
               children: [
                 pw.Text(
-                  'رموز العنوان الوطني — دفعة ${_shortId(b.batchId)}'
-                  '${b.note.isNotEmpty ? ' · ${b.note}' : ''}',
+                  // رموز لاتينية مثل — و · و # غير موجودة في خط العربية المضمَّن
+                  // فتظهر مربّعات؛ نستخدم نصاً عربياً ومسافات موجودة في الخط.
+                  'رموز العنوان الوطني   دفعة ${_shortId(b.batchId)}'
+                  '${b.note.isNotEmpty ? '   ${b.note}' : ''}',
                   style: pw.TextStyle(font: bold, fontSize: 11),
                 ),
-                pw.SizedBox(height: 8),
-                pw.Expanded(
-                  child: pw.GridView(
-                    crossAxisCount: _cols,
-                    childAspectRatio: 0.82,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    children: [
-                      for (final t in slice) _cell(t, base),
-                    ],
-                  ),
+                pw.SizedBox(height: 6),
+                pw.Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: [
+                    for (final t in slice)
+                      pw.SizedBox(
+                        width: cell,
+                        height: cell,
+                        child: buildStickerCell(
+                          payload: t.payload,
+                          phone: phone,
+                          font: base,
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -214,33 +315,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
         ),
       );
     }
-
-    await Printing.layoutPdf(onLayout: (_) async => doc.save());
-  }
-
-  pw.Widget _cell(PropertyQrToken t, pw.Font base) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(4),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(width: 0.5, color: PdfColors.grey400),
-      ),
-      child: pw.Column(
-        mainAxisAlignment: pw.MainAxisAlignment.center,
-        crossAxisAlignment: pw.CrossAxisAlignment.center,
-        children: [
-          pw.Expanded(
-            child: pw.BarcodeWidget(
-              barcode: pw.Barcode.qrCode(),
-              data: t.payload,
-              drawText: false,
-            ),
-          ),
-          pw.SizedBox(height: 3),
-          pw.Text('#${t.serial}',
-              style: pw.TextStyle(font: base, fontSize: 9)),
-        ],
-      ),
-    );
+    return doc;
   }
 
   String _shortId(String id) =>
@@ -264,6 +339,11 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
           'دفعات QR',
           leadingIcon: Icons.qr_code_2_rounded,
           actions: [
+            IconButton(
+              tooltip: 'هاتف الطباعة',
+              onPressed: _editContactPhone,
+              icon: const Icon(Icons.phone_rounded, color: Colors.white),
+            ),
             IconButton(
               tooltip: 'تحديث',
               onPressed: _loading ? null : _load,
@@ -372,16 +452,50 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
             ),
           ),
           const SizedBox(width: 8),
-          OutlinedButton.icon(
-            onPressed: b.count > 0 ? () => _print(b) : null,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-              side:
-                  BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.4)),
-            ),
-            icon: const Icon(Icons.print_rounded, size: 18),
-            label: Text('طباعة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton.icon(
+                onPressed:
+                    b.count > 0 ? () => _runPrint(b, preview: true) : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryColor,
+                  side: BorderSide(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.4)),
+                  minimumSize: const Size(118, 36),
+                ),
+                icon: const Icon(Icons.visibility_rounded, size: 18),
+                label: Text('معاينة / PDF',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(height: 6),
+              OutlinedButton.icon(
+                onPressed:
+                    b.count > 0 ? () => _runPrint(b, preview: false) : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryColor,
+                  side: BorderSide(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.4)),
+                  minimumSize: const Size(118, 36),
+                ),
+                icon: const Icon(Icons.print_rounded, size: 18),
+                label: Text('طباعة',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(height: 6),
+              OutlinedButton.icon(
+                onPressed: b.count > 0 ? () => _openTokens(b) : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.successColor,
+                  side: BorderSide(
+                      color: AppTheme.successColor.withValues(alpha: 0.4)),
+                  minimumSize: const Size(118, 36),
+                ),
+                icon: const Icon(Icons.fact_check_rounded, size: 18),
+                label: Text('الحالات',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              ),
+            ],
           ),
         ],
       ),
@@ -422,16 +536,29 @@ class _GenerateDialogState extends State<_GenerateDialog> {
   late final _count =
       TextEditingController(text: '${widget.defaultCount}');
   final _note = TextEditingController();
+  final _phone = TextEditingController();
   String? _err;
+
+  @override
+  void initState() {
+    super.initState();
+    // تحميل رقم الهاتف المحفوظ محلياً (يُطبع تحت كل رمز).
+    SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
+      final saved = p.getString(kPropertyQrContactPhoneKey) ?? '';
+      if (saved.isNotEmpty) _phone.text = saved;
+    });
+  }
 
   @override
   void dispose() {
     _count.dispose();
     _note.dispose();
+    _phone.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final n = int.tryParse(_count.text.trim());
     if (n == null || n <= 0) {
       setState(() => _err = 'أدخل عدداً صحيحاً أكبر من صفر');
@@ -441,6 +568,10 @@ class _GenerateDialogState extends State<_GenerateDialog> {
       setState(() => _err = 'الحدّ الأقصى ${widget.maxCount} رمزاً');
       return;
     }
+    // حفظ رقم الهاتف محلياً ليُطبع تحت الرموز ويُعاد استخدامه لاحقاً.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kPropertyQrContactPhoneKey, _phone.text.trim());
+    if (!mounted) return;
     Navigator.pop(
         context,
         _GenerateResult(
@@ -474,6 +605,19 @@ class _GenerateDialogState extends State<_GenerateDialog> {
                 prefixIcon: const Icon(Icons.numbers_rounded,
                     color: AppTheme.primaryColor),
                 errorText: _err,
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+              decoration: InputDecoration(
+                labelText: 'رقم الهاتف (يُطبع تحت كل رمز — يُحفظ محلياً)',
+                labelStyle: GoogleFonts.cairo(),
+                prefixIcon: const Icon(Icons.phone_rounded,
+                    color: AppTheme.primaryColor),
                 isDense: true,
               ),
             ),
@@ -648,6 +792,307 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
             label: Text('طباعة',
                 style: GoogleFonts.cairo(
                     fontWeight: FontWeight.w800, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────── شاشة معاينة PDF داخل التطبيق ───────────────────────
+
+/// معاينة الرموز كـ PDF داخل التطبيق — مع أزرار مدمجة للطباعة والحفظ/المشاركة
+/// (فتح كملف PDF) من شريط PdfPreview.
+class _PdfPreviewScreen extends StatelessWidget {
+  final pw.Document doc;
+  final String title;
+  const _PdfPreviewScreen({required this.doc, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          title: Text('معاينة $title',
+              style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.w800, color: Colors.white)),
+        ),
+        body: PdfPreview(
+          build: (format) => doc.save(),
+          canChangePageFormat: false,
+          canChangeOrientation: false,
+          canDebug: false,
+          pdfFileName: 'sadara-qr-$title.pdf',
+          loadingWidget: const Center(child: CircularProgressIndicator()),
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────── شاشة حالات رموز الدفعة (تفصيلية) ────────────────────
+
+/// تعرض رموز الدفعة ضمن نطاق تسلسل، كلٌّ بحالته (مستخدَم/فارغ) والعقار المرتبط
+/// (رقم NPN) إن وُجد — مع فلترة بالحالة وبحث سريع. للمتابعة فقط (قراءة).
+class _BatchTokensScreen extends StatefulWidget {
+  final PropertyQrBatch batch;
+  const _BatchTokensScreen({required this.batch});
+
+  @override
+  State<_BatchTokensScreen> createState() => _BatchTokensScreenState();
+}
+
+enum _TokFilter { all, used, unused }
+
+class _BatchTokensScreenState extends State<_BatchTokensScreen> {
+  final _api = PropertyApiService.instance;
+
+  // حدّ النطاق لكل تحميل (الدفعات قد تصل 20000 — نحمّل على دفعات).
+  static const int _pageSpan = 500;
+
+  late final _from = TextEditingController(text: '1');
+  late final _to = TextEditingController(
+      text: '${widget.batch.count < _pageSpan ? widget.batch.count : _pageSpan}');
+
+  List<PropertyQrToken> _tokens = const [];
+  _TokFilter _filter = _TokFilter.all;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _from.dispose();
+    _to.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final from = int.tryParse(_from.text.trim()) ?? 1;
+    final to = int.tryParse(_to.text.trim()) ?? from;
+    if (to < from) {
+      setState(() => _error = 'نطاق غير صحيح');
+      return;
+    }
+    if (to - from + 1 > _pageSpan * 4) {
+      setState(() =>
+          _error = 'النطاق كبير — حمّل حتى ${_pageSpan * 4} رمزاً في المرة');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final r = await _api.getBatchTokens(widget.batch.batchId,
+          fromSerial: from, toSerial: to);
+      if (!mounted) return;
+      setState(() {
+        _tokens = r;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = '$e';
+        _loading = false;
+      });
+    }
+  }
+
+  List<PropertyQrToken> get _filtered {
+    switch (_filter) {
+      case _TokFilter.used:
+        return _tokens.where((t) => t.isUsed).toList();
+      case _TokFilter.unused:
+        return _tokens.where((t) => !t.isUsed).toList();
+      case _TokFilter.all:
+        return _tokens;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final usedCount = _tokens.where((t) => t.isUsed).length;
+    final shown = _filtered;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          title: Text('حالات رموز الدفعة',
+              style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.w800, color: Colors.white)),
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _from,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          style:
+                              GoogleFonts.cairo(fontWeight: FontWeight.w700),
+                          decoration: InputDecoration(
+                            labelText: 'من تسلسل',
+                            labelStyle: GoogleFonts.cairo(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _to,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          style:
+                              GoogleFonts.cairo(fontWeight: FontWeight.w700),
+                          decoration: InputDecoration(
+                            labelText: 'إلى تسلسل',
+                            labelStyle: GoogleFonts.cairo(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      FilledButton(
+                        onPressed: _loading ? null : _load,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: Text('تحميل',
+                            style: GoogleFonts.cairo(
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _filterChip('الكل (${_tokens.length})', _TokFilter.all),
+                      const SizedBox(width: 8),
+                      _filterChip('مستخدَم ($usedCount)', _TokFilter.used),
+                      const SizedBox(width: 8),
+                      _filterChip('فارغ (${_tokens.length - usedCount})',
+                          _TokFilter.unused),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(_error!,
+                    style: GoogleFonts.cairo(
+                        color: AppTheme.errorColor,
+                        fontWeight: FontWeight.w700)),
+              ),
+            const Divider(height: 1),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : shown.isEmpty
+                      ? Center(
+                          child: Text('لا رموز ضمن النطاق/الفلتر',
+                              style: GoogleFonts.cairo(
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w600)))
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(12),
+                          itemCount: shown.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 6),
+                          itemBuilder: (_, i) => _tokenTile(shown[i]),
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, _TokFilter f) {
+    final sel = _filter == f;
+    return ChoiceChip(
+      label: Text(label,
+          style: GoogleFonts.cairo(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              color: sel ? Colors.white : AppTheme.primaryColor)),
+      selected: sel,
+      selectedColor: AppTheme.primaryColor,
+      onSelected: (_) => setState(() => _filter = f),
+    );
+  }
+
+  Widget _tokenTile(PropertyQrToken t) {
+    final used = t.isUsed;
+    final c = used ? AppTheme.successColor : Colors.grey;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: c.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(used ? Icons.check_circle_rounded : Icons.circle_outlined,
+              color: c, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('تسلسل ${t.serial}',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text(
+                  used
+                      ? (t.npn.isNotEmpty ? 'مستخدَم — عقار ${t.npn}' : 'مستخدَم')
+                      : 'فارغ (غير مستخدَم)',
+                  style: GoogleFonts.cairo(
+                      color: c, fontWeight: FontWeight.w700, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'نسخ الرمز',
+            icon: const Icon(Icons.copy_rounded, size: 18),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: t.qrToken));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('نُسخ الرمز',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
           ),
         ],
       ),

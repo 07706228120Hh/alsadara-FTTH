@@ -47,7 +47,10 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
 
   bool get _canManage =>
       PermissionManager.instance.canAdd('property_registry');
+  // الحذف لمدير الشركة فقط (إشارة المدير في التطبيق = صلاحية شاشة المستخدمين)
+  // بالإضافة إلى صلاحية حذف العقارات.
   bool get _canDelete =>
+      PermissionManager.instance.canView('users') &&
       PermissionManager.instance.canDelete('property_registry');
 
   Property? get _p => _details?.property;

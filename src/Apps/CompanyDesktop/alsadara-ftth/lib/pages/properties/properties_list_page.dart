@@ -15,6 +15,7 @@ import 'location_master_page.dart';
 import 'property_detail_page.dart';
 import 'property_form_page.dart';
 import 'property_qr_batches_page.dart';
+import 'property_qr_scanner.dart';
 import 'property_ui.dart';
 
 class PropertiesListPage extends StatefulWidget {
@@ -91,13 +92,6 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
   void _setOwnership(String? v) {
     setState(() => _ownershipFilter = v);
     _load();
-  }
-
-  Future<void> _add() async {
-    final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const PropertyFormPage()),
-    );
-    if (saved == true) _load();
   }
 
   Future<void> _openLocationMaster() async {
@@ -253,11 +247,14 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
         ),
         floatingActionButton: _canManage
             ? FloatingActionButton.extended(
-                onPressed: _add,
+                onPressed: _scanQr,
                 backgroundColor: AppTheme.primaryColor,
-                icon: const Icon(Icons.add_home_work_rounded),
-                label: Text('عقار جديد',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.qr_code_scanner_rounded,
+                    color: Colors.white),
+                label: Text('مسح رمز العقار',
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w800, color: Colors.white)),
               )
             : null,
         body: PropContentWrap(
@@ -358,18 +355,18 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
       return PropEmptyView(
         message: _page > 1
             ? 'لا مزيد من العقارات في هذه الصفحة'
-            : 'لا عقارات بعد — أضف عقاراً بالزرّ أدناه',
+            : 'لا عقارات بعد — امسح رمز العنوان الوطني لبدء إدخال عقار',
         icon: Icons.maps_home_work_outlined,
         action: _canManage && _page == 1
             ? FilledButton.icon(
-                onPressed: _add,
+                onPressed: _scanQr,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                 ),
-                icon: const Icon(Icons.add_home_work_rounded),
-                label: Text('عقار جديد',
+                icon: const Icon(Icons.qr_code_scanner_rounded),
+                label: Text('مسح رمز العقار',
                     style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
               )
             : null,
@@ -528,6 +525,17 @@ class _QrInputDialogState extends State<_QrInputDialog> {
 
   void _submit() => Navigator.pop(context, _c.text);
 
+  // يفتح ماسح الكاميرا؛ عند اكتشاف رمز يُغلق الحوار ويُكمل مسار الحلّ.
+  Future<void> _openCamera() async {
+    final res = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const PropertyQrScannerScreen()),
+    );
+    if (!mounted) return;
+    if (res != null && res.trim().isNotEmpty) {
+      Navigator.pop(context, res.trim());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -546,7 +554,7 @@ class _QrInputDialogState extends State<_QrInputDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'امسح لصاقة العنوان الوطني بماسح QR، أو الصق/اكتب الرمز يدوياً.',
+              'امسح لصاقة العنوان الوطني بالكاميرا أو بماسح QR، أو الصق/اكتب الرمز يدوياً.',
               style:
                   GoogleFonts.cairo(fontSize: 12.5, color: Colors.grey[700]),
             ),
@@ -564,6 +572,22 @@ class _QrInputDialogState extends State<_QrInputDialog> {
                 prefixIcon: const Icon(Icons.qr_code_rounded,
                     color: AppTheme.primaryColor),
                 isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _openCamera,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryColor,
+                  side: BorderSide(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                icon: const Icon(Icons.photo_camera_rounded, size: 20),
+                label: Text('فتح الكاميرا والمسح',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
               ),
             ),
           ],

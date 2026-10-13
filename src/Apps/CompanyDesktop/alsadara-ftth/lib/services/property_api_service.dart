@@ -78,12 +78,16 @@ class PropertyQrBatch {
 class PropertyQrToken {
   final int serial;
   final String qrToken;
-  final String status; // Blank / Used (كما يردّها الخادم)
+  final String status; // Unused / Used (كما يردّها الخادم)
+  final String? propertyId; // العقار المرتبط (عند الاستخدام)
+  final String npn; // رقم العقار الوطني للعرض (فارغ إن لم يُربط بعد)
 
   const PropertyQrToken({
     required this.serial,
     required this.qrToken,
     required this.status,
+    this.propertyId,
+    this.npn = '',
   });
 
   /// حمولة الـQR المطبوعة (نفس صيغة لصاقة العقار).
@@ -94,6 +98,8 @@ class PropertyQrToken {
         serial: PropertyQrBatch._toInt(j['serial'] ?? j['Serial']),
         qrToken: (j['qrToken'] ?? j['QrToken'] ?? j['qr_token'] ?? '').toString(),
         status: (j['status'] ?? j['Status'] ?? '').toString(),
+        propertyId: (j['propertyId'] ?? j['PropertyId'])?.toString(),
+        npn: (j['npn'] ?? j['Npn'] ?? j['npnDisplay'] ?? '').toString(),
       );
 }
 
