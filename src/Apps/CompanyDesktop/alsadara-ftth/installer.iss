@@ -1,12 +1,12 @@
 [Setup]
 AppName=الصدارة - Alsadara
-AppVersion=2.4.7
+AppVersion=2.4.8
 AppPublisher=Alsadara Platform
 AppPublisherURL=https://github.com/07706228120Hh/alsadara-FTTH
 DefaultDirName={autopf}\Alsadara
 DefaultGroupName=الصدارة
 OutputDir=build\installer
-OutputBaseFilename=Alsadara-Setup-v2.4.7
+OutputBaseFilename=Alsadara-Setup-v2.4.8
 SetupIconFile=windows\runner\resources\app_icon.ico
 Compression=lzma2
 SolidCompression=yes
@@ -30,6 +30,9 @@ Name: "desktopicon"; Description: "Create desktop shortcut"; GroupDescription: "
 Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.lib,*.exp,*.pdb"
 ; شهادة جذر Let's Encrypt (ISRG Root X1) — تُثبّت في مخزن الجذر الموثوق ليثق الجهاز بخادم n8n
 Source: "certs\isrgrootx1.der"; DestDir: "{app}"; Flags: ignoreversion
+; خادم واتساب المحلي المدمج (Node محمول + الحزم) → {app}\whatsapp-server
+; يُستثنى كاش الويب وملفات التطوير؛ جلسات الواتساب تُحفظ في %LOCALAPPDATA% لا هنا.
+Source: "..\..\..\..\modules\sas-agent\whatsapp-server\*"; DestDir: "{app}\whatsapp-server"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: ".wwebjs_cache,.wwebjs_auth,.data,.gitignore,prepare_bundle.ps1,README.md,*.log"
 
 [Icons]
 Name: "{group}\الصدارة"; Filename: "{app}\Alsadara.exe"
