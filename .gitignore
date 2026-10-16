@@ -154,3 +154,6 @@ run-local-dev.ps1
 .claude/settings.local.json
 /tmp_*.json
 *-CREDENTIALS.json
+
+# نسخ احتياطية محلية (لا تُتتبَّع في المستودع)
+_backups/
