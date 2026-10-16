@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>إعداد فحص الجودة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A237E}a:hover{color:#0F1660}
+.press{transition:transform .15s ease}
+.press:active{transform:translateY(4px)}
+.lift{transition:transform .2s ease}
+.lift:hover{transform:translateY(-2px)}
+</style>
+</helmet>
+<div dir="rtl" style="width: 400px; height: 900px; box-sizing: border-box; background: #F2F4F8; font-family: 'Cairo', sans-serif; color: #1B1E2B; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="height: 64px; flex: none; background: #1A237E; color: #FFFFFF; display: flex; align-items: center; gap: 8px; padding: 0 8px; box-shadow: 0 6px 0 #0F1660, 0 14px 24px -10px rgba(15,22,96,.6); position: relative; z-index: 2">
+    <a href="Main.dc.html" aria-label="رجوع" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,.08); color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+    </a>
+    <h1 style="margin: 0; font-size: 18px; font-weight: 800; flex: 1; text-align: center; padding-left: 52px">فحص جودة الإنترنت</h1>
+  </header>
+
+  <section style="padding: 14px 20px 0; display: flex; flex-direction: column; align-items: center">
+    <svg width="360" height="250" viewBox="0 0 360 250" role="img" aria-label="خريطة الشبكة ثلاثية الأبعاد: الفايبر ثم ONU ثم الراوتر ثم الأجهزة المتصلة، تضيء العناصر حسب الفحوص المختارة">
+      <g transform="translate(0,30)">
+        <ellipse cx="180" cy="205" rx="160" ry="14" fill="rgba(26,35,126,.10)"></ellipse>
+        <polygon points="24.1,100 180,190 180,199 24.1,109" fill="#DCE0EC"></polygon>
+        <polygon points="180,190 335.9,100 335.9,109 180,199" fill="#C5CBE0"></polygon>
+        <polygon points="180,10 335.9,100 180,190 24.1,100" fill="#FFFFFF"></polygon>
+        <polygon points="180,28 304.7,100 180,172 55.3,100" fill="none" stroke="#E6E9F3"></polygon>
+
+        <g opacity="{{fibOp}}">
+          <path d="M40,57 L70,73.5 L106.4,94.5" fill="none" stroke="#00ACC1" stroke-opacity=".25" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M40,57 L70,73.5 L106.4,94.5" fill="none" stroke="#00ACC1" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>
+        </g>
+        <path d="M106.4,94.5 L186.9,116" fill="none" stroke="#3949AB" stroke-width="2.6" stroke-linecap="round"></path>
+        <g opacity="{{devOp}}" fill="none" stroke="#5C6BC0" stroke-width="1.8" stroke-dasharray="3 5" stroke-linecap="round">
+          <path d="M186.9,116 L214.6,64"></path>
+          <path d="M186.9,116 L249.3,84"></path>
+          <path d="M186.9,116 L283.9,104"></path>
+        </g>
+
+        <g opacity="{{devOp}}">
+          <g transform="translate(214.6,32)">
+            <polygon points="-24.2,14 0,28 0,46 -24.2,32" fill="#E3E6F0"></polygon>
+            <polygon points="0,28 24.2,14 24.2,32 0,46" fill="#C5CBE0"></polygon>
+            <polygon points="0,0 24.2,14 0,28 -24.2,14" fill="#FFFFFF" stroke="#D3D8E8"></polygon>
+            <polygon points="0,6 13.8,14 0,22 -13.8,14" fill="#5C6BC0"></polygon>
+          </g>
+          <g transform="translate(249.3,52)">
+            <polygon points="-24.2,14 0,28 0,46 -24.2,32" fill="#E3E6F0"></polygon>
+            <polygon points="0,28 24.2,14 24.2,32 0,46" fill="#C5CBE0"></polygon>
+            <polygon points="0,0 24.2,14 0,28 -24.2,14" fill="#FFFFFF" stroke="#D3D8E8"></polygon>
+            <polygon points="0,6 13.8,14 0,22 -13.8,14" fill="#00838F"></polygon>
+          </g>
+        </g>
+
+        <g transform="translate(102.1,59)">
+          <polygon points="-29.4,17 8.7,39 8.7,55 -29.4,33" fill="#E3E6F0"></polygon>
+          <polygon points="8.7,39 38.1,22 38.1,38 8.7,55" fill="#C5CBE0"></polygon>
+          <polygon points="0,0 38.1,22 8.7,39 -29.4,17" fill="#FFFFFF" stroke="#D3D8E8"></polygon>
+          <circle cx="-16" cy="30" r="2.6" fill="#00ACC1" opacity="{{fibOp}}"></circle>
+          <circle cx="-8" cy="34.5" r="2.6" fill="#2E7D32"></circle>
+        </g>
+
+        <g opacity="{{devOp}}">
+          <g transform="translate(283.9,72)">
+            <polygon points="-24.2,14 0,28 0,46 -24.2,32" fill="#E3E6F0"></polygon>
+            <polygon points="0,28 24.2,14 24.2,32 0,46" fill="#C5CBE0"></polygon>
+            <polygon points="0,0 24.2,14 0,28 -24.2,14" fill="#FFFFFF" stroke="#D3D8E8"></polygon>
+            <polygon points="0,6 13.8,14 0,22 -13.8,14" fill="#5C6BC0"></polygon>
+          </g>
+        </g>
+
+        <g transform="translate(180,70)">
+          <polygon points="-38.1,22 13.9,52 13.9,72 -38.1,42" fill="#1A237E"></polygon>
+          <polygon points="13.9,52 52,30 52,50 13.9,72" fill="#0F1660"></polygon>
+          <polygon points="0,0 52,30 13.9,52 -38.1,22" fill="#3949AB"></polygon>
+          <circle cx="-26" cy="38" r="2.4" fill="#80DEEA"></circle>
+          <circle cx="-18" cy="42.6" r="2.4" fill="#80DEEA"></circle>
+          <circle cx="-10" cy="47.2" r="2.4" fill="#A5D6A7"></circle>
+          <g opacity="{{spdOp}}" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M0,18 L0,32 M-4.5,27.5 L0,32 L4.5,27.5"></path>
+            <path d="M14,32 L14,18 M9.5,22.5 L14,18 L18.5,22.5" stroke="#FFCC80"></path>
+          </g>
+        </g>
+
+        <g opacity="{{trcOp}}">
+          <path d="M180,68 Q240,-28 306,-4" fill="none" stroke="#7E57C2" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"></path>
+          <circle cx="205" cy="34" r="3.5" fill="#7E57C2"></circle>
+          <circle cx="236" cy="12" r="3.5" fill="#7E57C2"></circle>
+          <circle cx="270" cy="0" r="3.5" fill="#7E57C2"></circle>
+          <circle cx="320" cy="-6" r="15" fill="#EDE7F6" stroke="#7E57C2" stroke-width="2"></circle>
+          <path d="M305,-6 L335,-6 M320,-21 C312,-12 312,0 320,9 M320,-21 C328,-12 328,0 320,9" fill="none" stroke="#7E57C2" stroke-width="1.6"></path>
+        </g>
+
+        <text x="100" y="52" font-family="Cairo, sans-serif" font-size="11" font-weight="800" fill="#3D4356" text-anchor="middle">ONU</text>
+        <text x="194" y="160" font-family="Cairo, sans-serif" font-size="11" font-weight="800" fill="#3D4356" text-anchor="middle">الراوتر</text>
+        <text x="262" y="138" font-family="Cairo, sans-serif" font-size="11" font-weight="800" fill="#3D4356" text-anchor="middle" opacity="{{devOp}}">المتصلون</text>
+        <text x="52" y="46" font-family="Cairo, sans-serif" font-size="10" font-weight="700" fill="#00838F" text-anchor="middle" opacity="{{fibOp}}">فايبر</text>
+      </g>
+    </svg>
+    <h2 style="margin: 4px 0 0; font-size: 19px; font-weight: 900">فحص شامل ودقيق لجودة الاتصال</h2>
+    <p style="margin: 4px 0 0; font-size: 13px; line-height: 1.7; color: #5B6070; text-align: center">يقيس زمن الاستجابة والتذبذب وفقدان الحزم والسرعة وإشارة الفايبر الضوئية وWiFi ومواصفات الجهاز.</p>
+  </section>
+
+  <section aria-label="خيارات الفحص" style="padding: 16px 20px 0; display: flex; flex-direction: column; gap: 12px">
+    <button role="switch" aria-checked="{{dev}}" onClick="{{toggleDev}}" class="lift" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 14px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 4px 0 #DCE0EC, 0 12px 20px -14px rgba(26,35,126,.4)">
+      <span style="width: 36px; height: 36px; flex: none; border-radius: 10px; background: #E8EAF6; box-shadow: 0 3px 0 #C5CAE9; color: #1A237E; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="5" rx="1"></rect><rect x="3" y="16" width="6" height="5" rx="1"></rect><rect x="15" y="16" width="6" height="5" rx="1"></rect><path d="M12 8v4M6 16v-4h12v4"></path></svg>
+      </span>
+      <span style="flex: 1; display: flex; flex-direction: column">
+        <span style="font-size: 13.5px; font-weight: 800">اكتشاف وفحص أجهزة الشبكة</span>
+        <span style="font-size: 11.5px; color: #5B6070">ONU / راوتر / الأجهزة المتصلة</span>
+      </span>
+      <span style="{{devTrack}}"><span style="{{devKnob}}"></span></span>
+    </button>
+
+    <button role="switch" aria-checked="{{fib}}" onClick="{{toggleFib}}" class="lift" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 14px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 4px 0 #DCE0EC, 0 12px 20px -14px rgba(26,35,126,.4)">
+      <span style="width: 36px; height: 36px; flex: none; border-radius: 10px; background: #E0F2F1; box-shadow: 0 3px 0 #B2DFDB; color: #00838F; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c4 0 5-10 9-10s5 10 9 10"></path><circle cx="12" cy="7" r="1.6"></circle></svg>
+      </span>
+      <span style="flex: 1; display: flex; flex-direction: column">
+        <span style="font-size: 13.5px; font-weight: 800">الإشارة الضوئية للفايبر (Rx/Tx)</span>
+        <span style="font-size: 11.5px; color: #5B6070">قراءة مباشرة من وحدة ONU — Huawei / ZTE</span>
+      </span>
+      <span style="{{fibTrack}}"><span style="{{fibKnob}}"></span></span>
+    </button>
+
+    <button role="switch" aria-checked="{{spd}}" onClick="{{toggleSpd}}" class="lift" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 14px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 4px 0 #DCE0EC, 0 12px 20px -14px rgba(26,35,126,.4)">
+      <span style="width: 36px; height: 36px; flex: none; border-radius: 10px; background: #FFF3E0; box-shadow: 0 3px 0 #FFE0B2; color: #E65100; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4v14M4 14l4 4 4-4"></path><path d="M16 20V6M12 10l4-4 4 4"></path></svg>
+      </span>
+      <span style="flex: 1; display: flex; flex-direction: column">
+        <span style="font-size: 13.5px; font-weight: 800">سرعة التنزيل / الرفع</span>
+        <span style="font-size: 11.5px; color: #5B6070">يستهلك حتى ~35MB لكل فحص كامل</span>
+      </span>
+      <span style="{{spdTrack}}"><span style="{{spdKnob}}"></span></span>
+    </button>
+
+    <button role="switch" aria-checked="{{trc}}" onClick="{{toggleTrc}}" class="lift" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 14px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 4px 0 #DCE0EC, 0 12px 20px -14px rgba(26,35,126,.4)">
+      <span style="width: 36px; height: 36px; flex: none; border-radius: 10px; background: #EDE7F6; box-shadow: 0 3px 0 #D1C4E9; color: #5E35B1; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2"></circle><circle cx="18" cy="5" r="2"></circle><path d="M8 19h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"></path></svg>
+      </span>
+      <span style="flex: 1; display: flex; flex-direction: column">
+        <span style="font-size: 13.5px; font-weight: 800">تتبّع المسار (Traceroute)</span>
+        <span style="font-size: 11.5px; color: #5B6070">مسار الحزم حتى الخادم، قفزة بقفزة</span>
+      </span>
+      <span style="{{trcTrack}}"><span style="{{trcKnob}}"></span></span>
+    </button>
+  </section>
+
+  <section style="padding: 22px 20px 0; display: flex; flex-direction: column; gap: 10px">
+    <a href="Running.dc.html" class="press" style="height: 56px; border-radius: 16px; background: linear-gradient(180deg, #283593, #1A237E); color: #FFFFFF; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 900; box-shadow: inset 0 2px 0 rgba(255,255,255,.18), 0 6px 0 #0F1660, 0 18px 26px -12px rgba(15,22,96,.6)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 5.5v13L6 12z"></path></svg>
+      ابدأ الفحص
+    </a>
+    <p style="margin: 2px 0 0; font-size: 12px; color: #5B6070; text-align: center">{{countLabel}}</p>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { dev: true, fib: true, spd: true, trc: false };
+  }
+  sw(on) {
+    return {
+      track: 'width: 50px; height: 30px; flex: none; border-radius: 999px; box-sizing: border-box; padding: 3px; display: flex; transition: background .2s; justify-content: ' + (on ? 'flex-end' : 'flex-start') + '; background: ' + (on ? '#1A237E' : '#E3E6F0') + '; box-shadow: inset 0 3px 5px ' + (on ? 'rgba(0,0,0,.35)' : 'rgba(26,35,126,.18)') + ';',
+      knob: 'width: 24px; height: 24px; border-radius: 50%; background: ' + (on ? '#FFFFFF' : '#8A90A2') + '; box-shadow: 0 3px 0 ' + (on ? '#C5CAE9' : '#5B6070') + ', 0 4px 8px rgba(0,0,0,.25);'
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const t = (k) => () => this.setState({ [k]: !this.state[k] });
+    const n = [s.dev, s.fib, s.spd, s.trc].filter(Boolean).length;
+    const d = this.sw(s.dev), f = this.sw(s.fib), p = this.sw(s.spd), r = this.sw(s.trc);
+    return {
+      dev: String(s.dev), fib: String(s.fib), spd: String(s.spd), trc: String(s.trc),
+      toggleDev: t('dev'), toggleFib: t('fib'), toggleSpd: t('spd'), toggleTrc: t('trc'),
+      devTrack: d.track, devKnob: d.knob, fibTrack: f.track, fibKnob: f.knob,
+      spdTrack: p.track, spdKnob: p.knob, trcTrack: r.track, trcKnob: r.knob,
+      devOp: s.dev ? 1 : 0.18, fibOp: s.fib ? 1 : 0.15, spdOp: s.spd ? 1 : 0, trcOp: s.trc ? 1 : 0,
+      countLabel: n + ' من 4 فحوص مختارة — يُقاس زمن الاستجابة وDNS دائماً'
+    };
+  }
+}
+</script>
+</body>
+</html>

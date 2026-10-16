@@ -178,7 +178,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
 
   // ─────────────────────────── الخدمات ───────────────────────────
 
-  Future<void> _addService() async {
+  /// يفتح ورقة الخدمة: إضافة (نوع مثبّت اختيارياً من تبويب النوع) أو تعديل خدمة قائمة.
+  Future<void> _openServiceSheet(
+      {String? initialType, PropertyService? existing}) async {
     final changed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -187,11 +189,45 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         textDirection: TextDirection.rtl,
         child: FractionallySizedBox(
           heightFactor: 0.9,
-          child: _ServiceFormSheet(propertyId: widget.propertyId),
+          child: _ServiceFormSheet(
+            propertyId: widget.propertyId,
+            initialType: initialType,
+            existing: existing,
+          ),
         ),
       ),
     );
     if (changed == true) _load();
+  }
+
+  Future<void> _confirmDeleteService(PropertyService s) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('حذف الخدمة؟',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+          content: Text('سيُحذف ربط خدمة «${s.serviceTypeLabel}» بهذا العقار.',
+              style: GoogleFonts.cairo()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('إلغاء',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+              child: Text('حذف',
+                  style: GoogleFonts.cairo(
+                      fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok == true) _deleteService(s);
   }
 
   Future<void> _deleteService(PropertyService s) async {
@@ -307,21 +343,161 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     final p = d.property;
     return PropContentWrap(
       maxWidth: 960,
-      child: ListView(
-        padding: const EdgeInsets.all(14),
+      child: DefaultTabController(
+        length: 4,
+        child: Column(
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelColor: AppTheme.primaryColor,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: AppTheme.primaryColor,
+                labelStyle:
+                    GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 13),
+                unselectedLabelStyle:
+                    GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 13),
+                tabs: [
+                  const Tab(text: 'المعلومات الأساسية'),
+                  Tab(text: 'الخدمات (${d.services.length})'),
+                  Tab(text: 'المواطنون (${d.residents.length})'),
+                  const Tab(text: 'المهام'),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  // ① المعلومات الأساسية (الهوية/QR + التفاصيل)
+                  ListView(
+                    padding: const EdgeInsets.all(14),
+                    children: [
+                      _qrCard(p),
+                      const SizedBox(height: 12),
+                      _detailsCard(p),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                  // ② الخدمات (تبويبات فرعية بالنوع)
+                  _servicesTabContent(d.services),
+                  // ③ المواطنون
+                  ListView(
+                    padding: const EdgeInsets.all(14),
+                    children: [
+                      _residentsCard(d.residents),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                  // ④ المهام
+                  ListView(
+                    padding: const EdgeInsets.all(14),
+                    children: [
+                      _tasksCard(),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// محتوى تبويب الخدمات — تبويبات فرعية بالنوع (إنترنت/ماستر/IPTV).
+  Widget _servicesTabContent(List<PropertyService> services) {
+    const types = <(String, String, IconData)>[
+      ('Internet', 'إنترنت', Icons.wifi_rounded),
+      ('Master', 'ماستر', Icons.cable_rounded),
+      ('Iptv', 'IPTV', Icons.live_tv_rounded),
+    ];
+    return DefaultTabController(
+      length: types.length,
+      child: Column(
         children: [
-          _qrCard(p),
-          const SizedBox(height: 12),
-          _detailsCard(p),
-          const SizedBox(height: 12),
-          _residentsCard(d.residents),
-          const SizedBox(height: 12),
-          _servicesCard(d.services),
-          const SizedBox(height: 12),
-          _tasksCard(),
-          const SizedBox(height: 24),
+          Material(
+            color: Colors.transparent,
+            child: TabBar(
+              labelColor: AppTheme.primaryColor,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: AppTheme.primaryColor,
+              labelStyle:
+                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 12.5),
+              unselectedLabelStyle:
+                  GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 12.5),
+              tabs: [
+                for (final t in types)
+                  Tab(
+                    icon: Icon(t.$3, size: 18),
+                    iconMargin: const EdgeInsets.only(bottom: 2),
+                    text:
+                        '${t.$2} (${services.where((s) => s.serviceType.toLowerCase() == t.$1.toLowerCase()).length})',
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                for (final t in types) _serviceTypePane(t.$1, t.$2, services),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  /// لوح نوع خدمة واحد: زرّ إضافة (نوع مثبّت) + قائمة خدمات ذلك النوع.
+  Widget _serviceTypePane(
+      String typeKey, String typeLabel, List<PropertyService> all) {
+    final list = all
+        .where((s) => s.serviceType.toLowerCase() == typeKey.toLowerCase())
+        .toList();
+    return ListView(
+      padding: const EdgeInsets.all(14),
+      children: [
+        if (_canManage)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FilledButton.icon(
+              onPressed: () => _openServiceSheet(initialType: typeKey),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
+              label: Text('إضافة خدمة $typeLabel',
+                  style: GoogleFonts.cairo(
+                      fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+          ),
+        const SizedBox(height: 12),
+        if (list.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text('لا خدمات $typeLabel لهذا العقار بعد',
+                  style: GoogleFonts.cairo(
+                      color: Colors.grey[600], fontWeight: FontWeight.w600)),
+            ),
+          )
+        else
+          for (int i = 0; i < list.length; i++) ...[
+            if (i > 0) const Divider(height: 18),
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 2),
+              decoration: PropUi.card(),
+              child: _serviceRow(list[i]),
+            ),
+          ],
+        const SizedBox(height: 24),
+      ],
     );
   }
 
@@ -554,47 +730,6 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     );
   }
 
-  Widget _servicesCard(List<PropertyService> services) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: PropUi.card(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PropSectionHeader(
-            title: 'الخدمات',
-            icon: Icons.electrical_services_rounded,
-            gradient: AppTheme.orangeGradient,
-            trailingText: '${services.length}',
-            action: _canManage
-                ? TextButton.icon(
-                    onPressed: _addService,
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: Text('إضافة خدمة',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
-                  )
-                : null,
-          ),
-          const SizedBox(height: 10),
-          if (services.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Text(
-                'لا خدمات مرتبطة بعد — أضف خدمة (إنترنت/ماستر…) لهذا العقار.',
-                style: GoogleFonts.cairo(
-                    color: Colors.grey[600], fontWeight: FontWeight.w600),
-              ),
-            )
-          else
-            for (int i = 0; i < services.length; i++) ...[
-              if (i > 0) const Divider(height: 14),
-              _serviceRow(services[i]),
-            ],
-        ],
-      ),
-    );
-  }
-
   Widget _serviceRow(PropertyService s) {
     final statusColor = switch (s.status.toLowerCase()) {
       'active' => AppTheme.successColor,
@@ -669,13 +804,20 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             ),
             const SizedBox(width: 6),
             PropBadge(label: s.statusLabel, color: statusColor),
-            if (_canManage)
+            if (_canManage) ...[
+              IconButton(
+                tooltip: 'تعديل الخدمة',
+                onPressed: () => _openServiceSheet(existing: s),
+                icon: const Icon(Icons.edit_rounded,
+                    size: 19, color: AppTheme.primaryColor),
+              ),
               IconButton(
                 tooltip: 'حذف الخدمة',
-                onPressed: () => _deleteService(s),
+                onPressed: () => _confirmDeleteService(s),
                 icon: const Icon(Icons.delete_outline_rounded,
                     size: 20, color: AppTheme.errorColor),
               ),
+            ],
           ],
         ),
         if (isMaster && (s.hasMasterPhoto || s.hasCivilIdPhoto)) ...[
@@ -1251,7 +1393,18 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
 
 class _ServiceFormSheet extends StatefulWidget {
   final String propertyId;
-  const _ServiceFormSheet({required this.propertyId});
+
+  /// نوع مثبّت مسبقاً (عند الفتح من تبويب نوع معيّن) — يُخفي اختيار النوع.
+  final String? initialType;
+
+  /// خدمة قائمة للتعديل (null = إضافة جديدة).
+  final PropertyService? existing;
+
+  const _ServiceFormSheet({
+    required this.propertyId,
+    this.initialType,
+    this.existing,
+  });
 
   @override
   State<_ServiceFormSheet> createState() => _ServiceFormSheetState();
@@ -1276,8 +1429,48 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
   bool _uploadingMaster = false;
   bool _uploadingCivilId = false;
 
+  bool get _isEdit => widget.existing != null;
+  // النوع مثبّت (لا يُختار) عند التعديل أو الفتح من تبويب نوع.
+  bool get _typeLocked => _isEdit || widget.initialType != null;
   bool get _isInternet => _serviceType.toLowerCase() == 'internet';
   bool get _isMaster => _serviceType.toLowerCase() == 'master';
+  bool get _isIptv => _serviceType.toLowerCase() == 'iptv';
+
+  /// يطابق نصّ نوع وارد بمفتاح معرّف في kServiceTypeLabels (غير حسّاس للحالة).
+  String _normalizeType(String raw) {
+    for (final k in kServiceTypeLabels.keys) {
+      if (k.toLowerCase() == raw.toLowerCase()) return k;
+    }
+    return kServiceTypeLabels.keys.first;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    // النوع: من الخدمة القائمة، أو النوع المثبّت، أو الافتراضي.
+    _serviceType = _normalizeType(
+        e?.serviceType ?? widget.initialType ?? _serviceType);
+    if (e != null) {
+      // تعبئة القيم عند التعديل.
+      _providerType = _matchKey(kProviderTypeLabels, e.providerType, _providerType);
+      _status = _matchKey(kServiceStatusLabels, e.status, _status);
+      _subscriberRef.text = e.subscriberRef;
+      _providerRefId.text = e.providerRefId;
+      _notes.text = e.notes;
+      _agentName.text = e.agentName ?? '';
+      _accountNumber.text = e.accountNumber ?? '';
+      _masterPhotoPath = e.masterPhotoPath;
+      _civilIdPhotoPath = e.civilIdPhotoPath;
+    }
+  }
+
+  String _matchKey(Map<String, String> m, String raw, String fallback) {
+    for (final k in m.keys) {
+      if (k.toLowerCase() == raw.toLowerCase()) return k;
+    }
+    return fallback;
+  }
 
   @override
   void dispose() {
@@ -1343,25 +1536,46 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await _api.addService(
-        widget.propertyId,
-        serviceType: _serviceType,
-        providerType: _providerType,
-        subscriberRef: _subscriberRef.text.trim(),
-        providerRefId: _providerRefId.text.trim(),
-        status: _status,
-        notes: _notes.text.trim(),
-        agentName: _isInternet ? _agentName.text.trim() : '',
-        accountNumber: _isMaster ? _accountNumber.text.trim() : '',
-        masterPhotoPath: _isMaster ? _masterPhotoPath : null,
-        civilIdPhotoPath: _isMaster ? _civilIdPhotoPath : null,
-      );
+      final agent = _isInternet ? _agentName.text.trim() : '';
+      final account = _isMaster ? _accountNumber.text.trim() : '';
+      final masterPhoto = _isMaster ? _masterPhotoPath : null;
+      final civilIdPhoto = _isMaster ? _civilIdPhotoPath : null;
+      if (_isEdit) {
+        await _api.updateService(widget.propertyId, widget.existing!.id, {
+          'serviceType': _serviceType,
+          'providerType': _providerType,
+          'subscriberRef': _subscriberRef.text.trim(),
+          'providerRefId': _providerRefId.text.trim(),
+          'status': _status,
+          'notes': _notes.text.trim(),
+          'agentName': agent,
+          'accountNumber': account,
+          'masterPhotoPath': masterPhoto,
+          'civilIdPhotoPath': civilIdPhoto,
+        });
+      } else {
+        await _api.addService(
+          widget.propertyId,
+          serviceType: _serviceType,
+          providerType: _providerType,
+          subscriberRef: _subscriberRef.text.trim(),
+          providerRefId: _providerRefId.text.trim(),
+          status: _status,
+          notes: _notes.text.trim(),
+          agentName: agent,
+          accountNumber: account,
+          masterPhotoPath: masterPhoto,
+          civilIdPhotoPath: civilIdPhoto,
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('تعذّر إضافة الخدمة: $e', style: GoogleFonts.cairo()),
+              content: Text(
+                  '${_isEdit ? 'تعذّر تعديل' : 'تعذّر إضافة'} الخدمة: $e',
+                  style: GoogleFonts.cairo()),
               backgroundColor: AppTheme.errorColor),
         );
       }
@@ -1393,7 +1607,8 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('إضافة خدمة للعقار',
+                  child: Text(
+                      '${_isEdit ? 'تعديل' : 'إضافة'} خدمة ${serviceTypeLabelOf(_serviceType)}',
                       style: GoogleFonts.cairo(
                           fontWeight: FontWeight.w800, fontSize: 16)),
                 ),
@@ -1408,10 +1623,13 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
               children: [
-                _label('نوع الخدمة'),
-                _choiceRow(kServiceTypeLabels, _serviceType,
-                    (k) => setState(() => _serviceType = k)),
-                const SizedBox(height: 14),
+                // نوع الخدمة يُختار فقط عند الإضافة الحرّة؛ مثبّت عند التعديل/تبويب النوع.
+                if (!_typeLocked) ...[
+                  _label('نوع الخدمة'),
+                  _choiceRow(kServiceTypeLabels, _serviceType,
+                      (k) => setState(() => _serviceType = k)),
+                  const SizedBox(height: 14),
+                ],
                 _label('المزوّد'),
                 _choiceRow(kProviderTypeLabels, _providerType,
                     (k) => setState(() => _providerType = k)),
@@ -1420,10 +1638,15 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                 _choiceRow(kServiceStatusLabels, _status,
                     (k) => setState(() => _status = k)),
                 const SizedBox(height: 14),
-                _field(_subscriberRef, 'مرجع المشترك (اسم المستخدم/الرقم)',
+                _field(
+                    _subscriberRef,
+                    _isIptv
+                        ? 'رقم الاشتراك/الجهاز'
+                        : 'مرجع المشترك (اسم المستخدم/الرقم)',
                     icon: Icons.badge_rounded),
-                _field(_providerRefId, 'معرّف المزوّد (اختياري)',
-                    icon: Icons.tag_rounded),
+                _field(_providerRefId,
+                    _isIptv ? 'الباقة (اختياري)' : 'معرّف المزوّد (اختياري)',
+                    icon: _isIptv ? Icons.view_list_rounded : Icons.tag_rounded),
                 // حقول شرطية حسب نوع الخدمة
                 if (_isInternet)
                   _field(_agentName, 'اسم الوكيل',
@@ -1463,10 +1686,13 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                           height: 18,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.add_rounded),
-                  label: Text('إضافة الخدمة',
+                      : Icon(_isEdit ? Icons.save_rounded : Icons.add_rounded,
+                          color: Colors.white),
+                  label: Text(_isEdit ? 'حفظ التعديل' : 'إضافة الخدمة',
                       style: GoogleFonts.cairo(
-                          fontWeight: FontWeight.w800, fontSize: 15)),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: Colors.white)),
                 ),
               ],
             ),

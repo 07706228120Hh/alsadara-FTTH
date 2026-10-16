@@ -1,0 +1,5588 @@
+[
+ {
+  "file": "pages/agents_page.dart",
+  "screen_ar": "وكلاء {المجموعة}",
+  "purpose_ar": "عرض وكلاء مجموعة معينة مع إمكانية التواصل عبر واتساب",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient blueAccent→blue[600]",
+  "dominant_colors": [
+   "#448AFF",
+   "#1E88E5",
+   "#9E9E9E",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "ألوان Material مسماة (26 استخدام) بدل الثيم",
+   "غير مستورد من أي ملف (imported_by=0)",
+   "تدرج AppBar أزرق مختلف عن بقية التطبيق"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "يبدو مستبدلاً بشاشة وكلاء أحدث",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/analysis_page.dart",
+  "screen_ar": "تحليل المعلومات",
+  "purpose_ar": "تحليلات ونسب تفعيل المستخدمين والزونات مع ملخص سريع",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient purple 800→400",
+  "dominant_colors": [
+   "#6A1B9A",
+   "#AB47BC",
+   "#FFFFFF",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "شريط بنفسجي مختلف عن بقية التطبيق",
+   "60 استخدام لـ Colors.* بلا ثيم",
+   "تدرجات متعددة داخل البطاقات تجعل الشاشة مزدحمة",
+   "نفس قالب AppBar منسوخ في statistics/users/google_drive"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/aria_page.dart",
+  "screen_ar": "لوحة التحكم الرئيسية (أريا)",
+  "purpose_ar": "لوحة أقسام مختصرة ترحيبية مع روابط للأقسام مثل الزونات",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient blue 900→500",
+  "dominant_colors": [
+   "#0D47A1",
+   "#1976D2",
+   "#2196F3",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "ألوان مكتوبة يدوياً (Colors.blue shades)",
+   "تكرار مفهوم لوحة التحكم مع home_page",
+   "تدرج أزرق مختلف عن indigo الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "تُفتح من home_page فقط",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/attendance_page.dart",
+  "screen_ar": "نظام البصمة",
+  "purpose_ar": "تسجيل حضور وانصراف الموظف بالموقع وكود الأمان والكاميرا الأمامية",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "custom dark header gradient #3B82F6→#06B6D4 على خلفية #0B1120",
+  "dominant_colors": [
+   "#0B1120",
+   "#131C2E",
+   "#3B82F6",
+   "#22C55E"
+  ],
+  "issues_ar": [
+   "ثيم داكن خاص بالصفحة (ثوابت _bgDark/_cardDark) لا يتبع ثيم التطبيق",
+   "ملف كبير 1234 سطر يضم الكاميرا والأزرار",
+   "ألوان مكتوبة يدوياً 11 hex + 41 Colors.*"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "شاشة يومية للموظفين - مرشح ممتاز للأزرار ثلاثية الأبعاد",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/charts_page.dart",
+  "screen_ar": "المخططات",
+  "purpose_ar": "عرض رسوم بيانية تحليلية بسيطة",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid blue[800]",
+  "dominant_colors": [
+   "#1565C0",
+   "#F44336",
+   "#2196F3",
+   "#FF9800"
+  ],
+  "issues_ar": [
+   "شريط أزرق صلب مختلف عن بقية التطبيق",
+   "ألوان مخططات مكتوبة يدوياً",
+   "لا توجد حالة فراغ/تحميل واضحة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/client_setup_page.dart",
+  "screen_ar": "إعداد التطبيق",
+  "purpose_ar": "إعداد أولي للتطبيق (اسم الشركة، مفتاح API، معرف العميل)",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "none — خلفية gradient #1976D2→#64B5F6",
+  "dominant_colors": [
+   "#1976D2",
+   "#64B5F6",
+   "#FFFFFF",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "ألوان مكتوبة يدوياً (7 hex)",
+   "استخدام إيموجي ✅ في الرسائل بدل أيقونات",
+   "تصميم مختلف عن شاشات الدخول الأخرى"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/company_diagnostics_page.dart",
+  "screen_ar": "🔧 تشخيص النظام",
+  "purpose_ar": "فحص صلاحيات وميزات المستخدم والشركة وكشف المشاكل",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid indigo[700]",
+  "dominant_colors": [
+   "#303F9F",
+   "#9E9E9E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "67 استخدام لـ Colors.* بلا ثيم",
+   "إيموجي في العنوان",
+   "شاشة مطورين تقنية بنصوص كثيفة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "أداة إدارية نادرة الاستخدام",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/company_settings_page.dart",
+  "screen_ar": "إعدادات الشركة",
+  "purpose_ar": "إدارة معلومات الشركة والأقسام والمهام والإعدادات العامة",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "custom toolbar #2C3E50 (+ AppBar gradient #283593→#64B5F6 في حالة الخطأ)",
+  "dominant_colors": [
+   "#2C3E50",
+   "#3498DB",
+   "#F5F6FA",
+   "#673AB7"
+  ],
+  "issues_ar": [
+   "ملف ضخم جداً 3956 سطر يصعب صيانته",
+   "ثوابت ألوان flat-UI محلية تكرر AccountingTheme بدل استيراده",
+   "149 Colors.* (33 deepPurple) + 23 hex",
+   "شريطان مختلفان داخل نفس الصفحة",
+   "15 موضع خط أصغر من 12"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "يجب تقسيمه إلى تبويبات/ملفات",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/dashboard_page.dart",
+  "screen_ar": "مرحبًا {اسم المستخدم}",
+  "purpose_ar": "صفحة ترحيب بدائية تعرض الصلاحيات وزر خروج",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid blue[800]",
+  "dominant_colors": [
+   "#1565C0",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "نسخة قديمة بدائية من الرئيسية",
+   "لا تصميم فعلي"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشح للحذف",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/deductions_bonuses_page.dart",
+  "screen_ar": "الخصومات والمكافآت",
+  "purpose_ar": "إضافة وعرض خصومات ومكافآت وبدلات الموظفين مع فلترة",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid teal[700]",
+  "dominant_colors": [
+   "#00796B",
+   "#9E9E9E",
+   "#FFFFFF",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "شريط teal خاص بقسم HR مختلف عن بقية التطبيق",
+   "ألوان Material مسماة 30 استخدام",
+   "5 مواضع خط صغير جداً"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/employee_tracking_report_page.dart",
+  "screen_ar": "تقارير تتبع الموظفين",
+  "purpose_ar": "تقرير المسار اليومي والمسافة والأوقات مع إعادة تشغيل المسار ومسح البيانات",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #0F172A (slate)",
+  "dominant_colors": [
+   "#0F172A",
+   "#38BDF8",
+   "#22C55E",
+   "#EF4444"
+  ],
+  "issues_ar": [
+   "لوحة slate/cyan محلية تشبه Energy دون استخدامه",
+   "ألوان سرعة مكتوبة يدوياً",
+   "ملف 1024 سطر"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/enhanced_home_page.dart",
+  "screen_ar": "الصفحة الرئيسية المحسنة",
+  "purpose_ar": "رئيسية تجريبية تعرض معلومات الجلسة وتجديدها والخروج",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid blue.shade700",
+  "dominant_colors": [
+   "#1976D2",
+   "#F44336",
+   "#9E9E9E",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "نسخة مكررة من الرئيسية",
+   "إيموجي في الرسائل"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشح للحذف",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/enhanced_search_users_page.dart",
+  "screen_ar": "البحث المحسن عن المستخدمين",
+  "purpose_ar": "بحث متقدم عن المستخدمين مع مطابقة ذكية وجزئية",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid Colors.blue",
+  "dominant_colors": [
+   "#2196F3",
+   "#FFFFFF",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "مكرر وظيفياً مع search_users_page",
+   "يُستورد فقط من search_comparison_page غير المستخدمة",
+   "شريط أزرق افتراضي"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "عملياً ميت لأن مستورده الوحيد ميت",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/firebase_data_viewer.dart",
+  "screen_ar": "عرض بيانات Firebase",
+  "purpose_ar": "عرض بيانات Firestore الخام للتحقق",
+  "kind": "other",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #1E3A8A",
+  "dominant_colors": [
+   "#1E3A8A",
+   "#FFC107",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "أداة تصحيح مطورين",
+   "Firebase قديم بعد الانتقال إلى VPS"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشح للحذف",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/ftth_advanced_system.dart",
+  "screen_ar": "النظام المتقدم - لوحة التحكم",
+  "purpose_ar": "نظام FTTH قديم يضم شاشة بداية ودخول ولوحة تحكم وروابط",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "splash/login gradient #667eea→#764ba2 + AppBar gradient #283593→#64B5F6",
+  "dominant_colors": [
+   "#667EEA",
+   "#764BA2",
+   "#283593",
+   "#64B5F6"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "1903 سطر في ملف واحد يضم 3 شاشات",
+   "29 hex مكتوب يدوياً بلوحة بنفسجية غريبة",
+   "يكرر الدخول وشاشة البداية الموجودة في مكان آخر"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشح للحذف",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/google_drive_files_page.dart",
+  "screen_ar": "ملفات Google Drive",
+  "purpose_ar": "عرض قائمة ملفات Google Drive حسب المنطقة",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient teal 800→400",
+  "dominant_colors": [
+   "#00695C",
+   "#26A69A",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "نصوص إنجليزية ('Error','No Name','Region') داخل تطبيق عربي",
+   "قالب AppBar منسوخ بلون مختلف",
+   "لا حالة فراغ مصممة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/home_page.dart",
+  "screen_ar": "رمز الصدارة",
+  "purpose_ar": "الشاشة الرئيسية: شريط جانبي/قائمة، أزرار الأقسام، مشاركة الموقع، تبليغات عاجلة، صلاحيات",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar شفاف فوق gradient + sidebar toolbar #2C3E50",
+  "dominant_colors": [
+   "#2C3E50",
+   "#3498DB",
+   "#E65100",
+   "#00E5FF"
+  ],
+  "issues_ar": [
+   "ملف ضخم 3713 سطر يضم HomePage ولوحة صلاحيات وحوار معلومات",
+   "78 hex + 108 Colors.* — أسوأ ملف من حيث الألوان اليدوية في الصفحات الأساسية",
+   "ثوابت flat-UI محلية (_sidebarToolbar #2C3E50) تكرر AccountingTheme",
+   "مزيج تدرجات برتقالية/زرقاء/سماوية بلا نظام"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "أكثر شاشة استخداماً (imported_by=7) — أول هدف للترحيل",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/hr_hub_page.dart",
+  "screen_ar": "الموارد البشرية",
+  "purpose_ar": "مركز يجمع أزرار الموارد البشرية (موظفين، رواتب، إجازات، دوام...) في شبكة بطاقات",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "SliverAppBar gradient #0D47A1→#1565C0",
+  "dominant_colors": [
+   "#0D47A1",
+   "#1565C0",
+   "#F5F7FA",
+   "#2D3436"
+  ],
+  "issues_ar": [
+   "ألوان مكتوبة يدوياً",
+   "أزرق HR يختلف عن teal المستخدم في صفحات HR الفرعية",
+   "يستورد 3 نسخ مختلفة من صفحة المستخدمين"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "شبكة البطاقات مناسبة جداً لبلاطات ثلاثية الأبعاد",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/hr_reports_page.dart",
+  "screen_ar": "تقارير الموارد البشرية",
+  "purpose_ar": "تقارير الحضور والرواتب والإجازات بتبويبات مع تصدير ملفات",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #1A237E + TabBar",
+  "dominant_colors": [
+   "#1A237E",
+   "#E8EAF6",
+   "#9E9E9E",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "يكرر لون AppTheme (#1A237E) يدوياً دون استيراد الثيم",
+   "ملف 1864 سطر",
+   "87 Colors.* و6 مواضع خط صغير"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/kml_zones_map_page.dart",
+  "screen_ar": "خريطة الزونات",
+  "purpose_ar": "خريطة نقاط FAT ومناطق FDT من KML مع بحث بالإحداثيات وإحصائيات",
+  "kind": "map",
+  "theme_source": "hardcoded",
+  "header": "none — شريط عائم داكن #0F172A/#1E293B",
+  "dominant_colors": [
+   "#0F172A",
+   "#1E293B",
+   "#38BDF8",
+   "#22C55E"
+  ],
+  "issues_ar": [
+   "ثيم داكن slate خاص بالصفحة يشبه Energy دون استخدامه",
+   "ملف ضخم 2583 سطر",
+   "39 hex + 109 Colors.* (كثير من white12/white38)",
+   "12 موضع خط أصغر من 12"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "تُفتح من بطاقة المهمة ومن الرئيسية",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/leave_management_page.dart",
+  "screen_ar": "إدارة الإجازات",
+  "purpose_ar": "تقديم ومراجعة طلبات الإجازة مع عرض الأرصدة",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid teal[700]",
+  "dominant_colors": [
+   "#00796B",
+   "#9E9E9E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "59 Colors.* بلا ثيم",
+   "شريط teal خاص بقسم HR",
+   "ألوان حالات الطلب يدوية"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/local_storage_page.dart",
+  "screen_ar": "التخزين المحلي",
+  "purpose_ar": "استيراد ومزامنة وإدارة بيانات المشتركين محلياً عبر SQLite",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar #1A237E مع gradient #1A237E→#3949AB",
+  "dominant_colors": [
+   "#1A237E",
+   "#3949AB",
+   "#9E9E9E",
+   "#9C27B0"
+  ],
+  "issues_ar": [
+   "ملف ضخم 3974 سطر",
+   "40 مرة #1A237E مكتوب يدوياً بدل AppTheme.primary",
+   "193 Colors.* — الأعلى في المجموعة",
+   "19 موضع خط صغير جداً"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/local_subscriber_details_page.dart",
+  "screen_ar": "{اسم المشترك}",
+  "purpose_ar": "عرض تفاصيل مشترك مخزن محلياً مع النسخ",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#FF9800",
+   "#FFFFFF",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "يكرر #1A237E يدوياً",
+   "بطاقات تفاصيل مسطحة بلا تسلسل بصري",
+   "ألوان Material مسماة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/modern_home_page.dart",
+  "screen_ar": "رمز الصدارة",
+  "purpose_ar": "رئيسية بديلة حديثة بشريط جانبي slate ونظرة عامة ووصول سريع",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "sidebar gradient #0F172A→#1E293B",
+  "dominant_colors": [
+   "#0F172A",
+   "#1E293B",
+   "#38BDF8",
+   "#F8FAFC"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "نسخة مكررة ثالثة من الرئيسية",
+   "لوحة slate/cyan محلية مختلفة عن home_page"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "قد تفيد كمرجع تصميم لكنها غير مفعّلة",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/my_dashboard_page.dart",
+  "screen_ar": "شاشتي",
+  "purpose_ar": "لوحة الموظف الشخصية: البصمة والمعاملات المالية والراتب والخصومات والإجازات والسلف",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "custom header gradient #1A2332→#2C3E50",
+  "dominant_colors": [
+   "#1A2332",
+   "#2C3E50",
+   "#3498DB",
+   "#E74C3C"
+  ],
+  "issues_ar": [
+   "ملف ضخم 3428 سطر",
+   "72 hex مكتوب يدوياً بلوحة flat-UI مكررة",
+   "21 موضع خط صغير جداً (الأعلى في المجموعة)",
+   "تدرجات أيقونات متعددة بلا نظام"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "شاشة يومية لكل موظف",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/offline_router_setup_page.dart",
+  "screen_ar": "إعداد الراوتر / واجهة الراوتر",
+  "purpose_ar": "معالج خطوة بخطوة لإعداد الراوتر أوفلاين وربط TR-069",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #1A237E (_indigo ثابت محلي)",
+  "dominant_colors": [
+   "#1A237E",
+   "#00C853",
+   "#1B5E20",
+   "#F5F7FA"
+  ],
+  "issues_ar": [
+   "114 Colors.* (52 grey) + 21 hex",
+   "20 موضع خط صغير جداً بعضها 9-10",
+   "ثابت _indigo يكرر لون AppTheme",
+   "سطور طويلة كثيفة يصعب قراءتها"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "يستخدمه الفنيون ميدانياً",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/permission_reset_page.dart",
+  "screen_ar": "إعادة تعيين الصلاحيات",
+  "purpose_ar": "إعادة تعيين جميع الصلاحيات للوضع الافتراضي",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid Colors.blue",
+  "dominant_colors": [
+   "#2196F3",
+   "#FF9800",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "إيموجي في الرسائل",
+   "شريط أزرق افتراضي"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشح للحذف",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/printer_settings_page.dart",
+  "screen_ar": "إعدادات طابعة الإيصالات",
+  "purpose_ar": "اختيار طابعة الإيصالات الحرارية وتجربة الطباعة",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid Colors.blue",
+  "dominant_colors": [
+   "#2196F3",
+   "#F44336",
+   "#FF9800",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "شريط أزرق افتراضي مختلف",
+   "ألوان Material مسماة",
+   "تصميم قائمة بسيط بلا بطاقات"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/receipt_template_editor_page.dart",
+  "screen_ar": "محرر قالب الوصل",
+  "purpose_ar": "تحرير قالب الوصل المطبوع بصرياً (شعار، خطوط، عداد)",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #16213E (داكن)",
+  "dominant_colors": [
+   "#16213E",
+   "#1A1A2E",
+   "#2A2A3E",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "ثيم داكن خاص بالصفحة غير موجود في أي ثيم",
+   "101 Colors.* (white70/white24)",
+   "ملف 1455 سطر"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/reminder_reports_page.dart",
+  "screen_ar": "تقارير التذكير التلقائي",
+  "purpose_ar": "عرض سجل تقارير التذكير التلقائي",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #6A1B9A",
+  "dominant_colors": [
+   "#6A1B9A",
+   "#9E9E9E",
+   "#FF9800",
+   "#2196F3"
+  ],
+  "issues_ar": [
+   "شريط بنفسجي مختلف",
+   "4 مواضع خط صغير",
+   "حالة فراغ نصية فقط"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/salary_management_page.dart",
+  "screen_ar": "إدارة الرواتب",
+  "purpose_ar": "إنشاء مسيّر الرواتب وصرفها مرتبطة بالحضور والإجازات",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid teal[700]",
+  "dominant_colors": [
+   "#00796B",
+   "#FFFFFF",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "85 Colors.* بلا ثيم",
+   "ملف 1444 سطر",
+   "شريط teal خاص بقسم HR"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/search_comparison_page.dart",
+  "screen_ar": "مقارنة أنظمة البحث",
+  "purpose_ar": "اختيار بين البحث التقليدي والمحسن",
+  "kind": "other",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid Colors.indigo",
+  "dominant_colors": [
+   "#3F51B5",
+   "#4CAF50",
+   "#FFC107",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "صفحة تجريبية للمطورين",
+   "ألوان مسماة"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشح للحذف مع enhanced_search_users_page",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/search_users_page.dart",
+  "screen_ar": "البحث عن المستخدمين",
+  "purpose_ar": "بحث عن المستخدمين/المشتركين مع مطابقة ذكية وجزئية ومرنة",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient #283593→#1976D2→#64B5F6",
+  "dominant_colors": [
+   "#283593",
+   "#1976D2",
+   "#64B5F6",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "تدرج AppBar الأزرق الثلاثي منسوخ في 5+ صفحات",
+   "ملف 1283 سطر",
+   "مسافات في العنوان ' البحث عن المستخدمين '"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/server_data_page.dart",
+  "screen_ar": "تحليلات Dashboard",
+  "purpose_ar": "جلب بيانات سيرفر FTTH وعرض تحليلات ومخططات وسجل عمليات",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid indigo[800]",
+  "dominant_colors": [
+   "#283593",
+   "#4CAF50",
+   "#00695C",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "أكبر ملف في المجموعة 4067 سطر ويخلط الخدمة بالواجهة",
+   "68 hex + 162 Colors.*",
+   "33 موضع خط صغير جداً (الأسوأ)",
+   "اسم الملف لا يطابق الصنف DashboardProjectPage"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/settings_page.dart",
+  "screen_ar": "الإعدادات",
+  "purpose_ar": "إعدادات التطبيق الشخصية وحفظها",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid Colors.blue",
+  "dominant_colors": [
+   "#2196F3",
+   "#9E9E9E",
+   "#4CAF50",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "شريط أزرق افتراضي مختلف",
+   "تكرار مع company_settings",
+   "تصميم قائمة مسطح"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/settings_text_scale_page.dart",
+  "screen_ar": "حجم النص",
+  "purpose_ar": "ضبط حجم النص مع معاينة وأحجام مسبقة",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient #283593→#1976D2→#64B5F6",
+  "dominant_colors": [
+   "#283593",
+   "#1976D2",
+   "#64B5F6",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "تدرج AppBar منسوخ",
+   "ألوان يدوية",
+   "يجب ربطه بنظام الخطوط الموحد"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/statistics_page.dart",
+  "screen_ar": "الإحصائيات",
+  "purpose_ar": "إحصائيات الزونات والوكلاء مع بحث وفلترة",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient red 800→400",
+  "dominant_colors": [
+   "#C62828",
+   "#E53935",
+   "#EF5350",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "شريط أحمر يوحي بالخطأ",
+   "30 Colors.red في شاشة إحصائيات",
+   "تدرجات متعددة",
+   "قالب AppBar منسوخ"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/super_admin_login_page.dart",
+  "screen_ar": "مدير النظام",
+  "purpose_ar": "تسجيل دخول مدير النظام (Firebase)",
+  "kind": "login",
+  "theme_source": "hardcoded",
+  "header": "none — خلفية gradient indigo",
+  "dominant_colors": [
+   "#303F9F",
+   "#3F51B5",
+   "#F44336",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "مكرر مع vps_super_admin_login_page",
+   "Firebase قديم"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشح للحذف",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/track_users_map_page.dart",
+  "screen_ar": "تتبع الكادر",
+  "purpose_ar": "خريطة تتبع مواقع الموظفين مع كشف المواقع الوهمية",
+  "kind": "map",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #0F172A",
+  "dominant_colors": [
+   "#0F172A",
+   "#38BDF8",
+   "#F8FAFC",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "لوحة slate محلية مكررة من employee_tracking_report",
+   "إيموجي 🚫🗑️ في النصوص",
+   "ملف 1095 سطر"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/user_details_page.dart",
+  "screen_ar": "تفاصيل المستخدم: {الاسم}",
+  "purpose_ar": "عرض وتعديل معلومات المستخدم وصلاحياته وكلمة المرور",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid blue[700]",
+  "dominant_colors": [
+   "#1976D2",
+   "#FFFFFF",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "شريط أزرق مختلف",
+   "ألوان مسماة",
+   "نموذج طويل بلا تقسيم بصري"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/user_whatsapp_permissions_page.dart",
+  "screen_ar": "صلاحيات الواتساب",
+  "purpose_ar": "تفعيل/تعطيل صلاحيات أنظمة الواتساب لموظف",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #25D366",
+  "dominant_colors": [
+   "#25D366",
+   "#128C7E",
+   "#9E9E9E",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "أخضر واتساب كلون شريط",
+   "ألوان مسماة"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/users_page.dart",
+  "screen_ar": "إدارة المستخدمين",
+  "purpose_ar": "قائمة المستخدمين مع تعديل وحذف (نسخة Google Sheets القديمة)",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient blue 900→500",
+  "dominant_colors": [
+   "#0D47A1",
+   "#1976D2",
+   "#2196F3",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "نسخة مكررة من 3 صفحات مستخدمين",
+   "قالب AppBar منسوخ",
+   "تصميم قائمة بسيط"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "legacy مكرر رغم أنه مستورد",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/users_page_firebase.dart",
+  "screen_ar": "إدارة المستخدمين",
+  "purpose_ar": "إدارة مستخدمين الشركة عبر Firestore",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar #1A237E مع عنوان Row",
+  "dominant_colors": [
+   "#1A237E",
+   "#F44336",
+   "#4CAF50",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "نسخة Firebase قديمة مكررة",
+   "ألوان يدوية",
+   "يتعايش مع users_page_vps"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "legacy بعد الانتقال إلى VPS",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/users_page_vps.dart",
+  "screen_ar": "إدارة الموظفين",
+  "purpose_ar": "إدارة موظفي الشركة عبر VPS: إضافة/تعديل/حذف وتعيين صلاحيات جماعي",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "custom header gradient #6C63FF→#8B83FF على خلفية #F5F6FA",
+  "dominant_colors": [
+   "#6C63FF",
+   "#F5F6FA",
+   "#D4AF37",
+   "#2D3250"
+  ],
+  "issues_ar": [
+   "أسماء ثوابت مضللة (_dark1 لخلفية فاتحة)",
+   "لوحة بنفسجي/ذهبي خاصة لا توجد في أي ثيم",
+   "ملف 2204 سطر",
+   "33 hex مكتوب يدوياً"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "النسخة الفعلية لإدارة الموظفين",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/vps_super_admin_login_page.dart",
+  "screen_ar": "مدير النظام",
+  "purpose_ar": "تسجيل دخول مدير النظام عبر VPS API",
+  "kind": "login",
+  "theme_source": "hardcoded",
+  "header": "none — خلفية gradient indigo",
+  "dominant_colors": [
+   "#303F9F",
+   "#3F51B5",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0)",
+   "نسخة طبق الأصل تقريباً من super_admin_login_page",
+   "ألوان مسماة"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/vps_tenant_login_page.dart",
+  "screen_ar": "تسجيل الدخول",
+  "purpose_ar": "دخول الشركات عبر VPS مع حسابات محفوظة وبصمة",
+  "kind": "login",
+  "theme_source": "hardcoded",
+  "header": "none — gradient #1E3A5F مخصص",
+  "dominant_colors": [
+   "#1E3A5F",
+   "#64748B",
+   "#3B82F6",
+   "#EF4444"
+  ],
+  "issues_ar": [
+   "غير مستورد (imported_by=0) — يبدو مستبدلاً بـ premium_login_page",
+   "33 hex مكتوب يدوياً",
+   "ملف 941 سطر"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/whatsapp_batch_reports_page.dart",
+  "screen_ar": "📊 تقارير الإرسال الجماعي",
+  "purpose_ar": "عرض وحذف تقارير دفعات الإرسال الجماعي",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient #283593→#1976D2→#64B5F6",
+  "dominant_colors": [
+   "#283593",
+   "#1976D2",
+   "#F44336",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "إيموجي في العنوان",
+   "قالب AppBar منسوخ",
+   "ألوان حالات يدوية"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/whatsapp_bulk_sender_page.dart",
+  "screen_ar": "إرسال رسائل WhatsApp جماعية",
+  "purpose_ar": "إدارة قائمة مستلمين وإرسال قوالب جماعية عبر n8n",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #25D366",
+  "dominant_colors": [
+   "#25D366",
+   "#FF9800",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "أخضر واتساب كشريط بدل لون التطبيق",
+   "ألوان حالات يدوية",
+   "ملف 1043 سطر"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/whatsapp_business_config_page.dart",
+  "screen_ar": "إعدادات WhatsApp Business API",
+  "purpose_ar": "إدخال وفحص توكنات WhatsApp Business وإرسال رسالة اختبار",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid Colors.green",
+  "dominant_colors": [
+   "#4CAF50",
+   "#FF9800",
+   "#2196F3",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "84 Colors.* بلا ثيم",
+   "إيموجي كثيرة في الرسائل",
+   "أخضر مختلف عن أخضر واتساب في الصفحات الأخرى"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/whatsapp_chat_page.dart",
+  "screen_ar": "محادثة واتساب",
+  "purpose_ar": "محادثة فردية مع عرض الوسائط والإرسال",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient #25D366→#128C7E",
+  "dominant_colors": [
+   "#25D366",
+   "#128C7E",
+   "#ECE5DD",
+   "#DCF8C6"
+  ],
+  "issues_ar": [
+   "تقليد كامل لهوية واتساب بدل هوية التطبيق",
+   "17 hex مكتوب يدوياً",
+   "ملف 1071 سطر"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "شاشة دردشة يومية",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/whatsapp_conversations_page.dart",
+  "screen_ar": "محادثات WhatsApp",
+  "purpose_ar": "قائمة جميع محادثات الواتساب مع تنظيف وحذف",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar gradient #25D366→#128C7E",
+  "dominant_colors": [
+   "#25D366",
+   "#128C7E",
+   "#1A237E",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "هوية واتساب الخضراء مختلفة عن بقية التطبيق",
+   "20 hex مكتوب يدوياً",
+   "حالة الفراغ نصية فقط"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "تُفتح من النافذة العائمة وشريط الأدوات",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/whatsapp_excel_sender_page.dart",
+  "screen_ar": "إرسال جماعي من Excel",
+  "purpose_ar": "استيراد مستلمين من Excel وإرسال جماعي",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid #1B5E20",
+  "dominant_colors": [
+   "#1B5E20",
+   "#4CAF50",
+   "#FFFFFF",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "أخضر ثالث مختلف لصفحات واتساب",
+   "ألوان يدوية",
+   "لا حالة فراغ مصممة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/whatsapp_templates_page.dart",
+  "screen_ar": "قوالب الرسائل",
+  "purpose_ar": "إدارة وتحرير قوالب رسائل الواتساب",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "SliverAppBar gradient #7C3AED→#9333EA",
+  "dominant_colors": [
+   "#7C3AED",
+   "#9333EA",
+   "#F97316",
+   "#EF4444"
+  ],
+  "issues_ar": [
+   "شريط بنفسجي بينما بقية صفحات واتساب خضراء",
+   "23 hex + 75 Colors.*",
+   "7 مواضع خط صغير",
+   "ملف 1267 سطر"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/work_schedules_page.dart",
+  "screen_ar": "جداول الدوام",
+  "purpose_ar": "إدارة جداول الدوام للشركة والمراكز",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar solid teal[700]",
+  "dominant_colors": [
+   "#00796B",
+   "#9E9E9E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "شريط teal خاص بقسم HR",
+   "ألوان مسماة",
+   "نماذج حوارية بسيطة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "A_pages_root"
+ },
+ {
+  "file": "pages/accounting/accounting_dashboard_page.dart",
+  "screen_ar": "الحسابات",
+  "purpose_ar": "لوحة النظام المحاسبي الرئيسية: شريط جانبي/درج بأقسام المحاسبة وبطاقات أرصدة الصناديق والذمم والرواتب مع التنقل لكل الشاشات الفرعية",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "شريط علوي مخصص #2C3E50 مع زر قائمة/رجوع",
+  "dominant_colors": [
+   "#2C3E50",
+   "#3498DB",
+   "#E74C3C",
+   "#F5F6FA"
+  ],
+  "issues_ar": [
+   "117 لون hex مكتوب يدوياً و0 استخدام لـ AccountingTheme رغم أنها مركز وحدة المحاسبة",
+   "ثوابت ألوان محلية (_bgPage/_bgToolbar/_textDark) تكرر AccountingTheme",
+   "لوحة 8 ألوان عشوائية للأقسام (#3498DB/#1ABC9C/#9B59B6...) بدون نظام",
+   "ملف ضخم (2051 سطر) يجمع الشريط الجانبي والبطاقات والرسم",
+   "خطوط أصغر من 11 في بعض العناصر"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "نقطة الدخول للوحدة؛ مرشح أول لتطبيق بلاطات ثلاثية الأبعاد وأيقونات أيزومترية للأقسام",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/activation_profitability_page.dart",
+  "screen_ar": "تقرير ربحية التفعيلات",
+  "purpose_ar": "تقرير يقارن ما دفعه المشتركون بتكلفة المحفظة وإيراد الاشتراكات والصيانة حسب الفترة",
+  "kind": "report",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonGreen",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#2ECC71",
+   "#FFFFFF",
+   "#E91E63"
+  ],
+  "issues_ar": [
+   "استخدام Colors.orange بدل لون التحذير من الثيم",
+   "حالة الفراغ نص بسيط 'لا توجد بيانات' بدون رسم توضيحي",
+   "لا تصدير للتقرير بخلاف تقارير مالية أخرى"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/aging_report_page.dart",
+  "screen_ar": "أعمار الديون",
+  "purpose_ar": "تصنيف ديون الفنيين حسب العمر (حالي/متأخر/خطر) مع فلترة حسب الفني وتصدير Excel",
+  "kind": "report",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonOrange",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#E67E22",
+   "#E74C3C",
+   "#27AE60"
+  ],
+  "issues_ar": [
+   "5 ألوان مكتوبة يدوياً لفئات العمر تكرر ألوان الثيم",
+   "رسالة خطأ عامة 'خطأ' بلا تفاصيل أو زر إعادة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/audit_trail_page.dart",
+  "screen_ar": "سجل التدقيق",
+  "purpose_ar": "عرض سجل العمليات المحاسبية (إنشاء/تعديل/حذف/ترحيل/إقفال) مع فلترة حسب النوع",
+  "kind": "list",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج رمادي #455A64",
+  "dominant_colors": [
+   "#455A64",
+   "#3498DB",
+   "#E74C3C",
+   "#9B59B6"
+  ],
+  "issues_ar": [
+   "ألوان مكتوبة يدوياً لكل نوع إجراء (9 ألوان)",
+   "تدرج الأيقونة خارج الثيم (#455A64/#37474F)"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/balance_sheet_page.dart",
+  "screen_ar": "الميزانية العمومية",
+  "purpose_ar": "عرض الأصول والالتزامات وحقوق الملكية مع مؤشر التوازن وتصدير Excel/PDF",
+  "kind": "report",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonPurple",
+  "dominant_colors": [
+   "#8E44AD",
+   "#2ECC71",
+   "#E74C3C",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "Colors.orange مباشرة للتحذيرات",
+   "بطاقات مسطحة بتدرجات neon تحتاج تحويل للأسلوب ثلاثي الأبعاد"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/budget_page.dart",
+  "screen_ar": "الميزانية التقديرية",
+  "purpose_ar": "إدارة الميزانيات الشهرية وعرض الانحراف بين المخطط والفعلي",
+  "kind": "form",
+  "theme_source": "mixed",
+  "header": "شريط داكن AccountingTheme.toolbar + أيقونة بتدرج #5C6BC0→#3F51B5",
+  "dominant_colors": [
+   "#5C6BC0",
+   "#3F51B5",
+   "#2C3E50",
+   "#F5F6FA"
+  ],
+  "issues_ar": [
+   "شريط داكن يختلف عن الشريط الأبيض في معظم صفحات المحاسبة",
+   "لون إنديغو #5C6BC0 مكتوب يدوياً من خارج AccountingTheme",
+   "ملف كبير (1068 سطر) يجمع العرض والحوارات"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/cash_flow_page.dart",
+  "screen_ar": "التدفقات النقدية",
+  "purpose_ar": "عرض حركة النقد الداخل والخارج (تحصيل/مصروف/رواتب) مع تصدير Excel",
+  "kind": "report",
+  "theme_source": "mixed",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج سماوي #00BCD4",
+  "dominant_colors": [
+   "#00BCD4",
+   "#27AE60",
+   "#E74C3C",
+   "#3498DB"
+  ],
+  "issues_ar": [
+   "20 لون hex مكتوب يدوياً و5 ثوابت ألوان محلية",
+   "5 تدرجات LinearGradient مكتوبة في الملف",
+   "تدرج الشريط (#00BCD4) خارج الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/cashbox_page.dart",
+  "screen_ar": "الصناديق النقدية",
+  "purpose_ar": "إدارة الصناديق النقدية (رئيسي/نثرية/بنك): إضافة وتعديل وعرض الأرصدة",
+  "kind": "list",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonGreen",
+  "dominant_colors": [
+   "#2ECC71",
+   "#E74C3C",
+   "#3498DB",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف ولا يُشار لـ CashBoxPage)",
+   "يستخدم Colors.red بجانب AccountingTheme.danger"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "يستحق الحذف أو إعادة ربطه بدل إعادة التصميم",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/chart_of_accounts_page.dart",
+  "screen_ar": "شجرة الحسابات",
+  "purpose_ar": "عرض وإدارة شجرة الحسابات (أصول/التزامات/حقوق ملكية/إيرادات/مصروفات) مع إضافة وتعديل وحذف الحسابات",
+  "kind": "list",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonBlue",
+  "dominant_colors": [
+   "#3498DB",
+   "#1A1A2E",
+   "#E74C3C",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "ملف ضخم (1775 سطر) فيه 6 حوارات",
+   "رسائل print/debug عربية بإيموجي داخل الكود",
+   "Colors.black مباشرة في عدة أماكن"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "التزام جيد بـ AccountingTheme (161 استخدام)؛ سهل الترحيل نسبياً",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/client_accounts_page.dart",
+  "screen_ar": "كشف الحسابات",
+  "purpose_ar": "كشف حساب العملاء والحسابات مع وضعي بحث (حسابات/قيود)، حركات مدين ودائن وأرصدة حسب الفترة",
+  "kind": "list",
+  "theme_source": "mixed",
+  "header": "بدون AppBar؛ شريط مخصص أبيض/#2C3E50 مع تدرجات",
+  "dominant_colors": [
+   "#3498DB",
+   "#2C3E50",
+   "#E0E6ED",
+   "#8E44AD"
+  ],
+  "issues_ar": [
+   "أعلى ملف في المجموعة بالألوان اليدوية: 147 hex و71 Colors رغم 236 استخدام لـ AccountingTheme",
+   "22 موضع بخط أصغر من 11",
+   "ملف ضخم جداً (3838 سطر)",
+   "خلفية #F0F2F8 تختلف عن bgPrimary #F5F6FA"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/collections_page.dart",
+  "screen_ar": "تحصيلات الفنيين",
+  "purpose_ar": "متابعة مستحقات الفنيين (مديون/دائن) وإضافة تحصيلات مع حوار تفاصيل الفني",
+  "kind": "list",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonBlue",
+  "dominant_colors": [
+   "#3498DB",
+   "#E74C3C",
+   "#2ECC71",
+   "#777777"
+  ],
+  "issues_ar": [
+   "ملف ضخم (2609 سطر) مع حوار داخلي كبير",
+   "7 مواضع بخط أصغر من 11",
+   "Colors.grey بجانب textMuted"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "يومي الاستخدام",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/compound_journal_entry_page.dart",
+  "screen_ar": "قيد مركب",
+  "purpose_ar": "إدخال قيد محاسبي مركب متعدد الأسطر مع قوالب ومسودة وحفظ وترحيل",
+  "kind": "form",
+  "theme_source": "mixed",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonPurple، أيقونة رجوع سوداء",
+  "dominant_colors": [
+   "#1565C0",
+   "#000000",
+   "#E74C3C",
+   "#2ECC71"
+  ],
+  "issues_ar": [
+   "49 استخدام لـ Colors.black و25 hex يدوي (ألوان Material برتقالية/خضراء فاتحة)",
+   "13 موضع بخط أصغر من 11",
+   "ملف ضخم (2994 سطر)",
+   "زر الرجوع أسود خلافاً لبقية الصفحات"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/employee_adjustments_page.dart",
+  "screen_ar": "الخصومات والمكافآت",
+  "purpose_ar": "إدارة الخصومات والمكافآت الشهرية للموظفين مع خيار التكرار الشهري",
+  "kind": "form",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonPink",
+  "dominant_colors": [
+   "#E91E63",
+   "#2ECC71",
+   "#E74C3C",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "#2196F3 مكتوب يدوياً بدل info",
+   "مصفوفة أسماء الأشهر مكررة في عدة ملفات"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/expenses_page.dart",
+  "screen_ar": "المصروفات",
+  "purpose_ar": "تسجيل المصروفات وتعديلها وحذفها مع ملخص الإجمالي والعدد وأكبر فئة",
+  "kind": "list",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonOrange",
+  "dominant_colors": [
+   "#E67E22",
+   "#E74C3C",
+   "#FFFFFF",
+   "#777777"
+  ],
+  "issues_ar": [
+   "4 مواضع بخط أصغر من 11",
+   "رسائل خطأ عامة 'خطأ'"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/financial_ratios_page.dart",
+  "screen_ar": "النسب المالية",
+  "purpose_ar": "حساب وعرض النسب المالية (التداول، المديونية، هامش الربح، النقدية، حقوق الملكية)",
+  "kind": "report",
+  "theme_source": "AccountingTheme",
+  "header": "شريط داكن AccountingTheme.toolbar + أيقونة بتدرج neonPurple",
+  "dominant_colors": [
+   "#2C3E50",
+   "#8E44AD",
+   "#2ECC71",
+   "#F39C12"
+  ],
+  "issues_ar": [
+   "شريط داكن يختلف عن الشريط الأبيض لمعظم صفحات المحاسبة",
+   "Colors.white70 مباشرة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/fixed_expenses_page.dart",
+  "screen_ar": "المصاريف الثابتة",
+  "purpose_ar": "إدارة المصاريف الثابتة الشهرية (إيجار، مولد، إنترنت، كهرباء...) إضافة وتعديل وحذف",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar أخضر Colors.green + عناصر إنديغو #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#4CAF50",
+   "#F44336",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "لا يستخدم AccountingTheme إطلاقاً (0) رغم وجوده في وحدة المحاسبة",
+   "AppBar أخضر قياسي مختلف تماماً عن بقية الوحدة",
+   "يخلط إنديغو AppTheme (#1A237E) مكتوباً يدوياً مع ألوان Material",
+   "34 استخدام Colors.* و18 hex"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/ftth_operator_account_page.dart",
+  "screen_ar": "كشف حساب: {اسم المشغل}",
+  "purpose_ar": "كشف حساب مشغل FTTH: جدول العمليات بأعمدة قابلة للتخصيص وتصفية وتصحيح المستقطع وإعادة حساب الإيرادات",
+  "kind": "list",
+  "theme_source": "mixed",
+  "header": "AppBar داكن AccountingTheme.bgSidebar #2C3E50",
+  "dominant_colors": [
+   "#2C3E50",
+   "#3498DB",
+   "#9E9E9E",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "181 استخدام لـ Colors.* (grey/blue/green) مع 36 hex",
+   "ملف ضخم (2394 سطر)",
+   "يكرر منطق ftth_operators_dashboard_page"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "نسخة قديمة محتملة من تبويب المشغلين داخل اللوحة الضخمة",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/ftth_operator_linking_page.dart",
+  "screen_ar": "ربط المشغلين ({العدد} مشغل)",
+  "purpose_ar": "ربط مشغلي FTTH بموظفي النظام أو إزالة الربط",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar أخضر مزرق Colors.teal",
+  "dominant_colors": [
+   "#009688",
+   "#9E9E9E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "لا يستخدم أي ثيم (0)؛ 54 استخدام Colors.*",
+   "AppBar teal مختلف عن بقية الوحدة",
+   "حالة فراغ نصية فقط"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/ftth_operator_transactions_page.dart",
+  "screen_ar": "عمليات: {اسم المشغل}",
+  "purpose_ar": "عرض عمليات مشغل FTTH مفلترة حسب النوع (اشتراكات، عمولات، محفظة، عكس) مع نسخ الكل",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar أخضر مزرق Colors.teal",
+  "dominant_colors": [
+   "#009688",
+   "#9E9E9E",
+   "#4CAF50",
+   "#3F51B5"
+  ],
+  "issues_ar": [
+   "لا يستخدم أي ثيم (0)؛ 52 استخدام Colors.*",
+   "AppBar teal مختلف عن بقية الوحدة",
+   "ملف كبير (1094 سطر)"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/ftth_operators_dashboard_page.dart",
+  "screen_ar": "لوحة المشغلين (خادمنا / FTTH / المقارنة)",
+  "purpose_ar": "لوحة شاملة لمشغلي FTTH بثلاثة تبويبات: عمليات خادمنا، بيانات FTTH، والمقارنة بينهما مع تحصيل وتصحيح وإعادة حساب",
+  "kind": "dashboard",
+  "theme_source": "mixed",
+  "header": "AppBar داكن bgSidebar #2C3E50 + AppBar بتدرج أزرق #283593→#64B5F6 لصفحة المقارنة",
+  "dominant_colors": [
+   "#2C3E50",
+   "#009688",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "أضخم ملف في التطبيق تقريباً: 14326 سطر",
+   "941 استخدام لـ Colors.* (grey 180، teal 116، red 116، green 106) مقابل 13 فقط لـ AccountingTheme",
+   "22 موضع بخط أصغر من 11 و109 فحص فراغ متناثر",
+   "صفحات وأزرار تبويب داخلية (_ComparisonDetailPage/_TabButton) يجب فصلها",
+   "يخلط إنديغو #1A237E مع #2C3E50 وتدرجات زرقاء"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "أسوأ ملف في المجموعة؛ يجب تقسيمه إلى ملفات قبل أي ترحيل للثيم",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/funds_overview_page.dart",
+  "screen_ar": "مراقبة الأموال",
+  "purpose_ar": "نظرة شاملة على صناديق المشغلين النقدية والذمم الآجلة وذمم الوكلاء والفنيين والدفع الإلكتروني",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي Colors.indigo",
+  "dominant_colors": [
+   "#3F51B5",
+   "#9E9E9E",
+   "#F44336",
+   "#9C27B0"
+  ],
+  "issues_ar": [
+   "لا يستخدم أي ثيم (0)؛ 34 استخدام Colors.*",
+   "AppBar indigo قياسي مختلف عن بقية الوحدة",
+   "لوحة ملخص مناسبة لبطاقات ثلاثية الأبعاد لكنها مسطحة"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/hr_reports_page.dart",
+  "screen_ar": "تقارير الموارد البشرية",
+  "purpose_ar": "تقارير شهرية للموارد البشرية (رواتب، حضور، خصومات) حسب الشهر",
+  "kind": "report",
+  "theme_source": "mixed",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonPink",
+  "dominant_colors": [
+   "#E91E63",
+   "#1E293B",
+   "#F39C12",
+   "#2ECC71"
+  ],
+  "issues_ar": [
+   "13 hex يدوي منها #1E293B (لون Energy/slate) مكرر 6 مرات",
+   "مصفوفة الأشهر مكررة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/income_statement_page.dart",
+  "screen_ar": "قائمة الدخل",
+  "purpose_ar": "عرض الإيرادات والمصروفات وصافي الدخل مع تصدير Excel/PDF",
+  "kind": "report",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonGreen",
+  "dominant_colors": [
+   "#2ECC71",
+   "#1ABC9C",
+   "#E74C3C",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "تدرجات يدوية (#1ABC9C/#16A085، #E74C3C/#C0392B) بجانب تدرجات الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/journal_entries_page.dart",
+  "screen_ar": "القيود المحاسبية",
+  "purpose_ar": "عرض القيود والبحث فيها وفلترتها حسب الفترة والنوع، مع إنشاء وترحيل وإلغاء وحذف (فردي وجماعي)",
+  "kind": "list",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonGreen",
+  "dominant_colors": [
+   "#2ECC71",
+   "#E74C3C",
+   "#777777",
+   "#E8E8E8"
+  ],
+  "issues_ar": [
+   "ملف ضخم (2654 سطر) مع 6 حوارات",
+   "ألوان أنواع القيود مكتوبة يدوياً بألوان Material (#673AB7/#009688...)",
+   "3 مواضع بخط صغير"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "أفضل التزام بالثيم في المجموعة (269 استخدام)",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/monthly_comparison_page.dart",
+  "screen_ar": "المقارنة الشهرية",
+  "purpose_ar": "مقارنة الإيرادات والمصروفات بين الأشهر",
+  "kind": "report",
+  "theme_source": "mixed",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج رمادي #607D8B",
+  "dominant_colors": [
+   "#607D8B",
+   "#455A64",
+   "#27AE60",
+   "#E74C3C"
+  ],
+  "issues_ar": [
+   "3 ثوابت ألوان محلية و8 hex يدوي",
+   "تدرج الأيقونة خارج الثيم",
+   "تكرار شبه كامل لبنية year_comparison_page"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/period_closing_page.dart",
+  "screen_ar": "إقفال الفترات",
+  "purpose_ar": "إقفال وإعادة فتح الفترات المحاسبية الشهرية",
+  "kind": "settings",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج بني #795548",
+  "dominant_colors": [
+   "#795548",
+   "#5D4037",
+   "#E74C3C",
+   "#2ECC71"
+  ],
+  "issues_ar": [
+   "تدرج بني مكتوب يدوياً خارج الثيم",
+   "لا توجد حالة فراغ عند عدم وجود فترات"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/plan_profits_page.dart",
+  "screen_ar": "💰 أرباح الباقات",
+  "purpose_ar": "تحديد ربح كل باقة (المبلغ الصافي بعد التكاليف) وحفظها جماعياً",
+  "kind": "form",
+  "theme_source": "AccountingTheme",
+  "header": "AppBar داكن bgSidebar #2C3E50",
+  "dominant_colors": [
+   "#2C3E50",
+   "#2ECC71",
+   "#3498DB",
+   "#F5F6FA"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "إيموجي في عنوان الشريط",
+   "3 مواضع بخط صغير"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/revenue_page.dart",
+  "screen_ar": "الإيرادات",
+  "purpose_ar": "تسجيل الإيرادات (اشتراكات/تركيب/صيانة) وتعديلها وحذفها مع فلترة",
+  "kind": "list",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonGreen",
+  "dominant_colors": [
+   "#2ECC71",
+   "#E74C3C",
+   "#3498DB",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "Colors.black87 مباشرة",
+   "ملف كبير (1245 سطر)"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/salaries_page.dart",
+  "screen_ar": "الرواتب",
+  "purpose_ar": "توليد وصرف وتعديل رواتب الموظفين شهرياً مع حالة الدفع وتفاصيل الحضور",
+  "kind": "list",
+  "theme_source": "mixed",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonPink",
+  "dominant_colors": [
+   "#E91E63",
+   "#1E293B",
+   "#E74C3C",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "33 استخدام Colors.white و16 hex (منها #1E293B slate من ثيم Energy)",
+   "ملف كبير (1483 سطر) مع ودجت حضور داخلي"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/salary_policy_page.dart",
+  "screen_ar": "سياسات الرواتب",
+  "purpose_ar": "إنشاء وتعديل سياسات الرواتب (خصم التأخير، السقوف، السياسة الافتراضية)",
+  "kind": "settings",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonPink",
+  "dominant_colors": [
+   "#E91E63",
+   "#2ECC71",
+   "#777777",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "نموذج كثيف الحقول بدون تقسيم بصري",
+   "الأيقونة بنفس لون الرواتب فلا تمييز بين الشاشتين"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/sas_accounting_page.dart",
+  "screen_ar": "نظام الساس — الحسابات",
+  "purpose_ar": "عرض عمليات نظام SAS (تفعيل/تمديد/تغيير باقة) مصنفة حسب طريقة الدفع (نقد/آجل/وكيل/ماستر)",
+  "kind": "report",
+  "theme_source": "AccountingTheme",
+  "header": "AppBar داكن bgSidebar #2C3E50",
+  "dominant_colors": [
+   "#2C3E50",
+   "#F5F6FA",
+   "#3498DB",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "نمط AppBar داكن يختلف عن الشريط الأبيض لمعظم صفحات المحاسبة",
+   "خط صغير في موضع واحد"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "الأنظف في المجموعة: 0 لون يدوي",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/settlement_reports_page.dart",
+  "screen_ar": "تقارير التسديدات اليومية",
+  "purpose_ar": "عرض تقارير التسديد اليومية للمشغلين وترحيل المبالغ المستلمة",
+  "kind": "report",
+  "theme_source": "mixed",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج #16A085→#1ABC9C",
+  "dominant_colors": [
+   "#16A085",
+   "#2E7D32",
+   "#1565C0",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "80 استخدام Colors.* و18 hex مقابل 7 فقط لـ AccountingTheme",
+   "4 مواضع بخط صغير",
+   "ألوان Material داكنة (#880E4F/#4A148C) خارج أي ثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/statistics_page.dart",
+  "screen_ar": "الإحصائيات",
+  "purpose_ar": "لوحة الإحصائيات المالية: الميزانية، الإيرادات مقابل المصروفات، إحصائيات الشهر والذمم والإجماليات",
+  "kind": "dashboard",
+  "theme_source": "AccountingTheme",
+  "header": "شريط داكن AccountingTheme.toolbar مع نص فاتح",
+  "dominant_colors": [
+   "#2C3E50",
+   "#2ECC71",
+   "#E74C3C",
+   "#3498DB"
+  ],
+  "issues_ar": [
+   "21 موضع بخط أصغر من 11 (الأسوأ نسبياً)",
+   "ملف كبير (1581 سطر)",
+   "شريط داكن مختلف عن الصفحات الشقيقة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/system_audit_page.dart",
+  "screen_ar": "التدقيق المحاسبي الشامل",
+  "purpose_ar": "فحص سلامة البيانات المحاسبية (قيود غير متزنة، يتيمة، عمليات بلا قيد) مع تصنيف الخطورة",
+  "kind": "report",
+  "theme_source": "mixed",
+  "header": "رأس بتدرج إنديغو #1A237E→#283593",
+  "dominant_colors": [
+   "#1A237E",
+   "#E53935",
+   "#FFA726",
+   "#42A5F5"
+  ],
+  "issues_ar": [
+   "رأس إنديغو (AppTheme) مكتوب يدوياً داخل صفحة محاسبة",
+   "ألوان الخطورة مكتوبة يدوياً بألوان Material"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/trial_balance_page.dart",
+  "screen_ar": "ميزان المراجعة",
+  "purpose_ar": "عرض أرصدة الحسابات المدينة والدائنة مصنفة حسب النوع للتحقق من التوازن",
+  "kind": "report",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonBlue",
+  "dominant_colors": [
+   "#3498DB",
+   "#E74C3C",
+   "#2ECC71",
+   "#F1948A"
+  ],
+  "issues_ar": [
+   "لونان باستيل يدويان للصفوف (#F1948A/#82E0AA) بدل debitFill/creditFill الموجودة في الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/wallet_transactions_page.dart",
+  "screen_ar": "عمليات المحفظة",
+  "purpose_ar": "عرض عمليات المحفظة (شحن/استرداد/تحويل/عمولات) للمحفظة الرئيسية والثانوية مع فلاتر",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "شريط مخصص إنديغو #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#9E9E9E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "رأس إنديغو #1A237E مكرر 11 مرة يدوياً داخل وحدة المحاسبة",
+   "65 استخدام Colors.* واستخدام واحد فقط للثيم",
+   "ملف كبير (1381 سطر)"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/withdrawal_requests_page.dart",
+  "screen_ar": "طلبات سحب الأموال",
+  "purpose_ar": "عرض طلبات سحب الأموال حسب الحالة (معلّقة/موافق عليها/مصروفة/مرفوضة) والموافقة عليها",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar أبيض مسطح بنص داكن",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#3498DB",
+   "#1565C0",
+   "#E74C3C"
+  ],
+  "issues_ar": [
+   "10 ثوابت ألوان محلية خاصة تكرر AccountingTheme حرفياً",
+   "0 استخدام لأي ثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/year_comparison_page.dart",
+  "screen_ar": "المقارنة السنوية",
+  "purpose_ar": "مقارنة الأداء المالي بين السنوات",
+  "kind": "report",
+  "theme_source": "mixed",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج بنفسجي #8E44AD",
+  "dominant_colors": [
+   "#8E44AD",
+   "#7D3C98",
+   "#27AE60",
+   "#E74C3C"
+  ],
+  "issues_ar": [
+   "5 ثوابت ألوان محلية",
+   "تكرار شبه كامل لبنية monthly_comparison_page",
+   "ملف كبير (1195 سطر)"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/accounting/zone_maintenance_fees_page.dart",
+  "screen_ar": "أجور صيانة الزونات",
+  "purpose_ar": "إدارة أجور الصيانة لكل زون: إضافة وتعديل وتعطيل وحذف مع بحث",
+  "kind": "list",
+  "theme_source": "AccountingTheme",
+  "header": "شريط بطاقة بيضاء + أيقونة بتدرج neonGreen",
+  "dominant_colors": [
+   "#2ECC71",
+   "#E91E63",
+   "#777777",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "حالة فراغ نصية فقط",
+   "نفس تدرج الأيقونة الأخضر المستخدم في 5 صفحات أخرى فلا هوية بصرية للشاشة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "B_accounting"
+ },
+ {
+  "file": "pages/account/account_info_page.dart",
+  "screen_ar": "معلومات الحساب / حسابي",
+  "purpose_ar": "عرض بيانات المستخدم الحالي وتعديل اسم المستخدم وتغيير كلمة المرور.",
+  "kind": "settings",
+  "theme_source": "Energy",
+  "header": "AppBar بلون surfaceColor من EnergyDashboardTheme + بطاقة رأس متدرجة",
+  "dominant_colors": [
+   "Energy.backgroundColor",
+   "Energy.surfaceColor",
+   "Energy.primaryColor"
+  ],
+  "issues_ar": [
+   "يعتمد على ثيم Energy بينما بقية شاشات الموظف بألوان أخرى",
+   "40 استخدام لألوان Colors. المسماة بجانب الثيم",
+   "عنوانان مختلفان لنفس الشاشة (حسابي/معلومات الحساب)"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "تُفتح من القائمة الجانبية لكل مستخدم؛ مرشحة جيدة لبطاقة ملف شخصي ثلاثية الأبعاد",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/admin/organizations_management_page.dart",
+  "screen_ar": "إدارة المنظمات/الشركات",
+  "purpose_ar": "إدارة الشركات وربط شركة بنظام المواطن وإضافة/تعديل شركات ومستخدمين.",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مخصص بتدرج أزرق (#1976D2/#283593)",
+  "dominant_colors": [
+   "#1976D2",
+   "#283593",
+   "#64B5F6"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "وظائفه مكررة مع unified_companies_page",
+   "49 لون Colors. مسمى + رموز تعبيرية ❌✅ في الرسائل",
+   "1207 سطر"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشح للحذف بعد التأكد",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/announcements/announcements_page.dart",
+  "screen_ar": "الإعلانات والتبليغات",
+  "purpose_ar": "إنشاء وتعديل ونشر الإعلانات للموظفين (عاجل/مثبت/مسودة) مع تبويبات.",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar أزرق #1976D2 (ثابت _primaryColor)",
+  "dominant_colors": [
+   "#1976D2",
+   "#F5F5F5",
+   "#E53935",
+   "#43A047"
+  ],
+  "issues_ar": [
+   "ألوان معرفة كثوابت محلية داخل الملف بدل الثيم",
+   "أزرق Material مختلف عن indigo التطبيق",
+   "حالة الفراغ موجودة (لا توجد إعلانات) لكنها بسيطة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/chat/chat_conversation_page.dart",
+  "screen_ar": "المحادثة (اسم الغرفة)",
+  "purpose_ar": "شاشة محادثة داخلية بنمط واتساب: رسائل، صور، ملفات، موقع، جهة اتصال، رد وإعادة توجيه.",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar أخضر واتساب #075E54",
+  "dominant_colors": [
+   "#075E54",
+   "#ECE5DD",
+   "#1976D2",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "ملف ضخم جداً (2986 سطر) يصعب صيانته",
+   "130 لون Colors. + 15 hex؛ يقلد هوية واتساب لا هوية التطبيق",
+   "20 حجم خط ≤11",
+   "12 حواراً منبثقاً مبنية يدوياً"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "يُستخدم يومياً؛ يحتاج فصل فقاعات الرسائل في ويدجتات",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/chat/chat_rooms_page.dart",
+  "screen_ar": "المحادثات",
+  "purpose_ar": "قائمة غرف المحادثة (خاصة/قسم/مجموعة/بث) مع تثبيت وكتم وحذف وإنشاء محادثة جديدة.",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar أخضر واتساب #075E54",
+  "dominant_colors": [
+   "#075E54",
+   "#25D366",
+   "#1976D2",
+   "#F5F5F5"
+  ],
+  "issues_ar": [
+   "هوية واتساب بدل هوية التطبيق",
+   "ألوان الأفاتار حسب النوع مكتوبة يدوياً (blue/orange/teal[100])",
+   "خطوط 12-13 صغيرة في العناصر"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/citizen_portal/citizen_details_page.dart",
+  "screen_ar": "تفاصيل المواطن",
+  "purpose_ar": "عرض بيانات مواطن مع تبويبات المعلومات والطلبات والاشتراكات والمدفوعات وحظر/إلغاء حظر.",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar teal",
+  "dominant_colors": [
+   "Colors.teal",
+   "Colors.teal.shade100"
+  ],
+  "issues_ar": [
+   "لون teal خاص بنظام المواطن لا يطابق بقية التطبيق",
+   "36 لون Colors. مسمى",
+   "لا يستخدم أي ثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/citizen_portal/citizen_portal_dashboard.dart",
+  "screen_ar": "نظام المواطن",
+  "purpose_ar": "لوحة رئيسية لنظام المواطن بإحصائيات وتبويبات (المواطنين، الطلبات، الاشتراكات، المدفوعات، الخطط).",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar teal مع أيقونة",
+  "dominant_colors": [
+   "Colors.teal"
+  ],
+  "issues_ar": [
+   "teal مكتوب يدوياً",
+   "لا حالة فراغ للإحصائيات",
+   "تكرار محتمل مع _CitizenPortalMainPage داخل super_admin_dashboard"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/diagnostics/permissions_diagnostics_page.dart",
+  "screen_ar": "تشخيص الصلاحيات",
+  "purpose_ar": "تقرير تشخيصي لصلاحيات المستخدم الحالي ومقارنة النظامين مع نسخ التقرير.",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.indigo",
+  "dominant_colors": [
+   "Colors.indigo",
+   "Colors.green"
+  ],
+  "issues_ar": [
+   "أداة مطور أكثر من كونها شاشة مستخدم",
+   "ألوان مسماة يدوياً (43)",
+   "خطوط 13 وأصغر في القوائم"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/diagnostics/system_diagnostics_page.dart",
+  "screen_ar": "تشخيص النظام",
+  "purpose_ar": "تشغيل اختبارات فحص النظام وعرض النتائج (نظرة عامة/الفئات/النتائج التفصيلية) ونسخ التقرير.",
+  "kind": "report",
+  "theme_source": "mixed",
+  "header": "رأس متدرج من Theme.of(context).primaryColor",
+  "dominant_colors": [
+   "Theme.primaryColor",
+   "Colors.white",
+   "Colors.grey"
+  ],
+  "issues_ar": [
+   "الشاشة الوحيدة هنا التي تعتمد Theme.of(context) فعلاً — مثال جيد",
+   "ألوان نجاح/فشل مسماة يدوياً",
+   "شاشة نادرة الاستخدام"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/ftth/fetch_server_data_page.dart",
+  "screen_ar": "جلب بيانات الموقع",
+  "purpose_ar": "WebView لتسجيل الدخول لموقع FTTH/Superset واعتراض الطلبات واستخراج بيانات المشتركين.",
+  "kind": "webview",
+  "theme_source": "hardcoded",
+  "header": "AppBar teal",
+  "dominant_colors": [
+   "Colors.teal",
+   "Colors.cyan",
+   "Colors.green",
+   "Colors.red"
+  ],
+  "issues_ar": [
+   "ملف ضخم (2951 سطر) يخلط منطق الاستخراج بالواجهة",
+   "94 لون Colors. مسمى",
+   "15 خط ≤11 (لوحة DevTools)",
+   "نصوص تشخيصية وإنجليزية تظهر للمستخدم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "أداة داخلية؛ الواجهة ثانوية",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/ftth/ftth_company_page.dart",
+  "screen_ar": "صفحة الشركة",
+  "purpose_ar": "WebView لصفحة الشركة على نظام FTTH مع دخول تلقائي وفتح في نافذة مستقلة.",
+  "kind": "webview",
+  "theme_source": "hardcoded",
+  "header": "AppBar indigo #1A237E مكتوب يدوياً",
+  "dominant_colors": [
+   "#1A237E"
+  ],
+  "issues_ar": [
+   "#1A237E مكتوب يدوياً بدل AppTheme.primaryColor",
+   "لا حالة خطأ مرئية سوى SnackBar"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/hr/employee_profile_page.dart",
+  "screen_ar": "بيانات HR / ملف الموظف",
+  "purpose_ar": "ملف الموظف بتبويبات الحضور والمهام والرواتب والصلاحيات والمعاملات والتقييم وتغيير كلمة المرور.",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "رأس مخصص #2C3E50 (نسخة محلية من ألوان Accounting)",
+  "dominant_colors": [
+   "#2C3E50",
+   "#3498DB",
+   "#F5F6FA",
+   "#FF9800"
+  ],
+  "issues_ar": [
+   "26 hex — ينسخ ألوان AccountingTheme محلياً بدل استيرادها",
+   "لون الدور يتحكم بالشريط (ألوان متغيرة)",
+   "بدون AppBar قياسي"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/iptv/iptv_subscribers_page.dart",
+  "screen_ar": "مشتركي IPTV",
+  "purpose_ar": "جدول مشتركي IPTV مع بحث وتصفية (الكل/فعال/غير فعال) وإضافة وحذف.",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar أبيض + زر deepPurple",
+  "dominant_colors": [
+   "#1E293B",
+   "#F5F7FA",
+   "#F1F5F9",
+   "#475569"
+  ],
+  "issues_ar": [
+   "ألوان slate من Tailwind مكتوبة يدوياً (19 hex)",
+   "DataTable غير مناسب للجوال",
+   "80 لون Colors. مسمى"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/login/premium_login_page.dart",
+  "screen_ar": "تسجيل الدخول",
+  "purpose_ar": "شاشة تسجيل الدخول باختيار الشركة واسم المستخدم وكلمة المرور وحفظ بيانات الدخول.",
+  "kind": "login",
+  "theme_source": "hardcoded",
+  "header": "none (خلفية متدرجة داكنة #0F0C29→#302B63)",
+  "dominant_colors": [
+   "#667EEA",
+   "#764BA2",
+   "#11998E",
+   "#1A1535"
+  ],
+  "issues_ar": [
+   "هوية بنفسجي/أخضر مختلفة كلياً عن indigo والثيمات الثلاثة",
+   "17 hex + 47 لون مسمى",
+   "1582 سطر لشاشة دخول",
+   "أول انطباع للمستخدم — يجب أن تحدد اللغة البصرية ثلاثية الأبعاد"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "مستوردة من 10 ملفات؛ أول شاشة للترحيل",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/properties/location_master_page.dart",
+  "screen_ar": "المناطق والعناوين",
+  "purpose_ar": "إدارة المناطق ونقاط العناوين (إضافة/تعديل/حذف) لنظام العقارات.",
+  "kind": "list",
+  "theme_source": "AppTheme",
+  "header": "AppBar AppTheme.primaryColor عبر PropUi",
+  "dominant_colors": [
+   "AppTheme.primaryColor",
+   "PropUi.pageBg"
+  ],
+  "issues_ar": [
+   "متسق نسبياً مع AppTheme عبر PropUi",
+   "حوارات مبنية يدوياً داخل الملف"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "وحدة العقارات هي الأنظف — نموذج للترحيل",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/properties/properties_list_page.dart",
+  "screen_ar": "سجل العقارات",
+  "purpose_ar": "قائمة العقارات مع بحث ومسح/إدخال رمز QR والانتقال للدفعات والمناطق.",
+  "kind": "list",
+  "theme_source": "AppTheme",
+  "header": "AppBar AppTheme.primaryColor عبر PropUi",
+  "dominant_colors": [
+   "AppTheme.primaryColor",
+   "PropUi.pageBg",
+   "#475569"
+  ],
+  "issues_ar": [
+   "hex واحد متبقٍ (#475569)",
+   "يستخدم orangeGradient من AppTheme بجانب الأساسي"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/properties/property_detail_page.dart",
+  "screen_ar": "تفاصيل العقار",
+  "purpose_ar": "تفاصيل العقار مع تبويبات المواطنين والخدمات ورمز QR وفتح الخرائط.",
+  "kind": "page",
+  "theme_source": "AppTheme",
+  "header": "AppBar AppTheme.primaryColor عبر PropUi",
+  "dominant_colors": [
+   "AppTheme.primaryColor",
+   "AppTheme.successColor",
+   "AppTheme.errorColor",
+   "#475569"
+  ],
+  "issues_ar": [
+   "ملف كبير (2143 سطر) مع ورقتين سفليتين مضمنتين",
+   "69 لون Colors. مسمى بجانب AppTheme"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/properties/property_form_page.dart",
+  "screen_ar": "إضافة/تعديل عقار",
+  "purpose_ar": "نموذج إدخال بيانات العقار (المحافظة والعنوان والموقع).",
+  "kind": "form",
+  "theme_source": "AppTheme",
+  "header": "AppBar AppTheme.primaryColor عبر PropUi",
+  "dominant_colors": [
+   "AppTheme.primaryColor",
+   "AppTheme.warningColor",
+   "PropUi.pageBg"
+  ],
+  "issues_ar": [
+   "قائمة المحافظات مكتوبة داخل الملف",
+   "حقول TextFormField بتنسيق محلي"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/properties/property_qr_batches_page.dart",
+  "screen_ar": "دفعات QR",
+  "purpose_ar": "توليد دفعات رموز QR وطباعتها ومعاينة حالات الرموز.",
+  "kind": "list",
+  "theme_source": "AppTheme",
+  "header": "AppBar AppTheme.primaryColor",
+  "dominant_colors": [
+   "AppTheme.primaryColor",
+   "AppTheme.successColor"
+  ],
+  "issues_ar": [
+   "3 Scaffolds/AppBars داخل نفس الملف",
+   "حوارات طباعة مبنية يدوياً"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/properties/property_qr_scanner.dart",
+  "screen_ar": "مسح رمز QR بالكاميرا",
+  "purpose_ar": "مسح رمز QR العقار بالكاميرا مع زر التقاط يدوي.",
+  "kind": "other",
+  "theme_source": "mixed",
+  "header": "AppBar أسود",
+  "dominant_colors": [
+   "#000000",
+   "AppTheme.primaryColor"
+  ],
+  "issues_ar": [
+   "الشريط الأسود مقبول لشاشة كاميرا",
+   "رسالة عدم وجود كاميرا بسيطة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/settings/company_firebase_settings_page.dart",
+  "screen_ar": "إعدادات الشركة",
+  "purpose_ar": "إعدادات مدير الشركة (الاسم ورقم الواتساب) وخيارات استلام التقارير.",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar رمادي مزرق #455A64",
+  "dominant_colors": [
+   "#455A64"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "لون شريط فريد لا يظهر في مكان آخر",
+   "اسم الملف يشير لـ Firebase (إرث)"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/settings/device_permissions_page.dart",
+  "screen_ar": "صلاحيات الأجهزة",
+  "purpose_ar": "إدارة أجهزة المستخدمين وتوليد أكواد تفعيل وتفعيل/تعطيل الأجهزة.",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar كحلي #1E3A5F",
+  "dominant_colors": [
+   "#1E3A5F",
+   "Colors.orange",
+   "Colors.green",
+   "Colors.red"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "لون شريط #1E3A5F مختلف",
+   "38 لون مسمى"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/settings/ftth_sync_settings_page.dart",
+  "screen_ar": "مزامنة FTTH",
+  "purpose_ar": "إعداد بيانات اتصال FTTH والمزامنة التلقائية ومسح السجلات من السيرفر.",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar أبيض",
+  "dominant_colors": [
+   "#F5F7FA",
+   "Colors.green",
+   "Colors.blue.shade700",
+   "Colors.red.shade600"
+  ],
+  "issues_ar": [
+   "أعلى ملف في المجموعة باستخدام Colors. (200)",
+   "33 حجم خط ≤11 — أسوأ قراءة",
+   "2008 سطر لشاشة إعدادات"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/add_company_page.dart",
+  "screen_ar": "إضافة شركة جديدة",
+  "purpose_ar": "معالج Stepper لإنشاء شركة (البيانات، المدير، الاشتراك).",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar indigo #1A237E مكتوب يدوياً",
+  "dominant_colors": [
+   "#1A237E"
+  ],
+  "issues_ar": [
+   "#1A237E مكتوب يدوياً بدل AppTheme",
+   "شريط indigo بينما edit_company يستخدم Energy — عدم اتساق إضافة/تعديل"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/agents_management_page.dart",
+  "screen_ar": "إدارة الوكلاء",
+  "purpose_ar": "إدارة الوكلاء وتبويبات المعاملات والعمولات مع شريط جانبي وتفاصيل الوكيل.",
+  "kind": "dashboard",
+  "theme_source": "AccountingTheme",
+  "header": "رأس مخصص bgCard مع تدرج neonPurple",
+  "dominant_colors": [
+   "AccountingTheme.bgPrimary",
+   "neonPurple",
+   "neonPink",
+   "neonGreen"
+  ],
+  "issues_ar": [
+   "192 استخدام لـ AccountingTheme (ألوان neon)",
+   "38 حجم خط ≤11 — أسوأ ملف في المجموعة",
+   "ملف ضخم (2972 سطر)"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/company_details_page.dart",
+  "screen_ar": "تفاصيل الشركة",
+  "purpose_ar": "تفاصيل شركة مع الحالة والإحصائيات والتصدير والدخول للشركة وحوارات الصلاحيات والمستخدمين.",
+  "kind": "page",
+  "theme_source": "mixed",
+  "header": "AppBar مخصص Premium (bgLightCard + تدرج وglow)",
+  "dominant_colors": [
+   "#4CAF50",
+   "#9C27B0",
+   "#FF9800",
+   "#2196F3"
+  ],
+  "issues_ar": [
+   "أسوأ ملف: 74 hex + 113 لون مسمى + 61 Energy",
+   "أكبر من 3800 سطر",
+   "_CompanyPermissionsDialog مكرر حرفياً في unified_companies_page",
+   "15 حواراً منبثقاً"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "يحتاج تفكيك قبل أي ترحيل",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/edit_company_page.dart",
+  "screen_ar": "تعديل الشركة",
+  "purpose_ar": "نموذج تعديل بيانات الشركة (الاسم، الهاتف، البريد، العنوان).",
+  "kind": "form",
+  "theme_source": "Energy",
+  "header": "AppBar Energy.primaryColor",
+  "dominant_colors": [
+   "Energy.primaryColor",
+   "Energy.backgroundColor",
+   "#3949AB"
+  ],
+  "issues_ar": [
+   "يستخدم Energy بينما add_company يستخدم indigo يدوي",
+   "تدرج LinearGradient محلي"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/permissions_management_v2_page.dart",
+  "screen_ar": "صلاحيات الموظف/الشركة (V2)",
+  "purpose_ar": "إدارة صلاحيات مفصلة لموظف أو شركة عبر تبويبات النظامين وإجراءات جماعية.",
+  "kind": "settings",
+  "theme_source": "mixed",
+  "header": "AppBar Energy.surfaceColor",
+  "dominant_colors": [
+   "#9C27B0",
+   "#4CAF50",
+   "#FF9800",
+   "#F39C12"
+  ],
+  "issues_ar": [
+   "64 hex — ثاني أسوأ ملف",
+   "ألوان Material وFlat UI مختلطة (#FF9800 و#F39C12)",
+   "اسم V2 يوحي بوجود نسخة قديمة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/sadara_portal_page.dart",
+  "screen_ar": "منصة الصدارة",
+  "purpose_ar": "بوابة طلبات منصة الصدارة (طلب رصيد، تسديد، شحن ماستر، تفعيل) مع بحث وفلتر وخريطة.",
+  "kind": "dashboard",
+  "theme_source": "AccountingTheme",
+  "header": "رأس مخصص bgCard بحدود",
+  "dominant_colors": [
+   "AccountingTheme.bgPrimary",
+   "neonPink",
+   "neonBlue",
+   "#25D366"
+  ],
+  "issues_ar": [
+   "138 AccountingTheme + 31 hex",
+   "15 خط ≤11",
+   "نصوص إنجليزية ظاهرة (Failed to load detail)",
+   "3085 سطر"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/super_admin_dashboard.dart",
+  "screen_ar": "لوحة تحكم مدير النظام",
+  "purpose_ar": "اللوحة الرئيسية لمدير النظام بقائمة جانبية للتنقل بين إدارة الشركات والوكلاء وغيرها.",
+  "kind": "dashboard",
+  "theme_source": "Energy",
+  "header": "رأس مخصص bgCard + خلفية backgroundGradient",
+  "dominant_colors": [
+   "#00E5FF",
+   "#EF4444",
+   "#1B263B",
+   "#1E3A5F"
+  ],
+  "issues_ar": [
+   "أكبر ملف (4043 سطر) ويضم _CitizenPortalMainPage داخلياً",
+   "226 استخدام Energy + 41 hex + 112 مسمى",
+   "نمط داكن neon مختلف عن لوحة الشركة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "الحاوية الأم لشاشات super_admin",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/tenant_features_page.dart",
+  "screen_ar": "إدارة ميزات الشركة",
+  "purpose_ar": "تفعيل/تعطيل ميزات النظامين لشركة معينة.",
+  "kind": "settings",
+  "theme_source": "mixed",
+  "header": "AppBar indigo #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#00E5FF"
+  ],
+  "issues_ar": [
+   "خلط indigo يدوي مع نصوص Energy (textPrimary فاتح على خلفية فاتحة؟)",
+   "نفس هيكل tenant_whatsapp_permissions تقريباً"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/tenant_whatsapp_permissions_page.dart",
+  "screen_ar": "صلاحيات الواتساب",
+  "purpose_ar": "تحديد أنظمة الواتساب المتاحة لشركة معينة.",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar أخضر واتساب #25D366",
+  "dominant_colors": [
+   "#25D366",
+   "#128C7E",
+   "#075E54",
+   "#1877F2"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "شريط بلون واتساب",
+   "تكرار هيكلي مع tenant_features_page"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "ادمجه في tenant_features_page كتبويب",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/unified_companies_page.dart",
+  "screen_ar": "إدارة الشركات",
+  "purpose_ar": "قائمة الشركات الموحدة من Internal API ببطاقات وحالات وتبويبات وحوار صلاحيات.",
+  "kind": "list",
+  "theme_source": "mixed",
+  "header": "رأس مخصص bgLightCard مع تدرج primaryGradient",
+  "dominant_colors": [
+   "#10B981",
+   "#EB3349",
+   "#F7971E",
+   "#DC2626"
+  ],
+  "issues_ar": [
+   "27 hex + 128 لون مسمى + 74 Energy",
+   "ينسخ _CompanyPermissionsDialog من company_details_page",
+   "2866 سطر",
+   "تدرجات ملونة عشوائية (#eb3349/#f45c43/#f7971e)"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "pages/super_admin/vps_data_manager_page.dart",
+  "screen_ar": "إدارة بيانات VPS",
+  "purpose_ar": "عرض وتعديل وحذف سجلات جداول قاعدة بيانات VPS (شركات، مستخدمين، مواطنين، طلبات...).",
+  "kind": "list",
+  "theme_source": "Energy",
+  "header": "AppBar bgLightCard مع أيقونة متدرجة",
+  "dominant_colors": [
+   "Energy.bgLight",
+   "#3B82F6",
+   "#1D4ED8",
+   "#F1F5F9"
+  ],
+  "issues_ar": [
+   "أداة إدارة قاعدة بيانات خام للمدير الأعلى",
+   "رموز تعبيرية في أسماء الجداول",
+   "رسائل SnackBar مكررة بألوان مسماة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "C_pages_sub"
+ },
+ {
+  "file": "ftth/auth/login_page.dart",
+  "screen_ar": "تسجيل الدخول (FTTH)",
+  "purpose_ar": "تسجيل دخول مستخدم FTTH (مدير/مدير مجمع/مستخدم) مع حفظ البيانات",
+  "kind": "login",
+  "theme_source": "hardcoded",
+  "header": "AppBar شفاف فوق تدرج بنفسجي #667EEA→#764BA2 مع رسام ألياف",
+  "dominant_colors": [
+   "#667EEA",
+   "#764BA2",
+   "#718096",
+   "#E53E3E"
+  ],
+  "issues_ar": [
+   "ألوان مكتوبة يدوياً (29 لون hex)",
+   "تدرج بنفسجي لا يمت لهوية التطبيق (نيلي/#2C3E50)",
+   "رسام خلفية مخصص (_FiberPainter) خارج نظام الثيم",
+   "لا يستخدم AppTheme إطلاقاً"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "شاشة دخول ثانية بجانب شاشات الدخول العامة؛ يجب توحيدها",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/core/home_page.dart",
+  "screen_ar": "لوحة التحكم",
+  "purpose_ar": "الصفحة الرئيسية لنظام FTTH/الوكيل: بطاقات إحصائية (نشط/منتهي/ينتهي قريباً) وأزرار للوصول لكل الأقسام وواتساب ويب",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "شريط مخصص بتدرج داكن #1E293B/#334155 (والتعليق يشير لنمط الحسابات #2C3E50)",
+  "dominant_colors": [
+   "#1A237E",
+   "#3498DB",
+   "#2C3E50",
+   "#1E293B"
+  ],
+  "issues_ar": [
+   "ملف ضخم 6473 سطراً يصعب صيانته",
+   "122 لون hex و195 لون Material مكتوبة يدوياً",
+   "يخلط ثلاث هويات: نيلي #1A237E وأزرق مسطح #3498DB وسليت #1E293B",
+   "24 تدرجاً لونياً مبعثراً بدل مكوّن بطاقة موحد",
+   "منطق WebView واتساب مدمج داخل صفحة الواجهة"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "أهم شاشة في المجموعة — نقطة البداية المثالية لنمط البلاطات ثلاثية الأبعاد",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/core/permissions_page.dart",
+  "screen_ar": "إدارة الصلاحيات",
+  "purpose_ar": "عرض وتعديل صلاحيات المستخدمين في نظام FTTH",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E",
+  "dominant_colors": [
+   "#1A237E"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "ألوان Material مباشرة (red[300..900])",
+   "لا يستخدم AppTheme رغم تطابق اللون معه"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/diagnostic/diagnostic_page.dart",
+  "screen_ar": "🔧 تشخيص التطبيق",
+  "purpose_ar": "عرض سجلات وفحوصات تشخيصية للتطبيق للمطورين",
+  "kind": "other",
+  "theme_source": "hardcoded",
+  "header": "AppBar داكن #16213E",
+  "dominant_colors": [
+   "#16213E",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "ثيم داكن خاص مختلف عن بقية التطبيق",
+   "رموز تعبيرية في العنوان"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "أداة مطور؛ يمكن إخفاؤها خلف وضع debug",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/reports/agents_details_page.dart",
+  "screen_ar": "تفاصيل الوكلاء",
+  "purpose_ar": "عرض قائمة الوكلاء وتفاصيلهم وأرصدتهم مع صفحة إضافة وكيل جديد",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج أزرق #283593→#1976D2→#64B5F6",
+  "dominant_colors": [
+   "#283593",
+   "#1976D2",
+   "#64B5F6"
+  ],
+  "issues_ar": [
+   "85 لون Material مباشر (red/green/orange)",
+   "صفحتان (قائمة + إضافة وكيل) في ملف واحد 2585 سطراً",
+   "تدرج الشريط مكرر حرفياً في ملفات أخرى"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "نفس تدرج #283593/#1976D2/#64B5F6 موجود في 5 ملفات",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/reports/audit_log_page.dart",
+  "screen_ar": "سجل التدقيق - {اسم المشترك}",
+  "purpose_ar": "عرض سجل العمليات والتغييرات على حساب مشترك",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج أزرق داكن #0F181F/#132736",
+  "dominant_colors": [
+   "#0F181F",
+   "#132736",
+   "#1976D2"
+  ],
+  "issues_ar": [
+   "تدرج داكن مختلف عن بقية الشاشات",
+   "59 لون Material مباشر",
+   "حركات ظهور مخصصة (_AnimatedAppear) خارج نظام موحد"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/reports/data_page.dart",
+  "screen_ar": "بيانات",
+  "purpose_ar": "حاوية تبويبات تجمع تفاصيل الوكلاء وبيانات المستخدمين",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج نيلي #1A237E→#3949AB→#5C6BC0",
+  "dominant_colors": [
+   "#1A237E",
+   "#3949AB",
+   "#5C6BC0"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "غلاف رقيق يكرر شاشات موجودة"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/reports/export_page.dart",
+  "screen_ar": "تصدير البيانات",
+  "purpose_ar": "تصدير بيانات المشتركين/المعاملات إلى ملفات مع حماية بكلمة مرور",
+  "kind": "form",
+  "theme_source": "mixed",
+  "header": "AppBar بتدرج مخصص + آخر بلون scheme.primary",
+  "dominant_colors": [
+   "#FF5722",
+   "#FFC107",
+   "#E040FB",
+   "#FF9800"
+  ],
+  "issues_ar": [
+   "11 تدرجاً بألوان صارخة (برتقالي/وردي) متعددة",
+   "شريطان مختلفان في الملف نفسه",
+   "يحتوي زر تصدير وصفحة معاً في ملف واحد"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/reports/profits_page.dart",
+  "screen_ar": "حساب الأرباح",
+  "purpose_ar": "حساب أرباح الوكيل وإضافتها وإعادة حسابها وتصديرها",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#6A1B9A",
+   "#4A148C",
+   "#2C3E50"
+  ],
+  "issues_ar": [
+   "170 لون Material و25 hex مكتوبة يدوياً",
+   "خلط نيلي/بنفسجي/#2C3E50 في شاشة واحدة",
+   "ملف كبير 3363 سطراً"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/reports/zones_page.dart",
+  "screen_ar": "الزونات",
+  "purpose_ar": "عرض المناطق (Zones) ونقاط FAT والبحث عنها مع صفحات فرعية للشركاء والمعاملات والإشعارات",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج Colors.blueAccent→blue[600] + أشرطة blueAccent للصفحات الفرعية",
+  "dominant_colors": [
+   "#448AFF",
+   "#1E88E5"
+  ],
+  "issues_ar": [
+   "صفحات فرعية 'قيد التطوير' (الشركاء) ظاهرة للمستخدم",
+   "4 Scaffold في ملف واحد",
+   "ألوان blueAccent مختلفة عن نيلي التطبيق"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/requests/customer_hub_page.dart",
+  "screen_ar": "مشترك جديد",
+  "purpose_ar": "مركز اختيار نوع طلب المشترك الجديد (تسجيل/توصيل)",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar بلون ثابت _primary #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#F5F6FA",
+   "#2C3E50",
+   "#00897B"
+  ],
+  "issues_ar": [
+   "ثوابت ألوان محلية مكررة (_primary) بدل الثيم",
+   "مزيج #667EEA و#2C3E50 و#1A237E في ملف صغير"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/requests/customer_onboarding_page.dart",
+  "screen_ar": "تسجيل مشترك جديد",
+  "purpose_ar": "نموذج متعدد الخطوات لتسجيل مشترك جديد مع صور وتوقيع وموقع على الخريطة",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar #1A237E (ثابت محلي)",
+  "dominant_colors": [
+   "#1A237E",
+   "#F5F6FA",
+   "#FAFAFA",
+   "#757575"
+  ],
+  "issues_ar": [
+   "111 لون Material مباشر (درجات grey)",
+   "ثوابت ألوان مكررة من customer_hub_page",
+   "سطور مضغوطة جداً يصعب صيانتها"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/subscriptions/all_subscriptions_details_page.dart",
+  "screen_ar": "كل الاشتراكات (تفاصيل كاملة)",
+  "purpose_ar": "عرض جميع الاشتراكات بتفاصيلها الكاملة",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج أزرق #283593→#1976D2→#64B5F6",
+  "dominant_colors": [
+   "#283593",
+   "#1976D2",
+   "#64B5F6"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "تدرج الشريط منسوخ من ملفات أخرى"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/subscriptions/connections_list_page.dart",
+  "screen_ar": "جميع الوصولات / وصولات المستخدم / وصولات الفني",
+  "purpose_ar": "قائمة وصولات (إيصالات) التوصيل مع فلترة حسب المستخدم أو الفني",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بنفسجي Colors.deepPurple",
+  "dominant_colors": [
+   "#673AB7",
+   "#757575",
+   "#43A047",
+   "#1976D2"
+  ],
+  "issues_ar": [
+   "165 لون Material مباشر",
+   "شريط بنفسجي مختلف عن بقية التطبيق",
+   "ملف 2233 سطراً"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/subscriptions/expiring_soon_page.dart",
+  "screen_ar": "الاشتراكات المنتهية قريباً / الاشتراكات التجريبية",
+  "purpose_ar": "عرض المشتركين الذين تنتهي اشتراكاتهم قريباً مع إجراءات تواصل وتجديد",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "ترويسة مخصصة بتدرج وردي/بنفسجي #EC4899→#6366F1",
+  "dominant_colors": [
+   "#EC4899",
+   "#6366F1",
+   "#FCE7F3",
+   "#E0E7FF"
+  ],
+  "issues_ar": [
+   "84 لون hex — ألوان Tailwind وردية لا علاقة لها بالهوية",
+   "ترويسة مخصصة بدل AppBar موحد",
+   "ملف 2850 سطراً"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "شاشة استخدام يومي للتجديد والمتابعة",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/subscriptions/plans_bundles_page.dart",
+  "screen_ar": "الباقات و العروض",
+  "purpose_ar": "عرض الباقات والعروض المتاحة كبطاقات",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.indigo.shade600",
+  "dominant_colors": [
+   "#3949AB",
+   "#303F9F",
+   "#616161"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "ظلال indigo Material بدل ثيم التطبيق"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/subscriptions/subscription_details_page.dart",
+  "screen_ar": "شراء اشتراك جديد / تجديد او تغيير الاشتراك",
+  "purpose_ar": "تفاصيل اشتراك المشترك مع الشراء والتجديد والتغيير والطباعة وإرسال واتساب",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar شفاف بتدرج مخصص + أشرطة فرعية",
+  "dominant_colors": [
+   "#FFFFFF",
+   "#000000",
+   "#4CAF50",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "أضخم ملف في المجموعة: 13367 سطراً",
+   "638 استخداماً لألوان Material مباشرة (الأعلى في المجموعة)",
+   "22 حوار و22 تدرجاً مبعثرة",
+   "خطوط صغيرة (fontSize ≤10) في 7 مواضع",
+   "منطق واتساب/طباعة/WebView مدمج بالواجهة"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "يجب تفكيكه إلى ويدجتات قبل الترحيل",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/subscriptions/subscriptions_page.dart",
+  "screen_ar": "المناطق / الاشتراكات",
+  "purpose_ar": "قائمة الاشتراكات مع فلاتر وتصدير Excel وإرسال واتساب جماعي",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج Colors.blue.shade600→800",
+  "dominant_colors": [
+   "#1E88E5",
+   "#1565C0",
+   "#FB8C00",
+   "#E53935"
+  ],
+  "issues_ar": [
+   "214 لون Material مباشر",
+   "ملف ضخم 5102 سطراً",
+   "شريط أزرق Material مختلف عن الرئيسية الداكنة",
+   "خطوط صغيرة في 3 مواضع"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tasks/customer_search_connect_page.dart",
+  "screen_ar": "بحث / المنطقة / الجهاز / التثبيت",
+  "purpose_ar": "معالج خطوات للبحث عن مشترك وتوصيله (اختيار FDT/FAT والجهاز ثم التثبيت)",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#F5F6FA",
+   "#3F51B5"
+  ],
+  "issues_ar": [
+   "#1A237E مكتوب يدوياً بدل AppTheme",
+   "العنوان يتغير مع الخطوة دون مؤشر تقدم موحد"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tasks/ftth_connect_form.dart",
+  "screen_ar": "توصيل مشترك",
+  "purpose_ar": "نموذج توصيل مشترك من مهمة FTTH",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#F5F6FA",
+   "#D32F2F"
+  ],
+  "issues_ar": [
+   "ألوان مكتوبة يدوياً تكرر AppTheme",
+   "يتداخل وظيفياً مع customer_search_connect_page"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tasks/ftth_tasks_page.dart",
+  "screen_ar": "مهام التوصيل — FTTH",
+  "purpose_ar": "قائمة مهام توصيل المشتركين",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#F5F6FA",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "ألوان مكتوبة يدوياً تكرر AppTheme",
+   "حالة الفراغ نصية بسيطة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tickets/TKTAT.dart",
+  "screen_ar": "TKTATs",
+  "purpose_ar": "نسخة قديمة مبسطة لقائمة التذاكر",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.blue[600]",
+  "dominant_colors": [
+   "#1E88E5"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "نسخة مكررة قديمة لصفحة التذاكر",
+   "عنوان إنجليزي واسم ملف بأحرف كبيرة"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tickets/create_ticket_page.dart",
+  "screen_ar": "التبليغ عن مشكلة",
+  "purpose_ar": "إنشاء تذكرة/بلاغ مشكلة مع مرفقات",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج أزرق #1565C0→#42A5F5",
+  "dominant_colors": [
+   "#1565C0",
+   "#42A5F5",
+   "#333333",
+   "#F5F7FA"
+  ],
+  "issues_ar": [
+   "35 لون hex مكتوب يدوياً",
+   "تدرج أزرق خاص لا يطابق بقية التذاكر",
+   "ألوان نص رمادية ثابتة (#333/#555) لا تدعم الوضع الداكن"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tickets/customer_tickets_page.dart",
+  "screen_ar": "تذاكر المشترك",
+  "purpose_ar": "عرض تذاكر مشترك محدد",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar شفاف بتدرج مخصص",
+  "dominant_colors": [
+   "#607D8B",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "ألوان Material مباشرة (blueGrey)",
+   "تدرج شريط مختلف عن صفحة التذاكر الرئيسية"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tickets/technicians_page.dart",
+  "screen_ar": "فني التوصيل",
+  "purpose_ar": "إدارة فنيي التوصيل وإضافة فني جديد",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "ترويسة بتدرج نيلي #1A237E→#3949AB",
+  "dominant_colors": [
+   "#1A237E",
+   "#3949AB",
+   "#D32F2F"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "ألوان مكتوبة يدوياً"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tickets/tickets_login_page.dart",
+  "screen_ar": "نظام التذاكر",
+  "purpose_ar": "تسجيل الدخول إلى نظام إدارة التذاكر (مع دخول تلقائي للمستخدم الميداني)",
+  "kind": "login",
+  "theme_source": "hardcoded",
+  "header": "بدون AppBar — خلفية بتدرج أزرق #1976D2/#1E88E5",
+  "dominant_colors": [
+   "#1976D2",
+   "#1E88E5",
+   "#1565C0"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "شاشة دخول ثالثة بتصميم مختلف",
+   "15 لون hex مكتوب يدوياً"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tickets/tktat_details_page.dart",
+  "screen_ar": "تفاصيل TKTAT",
+  "purpose_ar": "عرض تفاصيل تذكرة مع الإجراءات عليها",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج أزرق #283593→#1976D2→#64B5F6",
+  "dominant_colors": [
+   "#283593",
+   "#1976D2",
+   "#64B5F6",
+   "#3F51B5"
+  ],
+  "issues_ar": [
+   "عنوان بمصطلح تقني 'TKTAT' غير مفهوم للمستخدم",
+   "79 لون Material مباشر",
+   "تدرج منسوخ من ملفات أخرى"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tickets/tktat_raw_page.dart",
+  "screen_ar": "الحقول الخام للتذكرة",
+  "purpose_ar": "عرض JSON الخام للتذكرة مع إمكانية النسخ",
+  "kind": "other",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج أزرق #283593→#1976D2→#64B5F6",
+  "dominant_colors": [
+   "#283593",
+   "#1976D2",
+   "#37474F"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "شاشة مطور ظاهرة للمستخدم"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tickets/tktats_page.dart",
+  "screen_ar": "تطبيق FTTH (قائمة المهام/التذاكر)",
+  "purpose_ar": "القائمة الرئيسية لتذاكر/مهام FTTH مع فلاتر وإشعار بالمهام الجديدة",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar شفاف بتدرج أزرق/نيلي",
+  "dominant_colors": [
+   "#1E88E5",
+   "#3F51B5",
+   "#4CAF50",
+   "#FFF3E0"
+  ],
+  "issues_ar": [
+   "188 لون Material مباشر و17 hex",
+   "خطوط صغيرة جداً (≤10) في 7 مواضع",
+   "11 تدرجاً مبعثراً",
+   "ملف 2935 سطراً تستورده 4 ملفات"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "شاشة استخدام يومي",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/tickets/tktats_page_beautiful.dart",
+  "screen_ar": "TKTATs (نسخة بديلة)",
+  "purpose_ar": "نسخة تجريبية 'محسّنة' من قائمة التذاكر",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.blue[600]",
+  "dominant_colors": [
+   "#1E88E5",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "نسخة مكررة تعرّف نفس الصنف TKTATsPage",
+   "يبدو غير مستخدم (لا يستورده أي ملف)"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "يُحذف أو يُدمج",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/transactions/account_records_page.dart",
+  "screen_ar": "سجلات الحسابات",
+  "purpose_ar": "سجلات الحسابات المالية للوكيل مع فلاتر متعددة",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بنفسجي Colors.deepPurple",
+  "dominant_colors": [
+   "#673AB7",
+   "#1565C0",
+   "#E65100",
+   "#00695C"
+  ],
+  "issues_ar": [
+   "216 لون Material و28 hex",
+   "ملف 4315 سطراً",
+   "شريط بنفسجي مختلف عن الرئيسية"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/transactions/account_stats_page.dart",
+  "screen_ar": "إحصائيات السجلات",
+  "purpose_ar": "إحصائيات مجمعة لسجلات حسابات المستخدمين",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar بنفسجي Colors.deepPurple",
+  "dominant_colors": [
+   "#673AB7",
+   "#009688",
+   "#9C27B0",
+   "#FF9800"
+  ],
+  "issues_ar": [
+   "ألوان Material مباشرة متعددة (teal/purple/orange)",
+   "شريط بنفسجي مختلف عن بقية التطبيق"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/transactions/caounter_details_page.dart",
+  "screen_ar": "تفاصيل البيانات - {المستخدم}",
+  "purpose_ar": "تفاصيل عدّاد/معاملات مستخدم مع تصفية وتصدير Excel وGoogle Sheets",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.indigo",
+  "dominant_colors": [
+   "#3F51B5",
+   "#F44336",
+   "#757575"
+  ],
+  "issues_ar": [
+   "اسم ملف بخطأ إملائي (caounter)",
+   "131 لون Material مباشر",
+   "7 حوارات مبعثرة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/transactions/creator_amounts_page.dart",
+  "screen_ar": "مبالغ المنشئين (محمية بكلمة مرور)",
+  "purpose_ar": "تجميع مبالغ المعاملات حسب المنشئ والنوع (تعبئة، شراء، تجديد)",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#F5F7FA",
+   "#757575"
+  ],
+  "issues_ar": [
+   "#1A237E مكرر يدوياً 8 مرات",
+   "خطوط صغيرة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/transactions/creator_transactions_detail_page.dart",
+  "screen_ar": "تفاصيل معاملات",
+  "purpose_ar": "تفاصيل معاملات منشئ محدد مع خيارات الترتيب",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#2C3E50",
+   "#F5F7FA"
+  ],
+  "issues_ar": [
+   "120 لون Material مباشر",
+   "خلط #1A237E و#2C3E50",
+   "ملف 2383 سطراً"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/transactions/daily_settlement_page.dart",
+  "screen_ar": "التسديدات اليومية",
+  "purpose_ar": "تقرير التسديدات اليومية وإدارته وحذفه",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar بنفسجي Colors.deepPurple",
+  "dominant_colors": [
+   "#673AB7",
+   "#7B1FA2",
+   "#AD1457",
+   "#E65100"
+  ],
+  "issues_ar": [
+   "156 لون Material و24 hex بألوان وردية/بنفسجية/برتقالية",
+   "خطوط صغيرة في 4 مواضع",
+   "شريط بنفسجي مختلف"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/transactions/transactions_page.dart",
+  "screen_ar": "التحويلات",
+  "purpose_ar": "قائمة التحويلات/المعاملات المالية مع فلاتر المحفظة ونوع المبيعات",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E بتدرج",
+  "dominant_colors": [
+   "#1A237E",
+   "#2C3E50",
+   "#1976D2",
+   "#F5F7FA"
+  ],
+  "issues_ar": [
+   "أكثر ملف بخطوط صغيرة جداً (22 موضعاً fontSize ≤10)",
+   "249 لون Material و23 hex",
+   "ملف ضخم 5514 سطراً"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/users/quick_search_users_page.dart",
+  "screen_ar": "البحث السريع - المستخدمين",
+  "purpose_ar": "بحث سريع عن المشتركين بالاسم أو الهاتف والانتقال لتفاصيلهم",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E بتدرج",
+  "dominant_colors": [
+   "#1A237E",
+   "#4CAF50",
+   "#3949AB",
+   "#F5F6FA"
+  ],
+  "issues_ar": [
+   "37 لون hex مكتوب يدوياً",
+   "تأثير ثلج زخرفي (_Snowflake) خارج نظام التصميم",
+   "#1A237E مكرر 23 مرة بدل AppTheme"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "شاشة استخدام يومي تستوردها 4 ملفات",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/users/user_details_page.dart",
+  "screen_ar": "تفاصيل المستخدم",
+  "purpose_ar": "تفاصيل المشترك الكاملة (الجهاز، الشبكة، الاشتراك) مع تعديل الجهاز وإخفاء الشبكة",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.blue.shade700",
+  "dominant_colors": [
+   "#1976D2",
+   "#00B86B",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "410 استخداماً لألوان Material مباشرة",
+   "ملف ضخم 5856 سطراً و18 حواراً",
+   "خطوط صغيرة في 10 مواضع",
+   "أزرق Material مختلف عن نيلي الرئيسية"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "تستورده 5 ملفات — شاشة محورية",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/users/user_records_page.dart",
+  "screen_ar": "سجلات {اسم المستخدم}",
+  "purpose_ar": "سجلات عمليات مستخدم محدد",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بنفسجي Colors.deepPurple",
+  "dominant_colors": [
+   "#673AB7",
+   "#1565C0",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "شريط بنفسجي مختلف",
+   "خطوط صغيرة في 3 مواضع"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/users/user_transactions_page.dart",
+  "screen_ar": "معاملات: {اسم المستخدم}",
+  "purpose_ar": "معاملات مستخدم محدد",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بنفسجي Colors.deepPurple",
+  "dominant_colors": [
+   "#673AB7",
+   "#616161",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "يتداخل مع user_records_page"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/users/users_dashboard_webview.dart",
+  "screen_ar": "بيانات المستخدمين",
+  "purpose_ar": "عرض لوحة بيانات المستخدمين عبر WebView",
+  "kind": "webview",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.indigo",
+  "dominant_colors": [
+   "#3F51B5",
+   "#E65100"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "نفس العنوان المستخدم في users_data_page (تكرار)"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/users/users_data_page.dart",
+  "screen_ar": "بيانات المستخدمين",
+  "purpose_ar": "عرض بيانات المستخدمين مع تحديث ومعلومات",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.indigo",
+  "dominant_colors": [
+   "#3F51B5",
+   "#F44336",
+   "#757575"
+  ],
+  "issues_ar": [
+   "ألوان Material indigo بدل AppTheme",
+   "تكرار العنوان مع users_dashboard_webview"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/users/users_page.dart",
+  "screen_ar": "المشتركين",
+  "purpose_ar": "قائمة المشتركين مع البحث والتصفية وتصدير Excel",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرج Colors.blue.shade700→500",
+  "dominant_colors": [
+   "#1976D2",
+   "#2196F3",
+   "#E0E0E0"
+  ],
+  "issues_ar": [
+   "أزرق Material مختلف عن نيلي الرئيسية",
+   "ملف 1773 سطراً مع منطق تصدير مدمج"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/whatsapp/whatsapp_floating_window.dart",
+  "screen_ar": "واتساب ويب",
+  "purpose_ar": "نافذة واتساب ويب عائمة قابلة للتصغير",
+  "kind": "webview",
+  "theme_source": "hardcoded",
+  "header": "AppBar أخضر واتساب #25D366",
+  "dominant_colors": [
+   "#25D366"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "تكرار وظيفي لواتساب ويب المدمج في home_page وsubscription_details_page"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "D_ftth"
+ },
+ {
+  "file": "ftth/widgets/notifications_page.dart",
+  "screen_ar": "الإشعارات",
+  "purpose_ar": "عرض إشعارات النظام للوكيل",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#2C3E50",
+   "#F5F7FA",
+   "#1976D2"
+  ],
+  "issues_ar": [
+   "يبدو غير مستخدم (لا يستورده أي ملف)",
+   "خلط #1A237E و#2C3E50"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "zones_page تعرّف صفحة إشعارات أخرى منفصلة",
+  "group": "D_ftth"
+ },
+ {
+  "file": "sas_agent/pages/sas_admin_agents_page.dart",
+  "screen_ar": "إدارة الوكلاء",
+  "purpose_ar": "عرض وإدارة وكلاء الساس وحالة تفعيل حساباتهم",
+  "kind": "list",
+  "theme_source": "AppTheme",
+  "header": "AppBar صلب AppTheme.primaryColor + تدرّج، ارتفاع 60",
+  "dominant_colors": [
+   "#1A237E",
+   "#1A1A2E",
+   "#F4F6FB",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم",
+   "21 استخدام Colors.grey[...] بدرجات متفرقة (600/700/shade600)",
+   "ارتفاع شريط 60 مختلف عن بقية صفحات الوحدة (56)",
+   "13 استدعاء GoogleFonts/fontFamily داخل الصفحة بدل textTheme"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_bulk_import_page.dart",
+  "screen_ar": "استيراد جماعي",
+  "purpose_ar": "استيراد مشتركين من ملف Excel/CSV أو إدخال يدوي",
+  "kind": "form",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج blueGradient",
+  "dominant_colors": [
+   "#1A237E",
+   "#1A1A2E",
+   "#2E7D32",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "AppBar بتدرّج AppTheme.blueGradient منسوخ يدوياً (flexibleSpace)",
+   "34 استدعاء خط Cairo يدوي و15 fontSize ثابت",
+   "#1A1A2E مكرر 6 مرات",
+   "4 حوارات AlertDialog بتنسيق محلي غير موحد"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "1300 سطر — يستحق تقسيم لعناصر واجهة",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_bulk_message_page.dart",
+  "screen_ar": "إرسال جماعي",
+  "purpose_ar": "إرسال رسائل واتساب جماعية لمشتركين مفلترين",
+  "kind": "form",
+  "theme_source": "mixed",
+  "header": "AppBar بتدرّج blueGradient، ارتفاع 56",
+  "dominant_colors": [
+   "#1A237E",
+   "#25D366",
+   "#1A1A2E",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "أخضر واتساب #25D366 مكتوب يدوياً بدل ثابت مشترك",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم",
+   "22 استخدام Colors.* (grey بدرجات 600/700/black87)"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_debtors_page.dart",
+  "screen_ar": "المدينون",
+  "purpose_ar": "عرض المواطنين المدينين وإجمالي الذمم",
+  "kind": "list",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج blueGradient",
+  "dominant_colors": [
+   "#1A237E",
+   "#C62828",
+   "#1A1A2E",
+   "#F4F6FB"
+  ],
+  "issues_ar": [
+   "AppBar بتدرّج AppTheme.blueGradient منسوخ يدوياً (flexibleSpace)",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم",
+   "مبالغ IQD مُنسّقة يدوياً داخل الصفحة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_explorer_page.dart",
+  "screen_ar": "مستكشف الساس المتقدّم",
+  "purpose_ar": "متصفح مدمج يلتقط طلبات API لوحة الساس لتحليلها",
+  "kind": "webview",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج + عنوان بسطرين (Column)",
+  "dominant_colors": [
+   "#1A237E",
+   "#F7F8FC",
+   "#FFFFFF",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "خلفية #F7F8FC تختلف عن SasUi.pageBg (#F4F6FB)",
+   "36 استدعاء خط و33 fontSize ثابت — أعلى نسبة في الوحدة",
+   "شاشة تقنية للمطوّر (API/نقاط النهاية) ظاهرة للمستخدم",
+   "1576 سطراً في ملف واحد"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "يعمل فقط على ويندوز سطح المكتب",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_license_page.dart",
+  "screen_ar": "الترخيص والصلاحيات",
+  "purpose_ar": "عرض بيانات ترخيص حساب الساس وصلاحياته",
+  "kind": "report",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج blueGradient، 56",
+  "dominant_colors": [
+   "#1A237E",
+   "#1A1A2E",
+   "#F4F6FB"
+  ],
+  "issues_ar": [
+   "AppBar بتدرّج AppTheme.blueGradient منسوخ يدوياً (flexibleSpace)",
+   "حالة «لا بيانات» نص رمادي بدل SasEmptyView الموحد",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_package_prices_page.dart",
+  "screen_ar": "أسعار الباقات",
+  "purpose_ar": "ضبط أسعار باقات الاشتراك وتفعيلها",
+  "kind": "form",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج blueGradient",
+  "dominant_colors": [
+   "#1A237E",
+   "#1A1A2E",
+   "#2E7D32",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "AppBar بتدرّج AppTheme.blueGradient منسوخ يدوياً (flexibleSpace)",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم",
+   "ظلال BoxShadow محلية خارج SasUi.cardShadow"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_profits_page.dart",
+  "screen_ar": "تقرير الأرباح",
+  "purpose_ar": "تقرير الأرباح حسب الفترة الزمنية",
+  "kind": "report",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج greenGradient (يختلف عن بقية الوحدة)",
+  "dominant_colors": [
+   "#1A237E",
+   "#2E7D32",
+   "#43A047",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "لون شريط علوي أخضر بينما الصفحات الشقيقة زرقاء — لا قاعدة واضحة للون حسب القسم",
+   "منتقي الفترة نص بسيط «تغيير الفترة» بلا عنصر بصري واضح",
+   "لا ألوان hex لكنه يعتمد Colors.white/grey مباشرة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_regions_page.dart",
+  "screen_ar": "المناطق وأجور الصيانة",
+  "purpose_ar": "إدارة المناطق وأجور الصيانة لكل منطقة",
+  "kind": "list",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج orangeGradient",
+  "dominant_colors": [
+   "#1A237E",
+   "#F57C00",
+   "#FFFFFF",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "شريط برتقالي يخالف بقية الوحدة",
+   "4 حوارات (حذف/إضافة) بتنسيق محلي",
+   "22 استدعاء خط يدوي"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_reminders_page.dart",
+  "screen_ar": "الإشعارات والتذكير",
+  "purpose_ar": "جدولة وإرسال تذكيرات انتهاء الاشتراك عبر واتساب",
+  "kind": "settings",
+  "theme_source": "mixed",
+  "header": "AppBar بتدرّج blueGradient، 56",
+  "dominant_colors": [
+   "#1A237E",
+   "#25D366",
+   "#1A1A2E",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "#25D366 مكرر كلون زر الإرسال",
+   "29 استخدام AppTheme + 20 Colors.* مختلطة",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_reports_page.dart",
+  "screen_ar": "التقارير المجمّعة",
+  "purpose_ar": "تقارير التفعيلات والجلسات والفواتير مع جداول شهرية",
+  "kind": "report",
+  "theme_source": "AppTheme",
+  "header": "دالة _bar محلية تبني AppBar بتدرّج blueGradient",
+  "dominant_colors": [
+   "#1A237E",
+   "#1A1A2E",
+   "#F4F6FB",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "دالة _bar للشريط العلوي معرّفة محلياً ومنسوخة في sas_reports_tab",
+   "DataTable بتنسيق Material افتراضي لا يتبع الثيم",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_reports_tab.dart",
+  "screen_ar": "التقارير",
+  "purpose_ar": "تبويب مداخل التقارير (مجمّعة/حركات/مدينون)",
+  "kind": "dashboard",
+  "theme_source": "mixed",
+  "header": "AppBar بتدرّج في شاشة التقرير المفرد",
+  "dominant_colors": [
+   "#1A237E",
+   "#C62828",
+   "#EF5350",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "_SingleReportScreen مكررة حرفياً من sas_reports_page (حسب تعليق الكود)",
+   "تدرّج أحمر [errorColor, #EF5350] مكتوب يدوياً لبطاقة",
+   "بطاقات المداخل مسطحة بتدرّجات عشوائية"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_settings_tab.dart",
+  "screen_ar": "الإعدادات",
+  "purpose_ar": "مركز إعداد وحدة وكيل الساس (حساب، خادم، حسابات، أدوات)",
+  "kind": "settings",
+  "theme_source": "AppTheme",
+  "header": "بلا شريط (تبويب)؛ صفحة حسابات الساس الفرعية بتدرّج",
+  "dominant_colors": [
+   "#1A237E",
+   "#64748B",
+   "#FFFFFF",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "#64748B (slate) للتبويب غير المحدد مأخوذ من لوحة Tailwind غريبة عن AppTheme",
+   "26 Colors.* و3 تدرّجات محلية",
+   "يضم مداخل «مؤجلة» قد تربك المستخدم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_subscriber_detail_page.dart",
+  "screen_ar": "تفاصيل المشترك",
+  "purpose_ar": "عرض بيانات المشترك والإجراءات (تجديد/باقة/ترافيك/إلغاء)",
+  "kind": "page",
+  "theme_source": "mixed",
+  "header": "AppBar بتدرّج blueGradient بعنوان اسم المستخدم",
+  "dominant_colors": [
+   "#1A237E",
+   "#1A1A2E",
+   "#7B1FA2",
+   "#9C27B0"
+  ],
+  "issues_ar": [
+   "أسوأ ملف في الوحدة: 13 hex و48 Colors.* و70 استدعاء خط و42 fontSize ثابت",
+   "تدرّج بنفسجي [#7B1FA2,#9C27B0] منسوخ أيضاً في sas_subscriber_form_page",
+   "11 حواراً بتنسيقات مختلفة",
+   "#1A1A2E مكرر 7 مرات",
+   "2615 سطراً — يجب تفكيكه"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "أكثر شاشات الوحدة استخداماً يومياً",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_subscriber_form_page.dart",
+  "screen_ar": "مشترك جديد / تعديل المشترك",
+  "purpose_ar": "إنشاء أو تعديل حساب مشترك في الساس",
+  "kind": "form",
+  "theme_source": "mixed",
+  "header": "AppBar بتدرّج blueGradient",
+  "dominant_colors": [
+   "#1A237E",
+   "#7B1FA2",
+   "#9C27B0",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "تدرّج بنفسجي مكرر من صفحة التفاصيل",
+   "حقول بتنسيق InputDecoration محلي",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_test_message_page.dart",
+  "screen_ar": "إرسال رسالة تجريبية",
+  "purpose_ar": "تجربة قالب رسالة واتساب على رقم مع معاينة الفقاعة",
+  "kind": "form",
+  "theme_source": "mixed",
+  "header": "AppBar بتدرّج blueGradient، 56",
+  "dominant_colors": [
+   "#25D366",
+   "#128C7E",
+   "#E7FFDB",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "10 ألوان hex في صفحة صغيرة (ألوان هوية واتساب مكتوبة يدوياً)",
+   "ثوابت واتساب مكررة هنا وفي wa_settings/wa_templates",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_ticket_detail_page.dart",
+  "screen_ar": "تذكرة #",
+  "purpose_ar": "عرض تفاصيل تذكرة الدعم وإضافة ملاحظات",
+  "kind": "page",
+  "theme_source": "mixed",
+  "header": "AppBar صلب primaryColor بلا تدرّج وبلا elevation:0",
+  "dominant_colors": [
+   "#1A237E",
+   "#F4511E",
+   "#607D8B",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "الشريط العلوي بلا تدرّج — مخالف لبقية صفحات الوحدة",
+   "ألوان الأولوية (#F4511E، blueGrey) معرّفة محلياً",
+   "24 Colors.* (grey[850]/blueGrey)"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/pages/sas_transactions_page.dart",
+  "screen_ar": "سجل الحركات",
+  "purpose_ar": "سجل الحركات المالية للحساب مع تحميل المزيد",
+  "kind": "list",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج blueGradient",
+  "dominant_colors": [
+   "#1A237E",
+   "#1A1A2E",
+   "#2E7D32",
+   "#C62828"
+  ],
+  "issues_ar": [
+   "AppBar بتدرّج AppTheme.blueGradient منسوخ يدوياً (flexibleSpace)",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم",
+   "زر «تحميل المزيد» نصي بدل ترقيم/تحميل تلقائي موحد"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/premises/ui/premises_detail_screen.dart",
+  "screen_ar": "تفاصيل العقار",
+  "purpose_ar": "عرض بيانات العقار والعنوان الوطني والصور",
+  "kind": "page",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج blueGradient",
+  "dominant_colors": [
+   "#1A237E",
+   "#1A1A2E",
+   "#F4F6FB",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "#1A1A2E مكرر 6 مرات",
+   "AppBar بتدرّج AppTheme.blueGradient منسوخ يدوياً (flexibleSpace)",
+   "30 استدعاء خط يدوي",
+   "ورقة اختيار الصورة (كاميرا/ملفات) بتنسيق افتراضي"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/premises/ui/premises_form_screen.dart",
+  "screen_ar": "عقار جديد / تعديل عقار",
+  "purpose_ar": "إنشاء أو تعديل عقار مع تحديد الموقع",
+  "kind": "form",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج blueGradient",
+  "dominant_colors": [
+   "#1A237E",
+   "#1A1A2E",
+   "#475569",
+   "#F4F6FB"
+  ],
+  "issues_ar": [
+   "#475569 (slate) مستورد من لوحة أخرى",
+   "AppBar بتدرّج AppTheme.blueGradient منسوخ يدوياً (flexibleSpace)",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/premises/ui/premises_list_screen.dart",
+  "screen_ar": "العقارات",
+  "purpose_ar": "قائمة العقارات مع بحث وترقيم صفحات",
+  "kind": "list",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج، ارتفاع 62",
+  "dominant_colors": [
+   "#1A237E",
+   "#475569",
+   "#1A1A2E",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "ارتفاع شريط 62 (ثالث قيمة مختلفة في الوحدة)",
+   "شرائح فلترة بلون #475569 يدوي",
+   "ترقيم صفحات بأزرار نصية بسيطة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/sas_agent_page.dart",
+  "screen_ar": "وكيل الساس",
+  "purpose_ar": "الحاوية الرئيسية لوحدة الساس بالتبويبات (لوحة/مشتركون/تقارير/إعدادات)",
+  "kind": "dashboard",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج وارتفاع متغير toolbarH + TabBar",
+  "dominant_colors": [
+   "#1A237E",
+   "#FFFFFF",
+   "#64748B",
+   "#F4F6FB"
+  ],
+  "issues_ar": [
+   "23 استخدام Colors.white مباشرة لضمان التباين (تعليق في الكود يذكر اختفاء الأيقونات سابقاً)",
+   "#64748B للتبويب غير المحدد مكرر مع sas_settings_tab",
+   "حالة «اربط حساب ساس» فارغة بنمط مختلف عن SasEmptyView"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "نقطة الدخول للوحدة — مرشّح أول لترحيل الثيم",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/whatsapp/ui/wa_settings_screen.dart",
+  "screen_ar": "إعدادات واتساب",
+  "purpose_ar": "ربط خادم واتساب للوحدة وفحص الاتصال والقوالب",
+  "kind": "settings",
+  "theme_source": "mixed",
+  "header": "AppBar بتدرّج blueGradient",
+  "dominant_colors": [
+   "#25D366",
+   "#128C7E",
+   "#1A237E",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "ثابت _kWaGreen معرّف محلياً ومكرر في wa_templates_screen",
+   "تكرار وظيفي مع whatsapp/pages/whatsapp_server_settings_page (شاشتا إعداد واتساب في التطبيق)",
+   "لون النص #1A1A2E مكتوب يدوياً بدل لون نص من الثيم"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/whatsapp/ui/wa_templates_screen.dart",
+  "screen_ar": "قوالب الرسائل",
+  "purpose_ar": "إدارة وتعديل قوالب رسائل الواتساب",
+  "kind": "list",
+  "theme_source": "mixed",
+  "header": "دالة _waAppBar محلية (4 AppBar)",
+  "dominant_colors": [
+   "#25D366",
+   "#128C7E",
+   "#1A237E",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "دالة _waAppBar خاصة تكرر بناء الشريط بدل مكوّن مشترك",
+   "_kWaGreen مكرر",
+   "تدرّج واتساب يدوي"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "sas_agent/widgets/sas_citizen_statement.dart",
+  "screen_ar": "كشف: <اسم المشترك>",
+  "purpose_ar": "كشف حساب المواطن (شحنات، تسديدات، رصيد مستحق) مع تسديد على الذمة",
+  "kind": "report",
+  "theme_source": "AppTheme",
+  "header": "AppBar بتدرّج blueGradient (عند فتحه كصفحة)",
+  "dominant_colors": [
+   "#1A237E",
+   "#2E7D32",
+   "#C62828",
+   "#F4F6FB"
+  ],
+  "issues_ar": [
+   "ودجت داخل widgets/ يبني Scaffold كامل — خلط مكوّن وصفحة",
+   "25 استدعاء خط و16 fontSize ثابت",
+   "20 Colors.grey بدرجات متفرقة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "task/add_task_api_dialog.dart",
+  "screen_ar": "إضافة مهمة جديدة",
+  "purpose_ar": "حوار متعدد الخطوات لإنشاء مهمة (فني، مواد، اشتراك) عبر API",
+  "kind": "dialog-page",
+  "theme_source": "hardcoded",
+  "header": "AppBar بسيط + شريط خطوات محلي",
+  "dominant_colors": [
+   "#1A237E",
+   "#4CAF50",
+   "#2196F3",
+   "#E3F2FD"
+  ],
+  "issues_ar": [
+   "79 استخدام Colors.* (blue.shade50/200، red، green) بلا أي ثيم",
+   "لا يستورد AppTheme رغم تكرار #1A237E يدوياً 3 مرات",
+   "لا Directionality — يعتمد على اتجاه التطبيق",
+   "19 fontSize ثابت دون خط موحد"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "مستورد من 6 ملفات",
+  "group": "E1_modules"
+ },
+ {
+  "file": "task/audit_dashboard_page.dart",
+  "screen_ar": "لوحة تحكم التدقيق",
+  "purpose_ar": "إحصائيات تدقيق المهام الشهرية ونسبة الإنجاز",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "بلا AppBar — رأس مخصص بشارة تدرّج #64B5F6→#42A5F5",
+  "dominant_colors": [
+   "#0B1121",
+   "#111B2E",
+   "#4A9FFF",
+   "#2ECC71"
+  ],
+  "issues_ar": [
+   "ثيم داكن خاص بـ 12 ثابت لون محلي (_bgDark، _navy...) — رابع نظام ألوان مستقل",
+   "15 BoxShadow و6 تدرّجات محلية",
+   "51 fontSize ثابت",
+   "لا يستخدم TaskStatusColors رغم عرض حالات المهام"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "أقرب أسلوباً لثيم Energy الداكن دون استيراده",
+  "group": "E1_modules"
+ },
+ {
+  "file": "task/follow_up_page.dart",
+  "screen_ar": "المتابعة والتقييم",
+  "purpose_ar": "متابعة المهام المكتملة والملغية وتسجيل تدقيقها",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar صلب #1A1A2E مع أيقونة",
+  "dominant_colors": [
+   "#1A1A2E",
+   "#E67E22",
+   "#3498DB",
+   "#E74C3C"
+  ],
+  "issues_ar": [
+   "37 hex: لوحة Flat-UI (#3498DB/#E74C3C/#2ECC71/#9B59B6) نسخة من AccountingTheme دون استيرادها",
+   "لون الشريط #1A1A2E يخالف #1A237E في home_page_tasks",
+   "يستخدم TaskStatusColors مرة واحدة فقط ويعيد تعريف ألوان الحالات"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "task/home_page_tasks.dart",
+  "screen_ar": "المهام",
+  "purpose_ar": "الشاشة الرئيسية لقائمة المهام مع إحصائيات الحالات والتحصيل",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "بلا AppBar — رأس إحصائيات مخصص + FAB #1A237E",
+  "dominant_colors": [
+   "#F5F7FA",
+   "#1A237E",
+   "#E5E7EB",
+   "#FF8F00"
+  ],
+  "issues_ar": [
+   "أسوأ ملف في المجموعة: 67 hex و161 Colors.* و47 fontSize ثابت",
+   "يخلط لوحتين: رماديات Tailwind (#E5E7EB/#D1D5DB/#6B7280) مع Material (#FF8F00/#4FC3F7)",
+   "3574 سطراً — قائمة + إحصائيات + حوارات (8) في ملف واحد",
+   "#1A237E مكتوب يدوياً 6 مرات بدل AppTheme.primaryColor"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "يستخدم TaskStatusColors (24) — نقطة إيجابية يُبنى عليها",
+  "group": "E1_modules"
+ },
+ {
+  "file": "task/reports_page.dart",
+  "screen_ar": "التقارير / لوحة التحكم",
+  "purpose_ar": "تقارير المهام حسب القسم والفني ونوع المهمة مع فلاتر",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar بتدرّج [blueAccent, blue[700]] + SmartTextColor",
+  "dominant_colors": [
+   "#448AFF",
+   "#1976D2",
+   "#4CAF50",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "142 استخدام Colors.* مباشرة (green/red/orange 76 مرة للدلالة)",
+   "تدرّج الشريط أزرق فاتح يخالف كل شاشات المهام",
+   "50 fontSize ثابت",
+   "لا Directionality صريح"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "task/task_list_screen.dart",
+  "screen_ar": "المهام",
+  "purpose_ar": "غلاف يجلب المهام ويمررها إلى HomePageTasks مع تحديث تلقائي",
+  "kind": "other",
+  "theme_source": "hardcoded",
+  "header": "بلا شريط — Scaffold يغلف HomePageTasks",
+  "dominant_colors": [
+   "#4CAF50",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "طبقة غلاف رفيعة؛ الواجهة الفعلية في home_page_tasks",
+   "SnackBar بألوان Colors.green/red مباشرة",
+   "مؤشر تحميل CircularProgressIndicator افتراضي بلا هيكل"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "نقطة الدخول من home_page/modern_home_page",
+  "group": "E1_modules"
+ },
+ {
+  "file": "task/technician_performance_page.dart",
+  "screen_ar": "أداء الفنيين",
+  "purpose_ar": "إحصائيات ورسوم أداء الفنيين وترتيبهم",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar صلب #1A237E",
+  "dominant_colors": [
+   "#1A237E",
+   "#F5F7FA",
+   "#FFD700",
+   "#CD7F32"
+  ],
+  "issues_ar": [
+   "#1A237E مكرر 10 مرات يدوياً دون استيراد AppTheme",
+   "ألوان ميداليات (ذهبي/برونزي) محلية",
+   "25 hex + 35 Colors.*"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "task/technician_transactions_page.dart",
+  "screen_ar": "معاملاتي المالية",
+  "purpose_ar": "عرض المعاملات المالية للفني مع ترقيم صفحات",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "شريط أدوات مخصص #2C3E50 (أسلوب XONEPROO)",
+  "dominant_colors": [
+   "#2C3E50",
+   "#F5F6FA",
+   "#3498DB",
+   "#E74C3C"
+  ],
+  "issues_ar": [
+   "لا يستورده أي ملف (imported_by=0)",
+   "لوحة Flat-UI منسوخة من AccountingTheme كثوابت محلية",
+   "18 استدعاء خط يدوي"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشّح للحذف بعد التأكد من عدم استخدامه ديناميكياً",
+  "group": "E1_modules"
+ },
+ {
+  "file": "whatsapp/pages/whatsapp_server_settings_page.dart",
+  "screen_ar": "إعدادات WhatsApp Server",
+  "purpose_ar": "ربط رقم الشركة بخادم واتساب عبر QR وعرض الحالة وإرسال تجريبي",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar صلب #25D366",
+  "dominant_colors": [
+   "#25D366",
+   "#4CAF50",
+   "#F44336",
+   "#FF9800"
+  ],
+  "issues_ar": [
+   "135 Colors.* (red/green/orange/purple ~60 مرة)",
+   "85 استدعاء خط — الأعلى في المجموعة",
+   "حوارات خطأ تعرض تفاصيل تقنية (POST /session، TenantId) للمستخدم",
+   "12 حواراً بأنماط مختلفة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "مكرر وظيفياً مع sas_agent/whatsapp/ui/wa_settings_screen",
+  "group": "E1_modules"
+ },
+ {
+  "file": "whatsapp/pages/whatsapp_settings_hub_page.dart",
+  "screen_ar": "إعدادات الواتساب",
+  "purpose_ar": "مركز اختيار طريقة الواتساب (ويب، API، سيرفر، النظام)",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar #25D366 بتدرّج",
+  "dominant_colors": [
+   "#25D366",
+   "#128C7E",
+   "#075E54",
+   "#7C3AED"
+  ],
+  "issues_ar": [
+   "23 hex: 7 تدرّجات لبطاقات المداخل كل منها بلونين يدويين",
+   "بطاقات «فخمة» بأسلوب مختلف عن أي ثيم في التطبيق",
+   "ذهبي/برتقالي #FFD700/#FFA500 لشارات زخرفية"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "أقرب شاشة لمفهوم البلاطات — مرشحة كنموذج تجريبي للثيم ثلاثي الأبعاد",
+  "group": "E1_modules"
+ },
+ {
+  "file": "whatsapp/pages/whatsapp_system_settings_page.dart",
+  "screen_ar": "نظام الواتساب",
+  "purpose_ar": "اختيار نظام الواتساب المستخدم للإرسال",
+  "kind": "settings",
+  "theme_source": "hardcoded",
+  "header": "AppBar صلب بنفسجي #7C3AED",
+  "dominant_colors": [
+   "#7C3AED",
+   "#22C55E",
+   "#3B82F6",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "لون الشريط البنفسجي #7C3AED يختلف عن الهب الأخضر الذي يفتحه",
+   "لوحة Tailwind (#22C55E/#3B82F6) غريبة عن AppTheme",
+   "35 Colors.* (amber.shade700/grey.shade100)"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "",
+  "group": "E1_modules"
+ },
+ {
+  "file": "citizen_portal/pages/citizen_portal_dashboard_page.dart",
+  "screen_ar": "بوابة المواطن",
+  "purpose_ar": "لوحة إحصائيات بوابة المواطن للشركة المرتبطة",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar أخضر مزرق Colors.teal مكرر 3 مرات (تحميل/خطأ/محتوى)",
+  "dominant_colors": [
+   "#009688",
+   "#00796B",
+   "#2196F3",
+   "#FF9800"
+  ],
+  "issues_ar": [
+   "إحصائيات وهمية ثابتة '0' مع 5 تعليقات TODO — اللوحة لا تعرض بيانات حقيقية",
+   "لون teal خارج كل الثيمات الثلاثة ولا يطابق هوية التطبيق النيلية",
+   "لا Directionality RTL صريح على خلاف بقية الوحدات",
+   "بطاقات Card بارتفاع 4 وتدرج teal بسيط — لا تتبع نمط 3D"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "مستورد عبر barrel citizen_portal.dart من صفحات super_admin",
+  "group": "E2_modules"
+ },
+ {
+  "file": "citizen_portal/pages/companies_management_page.dart",
+  "screen_ar": "إدارة الشركات",
+  "purpose_ar": "ربط/فك ربط الشركات ببوابة المواطن وتفعيلها أو تعليقها",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.indigo (مادي افتراضي وليس 1A237E)",
+  "dominant_colors": [
+   "#3F51B5",
+   "#4CAF50",
+   "#F44336",
+   "#9E9E9E"
+  ],
+  "issues_ar": [
+   "Colors.indigo (#3F51B5) يختلف عن نيلي الثيم #1A237E — درجتان نيليتان متنافستان",
+   "شارات الحالة أخضر/أحمر مشبع بخلفية كاملة ونص أبيض بحجم 12",
+   "company.name.substring(0,1) ينهار إذا كان الاسم فارغاً",
+   "10 SnackBar وحوارات تأكيد بأزرار ملونة يدوياً"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/inventory_page.dart",
+  "screen_ar": "المخازن",
+  "purpose_ar": "الصفحة الرئيسية لوحدة المخزون: إحصائيات وإجراءات سريعة وشبكة أقسام وآخر الحركات",
+  "kind": "dashboard",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#388E3C",
+   "#E65100"
+  ],
+  "issues_ar": [
+   "46 لون hex — 23 لوناً مختلفاً، لون مستقل لكل بلاطة من 11 قسماً",
+   "حدود سوداء سميكة (Colors.black عرض 2) في 8 مواضع — أسلوب neo-brutalist يتعارض مع 3D والثيمات",
+   "صفوف 4 إحصائيات و5-6 بلاطات داخل Row/Expanded بلا أي تجاوب — تنضغط على الهاتف",
+   "دالة _buildSectionGridOld ميتة (ignore: unused_element) وwithOpacity مهمل ×4"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "بوابة الدخول لكل صفحات المخزون — ترحيلها أولاً يحدد شكل الوحدة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/customer_details_page.dart",
+  "screen_ar": "تفاصيل العميل",
+  "purpose_ar": "عرض بيانات العميل وفواتيره وكشف حسابه بتبويبات",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "حد أسود Colors.black في الجدول وwithOpacity مهمل ×3",
+   "2 تعليقات TODO متبقية",
+   "جداول Table بتمرير أفقي بلا تجاوب للهاتف"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/customer_form_page.dart",
+  "screen_ar": "إضافة عميل / تعديل عميل",
+  "purpose_ar": "نموذج إنشاء أو تعديل بيانات عميل",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "حقول TextField بتنسيق افتراضي بلا InputDecorationTheme موحّد",
+   "SnackBar نجاح/خطأ بـ Colors.green/red مكرر بدل مكوّن تنبيه موحّد"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/customers_page.dart",
+  "screen_ar": "العملاء",
+  "purpose_ar": "قائمة العملاء مع فلترة النوع (نقدي/آجل/VIP) والبحث والحذف",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#ECEFF5",
+   "#F8F9FC"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي + درجتا رمادي إضافيتان ECEFF5/F8F9FC",
+   "حدود سوداء Colors.black ×3 في الجدول (نفس نمط صفحة المخازن)",
+   "صنف _Cell مكرر محلياً (مكرر أيضاً في 5 صفحات أخرى)",
+   "لا تجاوب للهاتف"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/dispensing_form_page.dart",
+  "screen_ar": "صرف مواد",
+  "purpose_ar": "نموذج صرف مواد من المستودع لفني",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "حوار 'اختيار مواد متعددة' منسوخ حرفياً في 3 نماذج (صرف/شراء/فاتورة)",
+   "SnackBar نجاح/خطأ بـ Colors.green/red مكرر بدل مكوّن تنبيه موحّد"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/dispensing_page.dart",
+  "screen_ar": "صرف الفنيين",
+  "purpose_ar": "سجل سندات الصرف والمواد بحوزة كل فني",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "43 استخدام Colors.* (red/green/orange ×~10 لكل منها) — أعلى رقم في الوحدة",
+   "12 SnackBar ملوّنة يدوياً",
+   "شارات الحالة _statusChip مكررة مع 5 صفحات أخرى",
+   "جدول DataTable مسطح مع تمرير أفقي فقط"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/inventory_reports_page.dart",
+  "screen_ar": "تقارير المخزون",
+  "purpose_ar": "تقارير أرصدة المخزون والمواد بحوزة الفنيين",
+  "kind": "report",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#2196F3",
+   "#009688"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "لا رسوم بيانية — التقارير جداول نصية فقط",
+   "Colors.teal.shade100 وblue ألوان عشوائية بلا دلالة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/invoice_details_page.dart",
+  "screen_ar": "تفاصيل الفاتورة",
+  "purpose_ar": "عرض بنود الفاتورة وتأكيدها",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "صنف _Cell مكرر محلياً",
+   "شارات حالة مكررة",
+   "لا إمكانية طباعة/PDF من شاشة التفاصيل"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/invoice_form_page.dart",
+  "screen_ar": "فاتورة بيع جديدة / فاتورة شراء جديدة",
+  "purpose_ar": "نموذج إنشاء فاتورة بيع أو شراء ببنود وخصومات",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "أكبر ملف في الوحدة (1028 سطراً) — يحتاج تقسيماً لمكوّنات",
+   "حوار 'اختيار مواد متعددة' مكرر",
+   "شريط سفلي بخلفية 1A1A2E صلبة لا يتسق مع AppBar الفاتح",
+   "7 أحجام خط مختلفة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/invoices_page.dart",
+  "screen_ar": "الفواتير",
+  "purpose_ar": "قائمة الفواتير بتبويبات بيع/شراء مع تأكيد وإلغاء",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "37 استخدام Colors.* (grey ×11، red ×8، green ×7)",
+   "10 استدعاءات _Cell — جدول مبني يدوياً بدل مكوّن جدول موحّد",
+   "حد أسود Colors.black",
+   "حوارات تأكيد بزر أحمر مكررة"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/materials_page.dart",
+  "screen_ar": "المواد والأصناف",
+  "purpose_ar": "إدارة المواد والتصنيفات وتنبيه نقص المخزون",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#F44336",
+   "#009688"
+  ],
+  "issues_ar": [
+   "26 Dialog في ملف واحد — أكثر ملف حوارات في المجموعة",
+   "حوار إدارة التصنيفات مضمّن داخل الصفحة",
+   "تمييز النقص Colors.red.shade50 يدوي",
+   "31 استخدام Colors.*"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/movements_page.dart",
+  "screen_ar": "حركات المخزون",
+  "purpose_ar": "سجل حركات الإدخال والإخراج والتحويل",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "ألوان الحركة (داخل/خارج) green/red مباشرة بلا رموز دلالية",
+   "DataTable مسطح"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/purchase_form_page.dart",
+  "screen_ar": "أمر شراء جديد / تعديل أمر شراء",
+  "purpose_ar": "نموذج إنشاء أو تعديل أمر شراء",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "مستورد فقط من purchases_page غير المستخدمة — ميت بالتبعية",
+   "حوار 'اختيار مواد متعددة' مكرر",
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "حلّت محله invoice_form_page (فاتورة شراء)",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/purchases_page.dart",
+  "screen_ar": "أوامر الشراء",
+  "purpose_ar": "قائمة أوامر الشراء",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "غير مستوردة من أي ملف (imported_by=0) — صفحة ميتة",
+   "غير موجودة في شبكة أقسام المخازن",
+   "12 SnackBar و8 حوارات"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشحة للحذف بدل الترحيل",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/return_form_page.dart",
+  "screen_ar": "مرتجع مبيعات / مرتجع مشتريات",
+  "purpose_ar": "نموذج إنشاء مرتجع على فاتورة",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "صنف _Cell مكرر",
+   "SnackBar نجاح/خطأ بـ Colors.green/red مكرر بدل مكوّن تنبيه موحّد"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/returns_page.dart",
+  "screen_ar": "المرتجعات",
+  "purpose_ar": "قائمة المرتجعات مع تأكيد/حذف/إلغاء",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "3 حوارات تأكيد شبه متطابقة داخل الملف",
+   "4 جداول Table يدوية + _Cell مكرر",
+   "SnackBar نجاح/خطأ بـ Colors.green/red مكرر بدل مكوّن تنبيه موحّد"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/sale_form_page.dart",
+  "screen_ar": "بيع جديد",
+  "purpose_ar": "نموذج بيع (نظام قديم)",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "مستورد فقط من sales_page غير المستخدمة — ميت بالتبعية",
+   "مكرر وظيفياً مع invoice_form_page (فاتورة بيع)"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/sales_page.dart",
+  "screen_ar": "المبيعات",
+  "purpose_ar": "قائمة عمليات البيع (نظام قديم)",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "غير مستوردة من أي ملف (imported_by=0) — صفحة ميتة",
+   "مكررة وظيفياً مع invoices_page"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "مرشحة للحذف",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/stock_levels_page.dart",
+  "screen_ar": "مستويات المخزون",
+  "purpose_ar": "أرصدة المواد في المستودعات مع الجرد والتحويل",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#F44336",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "9 حوارات (جرد/تحويل) بتنسيق افتراضي",
+   "شارات مستوى المخزون ملونة يدوياً"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/suppliers_page.dart",
+  "screen_ar": "الموردين",
+  "purpose_ar": "إدارة الموردين (إضافة/تعديل/حذف)",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "نموذج المورد داخل حوار AlertDialog بدل صفحة/BottomSheet موحد"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/voucher_form_page.dart",
+  "screen_ar": "سند قبض / سند صرف",
+  "purpose_ar": "نموذج إنشاء سند قبض أو صرف",
+  "kind": "form",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "SnackBar نجاح/خطأ بـ Colors.green/red مكرر بدل مكوّن تنبيه موحّد"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/vouchers_page.dart",
+  "screen_ar": "سندات القبض والصرف",
+  "purpose_ar": "قائمة السندات بتبويبات مع الحذف وعكس الأرصدة",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E"
+  ],
+  "issues_ar": [
+   "4 جداول Table يدوية + _Cell مكرر",
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "inventory/pages/warehouses_page.dart",
+  "screen_ar": "المستودعات",
+  "purpose_ar": "إدارة المستودعات وتحديد الافتراضي",
+  "kind": "list",
+  "theme_source": "hardcoded",
+  "header": "AppBar مسطح F5F6FA بنص داكن 1A1A2E، elevation 0",
+  "dominant_colors": [
+   "#F5F6FA",
+   "#1A1A2E",
+   "#4CAF50"
+  ],
+  "issues_ar": [
+   "ثنائي الألوان F5F6FA/1A1A2E مكرر حرفياً في كل صفحات المخزون بدل ثيم مركزي",
+   "10 حوارات — النموذج داخل AlertDialog"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/network_quality_home_page.dart",
+  "screen_ar": "أدوات الراوتر والشبكة",
+  "purpose_ar": "الصفحة الرئيسية لأدوات فحص جودة الإنترنت والراوتر",
+  "kind": "dashboard",
+  "theme_source": "module-theme",
+  "header": "nq3dAppBar نيلي 1A237E بحافة سفلية بارزة",
+  "dominant_colors": [
+   "#1A237E",
+   "#F2F4F8",
+   "#00838F",
+   "#26A69A"
+  ],
+  "issues_ar": [
+   "المرجع المطلوب للنمط 3D — لكن ثيم Nq3d محصور داخل widgets/depth_3d.dart (2493 سطراً) وليس في theme/",
+   "3 ألوان hex إضافية خارج Nq3d (CFE7EA، 26A69A، 7300838F)",
+   "مستوردة فقط من premium_login_page — مدخل غير معتاد من شاشة الدخول"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "مرجع النمط: يُستخرج Nq3d إلى ثيم مركزي",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/advanced_tools_page.dart",
+  "screen_ar": "فحص متقدم",
+  "purpose_ar": "قائمة الأدوات المتقدمة (DNS، مراقبة حية، قنوات WiFi، السجل، تعديل WiFi)",
+  "kind": "dashboard",
+  "theme_source": "module-theme",
+  "header": "nq3dAppBar نيلي 1A237E بحافة سفلية بارزة",
+  "dominant_colors": [
+   "#1A237E",
+   "#283593",
+   "#5C6BC0",
+   "#5E35B1"
+  ],
+  "issues_ar": [
+   "15 لون hex محلي لحواف/توهج كل بطاقة رغم وجود Nq3d.indigoSoft/glow",
+   "_ToolCard محلي يكرر بطاقة 3D من depth_3d"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/device_detail_page.dart",
+  "screen_ar": "تفاصيل الجهاز (اسم الجهاز)",
+  "purpose_ar": "هوية الجهاز والوصول والإشارة الضوئية والأجهزة المتصلة",
+  "kind": "page",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي 1A237E عادي بلا حافة 3D",
+  "dominant_colors": [
+   "#1A237E",
+   "#F2F4F8",
+   "#00838F",
+   "#00695C"
+  ],
+  "issues_ar": [
+   "لم تُرحَّل إلى نمط 3D — لا تستورد depth_3d وتعيد تعريف _indigo محلياً",
+   "Card عادية ×7 مع Colors.grey/orange بدل Nq3d",
+   "أسلوبها يختلف بصرياً عن صفحة النتائج التي تفتحها"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "أسهل ترحيل: نفس الوحدة ونفس الألوان",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/dns_benchmark_page.dart",
+  "screen_ar": "اختبار ومقارنة DNS",
+  "purpose_ar": "قياس سرعة مزودي DNS واقتراح الأسرع",
+  "kind": "report",
+  "theme_source": "module-theme",
+  "header": "nq3dAppBar نيلي 1A237E بحافة سفلية بارزة",
+  "dominant_colors": [
+   "#1A237E",
+   "#F2F4F8",
+   "#F9A825",
+   "#C62828"
+  ],
+  "issues_ar": [
+   "ألوان التقييم (أخضر/أصفر/أحمر) hex محلية مكررة في كل صفحات الوحدة",
+   "F7F9FA قريب جداً من Nq3d.ground ولكن مختلف"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/history_trend_page.dart",
+  "screen_ar": "السجلّ والاتجاه",
+  "purpose_ar": "اتجاه نتائج الفحوص عبر الوقت ومسح السجل",
+  "kind": "report",
+  "theme_source": "module-theme",
+  "header": "nq3dAppBar نيلي 1A237E بحافة سفلية بارزة",
+  "dominant_colors": [
+   "#1A237E",
+   "#26A69A",
+   "#EF6C00",
+   "#6A1B9A"
+  ],
+  "issues_ar": [
+   "10 hex محلية لألوان السلاسل بدل لوحة ألوان رسوم مركزية",
+   "8 أحجام خط مختلفة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/live_monitor_page.dart",
+  "screen_ar": "المراقبة الحيّة",
+  "purpose_ar": "مراقبة فورية لاستقرار الاتصال برسم ping حي",
+  "kind": "dashboard",
+  "theme_source": "module-theme",
+  "header": "nq3dAppBar نيلي 1A237E بحافة سفلية بارزة",
+  "dominant_colors": [
+   "#1A237E",
+   "#2E7D32",
+   "#EF6C00",
+   "#C62828"
+  ],
+  "issues_ar": [
+   "4 درجات أحمر مختلفة (E53935، C62828، B71C1C…) لنفس الدلالة",
+   "ألوان الحالة hex محلية مكررة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/optical_webview_page.dart",
+  "screen_ar": "قراءة البصريات عبر المتصفح",
+  "purpose_ar": "قراءة قيم الإشارة الضوئية من صفحة الراوتر عبر WebView",
+  "kind": "webview",
+  "theme_source": "hardcoded",
+  "header": "AppBar نيلي 1A237E عادي",
+  "dominant_colors": [
+   "#1A237E",
+   "#F2F4F8",
+   "#00838F"
+  ],
+  "issues_ar": [
+   "غير مستوردة من أي ملف (imported_by=0)",
+   "تعيد تعريف _indigo محلياً بدل Nq3d",
+   "لم تُرحّل إلى نمط 3D"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "notes_ar": "تحقّق من استخدامها عبر مسار ديناميكي قبل الحذف",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/quality_results_page.dart",
+  "screen_ar": "نتيجة فحص الجودة",
+  "purpose_ar": "عرض نتائج فحص الجودة: الدرجة والسرعة والاستجابة وتتبّع المسار والإشارة الضوئية",
+  "kind": "report",
+  "theme_source": "module-theme",
+  "header": "nq3dAppBar نيلي 1A237E بحافة سفلية بارزة",
+  "dominant_colors": [
+   "#1A237E",
+   "#00695C",
+   "#F9A825",
+   "#607D8B"
+  ],
+  "issues_ar": [
+   "أكبر ملف في المجموعة (1474 سطراً) — 39 hex و39 Colors.*",
+   "يعيد تعريف _indigo/_teal/_purple/_green محلياً رغم وجودها في Nq3d",
+   "Colors.grey ×21 بدل Nq3d.muted/faint",
+   "11 حجم خط مختلف",
+   "يخلط Card عادية ×15 مع مكوّنات 3D"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "أقرب للمرجع لكن يحتاج تنظيف رموز",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/quality_scan_page.dart",
+  "screen_ar": "فحص جودة الإنترنت",
+  "purpose_ar": "تشغيل فحص الجودة ومتابعة مراحله بمنصة تقدّم 3D",
+  "kind": "page",
+  "theme_source": "module-theme",
+  "header": "nq3dAppBar نيلي 1A237E بحافة سفلية بارزة",
+  "dominant_colors": [
+   "#1A237E",
+   "#0F1660",
+   "#283593",
+   "#C62828"
+  ],
+  "issues_ar": [
+   "قيم hex تكرر Nq3d.indigoDark/glow حرفياً بدل الإشارة إليها"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "notes_ar": "أنظف صفحة في الوحدة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/router_wifi_edit_page.dart",
+  "screen_ar": "تعديل WiFi الراوتر",
+  "purpose_ar": "تغيير اسم وكلمة مرور WiFi لراوترات Huawei/ZTE",
+  "kind": "form",
+  "theme_source": "module-theme",
+  "header": "nq3dAppBar نيلي 1A237E بحافة سفلية بارزة",
+  "dominant_colors": [
+   "#1A237E",
+   "#00695C",
+   "#C62828",
+   "#E65100"
+  ],
+  "issues_ar": [
+   "21 hex محلي — الأعلى في الوحدة بعد النتائج",
+   "F5F7FB درجة خلفية ثالثة إضافة إلى F2F4F8/F7F9FA",
+   "حوار التأكيد بتنسيق Material افتراضي لا 3D"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "network_quality/pages/wifi_channel_analyzer_page.dart",
+  "screen_ar": "محلّل قنوات WiFi",
+  "purpose_ar": "عرض ازدحام القنوات واقتراح الأفضل 2.4/5GHz",
+  "kind": "report",
+  "theme_source": "module-theme",
+  "header": "nq3dAppBar نيلي 1A237E بحافة سفلية بارزة",
+  "dominant_colors": [
+   "#1A237E",
+   "#2E7D32",
+   "#F9A825",
+   "#C62828"
+  ],
+  "issues_ar": [
+   "17 hex محلي لألوان القنوات/الحالة",
+   "10 أحجام خط مختلفة"
+  ],
+  "dead_suspect": false,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "permissions/permission_gate.dart",
+  "screen_ar": "غير مصرح (أو اسم الصفحة)",
+  "purpose_ar": "حارس صلاحيات يعرض صفحة 'غير مصرح بالوصول' عند الرفض",
+  "kind": "dialog-page",
+  "theme_source": "hardcoded",
+  "header": "AppBar داكن 1a1a2e على خلفية سوداء 0a0a0a",
+  "dominant_colors": [
+   "#0A0A0A",
+   "#1A1A2E",
+   "#FFA000",
+   "#F44336"
+  ],
+  "issues_ar": [
+   "صفحة رفض داكنة سوداء وسط تطبيق فاتح — قفزة بصرية حادة",
+   "زر رجوع كهرماني amber[700] بنص أسود خارج كل الثيمات",
+   "مكرر اسماً مع widgets/permissions_gate.dart (PermissionGate مقابل PermissionsGate) لوظيفتين مختلفتين"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "تظهر في كل وحدة محمية (33 ملفاً تستورد permissions.dart)",
+  "group": "E2_modules"
+ },
+ {
+  "file": "widgets/auth_guard.dart",
+  "screen_ar": "جاري التحقق من الجلسة...",
+  "purpose_ar": "حارس جلسة يعيد التوجيه لشاشة الدخول",
+  "kind": "other",
+  "theme_source": "hardcoded",
+  "header": "بدون AppBar — مؤشر تحميل فقط",
+  "dominant_colors": [],
+  "issues_ar": [
+   "غير مستورد من أي ملف (الإشارة الوحيدة اسم اختبار في diagnostic_service)",
+   "شاشة تحميل افتراضية بلا هوية"
+  ],
+  "dead_suspect": true,
+  "priority": "منخفضة",
+  "group": "E2_modules"
+ },
+ {
+  "file": "widgets/permissions_gate.dart",
+  "screen_ar": "السماح للتطبيق بالوصول للموقع",
+  "purpose_ar": "طلب إذن الموقع عند أول تشغيل قبل شاشة الدخول",
+  "kind": "other",
+  "theme_source": "hardcoded",
+  "header": "بدون AppBar — زر وحيد وسط الشاشة",
+  "dominant_colors": [
+   "#1565C0"
+  ],
+  "issues_ar": [
+   "أول شاشة يراها المستخدم: زر أزرق Colors.blue[800] وحيد على خلفية بيضاء بلا شرح أو شعار",
+   "لا Directionality RTL",
+   "اسم مربك مع permissions/permission_gate.dart"
+  ],
+  "dead_suspect": false,
+  "priority": "عالية",
+  "notes_ar": "مستخدم في main.dart قبل loginPage — انطباع أول",
+  "group": "E2_modules"
+ },
+ {
+  "file": "widgets/platform_webview.dart",
+  "screen_ar": "(عنوان ديناميكي)",
+  "purpose_ar": "مستعرض ويب موحد لويندوز/موبايل مع فتح خارجي وتشخيص",
+  "kind": "webview",
+  "theme_source": "hardcoded",
+  "header": "AppBar Colors.blue مادي افتراضي",
+  "dominant_colors": [
+   "#2196F3",
+   "#4CAF50",
+   "#F44336",
+   "#FFFFFF"
+  ],
+  "issues_ar": [
+   "Colors.blue (#2196F3) خارج كل الثيمات — يظهر كجسم غريب داخل صفحات التطبيق",
+   "أزرار خطأ أزرق/أخضر مشبعة",
+   "لا Directionality RTL"
+  ],
+  "dead_suspect": false,
+  "priority": "متوسطة",
+  "notes_ar": "مستخدم من webview_page و ftth/core/home_page",
+  "group": "E2_modules"
+ }
+]

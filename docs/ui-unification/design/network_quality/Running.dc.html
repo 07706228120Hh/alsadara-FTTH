@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>جارٍ الفحص</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A237E}a:hover{color:#0F1660}
+.press{transition:transform .15s ease}
+.press:active{transform:translateY(4px)}
+</style>
+</helmet>
+<div dir="rtl" style="width: 400px; height: 860px; box-sizing: border-box; background: #F2F4F8; font-family: 'Cairo', sans-serif; color: #1B1E2B; display: flex; flex-direction: column; overflow: hidden">
+
+  <header style="height: 64px; flex: none; background: #1A237E; color: #FFFFFF; display: flex; align-items: center; gap: 8px; padding: 0 8px; box-shadow: 0 6px 0 #0F1660, 0 14px 24px -10px rgba(15,22,96,.6); position: relative; z-index: 2">
+    <a href="Scan.dc.html" aria-label="رجوع" style="width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,.08); color: #FFFFFF; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+    </a>
+    <h1 style="margin: 0; font-size: 18px; font-weight: 800; flex: 1; text-align: center; padding-left: 52px">فحص جودة الإنترنت</h1>
+  </header>
+
+  <section style="padding: 10px 20px 0; display: flex; flex-direction: column; align-items: center">
+    <svg width="360" height="270" viewBox="0 0 360 270" role="img" aria-label="منصة تقدّم ثلاثية الأبعاد تعرض نسبة إنجاز الفحص">
+      <defs>
+        <linearGradient id="beam" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stop-color="#00ACC1" stop-opacity=".45"></stop>
+          <stop offset="1" stop-color="#00ACC1" stop-opacity="0"></stop>
+        </linearGradient>
+      </defs>
+      <ellipse cx="180" cy="236" rx="152" ry="22" fill="rgba(26,35,126,.10)"></ellipse>
+      <ellipse cx="180" cy="216" rx="140" ry="54" fill="#C5CBE0"></ellipse>
+      <rect x="40" y="200" width="280" height="16" fill="#C5CBE0"></rect>
+      <ellipse cx="180" cy="200" rx="140" ry="54" fill="#FFFFFF" stroke="#DCE0EC"></ellipse>
+      <ellipse cx="180" cy="200" rx="100" ry="38.5" fill="none" stroke="#E6E9F3"></ellipse>
+      <ellipse cx="180" cy="200" rx="66" ry="25.5" fill="none" stroke="#E6E9F3"></ellipse>
+      <ellipse cx="180" cy="200" rx="30" ry="11" fill="none" stroke="#00ACC1" stroke-width="2" opacity=".6">
+        <animate attributeName="rx" values="20;120" dur="2.2s" repeatCount="indefinite"></animate>
+        <animate attributeName="ry" values="7.7;46" dur="2.2s" repeatCount="indefinite"></animate>
+        <animate attributeName="opacity" values=".7;0" dur="2.2s" repeatCount="indefinite"></animate>
+      </ellipse>
+      <ellipse cx="180" cy="200" rx="122" ry="47" fill="none" stroke="#E3E6F0" stroke-width="11"></ellipse>
+      <ellipse cx="180" cy="200" rx="122" ry="47" fill="none" stroke="#1A237E" stroke-width="11" stroke-linecap="round" pathLength="100" stroke-dasharray="{{dash}}"></ellipse>
+      <polygon points="166,200 194,200 188,120 172,120" fill="url(#beam)"></polygon>
+      <ellipse cx="180" cy="200" rx="44" ry="13" fill="rgba(26,35,126,.12)"></ellipse>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0,0;0,-5;0,0" dur="3s" repeatCount="indefinite"></animateTransform>
+        <text x="180" y="96" font-family="Cairo, sans-serif" font-size="56" font-weight="900" fill="#1A237E" text-anchor="middle">{{pct}}</text>
+        <text x="180" y="128" font-family="Cairo, sans-serif" font-size="15" font-weight="800" fill="#00838F" text-anchor="middle">{{live}}</text>
+      </g>
+    </svg>
+    <h2 style="margin: 0; font-size: 18px; font-weight: 900">{{stageLabel}}</h2>
+    <p style="margin: 2px 0 0; font-size: 12.5px; color: #5B6070">{{stageHint}}</p>
+  </section>
+
+  <section aria-label="مراحل الفحص" style="margin: 16px 20px 0; padding: 10px 14px; background: #FFFFFF; border-radius: 18px; box-shadow: 0 4px 0 #DCE0EC, 0 14px 22px -16px rgba(26,35,126,.4); display: flex; flex-direction: column">
+    <sc-for list="{{stages}}" as="s" hint-placeholder-count="8">
+      <div style="display: flex; align-items: center; gap: 12px; min-height: 32px">
+        <span style="{{s.dot}}">
+          <sc-if value="{{s.done}}" hint-placeholder-val="{{false}}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>
+          </sc-if>
+        </span>
+        <span style="{{s.text}}">{{s.label}}</span>
+        <span style="font-size: 11px; font-weight: 700; color: #5B6070">{{s.status}}</span>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="padding: 18px 20px 0">
+    <sc-if value="{{finished}}" hint-placeholder-val="{{false}}">
+      <a href="Results.dc.html" class="press" style="height: 54px; border-radius: 16px; background: linear-gradient(180deg, #00949F, #00838F); color: #FFFFFF; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 900; box-shadow: inset 0 2px 0 rgba(255,255,255,.2), 0 6px 0 #005662, 0 18px 26px -12px rgba(0,86,98,.6)">عرض النتيجة</a>
+    </sc-if>
+    <sc-if value="{{notFinished}}" hint-placeholder-val="{{true}}">
+      <a href="Scan.dc.html" class="press" style="height: 50px; border-radius: 16px; background: #FFFFFF; color: #B71C1C; text-decoration: none; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; box-shadow: 0 5px 0 #DCE0EC">إلغاء الفحص</a>
+    </sc-if>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"progress":{"editor":"range","default":62,"min":0,"max":100,"step":1,"unit":"%"},"animate":{"editor":"boolean","default":true},"$preview":{"width":400,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { p: props.progress ?? 62, tick: 0 };
+  }
+  componentDidMount() {
+    if ((this.props.animate ?? true) === false) return;
+    this.timer = setInterval(() => {
+      const p = Math.min(100, this.state.p + 0.45);
+      this.setState({ p: p, tick: this.state.tick + 1 });
+      if (p >= 100) clearInterval(this.timer);
+    }, 110);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  renderVals() {
+    const p = this.state.p;
+    const defs = [
+      { at: 3, label: 'قراءة مواصفات جهاز الفحص' },
+      { at: 8, label: 'اكتشاف أجهزة الشبكة وفحصها' },
+      { at: 27, label: 'فحص إشارة WiFi' },
+      { at: 33, label: 'قراءة الإشارة الضوئية (الفايبر)' },
+      { at: 40, label: 'قياس زمن الاستجابة والتذبذب' },
+      { at: 50, label: 'قياس استجابة DNS' },
+      { at: 60, label: 'قياس سرعة التنزيل' },
+      { at: 80, label: 'قياس سرعة الرفع' }
+    ];
+    let cur = -1;
+    defs.forEach((d, i) => { if (p >= d.at) cur = i; });
+    const finished = p >= 100;
+    const stages = defs.map((d, i) => {
+      const done = finished || i < cur;
+      const active = !finished && i === cur;
+      const bg = done ? '#2E7D32' : active ? '#1A237E' : '#E3E6F0';
+      const edge = done ? '#1B5E20' : active ? '#0F1660' : '#C5CBE0';
+      return {
+        label: d.label,
+        done: done,
+        status: done ? 'تم' : active ? 'جارٍ…' : '',
+        dot: 'width: 20px; height: 20px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: ' + bg + '; box-shadow: 0 2px 0 ' + edge + (active ? ', 0 0 0 5px rgba(26,35,126,.14)' : '') + ';',
+        text: 'flex: 1; font-size: 13px; font-weight: ' + (active ? 900 : 700) + '; color: ' + (done || active ? '#1B1E2B' : '#8A90A2') + ';'
+      };
+    });
+    const t = this.state.tick;
+    let live = '';
+    if (!finished && p >= 60 && p < 80) live = (86 + 7 * Math.sin(t / 4)).toFixed(1) + ' Mbps ↓';
+    if (!finished && p >= 80) live = (40 + 4 * Math.sin(t / 3)).toFixed(1) + ' Mbps ↑';
+    const curLabel = finished ? 'اكتمل الفحص' : (cur >= 0 ? defs[cur].label : 'جاهز');
+    return {
+      pct: Math.round(p) + '%',
+      dash: p.toFixed(1) + ' 100',
+      live: live,
+      stageLabel: curLabel,
+      stageHint: finished ? 'النتيجة جاهزة للعرض' : 'جارٍ الفحص — قد يستغرق حتى دقيقة',
+      stages: stages,
+      finished: finished,
+      notFinished: !finished
+    };
+  }
+}
+</script>
+</body>
+</html>

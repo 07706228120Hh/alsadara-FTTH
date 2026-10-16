@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الواجهة الرئيسية ثلاثية الأبعاد — تصميم مرجعي</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1A237E}a:hover{color:#0F1660}
+.tile{transition:transform .22s ease, box-shadow .22s ease}
+.tile:hover{transform:perspective(900px) rotateX(6deg) translateY(-4px)}
+.tile:active{transform:translateY(4px)}
+.cube{transform:rotateX(14deg) rotateY(-18deg);transition:transform .3s ease}
+.tile:hover .cube{transform:rotateX(8deg) rotateY(-32deg) translateY(-3px)}
+.press{transition:transform .15s ease}
+.press:hover{transform:translateY(-2px)}
+.press:active{transform:translateY(3px)}
+@media (max-width: 760px){.rail{max-width:none !important;flex-direction:row !important;flex-wrap:wrap;justify-content:center}}
+</style>
+
+</head>
+<body>
+<!-- نسخة مستقلة من التصميم المرجعي المعتمد للواجهة الرئيسية (تُفتح بأي متصفح). المصدر: Home3D.dc.html -->
+
+<div dir="rtl" style="min-height: 1320px; background: #EEF1F6; font-family: 'Cairo', sans-serif; color: #1B1E2B">
+
+  <header style="background: #1A237E; color: #FFFFFF; box-shadow: 0 6px 0 #0F1660, 0 18px 30px -14px rgba(15,22,96,.6); position: relative; z-index: 2">
+    <div style="max-width: 1400px; margin: 0 auto; padding: 12px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px">
+      <div style="display: flex; align-items: center; gap: 12px; flex: 1 1 280px">
+        <div style="perspective: 200px">
+          <div class="cube" style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(145deg, #26A69A, #00838F); box-shadow: 1px 1px 0 #005662, 2px 2px 0 #005662, 3px 3px 0 #005662, 4px 4px 0 #005662, 5px 5px 0 #005662, 8px 12px 16px rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column">
+          <span style="font-size: 20px; font-weight: 900; line-height: 1.2">رمز الصدارة</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #C8E6C9">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #66BB6A; box-shadow: 0 0 0 3px rgba(102,187,106,.25)"></span>
+            FTTH متصل · <span dir="ltr">07700060105</span>
+          </span>
+        </div>
+      </div>
+      <nav aria-label="أدوات سريعة" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+        <button class="press" style="height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: #283593; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 0 #0B1150">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><circle cx="12" cy="12" r="2.5"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg>
+          تتبّع الكادر
+        </button>
+        <button class="press" style="position: relative; height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: #283593; color: #FFFFFF; font-family: inherit; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 0 #0B1150">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"></path><path d="M10 21h4"></path></svg>
+          الإشعارات
+        </button>
+        <button class="press" style="height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: #FFEBEE; color: #B71C1C; font-family: inherit; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 0 #E57373">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.5 7-12a7 7 0 0 0-11.5-5.4"></path><path d="M5.3 6.5A7 7 0 0 0 5 9c0 5.5 7 12 7 12"></path><path d="M3 3l18 18"></path></svg>
+          الموقع متوقف — تفعيل
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <div style="max-width: 1400px; margin: 0 auto; padding: 28px 24px 40px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+    <aside class="rail" aria-label="القائمة الجانبية" style="flex: 1 1 96px; max-width: 104px; display: flex; flex-direction: column; gap: 8px; padding: 12px 8px; background: #FFFFFF; border-radius: 22px; box-shadow: 0 5px 0 #D6DBEA, 0 18px 28px -18px rgba(26,35,126,.45)">
+      <a href="#" class="press" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 14px; text-decoration: none; color: #1B1E2B; min-height: 44px">
+        <span style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(145deg, #5C6BC0, #3949AB); box-shadow: 0 4px 0 #1A237E; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"></path><circle cx="17" cy="9" r="2.5"></circle><path d="M17 14.5c3 0 5 1.5 5 4.5"></path></svg></span>
+        <span style="font-size: 11px; font-weight: 800; text-align: center; line-height: 1.3">إدارة المستخدمين</span>
+      </a>
+      <a href="#" class="press" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 14px; text-decoration: none; color: #1B1E2B; min-height: 44px">
+        <span style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(145deg, #FFA726, #EF6C00); box-shadow: 0 4px 0 #A84300; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="12" rx="5"></rect><path d="M12 7V4M7 12H3M21 12h-4M5 6l2 2M19 6l-2 2M5 19l2-2M19 19l-2-2"></path></svg></span>
+        <span style="font-size: 11px; font-weight: 800; text-align: center; line-height: 1.3">تشخيص النظام</span>
+      </a>
+      <a href="#" class="press" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 14px; text-decoration: none; color: #1B1E2B; min-height: 44px">
+        <span style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(145deg, #78909C, #546E7A); box-shadow: 0 4px 0 #37474F; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg></span>
+        <span style="font-size: 11px; font-weight: 800; text-align: center; line-height: 1.3">إعدادات الشركة</span>
+      </a>
+      <a href="#" class="press" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 14px; text-decoration: none; color: #1B1E2B; min-height: 44px">
+        <span style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(145deg, #26A69A, #00838F); box-shadow: 0 4px 0 #005662; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-14 5.3M4 12a8 8 0 0 1 14-5.3"></path><path d="M18 3v4h-4M6 21v-4h4"></path></svg></span>
+        <span style="font-size: 11px; font-weight: 800; text-align: center; line-height: 1.3">مزامنة FTTH</span>
+      </a>
+      <span style="height: 1px; background: #E3E6F0; margin: 4px 6px"></span>
+      <a href="#" class="press" style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 14px; text-decoration: none; color: #B71C1C; min-height: 44px">
+        <span style="width: 40px; height: 40px; border-radius: 12px; background: #FFEBEE; box-shadow: 0 4px 0 #EF9A9A; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C62828" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h5v16h-5"></path><path d="M10 16l-4-4 4-4M6 12h10"></path></svg></span>
+        <span style="font-size: 11px; font-weight: 800; text-align: center; line-height: 1.3">تسجيل الخروج</span>
+      </a>
+    </aside>
+
+    <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+
+      <section aria-label="التعليمات" style="display: flex; align-items: center; gap: 16px; padding: 14px 18px; background: #FFFFFF; border-radius: 20px; box-shadow: 0 5px 0 #FFD9B8, 0 18px 28px -18px rgba(239,108,0,.5)">
+        <div style="perspective: 200px; flex: none">
+          <div class="cube" style="width: 46px; height: 46px; border-radius: 13px; background: linear-gradient(145deg, #FFA726, #EF6C00); box-shadow: 1px 1px 0 #A84300, 2px 2px 0 #A84300, 3px 3px 0 #A84300, 4px 4px 0 #A84300, 5px 5px 0 #A84300, 8px 12px 16px rgba(168,67,0,.35); display: flex; align-items: center; justify-content: center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4h4l7 4V6L7 10z"></path><path d="M17 9a4 4 0 0 1 0 6"></path></svg>
+          </div>
+        </div>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 13px; font-weight: 900; color: #B53D00">التعليمات الجديدة</span>
+          <span style="font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">السلام عليكم شباب يرجى اتباع تعليمات الآتية:</span>
+          <span aria-hidden="true" style="display: flex; gap: 4px; margin-top: 4px"><span style="width: 18px; height: 5px; border-radius: 3px; background: #EF6C00"></span><span style="width: 5px; height: 5px; border-radius: 3px; background: #FFCC80"></span><span style="width: 5px; height: 5px; border-radius: 3px; background: #FFCC80"></span><span style="width: 5px; height: 5px; border-radius: 3px; background: #FFCC80"></span></span>
+        </div>
+        <a href="#" class="press" style="flex: none; height: 44px; padding: 0 16px; border-radius: 12px; background: #FFF3E0; color: #B53D00; text-decoration: none; font-size: 13px; font-weight: 800; display: flex; align-items: center; box-shadow: 0 4px 0 #FFCC80">عرض التعليمات</a>
+      </section>
+
+      <section aria-label="المؤشرات" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px">
+        <a href="#" class="tile" style="display: flex; align-items: center; gap: 14px; padding: 10px 20px 10px 14px; background: #FFFFFF; border-radius: 22px; text-decoration: none; color: #1B1E2B; box-shadow: 0 6px 0 #D6DBEA, 0 20px 30px -20px rgba(26,35,126,.5)">
+          <svg width="100" height="125" viewBox="0 0 120 150" aria-hidden="true">
+            <ellipse cx="60" cy="136" rx="46" ry="11" fill="rgba(26,35,126,.10)"></ellipse>
+            <polygon points="60,30 89.4,47 89.4,117 60,134 30.6,117 30.6,47" fill="none" stroke="#C5CBE0" stroke-dasharray="3 3"></polygon>
+            <polygon points="30.6,90 60,107 60,134 30.6,117" fill="#00838F"></polygon>
+            <polygon points="60,107 89.4,90 89.4,117 60,134" fill="#005662"></polygon>
+            <polygon points="60,73 89.4,90 60,107 30.6,90" fill="#80DEEA"></polygon>
+          </svg>
+          <div style="display: flex; flex-direction: column">
+            <span style="font-size: 40px; font-weight: 900; line-height: 1.1; color: #00838F">80</span>
+            <span style="font-size: 15px; font-weight: 800">طلبات الوكلاء</span>
+          </div>
+        </a>
+        <a href="#" class="tile" style="display: flex; align-items: center; gap: 14px; padding: 10px 20px 10px 14px; background: #FFFFFF; border-radius: 22px; text-decoration: none; color: #1B1E2B; box-shadow: 0 6px 0 #D6DBEA, 0 20px 30px -20px rgba(26,35,126,.5)">
+          <svg width="100" height="125" viewBox="0 0 120 150" aria-hidden="true">
+            <ellipse cx="60" cy="136" rx="46" ry="11" fill="rgba(26,35,126,.10)"></ellipse>
+            <polygon points="30.6,47 60,64 60,134 30.6,117" fill="#3949AB"></polygon>
+            <polygon points="60,64 89.4,47 89.4,117 60,134" fill="#1A237E"></polygon>
+            <polygon points="60,30 89.4,47 60,64 30.6,47" fill="#9FA8DA"></polygon>
+          </svg>
+          <div style="display: flex; flex-direction: column">
+            <span style="font-size: 40px; font-weight: 900; line-height: 1.1; color: #1A237E">208</span>
+            <span style="font-size: 15px; font-weight: 800">المهام المفتوحة</span>
+          </div>
+        </a>
+        <a href="#" class="tile" style="display: flex; align-items: center; gap: 14px; padding: 10px 20px 10px 14px; background: #FFFFFF; border-radius: 22px; text-decoration: none; color: #1B1E2B; box-shadow: 0 6px 0 #D6DBEA, 0 20px 30px -20px rgba(26,35,126,.5)">
+          <svg width="100" height="125" viewBox="0 0 120 150" aria-hidden="true">
+            <ellipse cx="60" cy="136" rx="46" ry="11" fill="rgba(26,35,126,.10)"></ellipse>
+            <polygon points="60,30 89.4,47 89.4,117 60,134 30.6,117 30.6,47" fill="none" stroke="#C5CBE0" stroke-dasharray="3 3"></polygon>
+            <polygon points="30.6,114 60,131 60,134 30.6,117" fill="#7B1FA2"></polygon>
+            <polygon points="60,131 89.4,114 89.4,117 60,134" fill="#4A148C"></polygon>
+            <polygon points="60,97 89.4,114 60,131 30.6,114" fill="#CE93D8"></polygon>
+          </svg>
+          <div style="display: flex; flex-direction: column">
+            <span style="font-size: 40px; font-weight: 900; line-height: 1.1; color: #6A1B9A">0</span>
+            <span style="font-size: 15px; font-weight: 800">طلبات الموظفين</span>
+          </div>
+        </a>
+      </section>
+
+      <div role="group" aria-label="تصفية الأقسام" style="display: flex; flex-wrap: wrap; gap: 10px">
+        <button class="press" data-g="all" aria-pressed="true" style="height: 44px; padding: 0 18px; border: 0; border-radius: 999px; font-family: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; background: #1A237E; color: #FFFFFF; box-shadow: 0 4px 0 #0F1660;">الكل</button>
+        <button class="press" data-g="field" aria-pressed="false" style="height: 44px; padding: 0 18px; border: 0; border-radius: 999px; font-family: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; background: #FFFFFF; color: #1B1E2B; box-shadow: 0 4px 0 #D6DBEA;">العمليات الميدانية</button>
+        <button class="press" data-g="admin" aria-pressed="false" style="height: 44px; padding: 0 18px; border: 0; border-radius: 999px; font-family: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; background: #FFFFFF; color: #1B1E2B; box-shadow: 0 4px 0 #D6DBEA;">الإدارة والموارد</button>
+        <button class="press" data-g="comms" aria-pressed="false" style="height: 44px; padding: 0 18px; border: 0; border-radius: 999px; font-family: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; background: #FFFFFF; color: #1B1E2B; box-shadow: 0 4px 0 #D6DBEA;">التواصل</button>
+        <button class="press" data-g="plat" aria-pressed="false" style="height: 44px; padding: 0 18px; border: 0; border-radius: 999px; font-family: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; background: #FFFFFF; color: #1B1E2B; box-shadow: 0 4px 0 #D6DBEA;">المنصّات والبيانات</button>
+      </div>
+
+      <section aria-label="العمليات الميدانية" data-sec="field" style="display: block">
+        <h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 900; display: flex; align-items: center; gap: 10px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #00838F; box-shadow: 0 3px 0 #005662"></span>العمليات الميدانية</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px">
+          <a href="#" class="tile" style="position: relative; display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="position: relative; perspective: 240px; flex: none">
+              <span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #26A69A, #00838F); box-shadow: 1px 1px 0 #005662, 2px 2px 0 #005662, 3px 3px 0 #005662, 4px 4px 0 #005662, 5px 5px 0 #005662, 6px 6px 0 #005662, 10px 14px 18px rgba(0,86,98,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-6 8-6s8 2 8 6"></path></svg></span>
+              <span style="position: absolute; top: -9px; left: -12px; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; background: #C62828; color: #FFFFFF; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 0 #7F0000">80</span>
+            </span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">صفحة الوكيل</span><span style="font-size: 12.5px; color: #5B6070">إدارة خدمات العملاء</span></span>
+          </a>
+          <a href="#" class="tile" style="position: relative; display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="position: relative; perspective: 240px; flex: none">
+              <span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #26A69A, #00838F); box-shadow: 1px 1px 0 #005662, 2px 2px 0 #005662, 3px 3px 0 #005662, 4px 4px 0 #005662, 5px 5px 0 #005662, 6px 6px 0 #005662, 10px 14px 18px rgba(0,86,98,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 12l3 3 5-6"></path></svg></span>
+              <span style="position: absolute; top: -9px; left: -12px; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; background: #C62828; color: #FFFFFF; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 0 #7F0000">+99</span>
+            </span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">المهام</span><span style="font-size: 12.5px; color: #5B6070">إدارة المهام اليومية</span></span>
+          </a>
+          <a href="#" class="tile" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #26A69A, #00838F); box-shadow: 1px 1px 0 #005662, 2px 2px 0 #005662, 3px 3px 0 #005662, 4px 4px 0 #005662, 5px 5px 0 #005662, 6px 6px 0 #005662, 10px 14px 18px rgba(0,86,98,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4l-6 2v14l6-2 6 2 6-2V4l-6 2-6-2z"></path><path d="M9 4v14M15 6v14"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">الزونات</span><span style="font-size: 12.5px; color: #5B6070">إدارة المناطق الجغرافية</span></span>
+          </a>
+          <a href="#" class="tile" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #26A69A, #00838F); box-shadow: 1px 1px 0 #005662, 2px 2px 0 #005662, 3px 3px 0 #005662, 4px 4px 0 #005662, 5px 5px 0 #005662, 6px 6px 0 #005662, 10px 14px 18px rgba(0,86,98,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"></path><circle cx="12" cy="9" r="2.5"></circle></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">خريطة الزونات</span><span style="font-size: 12.5px; color: #5B6070">خريطة تفاعلية لنقاط FAT والمناطق</span></span>
+          </a>
+          <a href="#" class="tile" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #26A69A, #00838F); box-shadow: 1px 1px 0 #005662, 2px 2px 0 #005662, 3px 3px 0 #005662, 4px 4px 0 #005662, 5px 5px 0 #005662, 6px 6px 0 #005662, 10px 14px 18px rgba(0,86,98,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4"></circle><path d="M2 21c0-4 4-6 8-6s8 2 8 6"></path><path d="M19 8v6M16 11h6"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">مشترك جديد</span><span style="font-size: 12.5px; color: #5B6070">تسجيل مشترك FTTH جديد</span></span>
+          </a>
+          <a href="#" class="tile" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #26A69A, #00838F); box-shadow: 1px 1px 0 #005662, 2px 2px 0 #005662, 3px 3px 0 #005662, 4px 4px 0 #005662, 5px 5px 0 #005662, 6px 6px 0 #005662, 10px 14px 18px rgba(0,86,98,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M8 2l4 4 4-4"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">مشتركي IPTV</span><span style="font-size: 12.5px; color: #5B6070">إدارة اشتراكات التلفزيون</span></span>
+          </a>
+          <a href="#" class="tile" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #26A69A, #00838F); box-shadow: 1px 1px 0 #005662, 2px 2px 0 #005662, 3px 3px 0 #005662, 4px 4px 0 #005662, 5px 5px 0 #005662, 6px 6px 0 #005662, 10px 14px 18px rgba(0,86,98,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"></rect><rect x="3" y="13" width="18" height="7" rx="2"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">صفحة وكيل الساس</span><span style="font-size: 12.5px; color: #5B6070">حسابات الساس ولوحة الوكيل والمشتركين</span></span>
+          </a>
+        </div>
+      </section>
+
+      <section aria-label="الإدارة والموارد والتواصل" data-sec="admin" style="display: block">
+        <h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 900; display: flex; align-items: center; gap: 10px"><span data-lbl="admin" style="display: inline-flex; align-items: center; gap: 10px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #3949AB; box-shadow: 0 3px 0 #1A237E"></span>الإدارة والموارد</span><span data-lbl="comms" style="display: inline-flex; align-items: center; gap: 10px; margin-right: 12px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #EF6C00; box-shadow: 0 3px 0 #A84300"></span>التواصل</span></h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px">
+          <a href="#" class="tile" data-tile="admin" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #5C6BC0, #3949AB); box-shadow: 1px 1px 0 #1A237E, 2px 2px 0 #1A237E, 3px 3px 0 #1A237E, 4px 4px 0 #1A237E, 5px 5px 0 #1A237E, 6px 6px 0 #1A237E, 10px 14px 18px rgba(26,35,126,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"></path><circle cx="17" cy="9" r="2.5"></circle><path d="M17 14.5c3 0 5 1.5 5 4.5"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">HR</span><span style="font-size: 12.5px; color: #5B6070">الموارد البشرية والحضور والرواتب</span></span>
+          </a>
+          <a href="#" class="tile" data-tile="admin" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #5C6BC0, #3949AB); box-shadow: 1px 1px 0 #1A237E, 2px 2px 0 #1A237E, 3px 3px 0 #1A237E, 4px 4px 0 #1A237E, 5px 5px 0 #1A237E, 6px 6px 0 #1A237E, 10px 14px 18px rgba(26,35,126,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="5" rx="1.5"></rect><rect x="13" y="10" width="8" height="11" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">شاشتي</span><span style="font-size: 12.5px; color: #5B6070">البصمة والمعاملات والراتب</span></span>
+          </a>
+          <a href="#" class="tile" data-tile="admin" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #5C6BC0, #3949AB); box-shadow: 1px 1px 0 #1A237E, 2px 2px 0 #1A237E, 3px 3px 0 #1A237E, 4px 4px 0 #1A237E, 5px 5px 0 #1A237E, 6px 6px 0 #1A237E, 10px 14px 18px rgba(26,35,126,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4V3h6v1"></path><path d="M9 13l2 2 4-4"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">المتابعة</span><span style="font-size: 12.5px; color: #5B6070">متابعة وتقييم المهام</span></span>
+          </a>
+          <a href="#" class="tile" data-tile="admin" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #5C6BC0, #3949AB); box-shadow: 1px 1px 0 #1A237E, 2px 2px 0 #1A237E, 3px 3px 0 #1A237E, 4px 4px 0 #1A237E, 5px 5px 0 #1A237E, 6px 6px 0 #1A237E, 10px 14px 18px rgba(26,35,126,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21V9l9-5 9 5v12"></path><path d="M7 21v-8h10v8"></path><path d="M7 17h10"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">المخازن</span><span style="font-size: 12.5px; color: #5B6070">إدارة المواد والمستودعات</span></span>
+          </a>
+          <a href="#" class="tile" data-tile="admin" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #5C6BC0, #3949AB); box-shadow: 1px 1px 0 #1A237E, 2px 2px 0 #1A237E, 3px 3px 0 #1A237E, 4px 4px 0 #1A237E, 5px 5px 0 #1A237E, 6px 6px 0 #1A237E, 10px 14px 18px rgba(26,35,126,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"></rect><path d="M3 10h18"></path><path d="M16 15h2"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">الحسابات</span><span style="font-size: 12.5px; color: #5B6070">النظام المالي والمحاسبي</span></span>
+          </a>
+          <a href="#" class="tile" data-tile="admin" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #5C6BC0, #3949AB); box-shadow: 1px 1px 0 #1A237E, 2px 2px 0 #1A237E, 3px 3px 0 #1A237E, 4px 4px 0 #1A237E, 5px 5px 0 #1A237E, 6px 6px 0 #1A237E, 10px 14px 18px rgba(26,35,126,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1"></rect><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M11 21v-3h2v3"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">صفحة الشركة</span><span style="font-size: 12.5px; color: #5B6070">لوحة تحكم الشركة</span></span>
+          </a>
+          <a href="#" class="tile" data-tile="comms" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="position: relative; perspective: 240px; flex: none">
+              <span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #FFA726, #EF6C00); box-shadow: 1px 1px 0 #A84300, 2px 2px 0 #A84300, 3px 3px 0 #A84300, 4px 4px 0 #A84300, 5px 5px 0 #A84300, 6px 6px 0 #A84300, 10px 14px 18px rgba(168,67,0,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg></span>
+              <span style="position: absolute; top: -9px; left: -12px; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; background: #C62828; color: #FFFFFF; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 0 #7F0000">14</span>
+            </span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">المحادثة</span><span style="font-size: 12.5px; color: #5B6070">محادثات الموظفين الداخلية</span></span>
+          </a>
+          <a href="#" class="tile" data-tile="comms" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+            <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #FFA726, #EF6C00); box-shadow: 1px 1px 0 #A84300, 2px 2px 0 #A84300, 3px 3px 0 #A84300, 4px 4px 0 #A84300, 5px 5px 0 #A84300, 6px 6px 0 #A84300, 10px 14px 18px rgba(168,67,0,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4h4l7 4V6L7 10z"></path><path d="M17 9a4 4 0 0 1 0 6"></path></svg></span></span>
+            <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">التبليغات</span><span style="font-size: 12.5px; color: #5B6070">الإعلانات والتبليغات</span></span>
+          </a>
+        </div>
+      </section>
+
+      <div>
+        <section aria-label="المنصّات والبيانات" data-sec="plat" style="display: block">
+          <h2 style="margin: 0 0 14px; font-size: 16px; font-weight: 900; display: flex; align-items: center; gap: 10px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #7B1FA2; box-shadow: 0 3px 0 #4A148C"></span>المنصّات والبيانات</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px">
+            <a href="#" class="tile" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+              <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #AB47BC, #7B1FA2); box-shadow: 1px 1px 0 #4A148C, 2px 2px 0 #4A148C, 3px 3px 0 #4A148C, 4px 4px 0 #4A148C, 5px 5px 0 #4A148C, 6px 6px 0 #4A148C, 10px 14px 18px rgba(74,20,140,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><circle cx="5" cy="5" r="2"></circle><circle cx="19" cy="5" r="2"></circle><circle cx="5" cy="19" r="2"></circle><circle cx="19" cy="19" r="2"></circle><path d="M7 7l3 3M17 7l-3 3M7 17l3-3M17 17l-3-3"></path></svg></span></span>
+              <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">منصة الصدارة</span><span style="font-size: 12.5px; color: #5B6070">طلبات المواطن والوكيل</span></span>
+            </a>
+            <a href="#" class="tile" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+              <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #AB47BC, #7B1FA2); box-shadow: 1px 1px 0 #4A148C, 2px 2px 0 #4A148C, 3px 3px 0 #4A148C, 4px 4px 0 #4A148C, 5px 5px 0 #4A148C, 6px 6px 0 #4A148C, 10px 14px 18px rgba(74,20,140,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v10H3z"></path><path d="M9 21v-6h6v6"></path></svg></span></span>
+              <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">سجل العقارات</span><span style="font-size: 12.5px; color: #5B6070">عنوان وطني (QR + NPN) ومواطنون وخدمات</span></span>
+            </a>
+            <a href="#" class="tile" style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; min-height: 60px; background: #FFFFFF; border-radius: 18px; text-decoration: none; color: #1B1E2B; box-shadow: 0 5px 0 #D6DBEA, 0 18px 26px -18px rgba(26,35,126,.45)">
+              <span style="perspective: 240px; flex: none"><span class="cube" style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(145deg, #AB47BC, #7B1FA2); box-shadow: 1px 1px 0 #4A148C, 2px 2px 0 #4A148C, 3px 3px 0 #4A148C, 4px 4px 0 #4A148C, 5px 5px 0 #4A148C, 6px 6px 0 #4A148C, 10px 14px 18px rgba(74,20,140,.35); display: flex; align-items: center; justify-content: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-5-5"></path><path d="M11 8v6M8 11h6"></path></svg></span></span>
+              <span style="display: flex; flex-direction: column; min-width: 0"><span style="font-size: 16px; font-weight: 900">البحث بالذكاء الاصطناعي</span><span style="font-size: 12.5px; color: #5B6070">البحث المتقدم والذكي</span></span>
+            </a>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+  var ON='height: 44px; padding: 0 18px; border: 0; border-radius: 999px; font-family: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; background: #1A237E; color: #FFFFFF; box-shadow: 0 4px 0 #0F1660;', OFF='height: 44px; padding: 0 18px; border: 0; border-radius: 999px; font-family: inherit; font-size: 13.5px; font-weight: 800; cursor: pointer; background: #FFFFFF; color: #1B1E2B; box-shadow: 0 4px 0 #D6DBEA;';
+  function apply(g){
+    document.querySelectorAll('[data-g]').forEach(function(b){var on=b.getAttribute('data-g')===g;b.setAttribute('style',on?ON:OFF);b.setAttribute('aria-pressed',on?'true':'false');});
+    var show=function(k){return g==='all'||g===k;};
+    document.querySelector('[data-sec=field]').style.display=show('field')?'block':'none';
+    document.querySelector('[data-sec=plat]').style.display=show('plat')?'block':'none';
+    document.querySelector('[data-sec=admin]').style.display=(show('admin')||show('comms'))?'block':'none';
+    document.querySelectorAll('[data-tile=admin]').forEach(function(t){t.style.display=show('admin')?'flex':'none';});
+    document.querySelectorAll('[data-tile=comms]').forEach(function(t){t.style.display=show('comms')?'flex':'none';});
+    document.querySelectorAll('[data-lbl=admin]').forEach(function(t){t.style.display=show('admin')?'inline-flex':'none';});
+    document.querySelectorAll('[data-lbl=comms]').forEach(function(t){t.style.display=show('comms')?'inline-flex':'none';});
+  }
+  document.querySelectorAll('[data-g]').forEach(function(b){b.addEventListener('click',function(){apply(b.getAttribute('data-g'));});});
+  document.querySelectorAll('a[href="#"]').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();});});
+})();
+</script>
+</body>
+</html>

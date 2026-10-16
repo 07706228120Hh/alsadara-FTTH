@@ -1,0 +1,2 @@
+# Authorized pentest targets — ONLY systems we own, NON-production (local/staging), explicitly authorized. One URL/host per line.
+# NEVER list 72.61.183.61 production, api.ftth.iq / 185.239.19.3 (third-party), or any system with real customer data.

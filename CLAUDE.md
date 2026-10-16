@@ -123,7 +123,8 @@ User Request
 
 ملخص الحقائق الأساسية للمشروع:
 
-- **الهوية**: منصة الصدارة (Sadara Platform) — منصة FTTH/ISP + تجارة إلكترونية، multi-tenant بـ Company. الإصدار `v2.2.25+304`، الفرع `master`.
+- **الهوية**: منصة الصدارة (Sadara Platform) — منصة FTTH/ISP + تجارة إلكترونية، multi-tenant بـ Company. الإصدار `v2.4.8+323`، فرع العمل `release/v2.4.x` و`main` = المُصدَر.
+- **الحجم المتوقع**: حتى ~2000 شركة، ~20 موظفاً لكل شركة (≈40 ألف مستخدم)، وحتى ~10000 مشترك. ذروة الطلبات غير محدّدة بعد (TODO) ⇒ صمّم العزل والاستعلامات (فهارس/pagination) بافتراض مقياس متعدّد المستأجرين.
 - **Backend**: .NET 9 Clean Architecture بأربع طبقات:
   - `src/Backend/API/Sadara.API` — 57 controller، SignalR Hubs، JWT، RequirePermissionAttribute
   - `Sadara.Application` — منطق التطبيق
@@ -139,7 +140,49 @@ User Request
 - **اعتماد خارجي**: `api.ftth.iq` (`185.239.19.3`، قراءة فقط، خلف Cloudflare).
 - **النشر**: SCP يدوي إلى VPS `72.61.183.61` + `systemctl restart sadara-api`؛ التطبيق عبر Inno Setup → GitHub Releases (`07706228120Hh/alsadara-FTTH`) → auto-update.
 - **CI/DevOps**: `.github/workflows/build-windows.yml`، Docker (`docker/Dockerfile` + `docker/docker-compose.yaml`).
-- **الأسرار**: `.env` (قيم حقيقية)، `secrets/`، `.secrets/`.
+- **الأسرار**: `.env` (قيم حقيقية)، `secrets/`، `.secrets/`، `.dpkeys/` (مفاتيح DataProtection — فقدها يكسر فكّ تشفير كلمات مرور الساس).
+
+---
+
+## Commands
+
+أوامر المشروع الأساسية (من جذر المستودع):
+
+```powershell
+# التشغيل المحلي الكامل (Postgres 5480 + خدمة الساس 8100 + API 5000)
+powershell -ExecutionPolicy Bypass -File C:\SadaraPlatform\run-local-dev.ps1
+
+# Backend .NET
+dotnet build SadaraPlatform.sln
+dotnet run --project src/Backend/API/Sadara.API --urls http://localhost:5000
+dotnet test tests/Sadara.Integration.Tests          # xUnit + Testcontainers (يتطلب Docker مشغّلاً)
+dotnet format --verify-no-changes                    # فحص تنسيق الباكند (بلا تعديل). بلا --verify = تنسيق فعلي
+
+# تطبيق Flutter (استخدم هذا المسار للـ Flutter)
+cd src/Apps/CompanyDesktop/alsadara-ftth
+D:\flutter\flutter\bin\flutter.bat analyze           # lint
+D:\flutter\flutter\bin\flutter.bat test
+D:\flutter\flutter\bin\flutter.bat build windows --release   # ثم مُنصِّب Inno Setup: iscc installer.iss
+
+# خدمة الساز (sidecar)
+pytest modules/sas-agent/service/tests
+```
+
+- **Migration جديد**: `dotnet ef migrations add <Name> --project src/Backend/Core/Sadara.Infrastructure --startup-project src/Backend/API/Sadara.API`.
+- **النشر على الإنتاج** يتم حصراً عبر `bash deploy/deploy-backend.sh` (idempotent، نسخة احتياطية أولاً، الهجرات قبل الـ DLLs، كل الـ DLLs، تحقّق صحة+سجل) — **بموافقة صريحة فقط**.
+- **ملاحظات**: لا يوجد إعداد `dotnet format`/analyzers للباكند (TODO). مشروعا `tests/Sadara.Api.Tests` و`Sadara.Identity.Tests` فارغان؛ الاختبارات الفعلية في `Sadara.Integration.Tests`.
+
+---
+
+## Conventions
+
+- المعرّفات والتعليقات الجديدة بالإنجليزية؛ **كل نص للمستخدم بالعربية RTL**. (الكود القديم فيه تعليقات عربية — لا تترجمها جماعياً.) واجهة Flutter: خط Cairo + `flutter_screenutil` + `lib/theme/app_theme`.
+- طبقات Clean Architecture: `Domain` لا يعتمد على `Infrastructure`؛ المنطق في Application/Domain لا في Controllers.
+- بنية `lib/` حسب الميزة: `ftth/`، `pages/<feature>/`، `sas_agent/`، `network_quality/`، `services/`، `permissions/`.
+- **صيغة استجابة الـ API**: نجاح `{ success: true, data, ... }` (القوائم تضيف `total, page, pageSize`)؛ فشل `{ success: false, message: "<رسالة عربية>" }` مع كود HTTP صحيح (400/401/403/404).
+- كل endpoint جديد: `[RequirePermission("<key>")]` (أو X-Api-Key للداخلي) + نطاق `CompanyId` **من التوكن** لا من العميل.
+- كل كيان مستأجر جديد: عمود `CompanyId` (ITenantScoped) + فهرس؛ أي تغيير مخطط = migration جديدة.
+- الإصدار: ارفع الرقم في `pubspec.yaml` و`installer.iss` معاً؛ راجع دليل الإصدار في `.claude/memory`.
 
 ---
 
@@ -187,5 +230,10 @@ User Request
 
 - ضمن مهام البناء التنظيمي (التوثيق، الذاكرة، تعريف الوكلاء) **لا تعدّل كود التطبيق** — اكتفِ بالملفات التنظيمية.
 - احترم الأسرار: لا تقرأها بصوت عالٍ، لا تطبعها، ولا تنسخها إلى ملفات غير مؤمّنة.
-- خادم النشر الوحيد هو `72.61.183.61` — لا تنشر على أي خادم آخر. الخادم الخارجي `185.239.19.3` (api.ftth.iq) للقراءة فقط وليس ملكنا.
+- خادم النشر الوحيد هو `72.61.183.61` — لا تنشر على أي خادم آخر. الخادم الخارجي `185.239.19.3` (api.ftth.iq) للقراءة فقط وليس ملكنا (لا load-test ولا scan له).
+- **لا تعدّل ولا تحذف أي migration موجودة** في `Sadara.Infrastructure/Data/Migrations` — أضف واحدة جديدة دائماً.
+- **رفع tag بصيغة `v*` = إصدار إنتاج حقيقي** يصل كل الأجهزة تلقائياً عبر auto-update — يحتاج موافقة صريحة.
+- **عزل المستأجرين هو الخطر الأول**: افلتر دائماً بـ `CompanyId` من التوكن، ولا تثق بأي `companyId` من العميل. علَم `Tenancy:EnforceIsolation` العام **مُطفأ** — الحماية الفعلية عبر العزل على مستوى الـ Controller، وختم `CompanyId` عند الكتابة يجب أن يبقى مستقلاً عن العلَم (انحدار سابق ترك صفوفاً بـ NULL). التفرّد (هاتف/بريد) لكل شركة لا عام.
+- الصلاحيات تُثبَّت صراحةً عند الحفظ (لا وراثة من الأب) ⇒ كل شاشة جديدة تحتاج منحاً صريحاً. `DatabaseAdminController`/`SuperAdminController` يتجاوزان العزل — أي تغيير يمرّ على security-auditor-agent.
+- الصور الحسّاسة (مثل الهوية) تُخدَم عبر endpoint مُصرّح ومعزول بالشركة فقط، لا كـ static عام؛ نظّف أسماء الملفات بـ `Path.GetFileName`.
 - عند الشك في خطورة عملية، اكتب تقريرًا واطلب موافقة بشرية بدل التنفيذ.
