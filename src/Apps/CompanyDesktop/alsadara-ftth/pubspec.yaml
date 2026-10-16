@@ -48,6 +48,7 @@ dependencies:
 
   # مكتبات الأمان والمصادقة
   crypto: ^3.0.3  # ✅ للتشفير SHA-256
+  pointycastle: 3.9.1  # RSA/AES نقيّ-Dart لدخول Mercusys/TP-Link (network_quality)
   jwt_decoder: ^2.0.1
   oauth2: ^2.0.2
   local_auth: ^2.3.0

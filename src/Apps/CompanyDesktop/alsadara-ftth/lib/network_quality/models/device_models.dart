@@ -132,6 +132,7 @@ class NetworkDevice {
   String vendor; // من OUI
   DeviceType type;
   String brandGuess; // ماركة مُقدَّرة (Huawei/ZTE/TP-Link...)
+  String hostname; // اسم مضيف (reverse-DNS / NetBIOS) — أفضل جهد
   bool hasWebUi;
   String pageTitle;
   bool isGateway;
@@ -148,6 +149,7 @@ class NetworkDevice {
     this.vendor = '',
     this.type = DeviceType.unknown,
     this.brandGuess = '',
+    this.hostname = '',
     this.hasWebUi = false,
     this.pageTitle = '',
     this.isGateway = false,
@@ -159,6 +161,7 @@ class NetworkDevice {
   });
 
   String get displayName {
+    if (hostname.isNotEmpty) return hostname;
     if (brandGuess.isNotEmpty) return brandGuess;
     if (vendor.isNotEmpty) return vendor;
     return type.arabicLabel;

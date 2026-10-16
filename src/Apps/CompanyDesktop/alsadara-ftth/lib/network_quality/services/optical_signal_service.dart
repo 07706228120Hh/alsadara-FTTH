@@ -18,11 +18,14 @@ import '../models/quality_models.dart';
 class OpticalSignalService {
   static const _timeout = Duration(seconds: 6);
 
-  // عناوين ONU/ONT الشائعة في العراق (Huawei/ZTE بالدرجة الأولى).
+  // عناوين ONU/ONT الشائعة في العراق (Huawei/ZTE/Nokia بالدرجة الأولى).
   static const _candidateIps = [
     '192.168.100.1', // Huawei افتراضي
-    '192.168.1.1', // ZTE / Nokia
-    '192.168.101.1',
+    '192.168.1.1', // ZTE / Nokia / عام
+    '192.168.101.1', // Huawei bridge
+    '192.168.18.1', // Nokia/Alcatel ONT
+    '192.168.1.254', // Nokia/Alcatel بعض الموديلات
+    '192.168.0.1', // عام
   ];
 
   // اعتمادات هواوي الشائعة — telecomadmin أولاً لأنه الوحيد الذي يُظهر
@@ -48,6 +51,16 @@ class OpticalSignalService {
     ['admin', 'Web@0063'],
     ['admin', 'Zte521'],
   ];
+  // اعتمادات Nokia / Alcatel (G-010G، Beacon، 7368 ISAM ONT) الشائعة.
+  static const _nokiaCreds = [
+    ['admin', 'admin'],
+    ['AdminGPON', 'ALC#FGU'],
+    ['admin', 'ALC#FGU'],
+    ['admin', 'password'],
+    ['admin', 'Alcatel'],
+    ['ONTUSER', 'SUGAR2A041'],
+    ['userAdmin', 'nE7jA%5m'],
+  ];
 
   /// يقرأ الإشارة الضوئية من عنوان جهاز محدّد (يُستخدم من فاحص الأجهزة).
   /// يجرّب هواوي ثم ZTE؛ وإن لم تُعرف الماركة يجرّب الاثنين على أي حال.
@@ -63,12 +76,20 @@ class OpticalSignalService {
       final r = await _readZte(ip, extraCreds);
       if (r.available) return r;
     }
-    // ماركة غير مؤكّدة — جرّب الاثنين (الأجهزة لا تُظهر دائماً اسم الماركة).
+    if (brand == _Brand.nokia) {
+      final r = await _readNokia(ip, extraCreds);
+      if (r.available) return r;
+    }
+    // ماركة غير مؤكّدة — جرّب الكلّ (الأجهزة لا تُظهر دائماً اسم الماركة).
     final h = await _readHuawei(ip, extraCreds);
     if (h.available) return h;
     final z = await _readZte(ip, extraCreds);
     if (z.available) return z;
-    return h.error.isNotEmpty ? h : z;
+    final n = await _readNokia(ip, extraCreds);
+    if (n.available) return n;
+    if (h.error.isNotEmpty) return h;
+    if (z.error.isNotEmpty) return z;
+    return n;
   }
 
   /// يحاول قراءة الإشارة الضوئية. [gatewayHint] عنوان الراوتر إن عُرف مسبقاً.
@@ -130,6 +151,14 @@ class OpticalSignalService {
       if (body.contains('zte') || body.contains('zxhn') || body.contains('f6')) {
         return _Brand.zte;
       }
+      if (body.contains('nokia') ||
+          body.contains('alcatel') ||
+          body.contains('beacon') ||
+          body.contains('g-010') ||
+          body.contains('7368') ||
+          body.contains('isam')) {
+        return _Brand.nokia;
+      }
     } catch (_) {}
     return _Brand.unknown;
   }
@@ -143,6 +172,10 @@ class OpticalSignalService {
     '/html/network/opticinfo.asp',
     '/html/bbsp/common/opticinfo.asp',
     '/html/ssmp/accessdev/opticinfo.asp',
+    '/html/amp/gpononu/gpononu.asp',
+    '/html/ssmp/common/poninfo.asp',
+    '/html/status/gponstatus.asp',
+    '/html/ssmp/deviceinfo/deviceinfo.asp',
   ];
 
   // ═══════════════ Huawei (HTTP صِرف بإدارة كوكيز الجلسة) ═══════════════
@@ -383,6 +416,56 @@ class OpticalSignalService {
     return const OpticalSignalInfo(available: false, source: 'ZTE');
   }
 
+  // ═══════════════ Nokia / Alcatel (G-010G، Beacon، 7368 ISAM ONT) ═══════════════
+  // واجهات Nokia تختلف كثيراً؛ كثير من الموديلات تكشف صفحة حالة GPON بلا دخول
+  // أو عبر HTTP Basic Auth. نجرّب صفحات الحالة المعروفة مباشرةً ثم بالاعتماد.
+  static const _nokiaOpticPages = [
+    '/gponStatus.cgi',
+    '/cgi-bin/gponStatus.cgi',
+    '/status_gpon.cgi',
+    '/php/status_gpon.php',
+    '/status/gpon_status.asp',
+    '/opticalinfo.html',
+    '/optical_info.cgi',
+    '/pon_info.html',
+  ];
+
+  static Future<OpticalSignalInfo> _readNokia(String ip,
+      [List<List<String>> extraCreds = const []]) async {
+    try {
+      // 1) محاولة مباشرة بلا دخول (بعض موديلات ONT تكشف الحالة علناً).
+      for (final page in _nokiaOpticPages) {
+        try {
+          final rr = await http
+              .get(Uri.parse('http://$ip$page'))
+              .timeout(_timeout);
+          if (rr.statusCode == 200 && rr.body.length > 60) {
+            final parsed = _parseOptical(rr.body, source: 'Nokia', ip: ip);
+            if (parsed.available) return parsed;
+          }
+        } catch (_) {}
+      }
+      // 2) محاولة بالاعتماد عبر HTTP Basic Auth (الأسلوب الأكثر توافقاً مع Nokia).
+      for (final c in [...extraCreds, ..._nokiaCreds]) {
+        final auth =
+            'Basic ${base64Encode(utf8.encode('${c[0]}:${c[1]}'))}';
+        for (final page in _nokiaOpticPages) {
+          try {
+            final rr = await http.get(Uri.parse('http://$ip$page'),
+                headers: {'Authorization': auth}).timeout(_timeout);
+            if (rr.statusCode == 200 && rr.body.length > 60) {
+              final parsed = _parseOptical(rr.body, source: 'Nokia', ip: ip);
+              if (parsed.available) return parsed;
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      debugPrint('[Optical/Nokia] error: $e');
+    }
+    return const OpticalSignalInfo(available: false, source: 'Nokia');
+  }
+
   /// تحليل عامّ لمحتوى صفحة بصريات (يُستخدم من قارئ المتصفح المدمج).
   static OpticalSignalInfo parseBody(String body,
           {String source = 'WebView', String ip = ''}) =>
@@ -552,4 +635,4 @@ class OpticalSignalService {
   }
 }
 
-enum _Brand { huawei, zte, unknown }
+enum _Brand { huawei, zte, nokia, unknown }

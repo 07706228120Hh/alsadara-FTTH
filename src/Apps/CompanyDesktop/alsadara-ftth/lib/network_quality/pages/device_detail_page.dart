@@ -7,14 +7,17 @@ library;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:webview_windows/webview_windows.dart' as wvwin;
 
 import '../models/device_models.dart';
 import '../models/quality_models.dart';
 import '../services/device_credentials_service.dart';
 import '../services/device_inspector_service.dart';
 import '../services/quality_scorer.dart';
+import '../services/url_opener.dart';
+import '../services/webview_optical_reader.dart';
 import '../widgets/quality_widgets.dart';
-import 'optical_webview_page.dart';
+import 'router_wifi_edit_page.dart';
 
 class DeviceDetailPage extends StatefulWidget {
   final NetworkDevice device;
@@ -28,7 +31,40 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   static const _indigo = Color(0xFF1A237E);
   bool _busy = false;
 
+  // WebView خفيّ (ويندوز) للقراءة الصامتة لبصريات هواوي — محجوب بالكامل خلف
+  // طبقة معتمة، لا تظهر واجهة الجهاز للمستخدم إطلاقاً.
+  final wvwin.WebviewController _webCtrl = wvwin.WebviewController();
+  bool _webReady = false;
+  bool _webBusy = false;
+
   NetworkDevice get d => widget.device;
+
+  @override
+  void initState() {
+    super.initState();
+    _initWebView();
+  }
+
+  Future<void> _initWebView() async {
+    if (!Platform.isWindows) return;
+    try {
+      await _webCtrl.initialize();
+      await _webCtrl.setBackgroundColor(Colors.white);
+      if (mounted) setState(() => _webReady = true);
+    } catch (e) {
+      debugPrint('[DeviceDetail] webview init failed: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_webReady) {
+      try {
+        _webCtrl.dispose();
+      } catch (_) {}
+    }
+    super.dispose();
+  }
 
   Future<void> _reinspect({DeviceCredential? manual}) async {
     setState(() => _busy = true);
@@ -114,17 +150,44 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
             ),
           ],
         ),
-        body: ListView(
-          padding: const EdgeInsets.only(bottom: 24),
+        body: Stack(
           children: [
-            _buildIdentity(),
-            if (d.status == InspectStatus.needsCredentials) _buildNeedsCreds(),
-            if (d.optical != null)
-              _buildOptical()
-            else if (d.isOnu)
-              _buildOpticalFailed(),
-            if (d.report != null && d.report!.hasAnyData) _buildReport(),
-            if (d.report?.clients.isNotEmpty ?? false) _buildClients(),
+            // الواجهة الطبيعية هي الطبقة الأساسية (كاملة الشاشة).
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFFF2F4F8),
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  children: [
+                    _buildIdentity(),
+                    _buildAccess(),
+                    if (d.status == InspectStatus.needsCredentials)
+                      _buildNeedsCreds(),
+                    if (d.optical != null)
+                      _buildOptical()
+                    else if (d.isOnu)
+                      _buildOpticalFailed(),
+                    if (d.report != null && d.report!.hasAnyData) _buildReport(),
+                    if (d.report?.clients.isNotEmpty ?? false) _buildClients(),
+                  ],
+                ),
+              ),
+            ),
+            // WebView2 (ويندوز) يرسم طبقة native فوق Flutter ولا يمكن حجبه بطبقة
+            // Flutter؛ لذا نركّبه فقط أثناء القراءة الصامتة بحجم 1×1 في الزاوية
+            // (غير مرئي عملياً) ومتجاهِلاً للمؤشّر، حتى لا يغطّي الواجهة ولا
+            // تنهار أحداث المؤشّر. القراءة تتم عبر JS/XHR على المتحكّم نفسه.
+            if (Platform.isWindows && _webReady && _webBusy)
+              Positioned(
+                left: 0,
+                top: 0,
+                width: 1,
+                height: 1,
+                child: IgnorePointer(
+                  ignoring: true,
+                  child: wvwin.Webview(_webCtrl),
+                ),
+              ),
           ],
         ),
       ),
@@ -148,6 +211,95 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
           InfoRow('بوّابة؟', d.isGateway ? 'نعم' : 'لا'),
         ],
       ),
+    );
+  }
+
+  // ═══════════════ الوصول إلى الجهاز ═══════════════
+
+  /// بطاقة أزرار الوصول: فتح واجهة الجهاز في المتصفح + (للراوتر) تعديل WiFi.
+  Widget _buildAccess() {
+    final isRouter = d.isGateway || d.type == DeviceType.router;
+    return SectionCard(
+      title: 'الوصول إلى الجهاز',
+      icon: Icons.open_in_browser_rounded,
+      accent: _indigo,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _accessButton(
+            icon: Icons.language_rounded,
+            label: 'فتح واجهة الجهاز (${d.ip})',
+            color: _indigo,
+            onTap: _openDeviceWeb,
+          ),
+          if (isRouter) ...[
+            const SizedBox(height: 10),
+            _accessButton(
+              icon: Icons.wifi_password_rounded,
+              label: 'تعديل WiFi',
+              color: const Color(0xFF00695C),
+              onTap: _openWifiEdit,
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text(
+            'تُفتح صفحة دخول الجهاز في المتصفح الافتراضي — المسار الموثوق للدخول على كل المنصّات.',
+            style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _accessButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: color)),
+              ),
+              Icon(Icons.chevron_left_rounded,
+                  color: color.withValues(alpha: 0.7)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDeviceWeb() async {
+    final ok = await openUrlRobust('http://${d.ip}');
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذّر فتح http://${d.ip}')),
+      );
+    }
+  }
+
+  void _openWifiEdit() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => RouterWifiEditPage(gatewayIp: d.ip)),
     );
   }
 
@@ -243,30 +395,41 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     );
   }
 
-  Future<void> _openWebViewRead() async {
+  /// قراءة صامتة لبصريات الجهاز عبر WebView الخفيّ (دون إظهار واجهة الجهاز).
+  Future<void> _silentWebViewRead() async {
+    if (!Platform.isWindows || !_webReady) return;
     // اعتمادات مرشّحة (المحفوظ + الافتراضي للماركة) بصيغة [[user, pass], ...].
     final cands = await DeviceCredentialsService.candidatesFor(
         d.ip, d.brandGuess.isNotEmpty ? d.brandGuess : d.vendor);
     final creds = cands.map((c) => [c.user, c.pass]).toList();
     if (!mounted) return;
-    final reading = await Navigator.push<OpticalReading?>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => OpticalWebViewPage(
-          ip: d.ip,
-          credentials: creds.isNotEmpty
-              ? creds
-              : const [
-                  ['telecomadmin', 'admintelecom']
-                ],
-        ),
-      ),
-    );
-    if (reading != null && mounted) {
-      setState(() {
-        d.optical = reading;
-        d.error = '';
-      });
+    setState(() => _webBusy = true);
+    // مهلة لرسم الـWebView الخفيّ قبل تشغيل السكربتات.
+    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      final reading = await WebViewOpticalReader.readWith(
+        _webCtrl,
+        d.ip,
+        creds: creds.isNotEmpty
+            ? creds
+            : const [
+                ['telecomadmin', 'admintelecom']
+              ],
+      );
+      if (reading != null && mounted) {
+        setState(() {
+          d.optical = reading;
+          d.error = '';
+        });
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('تعذّرت القراءة الصامتة — جرّب إدخال اعتماد يدوي'),
+        ));
+      }
+    } catch (e) {
+      debugPrint('[DeviceDetail] silent optical read error: $e');
+    } finally {
+      if (mounted) setState(() => _webBusy = false);
     }
   }
 
@@ -291,12 +454,20 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
             children: [
               if (Platform.isWindows)
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.travel_explore_rounded, size: 18),
-                  label: const Text('قراءة متقدمة عبر المتصفح (موصى به)'),
+                  icon: _webBusy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.auto_fix_high_rounded, size: 18),
+                  label: Text(_webBusy
+                      ? 'جارٍ القراءة الصامتة...'
+                      : 'قراءة متقدمة صامتة (موصى به)'),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF00838F),
                       foregroundColor: Colors.white),
-                  onPressed: _busy ? null : _openWebViewRead,
+                  onPressed: (_busy || _webBusy) ? null : _silentWebViewRead,
                 ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.login_rounded, size: 18),

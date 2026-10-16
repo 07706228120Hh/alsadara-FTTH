@@ -12,6 +12,7 @@ import '../models/quality_models.dart';
 import '../services/device_credentials_service.dart';
 import '../services/network_quality_controller.dart';
 import '../services/webview_optical_reader.dart';
+import '../widgets/depth_3d.dart';
 import 'quality_results_page.dart';
 
 class QualityScanPage extends StatefulWidget {
@@ -22,23 +23,24 @@ class QualityScanPage extends StatefulWidget {
 }
 
 class _QualityScanPageState extends State<QualityScanPage> {
-  static const _indigo = Color(0xFF1A237E);
 
   final _controller = NetworkQualityController();
-  bool _running = false;
+  // الفحص يبدأ تلقائياً فور فتح الشاشة ⇒ تبدأ الواجهة على مشهد التقدّم مباشرةً.
+  bool _running = true;
+  bool _inFlight = false; // حارس يمنع بدء فحصين متوازيين
   QualityStage _stage = QualityStage.idle;
   double _progress = 0;
   double _liveMbps = 0;
   String _error = '';
   String _discoveryStatus = '';
 
-  // خيارات الفحص (يتحكّم بها المستخدم).
-  bool _optDevices = true;
-  bool _optFiber = true;
-  bool _optSpeed = true;
-  bool _optTrace = false;
+  // كل الخدمات مُفعّلة دائماً (لا شاشة مفاتيح).
+  // ملاحظة: تتبّع المسار (Traceroute) نُقل إلى زرّ عند الطلب داخل صفحة النتائج،
+  // ولا يُشغَّل أثناء الفحص.
 
-  // WebView (ويندوز) لقراءة بصريات هواوي — يظهر مرئياً أثناء القراءة فقط.
+  // WebView (ويندوز) لقراءة بصريات هواوي — مُركَّب دائماً خلف طبقة معتمة ولا
+  // يظهر للمستخدم إطلاقاً (قراءة صامتة عبر JS/XHR). WebView2 يحتاج تركيباً
+  // فعلياً في الشجرة ليعمل، لذا نُبقيه مرسوماً لكن محجوباً بالكامل.
   final wvwin.WebviewController _webCtrl = wvwin.WebviewController();
   bool _webReady = false;
   bool _webBusy = false;
@@ -59,6 +61,10 @@ class _QualityScanPageState extends State<QualityScanPage> {
       if (mounted) setState(() => _discoveryStatus = s);
     };
     _initWebView();
+    // ابدأ الفحص تلقائياً بعد أوّل إطار (setState داخل _start آمن حينها).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _start();
+    });
   }
 
   Future<void> _initWebView() async {
@@ -82,9 +88,9 @@ class _QualityScanPageState extends State<QualityScanPage> {
     super.dispose();
   }
 
-  /// بعد الفحص: اقرأ بصريات ONU هواوي عبر WebView (يظهر مرئياً ~15ث).
+  /// بعد الفحص: اقرأ بصريات ONU هواوي عبر WebView خفيّ (محجوب بالكامل، صامت).
   Future<void> _augmentOptical(FullQualityReport report) async {
-    if (!Platform.isWindows || !_webReady || !_optFiber) return;
+    if (!Platform.isWindows || !_webReady) return;
     final devices = report.discovery?.devices;
     if (devices == null) return;
     NetworkDevice? onu;
@@ -100,7 +106,7 @@ class _QualityScanPageState extends State<QualityScanPage> {
       }
     }
     if (onu == null) return;
-    // أظهر WebView (WebView2 يحتاج ظهوراً فعلياً كي يعمل).
+    // فعّل الـWebView الخفيّ (مرسوم خلف طبقة معتمة — لا يراه المستخدم).
     if (mounted) setState(() => _webBusy = true);
     await Future.delayed(const Duration(milliseconds: 800));
     try {
@@ -129,31 +135,36 @@ class _QualityScanPageState extends State<QualityScanPage> {
   }
 
   Future<void> _start() async {
-    setState(() {
-      _running = true;
-      _error = '';
-      _liveMbps = 0;
-      _progress = 0;
-    });
+    if (_inFlight) return; // يمنع بدء فحصين متوازيين
+    _inFlight = true;
+    if (mounted) {
+      setState(() {
+        _running = true;
+        _error = '';
+        _liveMbps = 0;
+        _progress = 0;
+      });
+    }
     try {
       await _ensurePermission();
+      // كل الخدمات مُفعّلة دائماً (التتبّع عند الطلب في النتائج).
       final report = await _controller.run(
         now: DateTime.now(),
-        options: QualityTestOptions(
-          testDevices: _optDevices,
-          testOptical: _optFiber,
-          testSpeed: _optSpeed,
-          testTraceroute: _optTrace,
+        options: const QualityTestOptions(
+          testDevices: true,
+          testOptical: true,
+          testSpeed: true,
+          testTraceroute: false,
         ),
       );
-      // قراءة بصريات هواوي عبر WebView المرئي لحظياً (ويندوز).
+      // قراءة بصريات هواوي عبر WebView الخفيّ الصامت (ويندوز).
       await _augmentOptical(report);
       if (!mounted) return;
-      await Navigator.push(
+      // استبدال الشاشة: يعود زرّ الرجوع من النتائج إلى «اختر الأداة».
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => QualityResultsPage(report: report)),
       );
-      if (mounted) setState(() => _running = false);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -161,6 +172,8 @@ class _QualityScanPageState extends State<QualityScanPage> {
           _error = 'حدث خطأ أثناء الفحص: $e';
         });
       }
+    } finally {
+      _inFlight = false;
     }
   }
 
@@ -169,56 +182,44 @@ class _QualityScanPageState extends State<QualityScanPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF2F4F8),
-        appBar: AppBar(
-          title: const Text('فحص جودة الإنترنت',
-              style: TextStyle(fontWeight: FontWeight.w800)),
-          backgroundColor: _indigo,
-          foregroundColor: Colors.white,
-        ),
+        backgroundColor: Nq3d.ground,
+        appBar: nq3dAppBar('فحص جودة الإنترنت'),
         body: Stack(
           children: [
-            // WebView يظهر مرئياً أثناء قراءة البصريات فقط.
-            if (Platform.isWindows && _webReady && _webBusy)
-              Positioned.fill(child: wvwin.Webview(_webCtrl)),
-            if (!_webBusy)
-              Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    child: _running ? _buildRunning() : _buildIdle(),
-                  ),
+            // الواجهة الطبيعية هي الطبقة الأساسية (كاملة الشاشة).
+            // أثناء الفحص: تملأ شاشة واحدة بلا تمرير (تحجيم متجاوب). عند الخطأ:
+            // محتوى قصير مُوسَّط (قابل للتمرير احتياطاً فقط).
+            Positioned.fill(
+              child: Container(
+                color: Nq3d.ground,
+                child: SafeArea(
+                  child: _running
+                      ? _buildRunning()
+                      : Center(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(20),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 480),
+                              child: _buildError(),
+                            ),
+                          ),
+                        ),
                 ),
               ),
-            if (_webBusy)
+            ),
+            // WebView2 (ويندوز) يرسم طبقة native فوق Flutter ولا يمكن حجبه بطبقة
+            // Flutter؛ لذا نركّبه فقط أثناء القراءة الصامتة بحجم 1×1 في الزاوية
+            // (غير مرئي عملياً) ومتجاهِلاً للمؤشّر، حتى لا يغطّي الواجهة ولا
+            // تنهار أحداث المؤشّر. القراءة تتم عبر JS/XHR على المتحكّم نفسه.
+            if (Platform.isWindows && _webReady && _webBusy)
               Positioned(
-                top: 0,
                 left: 0,
-                right: 0,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  color: _indigo,
-                  child: const Row(
-                    children: [
-                      SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white)),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'جارٍ قراءة الإشارة الضوئية تلقائياً... (لا حاجة لأي تدخّل — سيختفي تلقائياً)',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12.5),
-                        ),
-                      ),
-                    ],
-                  ),
+                top: 0,
+                width: 1,
+                height: 1,
+                child: IgnorePointer(
+                  ignoring: true,
+                  child: wvwin.Webview(_webCtrl),
                 ),
               ),
           ],
@@ -227,131 +228,233 @@ class _QualityScanPageState extends State<QualityScanPage> {
     );
   }
 
-  Widget _buildIdle() {
+  // ═══════════════════ الواجهة (تصميم ثلاثي الأبعاد) ═══════════════════
+
+  /// واجهة الخطأ الوحيدة غير «جارٍ الفحص»: رسالة + زرّ إعادة المحاولة.
+  Widget _buildError() {
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Icon(Icons.network_check_rounded, size: 72, color: _indigo),
-        const SizedBox(height: 12),
-        const Text('فحص شامل ودقيق لجودة الاتصال',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        const Icon(Icons.error_outline_rounded,
+            color: Color(0xFFC62828), size: 56),
+        const SizedBox(height: 14),
+        const Text('تعذّر إكمال الفحص',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontWeight: FontWeight.w900, fontSize: 19, color: Nq3d.ink)),
         const SizedBox(height: 6),
         Text(
-          'يقيس زمن الاستجابة والتذبذب وفقدان الحزم والسرعة وإشارة الفايبر الضوئية وWiFi ومواصفات الجهاز.',
+          _error.isNotEmpty ? _error : 'حدث خطأ غير متوقّع أثناء الفحص.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.6),
+          style: const TextStyle(fontSize: 13, color: Nq3d.muted, height: 1.7),
         ),
-        const SizedBox(height: 20),
-        _optionTile('اكتشاف وفحص أجهزة الشبكة (ONU/راوتر/المتصلين)', _optDevices,
-            (v) => setState(() => _optDevices = v), Icons.lan_rounded),
-        _optionTile('فحص الإشارة الضوئية للفايبر (Rx/Tx)', _optFiber,
-            (v) => setState(() => _optFiber = v), Icons.fiber_manual_record),
-        _optionTile('قياس سرعة التنزيل/الرفع', _optSpeed,
-            (v) => setState(() => _optSpeed = v), Icons.speed_rounded),
-        _optionTile('تتبّع المسار (Traceroute)', _optTrace,
-            (v) => setState(() => _optTrace = v), Icons.route_rounded),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: const Text('ابدأ الفحص',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _indigo,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+        const SizedBox(height: 22),
+        Raised3D(
+          onTap: _start,
+          radius: 16,
+          depth: 6,
+          padding: EdgeInsets.zero,
+          edgeColor: Nq3d.indigoDark,
+          glowColor: const Color(0x990F1660),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF283593), Nq3d.indigo],
+          ),
+          semanticLabel: 'إعادة المحاولة',
+          child: const SizedBox(
+            height: 56,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.refresh_rounded, color: Colors.white),
+                SizedBox(width: 8),
+                Text('إعادة المحاولة',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17)),
+              ],
             ),
-            onPressed: _start,
           ),
         ),
-        if (_error.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          Text(_error,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red, fontSize: 12)),
-        ],
       ],
     );
   }
 
-  Widget _optionTile(
-      String title, bool value, ValueChanged<bool> onChanged, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: SwitchListTile(
-        value: value,
-        onChanged: onChanged,
-        activeColor: _indigo,
-        dense: true,
-        secondary: Icon(icon, color: _indigo, size: 20),
-        title: Text(title,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-      ),
-    );
-  }
+  /// مراحل الفحص الفعلية بالترتيب الذي يبثّه NetworkQualityController
+  /// (كل الخدمات مُفعّلة دائماً).
+  static const List<QualityStage> _plannedStages = [
+    QualityStage.device,
+    QualityStage.devices,
+    QualityStage.wifi,
+    QualityStage.optical,
+    QualityStage.ping,
+    QualityStage.dns,
+    QualityStage.download,
+    QualityStage.upload,
+  ];
 
   Widget _buildRunning() {
-    final showSpeed = _stage == QualityStage.download && _liveMbps > 0;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 10),
-        SizedBox(
-          width: 150,
-          height: 150,
-          child: Stack(
-            alignment: Alignment.center,
+    final showSpeed = (_stage == QualityStage.download ||
+            _stage == QualityStage.upload) &&
+        _liveMbps > 0;
+    final label = _webBusy ? 'قراءة الإشارة الضوئية (صامتة)' : _stage.arabicLabel;
+    final indeterminate = _progress == 0 || _webBusy;
+
+    final String hint;
+    if (_webBusy) {
+      hint = 'جارٍ قراءة بيانات الـONU تلقائياً دون فتح واجهته — لحظات...';
+    } else if (_stage == QualityStage.devices && _discoveryStatus.isNotEmpty) {
+      hint = _discoveryStatus;
+    } else {
+      hint = 'جارٍ الفحص — قد يستغرق حتى دقيقة';
+    }
+
+    final stages = _plannedStages;
+    final allDone = _stage == QualityStage.done || _webBusy;
+    final cur = stages.indexOf(_webBusy ? QualityStage.optical : _stage);
+
+    // تحجيم متجاوب يملأ شاشة واحدة بلا تمرير: نشتقّ الأحجام من الارتفاع والعرض
+    // المتاحين (LayoutBuilder يعطي أبعاد المساحة أسفل الشريط ضمن SafeArea).
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        final h = c.maxHeight.isFinite ? c.maxHeight : 640.0;
+        final w = c.maxWidth.isFinite ? c.maxWidth : 360.0;
+        final isPhone = w < 600;
+        final isDesktop = w >= 1024;
+        final pad = h < 560 ? 10.0 : 16.0;
+        final innerW = (w - pad * 2).clamp(240.0, 480.0).toDouble();
+
+        // قرص التقدّم: محدود بعرض المحتوى وبنسبة من الارتفاع (ارتفاع القرص ≈
+        // العرض × 0.75 داخل ProgressDisc3D).
+        final discByW = isDesktop ? 300.0 : (isPhone ? 230.0 : 280.0);
+        final discW =
+            innerW.clamp(0.0, discByW).clamp(0.0, (h * 0.40) / 0.75).toDouble();
+        final pct = (_progress * 100).round();
+        final pctSize = (discW * 0.17).clamp(26.0, 54.0).toDouble();
+
+        // مشهد المرحلة: نسبة التصميم 150/360؛ نحدّ عرضه بحيث لا يتجاوز
+        // ارتفاعه الحيّز المخصّص (المتبقّي بعد بقية العناصر).
+        final sceneH = (h * (isPhone ? 0.22 : 0.26)).clamp(70.0, 150.0).toDouble();
+        final sceneW = (sceneH / (150 / 360)).clamp(220.0, innerW).toDouble();
+
+        return Padding(
+          padding: EdgeInsets.all(pad),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
-                width: 150,
-                height: 150,
-                child: CircularProgressIndicator(
-                  value: _progress == 0 ? null : _progress,
-                  strokeWidth: 8,
-                  backgroundColor: Colors.grey.shade200,
-                  valueColor: const AlwaysStoppedAnimation(_indigo),
+              // 1) قرص التقدّم + النسبة/السرعة.
+              ProgressDisc3D(
+                progress: indeterminate ? null : _progress,
+                maxWidth: discW,
+                center: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_webBusy)
+                      Icon(Icons.fiber_manual_record,
+                          color: Nq3d.teal, size: pctSize * 0.85)
+                    else
+                      Text('$pct%',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: pctSize,
+                              height: 1.05,
+                              color: Nq3d.indigo)),
+                    if (showSpeed)
+                      Text(
+                        '${_liveMbps.toStringAsFixed(1)} Mbps ${_stage == QualityStage.upload ? '↑' : '↓'}',
+                        textDirection: TextDirection.ltr,
+                        style: TextStyle(
+                            fontSize: (discW * 0.06).clamp(12.0, 16.0),
+                            fontWeight: FontWeight.w800,
+                            color: Nq3d.teal),
+                      ),
+                  ],
                 ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('${(_progress * 100).round()}%',
+              // 2) بطاقة مشهد المرحلة 3D (مرنة الحجم) + اسم المرحلة والتلميح.
+              Flexible(
+                child: Container(
+                  padding: EdgeInsets.fromLTRB(12, pad * 0.6, 12, pad * 0.8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow:
+                        raisedShadow(depth: 5, glow: const Color(0x661A237E)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      StageScene3D(
+                        stage: _webBusy ? QualityStage.optical : _stage,
+                        maxWidth: sceneW,
+                      ),
+                      SizedBox(height: pad * 0.4),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: Text(label,
+                            key: ValueKey(label),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: isPhone ? 15 : 17,
+                                color: Nq3d.ink)),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(hint,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 11.5, color: Nq3d.muted)),
+                    ],
+                  ),
+                ),
+              ),
+              // 3) شريط المراحل الأفقي (horizontal stepper) + اسم المرحلة.
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: pad * 0.5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow:
+                      raisedShadow(depth: 4, glow: const Color(0x661A237E)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    StageStrip3D(
+                      stages: stages,
+                      currentIndex: cur,
+                      allDone: allDone,
+                      maxBadge: isPhone ? 28 : 34,
+                    ),
+                    SizedBox(height: pad * 0.35),
+                    Text(
+                      allDone
+                          ? 'اكتمل الفحص'
+                          : 'المرحلة ${cur < 0 ? 1 : cur + 1} من ${stages.length}: ${(_webBusy ? QualityStage.optical : _stage).arabicLabel}',
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 26,
-                          color: _indigo)),
-                  if (showSpeed)
-                    Text('${_liveMbps.toStringAsFixed(1)} Mbps',
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600)),
-                ],
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: Nq3d.indigo),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 24),
-        Text(_stage.arabicLabel,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        const SizedBox(height: 8),
-        if (_stage == QualityStage.devices && _discoveryStatus.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(_discoveryStatus,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          )
-        else
-          Text('جارٍ الفحص — قد يستغرق حتى دقيقة',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-      ],
+        );
+      },
     );
   }
 }

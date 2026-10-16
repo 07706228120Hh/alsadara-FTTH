@@ -41,6 +41,30 @@ class DeviceDiscoveryService {
 
   void Function(String status)? onStatus;
 
+  /// يميّز العناوين التي ليست أجهزة حقيقية (multicast / broadcast / بثّ MAC)
+  /// فتُستبعد من قائمة المتصلين. تُستخدم في الاكتشاف وعند العرض (مصدر واحد).
+  static bool isNoiseEndpoint(String ip, String mac) {
+    final m = mac.toLowerCase();
+    // MAC multicast/broadcast: IPv4 multicast=01:00:5e، IPv6 multicast=33:33،
+    // broadcast=ff:ff:ff:ff:ff:ff.
+    if (m.startsWith('ff:ff') ||
+        m.startsWith('01:00:5e') ||
+        m.startsWith('33:33')) {
+      return true;
+    }
+    final parts = ip.split('.');
+    if (parts.length != 4) return true;
+    final o0 = int.tryParse(parts[0]);
+    final o3 = int.tryParse(parts[3]);
+    if (o0 == null || o3 == null) return true;
+    if (o0 >= 224 && o0 <= 239) return true; // multicast 224.0.0.0/4
+    if (o0 == 255 || o0 == 0) return true; // broadcast/غير صالح
+    if (o3 == 255) return true; // بثّ الشبكة الفرعية (/24 الشائع)
+    if (o3 == 0) return true; // عنوان الشبكة
+    if (ip == '0.0.0.0' || ip == '255.255.255.255') return true;
+    return false;
+  }
+
   Future<DiscoveryResult> discover({bool scanClients = true}) async {
     await OuiService.ensureLoaded();
     final byIp = <String, NetworkDevice>{};
@@ -107,6 +131,16 @@ class DeviceDiscoveryService {
       }
     }
 
+    // 4b) أسماء المضيفين للأجهزة الحقيقية (أفضل جهد، مهلات قصيرة، لا يبطئ الفحص).
+    if (scanClients) {
+      final clients =
+          byIp.values.where((d) => d.type == DeviceType.client).toList();
+      if (clients.isNotEmpty) {
+        _status('محاولة قراءة أسماء الأجهزة...');
+        await _fillHostnames(clients);
+      }
+    }
+
     // 5) كشف Double-NAT: بوّابة راوتر + ONU منفصل على شبكة أخرى
     String? onuIp;
     bool doubleNat = false;
@@ -162,9 +196,7 @@ class DeviceDiscoveryService {
         for (final m in reg.allMatches(r.stdout.toString())) {
           final ip = m.group(1)!;
           final mac = m.group(2)!.replaceAll('-', ':').toLowerCase();
-          if (!mac.startsWith('ff:ff') && !ip.endsWith('.255')) {
-            out[ip] = mac;
-          }
+          if (!isNoiseEndpoint(ip, mac)) out[ip] = mac;
         }
       } else {
         // Android/Linux: جرّب /proc/net/arp
@@ -178,7 +210,8 @@ class DeviceDiscoveryService {
                 final ip = parts[0];
                 final mac = parts[3].toLowerCase();
                 if (RegExp(r'^\d+\.\d+\.\d+\.\d+$').hasMatch(ip) &&
-                    mac != '00:00:00:00:00:00') {
+                    mac != '00:00:00:00:00:00' &&
+                    !isNoiseEndpoint(ip, mac)) {
                   out[ip] = mac;
                 }
               }
@@ -193,7 +226,9 @@ class DeviceDiscoveryService {
             final reg = RegExp(
                 r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*?([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})');
             for (final m in reg.allMatches(r.stdout.toString())) {
-              out[m.group(1)!] = m.group(2)!.toLowerCase();
+              final ip = m.group(1)!;
+              final mac = m.group(2)!.toLowerCase();
+              if (!isNoiseEndpoint(ip, mac)) out[ip] = mac;
             }
           } catch (_) {}
         }
@@ -202,6 +237,71 @@ class DeviceDiscoveryService {
       debugPrint('[Discovery] arp error: $e');
     }
     return out.entries.toList();
+  }
+
+  // ═══════════════ أسماء المضيفين (أفضل جهد) ═══════════════
+
+  /// يملأ hostname لعدد محدود من الأجهزة الحقيقية بالتوازي بمهلات قصيرة
+  /// حتى لا يُبطئ الفحص (reverse-DNS لكل المنصّات + NetBIOS على ويندوز).
+  Future<void> _fillHostnames(List<NetworkDevice> clients) async {
+    const maxTargets = 16;
+    final targets =
+        clients.where((c) => c.hostname.isEmpty).take(maxTargets).toList();
+    if (targets.isEmpty) return;
+    await Future.wait(targets.map((c) async {
+      try {
+        final name = await _resolveName(c.ip);
+        if (name.isNotEmpty) c.hostname = name;
+      } catch (_) {}
+    }));
+  }
+
+  static Future<String> _resolveName(String ip) async {
+    // 1) Reverse-DNS (كل المنصّات) — مهلة قصيرة.
+    try {
+      final addr = InternetAddress.tryParse(ip);
+      if (addr != null) {
+        final rev = await addr.reverse().timeout(const Duration(seconds: 1));
+        final host = rev.host.trim();
+        if (host.isNotEmpty && host != ip) return _cleanHost(host);
+      }
+    } catch (_) {}
+    // 2) NetBIOS على ويندوز عبر nbtstat -A.
+    if (Platform.isWindows) {
+      try {
+        final r = await Process.run('nbtstat', ['-A', ip],
+                stdoutEncoding: const SystemEncoding())
+            .timeout(const Duration(seconds: 2));
+        final name = _parseNbtstat(r.stdout.toString());
+        if (name.isNotEmpty) return name;
+      } catch (_) {}
+    }
+    return '';
+  }
+
+  /// يستخرج اسم الحاسوب (NetBIOS) من خرج nbtstat: سطر `<00>  UNIQUE`.
+  static String _parseNbtstat(String out) {
+    for (final line in out.split('\n')) {
+      final m = RegExp(r'^\s*([^\s<]+)\s+<00>\s+UNIQUE', caseSensitive: false)
+          .firstMatch(line);
+      if (m != null) {
+        final name = m.group(1)!.trim();
+        if (name.isNotEmpty && !name.startsWith('__')) return name;
+      }
+    }
+    return '';
+  }
+
+  /// ينظّف اسم المضيف: يزيل النقطة الأخيرة ولاحقة النطاق المحلّي.
+  static String _cleanHost(String host) {
+    var h = host.endsWith('.') ? host.substring(0, host.length - 1) : host;
+    for (final suffix in const ['.local', '.lan', '.home', '.localdomain']) {
+      if (h.toLowerCase().endsWith(suffix)) {
+        h = h.substring(0, h.length - suffix.length);
+        break;
+      }
+    }
+    return h;
   }
 
   // ═══════════════ فحص واجهات الويب ═══════════════
