@@ -72,7 +72,21 @@ public class ServiceRequestsController : ControllerBase
         [FromQuery] DateTime? fromDate = null,
         [FromQuery] DateTime? toDate = null)
     {
+        // Tenant scope from the token: the client companyId is honoured only for SuperAdmin.
+        if (!TryGetCompanyScope(out var scopeCompanyId))
+            return CompanyScopeForbidden();
+
         var query = _unitOfWork.ServiceRequests.AsQueryable();
+
+        if (scopeCompanyId.HasValue)
+            query = query.Where(r => r.CompanyId == scopeCompanyId);
+        else if (companyId.HasValue)
+            query = query.Where(r => r.CompanyId == companyId);
+
+        // Technician-role caller: server-enforced own-tasks scope (client filters still apply on top).
+        var technicianScope = await GetTechnicianScopeAsync();
+        if (technicianScope != null)
+            query = ApplyTechnicianScope(query, technicianScope);
 
         // فلتر التاريخ: من - إلى (حسب تاريخ الإنشاء)
         if (fromDate.HasValue)
@@ -85,9 +99,6 @@ public class ServiceRequestsController : ControllerBase
 
         if (serviceId.HasValue)
             query = query.Where(r => r.ServiceId == serviceId);
-
-        if (companyId.HasValue)
-            query = query.Where(r => r.CompanyId == companyId);
 
         // فلتر المصدر: agent = طلبات الوكلاء فقط، company = طلبات الشركة فقط
         if (!string.IsNullOrEmpty(source))
@@ -265,6 +276,14 @@ public class ServiceRequestsController : ControllerBase
         // تطبيع فلتري القسم والمُسنَد إليه: قيمة فارغة/مسافات => null (بلا فلترة).
         string? normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
         string? normalizedAssignee = string.IsNullOrWhiteSpace(assignee) ? null : assignee.Trim();
+
+        // Technician-role caller: the assignee is forced to the caller's own name (from the DB, not the
+        // client) so a technician cannot aggregate other people's tasks. Unknown name ⇒ matches nothing.
+        var technicianScope = await GetTechnicianScopeAsync();
+        if (technicianScope != null)
+            normalizedAssignee = technicianScope.Names.Count > 0
+                ? technicianScope.Names[^1]
+                : $"__no_technician_name__{technicianScope.UserId:N}";
 
         // تطبيع التواريخ إلى UTC (Npgsql timestamptz يتطلب UTC).
         var fromUtc = NormalizeToUtc(from);
@@ -571,8 +590,8 @@ ORDER BY ""TotalCollected"" DESC;";
                 .ThenInclude(h => h.ChangedBy)
             .FirstOrDefaultAsync(r => r.Id == id);
 
-        if (request == null)
-            return NotFound(new { success = false, message = "الطلب غير موجود" });
+        if (request == null || !CanAccessRequest(request))
+            return RequestNotFound();
 
         return Ok(new { success = true, data = MapToDetailedResponse(request) });
     }
@@ -588,8 +607,8 @@ ORDER BY ""TotalCollected"" DESC;";
             .Include(r => r.Service)
             .FirstOrDefaultAsync(r => r.RequestNumber == requestNumber);
 
-        if (request == null)
-            return NotFound(new { success = false, message = "الطلب غير موجود" });
+        if (request == null || !CanAccessRequest(request))
+            return RequestNotFound();
 
         return Ok(new { success = true, data = MapToResponse(request) });
     }
@@ -610,6 +629,13 @@ ORDER BY ""TotalCollected"" DESC;";
         if (opType == null)
             return BadRequest(new { success = false, message = "نوع العملية غير صالح" });
 
+        // CompanyId comes from the token; a client value is honoured only for SuperAdmin.
+        // Stamped explicitly here (not left to the central SaveChanges stamp, which must not be relied on).
+        var requestCompanyId = _tenant.IsSuperAdmin ? dto.CompanyId : _tenant.CompanyId;
+        if (!_tenant.IsSuperAdmin && dto.CompanyId.HasValue && dto.CompanyId != _tenant.CompanyId)
+            _logger.LogWarning("Create service request: client CompanyId {ClientCompanyId} ignored (token company {TokenCompanyId})",
+                dto.CompanyId, _tenant.CompanyId);
+
         var request = new ServiceRequest
         {
             Id = Guid.NewGuid(),
@@ -617,7 +643,7 @@ ORDER BY ""TotalCollected"" DESC;";
             ServiceId = dto.ServiceId,
             OperationTypeId = dto.OperationTypeId,
             CitizenId = dto.CitizenId,
-            CompanyId = dto.CompanyId,
+            CompanyId = requestCompanyId,
             Details = dto.Details != null ? JsonSerializer.Serialize(dto.Details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) : null,
             // dual-write (مرحلة ب): تعبئة العمودين المطبّعين بالتوازي مع Details JSON (توافق خلفي — لا حذف من JSON)
             Department = ExtractDetailValue(dto.Details, "department"),
@@ -670,8 +696,8 @@ ORDER BY ""TotalCollected"" DESC;";
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
-        if (request == null)
-            return NotFound(new { success = false, message = "الطلب غير موجود" });
+        if (request == null || !CanAccessRequest(request))
+            return RequestNotFound();
 
         if (!Enum.TryParse<ServiceRequestStatus>(dto.Status, true, out var newStatus))
             return BadRequest(new { success = false, message = "الحالة غير صالحة" });
@@ -828,21 +854,10 @@ ORDER BY ""TotalCollected"" DESC;";
                 catch { /* Details ليست JSON صالحة */ }
             }
 
-            // تحديد الفني المستهدف للخصم:
-            // 1. إذا يوجد اسم فني في Details["technician"] → ابحث عنه بالاسم
-            // 2. وإلا → الفني المعيّن على الطلب (request.TechnicianId)
-            Guid? chargeTargetId = null;
-            if (!string.IsNullOrEmpty(originalTechnicianName))
-            {
-                var originalTech = await _unitOfWork.Users.AsQueryable()
-                    .FirstOrDefaultAsync(u => u.FullName == originalTechnicianName && !u.IsDeleted);
-                if (originalTech != null)
-                    chargeTargetId = originalTech.Id;
-            }
-            if (!chargeTargetId.HasValue && request.TechnicianId.HasValue)
-            {
-                chargeTargetId = request.TechnicianId.Value;
-            }
+            // Fee target (Phase 0-D): request.TechnicianId first (same company + consistent with
+            // Details["technician"]), else the Details name resolved inside the task company only.
+            // Ambiguous/unknown ⇒ no target (no fee) — never resolved across companies or guessed.
+            Guid? chargeTargetId = await ResolveFeeTargetAsync(request, originalTechnicianName);
 
             // ═══ التسجيل المالي على الفني عند إكمال مهام الصيانة ═══
             // مهام الصيانة/الفنيين/الاتصالات/اللحام: تُسجَّل على الفني عند الإكمال
@@ -1183,11 +1198,13 @@ ORDER BY ""TotalCollected"" DESC;";
     public async Task<IActionResult> AssignToEmployee(Guid id, [FromBody] AssignRequestDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
-        if (request == null)
-            return NotFound(new { success = false, message = "الطلب غير موجود" });
+        if (request == null || !CanAccessRequest(request))
+            return RequestNotFound();
 
         var employee = await _unitOfWork.Users.GetByIdAsync(dto.EmployeeId);
-        if (employee == null)
+        // The employee must belong to the task company (no cross-company assignment).
+        if (employee == null || employee.IsDeleted
+            || (request.CompanyId.HasValue && employee.CompanyId != request.CompanyId))
             return BadRequest(new { success = false, message = "الموظف غير موجود" });
 
         var oldStatus = request.Status;
@@ -1225,8 +1242,8 @@ ORDER BY ""TotalCollected"" DESC;";
     public async Task<IActionResult> AddComment(Guid id, [FromBody] AddCommentDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
-        if (request == null)
-            return NotFound(new { success = false, message = "الطلب غير موجود" });
+        if (request == null || !CanAccessRequest(request))
+            return RequestNotFound();
 
         var comment = new ServiceRequestComment
         {
@@ -1250,6 +1267,9 @@ ORDER BY ""TotalCollected"" DESC;";
     [HttpGet("{id:guid}/comments")]
     public async Task<IActionResult> GetComments(Guid id)
     {
+        if (!await IsRequestAccessibleAsync(id))
+            return RequestNotFound();
+
         var comments = await _unitOfWork.ServiceRequestComments.AsQueryable()
             .Where(c => c.ServiceRequestId == id)
             .Include(c => c.User)
@@ -1282,8 +1302,8 @@ ORDER BY ""TotalCollected"" DESC;";
         try
         {
             var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
-            if (request == null)
-                return NotFound(new { success = false, message = "الطلب غير موجود" });
+            if (request == null || !CanAccessRequest(request))
+                return RequestNotFound();
 
             var userId = GetCurrentUserId();
             if (userId == Guid.Empty)
@@ -1332,6 +1352,9 @@ ORDER BY ""TotalCollected"" DESC;";
     [HttpGet("{id:guid}/attachments")]
     public async Task<IActionResult> GetAttachments(Guid id)
     {
+        if (!await IsRequestAccessibleAsync(id))
+            return RequestNotFound();
+
         var attachments = await _unitOfWork.ServiceRequestAttachments.AsQueryable()
             .Where(a => a.ServiceRequestId == id)
             .Include(a => a.UploadedBy)
@@ -1364,9 +1387,19 @@ ORDER BY ""TotalCollected"" DESC;";
         [FromQuery] string? department = null,
         [FromQuery] string? technician = null)
     {
+        // Tenant scope from the token: the client companyId is honoured only for SuperAdmin.
+        if (!TryGetCompanyScope(out var scopeCompanyId))
+            return CompanyScopeForbidden();
+
         var query = _unitOfWork.ServiceRequests.AsQueryable();
-        if (companyId.HasValue)
+        if (scopeCompanyId.HasValue)
+            query = query.Where(r => r.CompanyId == scopeCompanyId);
+        else if (companyId.HasValue)
             query = query.Where(r => r.CompanyId == companyId);
+
+        var technicianScope = await GetTechnicianScopeAsync();
+        if (technicianScope != null)
+            query = ApplyTechnicianScope(query, technicianScope);
         // (مرحلة ب) الفلترة من الأعمدة المطبّعة بدل استخراج Details JSON.
         if (!string.IsNullOrEmpty(department))
         {
@@ -1407,8 +1440,19 @@ ORDER BY ""TotalCollected"" DESC;";
         [FromQuery] string? technicianName = null,
         [FromQuery] bool includeCompleted = false)
     {
+        if (!TryGetCompanyScope(out var scopeCompanyId))
+            return CompanyScopeForbidden();
+
         var userId = GetCurrentUserId();
         var query = _unitOfWork.ServiceRequests.AsQueryable();
+        if (scopeCompanyId.HasValue)
+            query = query.Where(r => r.CompanyId == scopeCompanyId);
+
+        // Technician-role caller: own scope enforced on the server; a client technicianName is not
+        // allowed to widen it (the name filter below is ANDed with the scope).
+        var technicianScope = await GetTechnicianScopeAsync();
+        if (technicianScope != null)
+            query = ApplyTechnicianScope(query, technicianScope);
 
         // فلترة حسب الفني - (مرحلة ب) بالعمود المطبّع TechnicianName أو بالـ TechnicianId/AssignedToId
         // مع إبقاء fallback على Technician.FullName للسجلات القديمة قبل الـbackfill.
@@ -1524,17 +1568,23 @@ ORDER BY ""TotalCollected"" DESC;";
     }
 
     /// <summary>
-    /// حذف طلب خدمة - مدير النظام فقط
+    /// حذف طلب خدمة — مدير النظام (أي شركة) أو مدير الشركة (شركته فقط).
+    /// Phase 0-D: was [Authorize] only (any authenticated user, any company). Now restricted to
+    /// CompanyAdminOrAbove + same company. NOTE: the financial reversal below is incomplete
+    /// (agent tx hard-deleted, technician fees/journal entries not reversed) — fixed in Phase 1.
     /// </summary>
     [HttpDelete("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> DeleteRequest(Guid id)
     {
         try
         {
+            if (!TryGetCompanyScope(out _))
+                return CompanyScopeForbidden();
+
             var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
-            if (request == null)
-                return NotFound(new { success = false, message = "الطلب غير موجود" });
+            if (request == null || !CanAccessRequest(request))
+                return RequestNotFound();
 
             // حذف المعاملة المالية المرتبطة إن وجدت (مع عكس الرصيد)
             var linkedTransaction = await _unitOfWork.AgentTransactions.AsQueryable()
@@ -1577,7 +1627,8 @@ ORDER BY ""TotalCollected"" DESC;";
 
             await _unitOfWork.SaveChangesAsync();
 
-            _logger.LogInformation("SuperAdmin hard-deleted service request {Id}", id);
+            _logger.LogInformation("Service request {Id} hard-deleted by {UserId} (company {CompanyId})",
+                id, GetCurrentUserId(), request.CompanyId);
 
             return Ok(new { success = true, message = "تم حذف الطلب بشكل كامل" });
         }
@@ -1601,13 +1652,20 @@ ORDER BY ""TotalCollected"" DESC;";
     {
         try
         {
+            // Task company = token company (stamped explicitly below, never from the client and not
+            // left to the central SaveChanges stamp). SuperAdmin has no company ⇒ null (legacy behaviour).
+            if (!TryGetCompanyScope(out var taskCompanyId))
+                return CompanyScopeForbidden();
+
             // التحقق من عدم وجود مهمة مكررة لنفس رقم الهاتف ونفس النوع في نفس اليوم
             // مهمة "تركيب" لا تمنع "شراء اشتراك" — فقط نفس النوع يُمنع
+            // (Phase 0-D: scoped to the caller company — another company's task neither blocks nor leaks.)
             if (!string.IsNullOrWhiteSpace(dto.CustomerPhone))
             {
                 var todayUtc = DateTime.UtcNow.AddHours(3).Date;
                 var taskType = dto.TaskType ?? "";
                 var duplicate = await _unitOfWork.ServiceRequests.FirstOrDefaultAsync(r =>
+                    (taskCompanyId == null || r.CompanyId == taskCompanyId) &&
                     r.ContactPhone == dto.CustomerPhone &&
                     r.CreatedAt >= todayUtc &&
                     r.Status != ServiceRequestStatus.Cancelled &&
@@ -1680,6 +1738,7 @@ ORDER BY ""TotalCollected"" DESC;";
             {
                 var deptTask = await _unitOfWork.DepartmentTasks.AsQueryable()
                     .FirstOrDefaultAsync(t => t.Department.NameAr == dto.Department
+                        && (taskCompanyId == null || t.Department.CompanyId == taskCompanyId)
                         && t.NameAr == dto.TaskType && !t.IsDeleted);
                 if (deptTask != null && deptTask.SlaHours > 0)
                     details["slaHours"] = deptTask.SlaHours;
@@ -1701,6 +1760,7 @@ ORDER BY ""TotalCollected"" DESC;";
                 RequestNumber = GenerateRequestNumber(),
                 ServiceId = dto.ServiceId,
                 OperationTypeId = operationTypeId,
+                CompanyId = taskCompanyId,
                 Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }),
                 // dual-write (مرحلة ب): تعبئة العمودين المطبّعين بالتوازي مع Details JSON (توافق خلفي)
                 Department = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim(),
@@ -1715,20 +1775,35 @@ ORDER BY ""TotalCollected"" DESC;";
             };
 
             // تعيين تلقائي: إذا تم تحديد فني، ابحث عنه وعيّنه مباشرة
-            if (!string.IsNullOrEmpty(dto.Technician))
+            // Phase 0-D: TechnicianId first, else exact name inside the task company only (unique match).
+            if (!string.IsNullOrEmpty(dto.Technician) || dto.TechnicianId.HasValue)
             {
-                var technicianUser = await _unitOfWork.Users.AsQueryable()
-                    .FirstOrDefaultAsync(u => u.FullName == dto.Technician && !u.IsDeleted);
+                var technicianUser = await ResolveTechnicianAsync(dto.TechnicianId, dto.Technician, taskCompanyId);
                 if (technicianUser != null)
                 {
                     request.TechnicianId = technicianUser.Id;
                     request.AssignedToId = technicianUser.Id;
                     request.Status = ServiceRequestStatus.Assigned;
                     request.AssignedAt = DateTime.UtcNow;
-                    _logger.LogInformation("تعيين تلقائي للفني {TechnicianName} (ID: {TechnicianId})", dto.Technician, technicianUser.Id);
-                    
+
+                    // Resolved by id only (no name sent) ⇒ keep name column/Details consistent with the id.
+                    if (string.IsNullOrWhiteSpace(dto.Technician))
+                    {
+                        var resolvedName = NormalizeName(technicianUser.FullName);
+                        details["technician"] = resolvedName;
+                        request.TechnicianName = resolvedName;
+                        request.Details = JsonSerializer.Serialize(details, RelaxedJson);
+                    }
+
+                    _logger.LogInformation("تعيين تلقائي للفني {TechnicianName} (ID: {TechnicianId})", technicianUser.FullName, technicianUser.Id);
+
                     // إشعار الفني بالتعيين
-                    await NotifyTechnicianOfAssignment(request, technicianUser.Id, dto.Technician);
+                    await NotifyTechnicianOfAssignment(request, technicianUser.Id, technicianUser.FullName);
+                }
+                else
+                {
+                    _logger.LogWarning("Create task: technician '{Technician}' not resolved inside company {CompanyId} — task left unassigned",
+                        dto.Technician, taskCompanyId);
                 }
             }
 
@@ -1794,8 +1869,8 @@ ORDER BY ""TotalCollected"" DESC;";
     public async Task<IActionResult> AssignTask(Guid id, [FromBody] AssignTaskDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
-        if (request == null)
-            return NotFound(new { success = false, message = "الطلب غير موجود" });
+        if (request == null || !CanAccessRequest(request))
+            return RequestNotFound();
 
         // تحديث Details JSON بإضافة بيانات التعيين
         var details = new Dictionary<string, object?>();
@@ -1823,27 +1898,47 @@ ORDER BY ""TotalCollected"" DESC;";
         request.AssignedAt = DateTime.UtcNow;
         request.UpdatedAt = DateTime.UtcNow;
 
-        // تعيين الموظف إن وجد
+        // تعيين الموظف إن وجد (Phase 0-D: must belong to the task company)
         if (dto.EmployeeId.HasValue)
         {
             var employee = await _unitOfWork.Users.GetByIdAsync(dto.EmployeeId.Value);
-            if (employee != null)
+            if (employee != null && !employee.IsDeleted
+                && (!request.CompanyId.HasValue || employee.CompanyId == request.CompanyId))
             {
                 request.AssignedToId = dto.EmployeeId;
+            }
+            else if (employee != null)
+            {
+                _logger.LogWarning("Assign task {Id}: employee {EmployeeId} outside company {CompanyId} ignored",
+                    id, dto.EmployeeId, request.CompanyId);
             }
         }
 
         // البحث عن الفني وتعيين TechnicianId
-        if (!string.IsNullOrEmpty(dto.Technician))
+        // Phase 0-D: TechnicianId first, else exact name inside the task company only (unique match).
+        if (!string.IsNullOrEmpty(dto.Technician) || dto.TechnicianId.HasValue)
         {
-            var techUser = await _unitOfWork.Users.AsQueryable()
-                .FirstOrDefaultAsync(u => u.FullName == dto.Technician && !u.IsDeleted);
+            var techUser = await ResolveTechnicianAsync(dto.TechnicianId, dto.Technician, request.CompanyId);
             if (techUser != null)
             {
                 request.TechnicianId = techUser.Id;
                 // إذا لم يتم تحديد EmployeeId، عيّن الفني كـ AssignedTo أيضاً
                 if (!dto.EmployeeId.HasValue)
                     request.AssignedToId = techUser.Id;
+
+                // Resolved by id only ⇒ keep name column/Details consistent with the id.
+                if (string.IsNullOrEmpty(dto.Technician))
+                {
+                    var t = NormalizeName(techUser.FullName);
+                    details["technician"] = t;
+                    request.TechnicianName = t;
+                    request.Details = JsonSerializer.Serialize(details, RelaxedJson);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Assign task {Id}: technician '{Technician}' not resolved inside company {CompanyId}",
+                    id, dto.Technician, request.CompanyId);
             }
         }
 
@@ -1893,8 +1988,8 @@ ORDER BY ""TotalCollected"" DESC;";
     public async Task<IActionResult> UpdateTask(Guid id, [FromBody] UpdateTaskDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
-        if (request == null)
-            return NotFound(new { success = false, message = "الطلب غير موجود" });
+        if (request == null || !CanAccessRequest(request))
+            return RequestNotFound();
 
         // تحديث Details JSON
         var details = new Dictionary<string, object?>();
@@ -1938,12 +2033,27 @@ ORDER BY ""TotalCollected"" DESC;";
         }
 
         // تحديث الفني
-        if (!string.IsNullOrEmpty(dto.Technician))
+        // Phase 0-D: TechnicianId first, else exact name inside the task company only (unique match).
+        if (!string.IsNullOrEmpty(dto.Technician) || dto.TechnicianId.HasValue)
         {
-            var techUser = await _unitOfWork.Users.AsQueryable()
-                .FirstOrDefaultAsync(u => u.FullName == dto.Technician && !u.IsDeleted);
+            var techUser = await ResolveTechnicianAsync(dto.TechnicianId, dto.Technician, request.CompanyId);
             if (techUser != null)
+            {
                 request.TechnicianId = techUser.Id;
+
+                // Resolved by id only ⇒ keep name column/Details consistent with the id.
+                if (string.IsNullOrEmpty(dto.Technician))
+                {
+                    var t = NormalizeName(techUser.FullName);
+                    details["technician"] = t;
+                    request.TechnicianName = t;
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Update task {Id}: technician '{Technician}' not resolved inside company {CompanyId}",
+                    id, dto.Technician, request.CompanyId);
+            }
         }
 
         request.Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
@@ -2095,9 +2205,14 @@ ORDER BY ""TotalCollected"" DESC;";
     {
         try
         {
+            // Phase 0-D: staff (names + phones) of the caller company only; SuperAdmin keeps all companies.
+            if (!TryGetCompanyScope(out var scopeCompanyId))
+                return CompanyScopeForbidden();
+
             // جلب كل الموظفين النشطين بدون فلتر قسم أو دور
             var staff = await _unitOfWork.Users.AsQueryable()
                 .Where(u => u.IsActive && u.Role != UserRole.Citizen)
+                .Where(u => scopeCompanyId == null || u.CompanyId == scopeCompanyId)
                 .Select(u => new
                 {
                     u.Id,
@@ -2449,6 +2564,218 @@ ORDER BY ""TotalCollected"" DESC;";
         return claim != null ? Guid.Parse(claim.Value) : Guid.Empty;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // Tenant / role scope helpers (Phase 0-D).
+    // Tenancy:EnforceIsolation is OFF ⇒ isolation is enforced here, per action:
+    //  - company always comes from the token (ICurrentTenant), never from the client;
+    //  - SuperAdmin keeps cross-company access;
+    //  - a Technician-role caller only sees tasks assigned to / created by them.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private static readonly JsonSerializerOptions RelaxedJson =
+        new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    /// <summary>403 for a non-SuperAdmin token that carries no company (cannot be scoped).</summary>
+    private ObjectResult CompanyScopeForbidden() =>
+        StatusCode(StatusCodes.Status403Forbidden,
+            new { success = false, message = "تعذّر تحديد شركة المستخدم من رمز الدخول — لا يمكن الوصول" });
+
+    private NotFoundObjectResult RequestNotFound() =>
+        NotFound(new { success = false, message = "الطلب غير موجود" });
+
+    /// <summary>
+    /// Company scope of the caller: SuperAdmin ⇒ (true, null = all companies);
+    /// otherwise the token company, or false when the token carries none.
+    /// </summary>
+    private bool TryGetCompanyScope(out Guid? companyId)
+    {
+        if (_tenant.IsSuperAdmin)
+        {
+            companyId = null;
+            return true;
+        }
+        companyId = _tenant.CompanyId;
+        return companyId.HasValue;
+    }
+
+    /// <summary>Can the caller touch this task? SuperAdmin always; others only within their token company.</summary>
+    private bool CanAccessRequest(ServiceRequest request) =>
+        _tenant.IsSuperAdmin
+        || (_tenant.CompanyId.HasValue && request.CompanyId == _tenant.CompanyId);
+
+    /// <summary>Same as <see cref="CanAccessRequest"/> without loading the entity.</summary>
+    private async Task<bool> IsRequestAccessibleAsync(Guid id)
+    {
+        var query = _unitOfWork.ServiceRequests.AsQueryable().Where(r => r.Id == id);
+        if (!_tenant.IsSuperAdmin)
+        {
+            var companyId = _tenant.CompanyId;
+            if (!companyId.HasValue)
+                return false;
+            query = query.Where(r => r.CompanyId == companyId);
+        }
+        return await query.AnyAsync();
+    }
+
+    /// <summary>The caller's role parsed from the token (name or numeric value), or null.</summary>
+    private UserRole? GetCallerRole()
+    {
+        var raw = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+               ?? User.FindFirst("role")?.Value;
+        return !string.IsNullOrWhiteSpace(raw) && Enum.TryParse<UserRole>(raw, true, out var role)
+            ? role
+            : null;
+    }
+
+    /// <summary>Identity used to restrict a Technician-role caller to their own tasks.</summary>
+    private sealed record TechnicianScope(Guid UserId, IReadOnlyList<string> Names);
+
+    /// <summary>
+    /// Returns a scope only for a Technician-role caller (not SuperAdmin). The name is read from the
+    /// database by the token user id — never from the client.
+    /// </summary>
+    private async Task<TechnicianScope?> GetTechnicianScopeAsync()
+    {
+        if (_tenant.IsSuperAdmin || GetCallerRole() != UserRole.Technician)
+            return null;
+
+        var userId = GetCurrentUserId();
+        string? fullName = null;
+        if (userId != Guid.Empty)
+        {
+            fullName = await _db.Users
+                .Where(u => u.Id == userId)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync();
+        }
+
+        var names = new List<string>();
+        if (!string.IsNullOrWhiteSpace(fullName))
+        {
+            names.Add(fullName.Trim());
+            var normalized = NormalizeName(fullName);
+            if (normalized != null && !names.Contains(normalized))
+                names.Add(normalized);
+        }
+        return new TechnicianScope(userId, names);
+    }
+
+    /// <summary>Exact JSON fragment <c>"key":"value"</c> as written by this controller (relaxed escaping).</summary>
+    private static string JsonToken(string key, string value) =>
+        "\"" + key + "\":" + JsonSerializer.Serialize(value, RelaxedJson);
+
+    /// <summary>
+    /// Restricts a query to tasks assigned to / created by the technician: by id (TechnicianId/AssignedToId,
+    /// Details.createdById) or by exact name (TechnicianName column, Technician.FullName, Details.technician,
+    /// Details.createdByName — exact JSON value, not substring).
+    /// </summary>
+    private static IQueryable<ServiceRequest> ApplyTechnicianScope(IQueryable<ServiceRequest> query, TechnicianScope scope)
+    {
+        var me = scope.UserId;
+        var creatorIdToken = JsonToken("createdById", me.ToString());
+
+        if (scope.Names.Count == 0)
+        {
+            return query.Where(r =>
+                r.TechnicianId == me || r.AssignedToId == me ||
+                (r.Details != null && r.Details.Contains(creatorIdToken)));
+        }
+
+        var n1 = scope.Names[0];
+        var n2 = scope.Names.Count > 1 ? scope.Names[1] : scope.Names[0];
+        var tech1 = JsonToken("technician", n1);
+        var tech2 = JsonToken("technician", n2);
+        var creator1 = JsonToken("createdByName", n1);
+        var creator2 = JsonToken("createdByName", n2);
+
+        return query.Where(r =>
+            r.TechnicianId == me || r.AssignedToId == me ||
+            r.TechnicianName == n1 || r.TechnicianName == n2 ||
+            (r.Technician != null && (r.Technician.FullName == n1 || r.Technician.FullName == n2)) ||
+            (r.Details != null && (
+                r.Details.Contains(creatorIdToken) ||
+                r.Details.Contains(tech1) || r.Details.Contains(tech2) ||
+                r.Details.Contains(creator1) || r.Details.Contains(creator2))));
+    }
+
+    /// <summary>
+    /// Resolves a user by exact full name strictly inside one company. Returns null when the company is
+    /// unknown, when nobody matches, or when the name is ambiguous (2+ matches) — never guesses.
+    /// </summary>
+    private async Task<User?> ResolveUserByNameInCompanyAsync(string? name, Guid? companyId)
+    {
+        if (!companyId.HasValue || string.IsNullOrWhiteSpace(name))
+            return null;
+
+        var raw = name.Trim();
+        var normalized = NormalizeName(name) ?? raw;
+        var matches = await _unitOfWork.Users.AsQueryable()
+            .Where(u => !u.IsDeleted && u.CompanyId == companyId
+                && (u.FullName == raw || u.FullName == normalized))
+            .Take(2)
+            .ToListAsync();
+
+        if (matches.Count == 1)
+            return matches[0];
+
+        if (matches.Count > 1)
+            _logger.LogWarning("Technician name is ambiguous inside company {CompanyId} ({Count}+ users) — left unresolved",
+                companyId, matches.Count);
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves the technician of a task: explicit id first (must belong to the task company), otherwise
+    /// the exact name inside the task company only (unique match). Never resolves across companies.
+    /// </summary>
+    private async Task<User?> ResolveTechnicianAsync(Guid? technicianId, string? name, Guid? companyId)
+    {
+        if (technicianId.HasValue && technicianId.Value != Guid.Empty)
+        {
+            var byId = await _unitOfWork.Users.GetByIdAsync(technicianId.Value);
+            if (byId != null && !byId.IsDeleted && (!companyId.HasValue || byId.CompanyId == companyId))
+                return byId;
+
+            _logger.LogWarning("TechnicianId {TechnicianId} rejected (missing or outside company {CompanyId}) — falling back to name",
+                technicianId, companyId);
+        }
+
+        return await ResolveUserByNameInCompanyAsync(name, companyId);
+    }
+
+    /// <summary>
+    /// Target of the technician fee at completion: request.TechnicianId first when it is in the task company
+    /// and consistent with Details.technician; otherwise the Details name resolved inside the task company.
+    /// Returns null (no fee) rather than guessing.
+    /// </summary>
+    private async Task<Guid?> ResolveFeeTargetAsync(ServiceRequest request, string? detailsTechnicianName)
+    {
+        var techName = NormalizeName(detailsTechnicianName);
+
+        if (request.TechnicianId.HasValue)
+        {
+            var assigned = await _unitOfWork.Users.GetByIdAsync(request.TechnicianId.Value);
+            if (assigned != null && !assigned.IsDeleted
+                && (!request.CompanyId.HasValue || assigned.CompanyId == request.CompanyId)
+                && (techName == null || NormalizeName(assigned.FullName) == techName))
+            {
+                return assigned.Id;
+            }
+        }
+
+        if (techName != null)
+        {
+            var byName = await ResolveUserByNameInCompanyAsync(techName, request.CompanyId);
+            if (byName != null)
+                return byName.Id;
+
+            _logger.LogWarning("Fee target for request {RequestNumber} unresolved (technician '{Technician}' not unique in company {CompanyId})",
+                request.RequestNumber, techName, request.CompanyId);
+        }
+
+        return null;
+    }
+
     private static string GenerateRequestNumber()
     {
         return $"{DateTime.UtcNow:yyMMddHHmm}{Random.Shared.Next(1000, 9999)}";
@@ -2726,6 +3053,9 @@ public class CreateTaskDto
     
     /// <summary>معرف نوع العملية (اختياري)</summary>
     public int? OperationTypeId { get; set; }
+
+    /// <summary>معرّف الفني (اختياري) — يُفضَّل على الاسم؛ يجب أن يتبع نفس الشركة.</summary>
+    public Guid? TechnicianId { get; set; }
 }
 
 /// <summary>
@@ -2749,6 +3079,8 @@ public class UpdateTaskDto
     public decimal? Amount { get; set; }
     /// <summary>أجور التوصيل</summary>
     public decimal? DeliveryFee { get; set; }
+    /// <summary>معرّف الفني (اختياري) — يُفضَّل على الاسم؛ يجب أن يتبع نفس الشركة.</summary>
+    public Guid? TechnicianId { get; set; }
 }
 
 /// <summary>
@@ -2779,7 +3111,10 @@ public class AssignTaskDto
     
     /// <summary>معرف الموظف المعين (اختياري)</summary>
     public Guid? EmployeeId { get; set; }
-    
+
+    /// <summary>معرّف الفني (اختياري) — يُفضَّل على الاسم؛ يجب أن يتبع نفس الشركة.</summary>
+    public Guid? TechnicianId { get; set; }
+
     /// <summary>ملاحظة التعيين</summary>
     public string? Note { get; set; }
 }

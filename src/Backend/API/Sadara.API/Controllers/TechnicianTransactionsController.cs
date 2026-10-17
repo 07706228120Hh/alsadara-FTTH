@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
@@ -10,14 +11,21 @@ namespace Sadara.API.Controllers;
 
 /// <summary>
 /// معاملات الفنيين المالية
+/// Phase 0-D: every action is scoped to the caller company from the token (SuperAdmin keeps
+/// cross-company access); technician accounts are resolved by Account.Description == userId
+/// (the FindOrCreateSubAccount convention) with a unique-name fallback inside the company only.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<TechnicianTransactionsController> logger) : ControllerBase
+public class TechnicianTransactionsController(
+    IUnitOfWork unitOfWork,
+    ILogger<TechnicianTransactionsController> logger,
+    ICurrentTenant tenant) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<TechnicianTransactionsController> _logger = logger;
+    private readonly ICurrentTenant _tenant = tenant;
 
     /// <summary>
     /// جلب معاملات الفني الحالي (my-transactions)
@@ -94,11 +102,10 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             }
 
             // حساب الإجماليات من JournalEntryLines (مصدر الحقيقة = كشف الحسابات)
-            // البحث عن حساب الفني تحت "ذمم الفنيين" (1140) بنفس الاسم
-            var techAccount = await _unitOfWork.Accounts.AsQueryable()
-                .Where(a => a.IsLeaf && a.Name == user.FullName
-                    && a.ParentAccount != null && a.ParentAccount.Code == AccountCodes.TechnicianReceivables)
-                .FirstOrDefaultAsync();
+            // البحث عن حساب الفني تحت "ذمم الفنيين" (1140) — داخل شركة المستخدم فقط:
+            // بالمعرّف (Description == userId) أولاً، ثم بالاسم إن كان فريداً (Phase 0-D).
+            var techAccount = await FindTechnicianAccountAsync(
+                userId, user.FullName, _tenant.CompanyId ?? user.CompanyId);
 
             decimal totalCharges = 0, totalPayments = 0;
             if (techAccount != null)
@@ -223,9 +230,12 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     {
         try
         {
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
             var technician = await _unitOfWork.Users.GetByIdAsync(technicianId);
-            if (technician == null)
-                return NotFound(new { success = false, message = "الفني غير موجود" });
+            if (technician == null || !CanAccessCompany(technician.CompanyId))
+                return TechnicianNotFound();
 
             var query = _unitOfWork.TechnicianTransactions.AsQueryable()
                 .Where(t => t.TechnicianId == technicianId);
@@ -413,42 +423,64 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     /// </summary>
     [HttpGet("all-dues")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
-    public async Task<IActionResult> GetAllTechnicianDues([FromQuery] DateTime? from, [FromQuery] DateTime? to)
+    public async Task<IActionResult> GetAllTechnicianDues(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] Guid? companyId = null)
     {
         try
         {
-            // تحديد شركة المستخدم الحالي لفلترة البيانات
-            var currentUserId = GetCurrentUserId();
-            var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
-            var userCompanyId = currentUser?.CompanyId;
+            // Phase 0-D: company from the token (a client companyId is honoured only for SuperAdmin,
+            // who must name one — there is no meaningful cross-company dues list).
+            Guid userCompanyId;
+            if (_tenant.IsSuperAdmin)
+            {
+                var superCompany = companyId ?? _tenant.CompanyId;
+                if (!superCompany.HasValue)
+                    return BadRequest(new { success = false, message = "يرجى تحديد الشركة (companyId)" });
+                userCompanyId = superCompany.Value;
+            }
+            else
+            {
+                if (!_tenant.CompanyId.HasValue)
+                    return CompanyScopeForbidden();
+                userCompanyId = _tenant.CompanyId.Value;
+            }
 
             // === المصدر الموحّد: حساب الأرصدة من JournalEntryLines (كشف الحسابات = مصدر الحقيقة) ===
-            // جلب حساب "ذمم الفنيين" الأب
+            // جلب حساب "ذمم الفنيين" الأب — لشركة المستخدم فقط
             var techParent = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code == AccountCodes.TechnicianReceivables);
+                .FirstOrDefaultAsync(a => a.Code == AccountCodes.TechnicianReceivables && a.CompanyId == userCompanyId);
 
             // جلب الحسابات الفرعية (حساب لكل فني)
             var techAccounts = techParent != null
                 ? await _unitOfWork.Accounts.AsQueryable()
-                    .Where(a => a.ParentAccountId == techParent.Id && a.IsLeaf)
-                    .Select(a => new { a.Id, a.Name })
+                    .Where(a => a.ParentAccountId == techParent.Id && a.IsLeaf && a.CompanyId == userCompanyId)
+                    .Select(a => new { a.Id, a.Name, a.Description })
                     .ToListAsync()
-                : new List<dynamic>().Select(x => new { Id = Guid.Empty, Name = "" }).ToList();
+                : new List<dynamic>().Select(x => new { Id = Guid.Empty, Name = "", Description = (string?)null }).ToList();
 
             // جلب بيانات الفنيين (الاسم، الهاتف) مع فلتر الشركة
             var allTechUsers = await _unitOfWork.Users.AsQueryable()
-                .Where(u => (userCompanyId == null || u.CompanyId == userCompanyId))
+                .Where(u => u.CompanyId == userCompanyId)
                 .Select(u => new { u.Id, u.FullName, u.PhoneNumber })
                 .ToListAsync();
 
-            // ربط: اسم الحساب → User
-            var userByName = allTechUsers.GroupBy(u => u.FullName).ToDictionary(g => g.Key, g => g.First());
+            // ربط الحساب → User: بالمعرّف (Description == userId) أولاً، ثم بالاسم إن كان فريداً في الشركة.
+            var userById = allTechUsers.ToDictionary(u => u.Id);
+            var userByUniqueName = allTechUsers
+                .GroupBy(u => u.FullName)
+                .Where(g => g.Count() == 1)
+                .ToDictionary(g => g.Key, g => g.First());
 
             // حساب أرصدة كل فني من JournalEntryLines
             var technicians = new List<dynamic>();
             foreach (var acc in techAccounts)
             {
-                if (!userByName.TryGetValue(acc.Name, out var techUser)) continue;
+                var techUser = Guid.TryParse(acc.Description, out var accUserId) && userById.TryGetValue(accUserId, out var byId)
+                    ? byId
+                    : (acc.Name != null && userByUniqueName.TryGetValue(acc.Name, out var byName) ? byName : null);
+                if (techUser == null) continue;
 
                 var jlQuery = _unitOfWork.JournalEntryLines.AsQueryable()
                     .Where(l => l.AccountId == acc.Id
@@ -540,9 +572,12 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             if (request.Amount <= 0)
                 return BadRequest(new { success = false, message = "المبلغ يجب أن يكون أكبر من صفر" });
 
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
             var technician = await _unitOfWork.Users.GetByIdAsync(request.TechnicianId);
-            if (technician == null)
-                return NotFound(new { success = false, message = "الفني غير موجود" });
+            if (technician == null || !CanAccessCompany(technician.CompanyId))
+                return TechnicianNotFound();
 
             technician.TechTotalPayments += request.Amount;
             technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
@@ -643,14 +678,19 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     {
         try
         {
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
             var tx = await _unitOfWork.TechnicianTransactions.AsQueryable()
                 .FirstOrDefaultAsync(t => t.Id == id);
             if (tx == null)
-                return NotFound(new { success = false, message = "المعاملة غير موجودة" });
+                return TransactionNotFound();
 
             var technician = await _unitOfWork.Users.GetByIdAsync(tx.TechnicianId);
+            if (!CanAccessTransaction(tx, technician))
+                return TransactionNotFound();
             if (technician == null)
-                return NotFound(new { success = false, message = "الفني غير موجود" });
+                return TechnicianNotFound();
 
             // عكس تأثير المعاملة القديمة
             if (tx.Type == TechnicianTransactionType.Charge)
@@ -718,14 +758,19 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     {
         try
         {
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
             var tx = await _unitOfWork.TechnicianTransactions.AsQueryable()
                 .FirstOrDefaultAsync(t => t.Id == id);
             if (tx == null)
-                return NotFound(new { success = false, message = "المعاملة غير موجودة" });
+                return TransactionNotFound();
 
             var technician = await _unitOfWork.Users.GetByIdAsync(tx.TechnicianId);
+            if (!CanAccessTransaction(tx, technician))
+                return TransactionNotFound();
             if (technician == null)
-                return NotFound(new { success = false, message = "الفني غير موجود" });
+                return TechnicianNotFound();
 
             // عكس تأثير المعاملة على الرصيد
             if (tx.Type == TechnicianTransactionType.Charge)
@@ -781,9 +826,24 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     {
         try
         {
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
             // حساب الأرصدة الحقيقية من جدول المعاملات
-            var actualBalances = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                .Where(t => !t.IsDeleted)
+            // Phase 0-D: a company admin only recalculates technicians of their own company
+            // (was: rewrote balances for ALL companies). SuperAdmin keeps the global run.
+            var txQuery = _unitOfWork.TechnicianTransactions.AsQueryable()
+                .Where(t => !t.IsDeleted);
+            if (!_tenant.IsSuperAdmin)
+            {
+                var callerCompanyId = _tenant.CompanyId!.Value;
+                var companyUserIds = _unitOfWork.Users.AsQueryable()
+                    .Where(u => u.CompanyId == callerCompanyId)
+                    .Select(u => u.Id);
+                txQuery = txQuery.Where(t => companyUserIds.Contains(t.TechnicianId));
+            }
+
+            var actualBalances = await txQuery
                 .GroupBy(t => t.TechnicianId)
                 .Select(g => new
                 {
@@ -846,6 +906,69 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     {
         var claim = User.FindFirst("sub") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         return claim != null ? Guid.Parse(claim.Value) : Guid.Empty;
+    }
+
+    // ═══════ Tenant scope helpers (Phase 0-D) ═══════
+
+    /// <summary>SuperAdmin, or a token that carries a company.</summary>
+    private bool HasCompanyScope() => _tenant.IsSuperAdmin || _tenant.CompanyId.HasValue;
+
+    /// <summary>SuperAdmin always; others only for their own token company.</summary>
+    private bool CanAccessCompany(Guid? companyId) =>
+        _tenant.IsSuperAdmin || (_tenant.CompanyId.HasValue && companyId == _tenant.CompanyId);
+
+    /// <summary>
+    /// A transaction belongs to the caller company when its CompanyId matches, or — for legacy rows
+    /// stamped with Guid.Empty — when its technician belongs to the caller company.
+    /// </summary>
+    private bool CanAccessTransaction(TechnicianTransaction tx, User? technician)
+    {
+        if (_tenant.IsSuperAdmin)
+            return true;
+        if (!_tenant.CompanyId.HasValue)
+            return false;
+        var callerCompanyId = _tenant.CompanyId.Value;
+        return tx.CompanyId == callerCompanyId
+            || (tx.CompanyId == Guid.Empty && technician?.CompanyId == callerCompanyId);
+    }
+
+    private ObjectResult CompanyScopeForbidden() =>
+        StatusCode(StatusCodes.Status403Forbidden,
+            new { success = false, message = "تعذّر تحديد شركة المستخدم من رمز الدخول — لا يمكن الوصول" });
+
+    private NotFoundObjectResult TechnicianNotFound() =>
+        NotFound(new { success = false, message = "الفني غير موجود" });
+
+    private NotFoundObjectResult TransactionNotFound() =>
+        NotFound(new { success = false, message = "المعاملة غير موجودة" });
+
+    /// <summary>
+    /// The technician's leaf account under "ذمم الفنيين" (1140) inside one company: by
+    /// Account.Description == userId (FindOrCreateSubAccount convention) first, then by exact name
+    /// only when that name is unique under the company's 1140 parent. Never crosses companies.
+    /// </summary>
+    private async Task<Account?> FindTechnicianAccountAsync(Guid userId, string? fullName, Guid? companyId)
+    {
+        if (!companyId.HasValue)
+            return null;
+
+        var cid = companyId.Value;
+        var baseQuery = _unitOfWork.Accounts.AsQueryable()
+            .Where(a => a.IsLeaf && a.CompanyId == cid
+                && a.ParentAccount != null
+                && a.ParentAccount.Code == AccountCodes.TechnicianReceivables
+                && a.ParentAccount.CompanyId == cid);
+
+        var uid = userId.ToString();
+        var byId = await baseQuery.FirstOrDefaultAsync(a => a.Description == uid);
+        if (byId != null)
+            return byId;
+
+        if (string.IsNullOrWhiteSpace(fullName))
+            return null;
+
+        var byName = await baseQuery.Where(a => a.Name == fullName).Take(2).ToListAsync();
+        return byName.Count == 1 ? byName[0] : null;
     }
 
     /// <summary>

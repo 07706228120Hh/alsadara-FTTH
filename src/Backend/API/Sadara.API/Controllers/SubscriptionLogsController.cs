@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
@@ -11,6 +12,8 @@ namespace Sadara.API.Controllers;
 /// <summary>
 /// سجل عمليات الاشتراكات (بديل Google Sheets)
 /// يُستخدم لتخزين وجلب سجلات التجديد والشراء والتفعيل
+/// Phase 0-D: every read/write is scoped to the caller company from the token (SuperAdmin keeps
+/// cross-company access); CompanyId/UserId on create come from the token, not the client.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -18,6 +21,7 @@ public class SubscriptionLogsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SubscriptionLogsController> _logger;
+    private readonly ICurrentTenant _tenant;
 
     /// <summary>
     /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم العربي الكامل
@@ -33,10 +37,53 @@ public class SubscriptionLogsController : ControllerBase
         return user?.FullName ?? activatedBy;
     }
 
-    public SubscriptionLogsController(IUnitOfWork unitOfWork, ILogger<SubscriptionLogsController> logger)
+    public SubscriptionLogsController(
+        IUnitOfWork unitOfWork,
+        ILogger<SubscriptionLogsController> logger,
+        ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _tenant = tenant;
+    }
+
+    // ═══════ Tenant scope helpers (Phase 0-D) ═══════
+
+    /// <summary>SuperAdmin, or a token that carries a company.</summary>
+    private bool HasCompanyScope() => _tenant.IsSuperAdmin || _tenant.CompanyId.HasValue;
+
+    /// <summary>
+    /// Restricts a query to the caller company (SuperAdmin: unrestricted). Legacy rows saved with
+    /// CompanyId = null stay visible only when their operator (UserId) belongs to the caller company.
+    /// </summary>
+    private IQueryable<SubscriptionLog> Scoped(IQueryable<SubscriptionLog> query)
+    {
+        if (_tenant.IsSuperAdmin)
+            return query;
+        var companyId = _tenant.CompanyId;
+        var companyUserIds = _unitOfWork.Users.AsQueryable()
+            .Where(u => u.CompanyId == companyId)
+            .Select(u => (Guid?)u.Id);
+        return query.Where(x =>
+            x.CompanyId == companyId
+            || (x.CompanyId == null && x.UserId != null && companyUserIds.Contains(x.UserId)));
+    }
+
+    /// <summary>Loads one log only if it is inside the caller scope (null otherwise ⇒ 404).</summary>
+    private Task<SubscriptionLog?> FindScopedAsync(long id) =>
+        Scoped(_unitOfWork.SubscriptionLogs.AsQueryable()).FirstOrDefaultAsync(x => x.Id == id);
+
+    private ObjectResult CompanyScopeForbidden() =>
+        StatusCode(StatusCodes.Status403Forbidden,
+            new { success = false, message = "تعذّر تحديد شركة المستخدم من رمز الدخول — لا يمكن الوصول" });
+
+    private NotFoundObjectResult LogNotFound() =>
+        NotFound(new { success = false, message = "السجل غير موجود" });
+
+    private Guid GetCurrentUserId()
+    {
+        var claim = User.FindFirst("sub") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        return claim != null && Guid.TryParse(claim.Value, out var id) ? id : Guid.Empty;
     }
 
     /// <summary>
@@ -52,7 +99,10 @@ public class SubscriptionLogsController : ControllerBase
         [FromQuery] DateTime? fromDate = null,
         [FromQuery] DateTime? toDate = null)
     {
-        var query = _unitOfWork.SubscriptionLogs.AsQueryable();
+        if (!HasCompanyScope())
+            return CompanyScopeForbidden();
+
+        var query = Scoped(_unitOfWork.SubscriptionLogs.AsQueryable());
 
         // تطبيق الفلاتر
         if (!string.IsNullOrEmpty(zoneId))
@@ -84,9 +134,12 @@ public class SubscriptionLogsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetById(long id)
     {
-        var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+        if (!HasCompanyScope())
+            return CompanyScopeForbidden();
+
+        var log = await FindScopedAsync(id);
         if (log == null)
-            return NotFound(new { success = false, message = "السجل غير موجود" });
+            return LogNotFound();
 
         return Ok(new { success = true, data = log });
     }
@@ -98,6 +151,24 @@ public class SubscriptionLogsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateSubscriptionLogRequest request)
     {
+        // Phase 0-D: CompanyId/UserId come from the token (client values honoured only for SuperAdmin).
+        // CompanyId is stamped explicitly here — not left to the central SaveChanges stamp.
+        if (!HasCompanyScope())
+            return CompanyScopeForbidden();
+
+        var callerUserId = GetCurrentUserId();
+        var logCompanyId = _tenant.IsSuperAdmin ? (request.CompanyId ?? _tenant.CompanyId) : _tenant.CompanyId;
+        var logUserId = _tenant.IsSuperAdmin
+            ? (request.UserId ?? (callerUserId != Guid.Empty ? callerUserId : null))
+            : (callerUserId != Guid.Empty ? callerUserId : null);
+        if (!_tenant.IsSuperAdmin
+            && ((request.CompanyId.HasValue && request.CompanyId != logCompanyId)
+                || (request.UserId.HasValue && request.UserId != logUserId)))
+        {
+            _logger.LogWarning("Create subscription log: client CompanyId/UserId ignored (token company {CompanyId}, user {UserId})",
+                logCompanyId, logUserId);
+        }
+
         var log = new SubscriptionLog
         {
             // معلومات العميل
@@ -140,8 +211,8 @@ public class SubscriptionLogsController : ControllerBase
             // معلومات الشريك/الموظف
             PartnerName = request.PartnerName,
             PartnerId = request.PartnerId,
-            UserId = request.UserId,
-            CompanyId = request.CompanyId,
+            UserId = logUserId,
+            CompanyId = logCompanyId,
 
             // حالة العملية
             IsPrinted = request.IsPrinted,
@@ -163,15 +234,15 @@ public class SubscriptionLogsController : ControllerBase
             LinkedTechnicianId = request.LinkedTechnicianId
         };
 
-        // حماية من التكرار
+        // حماية من التكرار (Phase 0-D: within the log company — never returns another company's log id)
         if (!string.IsNullOrEmpty(log.SessionId))
         {
             var duplicate = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                .AnyAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                .AnyAsync(l => l.SessionId == log.SessionId && l.CompanyId == logCompanyId && !l.IsDeleted);
             if (duplicate)
             {
                 var existing = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                    .FirstOrDefaultAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                    .FirstOrDefaultAsync(l => l.SessionId == log.SessionId && l.CompanyId == logCompanyId && !l.IsDeleted);
                 return Ok(new { success = true, id = existing?.Id, duplicate = true });
             }
         }
@@ -263,6 +334,13 @@ public class SubscriptionLogsController : ControllerBase
                         if (!log.LinkedAgentId.HasValue) goto noAccounting;
                         var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
                         if (agent == null) goto noAccounting;
+                        // Phase 0-D: never charge an agent of another company.
+                        if (agent.CompanyId != companyId)
+                        {
+                            _logger.LogWarning("Subscription log {LogId}: linked agent {AgentId} is outside company {CompanyId} — no accounting",
+                                log.Id, agent.Id, companyId);
+                            goto noAccounting;
+                        }
                         debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.AgentReceivables, agent.Id, agent.Name, companyId);
                         await _unitOfWork.SaveChangesAsync();
                         agent.TotalCharges += collectedAmount;
@@ -275,6 +353,13 @@ public class SubscriptionLogsController : ControllerBase
                         if (!log.LinkedTechnicianId.HasValue) goto noAccounting;
                         var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
                         if (tech == null) goto noAccounting;
+                        // Phase 0-D: never charge a technician of another company.
+                        if (tech.CompanyId != companyId)
+                        {
+                            _logger.LogWarning("Subscription log {LogId}: linked technician {TechnicianId} is outside company {CompanyId} — no accounting",
+                                log.Id, tech.Id, companyId);
+                            goto noAccounting;
+                        }
                         if (string.IsNullOrEmpty(log.TechnicianName))
                             log.TechnicianName = tech.FullName;
                         debitAccount = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(_unitOfWork, AccountCodes.TechnicianReceivables, tech.Id, tech.FullName, companyId);
@@ -371,9 +456,12 @@ public class SubscriptionLogsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateSubscriptionLogRequest request)
     {
-        var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+        if (!HasCompanyScope())
+            return CompanyScopeForbidden();
+
+        var log = await FindScopedAsync(id);
         if (log == null)
-            return NotFound(new { success = false, message = "السجل غير موجود" });
+            return LogNotFound();
 
         // تحديث الحقول القابلة للتعديل
         if (request.IsPrinted.HasValue)
@@ -394,6 +482,8 @@ public class SubscriptionLogsController : ControllerBase
 
     /// <summary>
     /// حذف سجل (soft delete)
+    /// Phase 0-D: SuperAdmin-only policy ⇒ cross-company by design (no extra tenant check needed).
+    /// The reversal uses PlanPrice instead of the posted collected amount — financial fix is Phase 1.
     /// </summary>
     [HttpDelete("{id:long}")]
     [Authorize(Policy = "SuperAdmin")]
@@ -749,8 +839,12 @@ public class SubscriptionLogsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetBySubscription(string subscriptionId)
     {
-        var logs = await _unitOfWork.SubscriptionLogs
-            .FindAsync(x => x.SubscriptionId == subscriptionId);
+        if (!HasCompanyScope())
+            return CompanyScopeForbidden();
+
+        var logs = await Scoped(_unitOfWork.SubscriptionLogs.AsQueryable())
+            .Where(x => x.SubscriptionId == subscriptionId)
+            .ToListAsync();
 
         return Ok(new { success = true, data = logs });
     }
@@ -762,8 +856,11 @@ public class SubscriptionLogsController : ControllerBase
     [Authorize(Policy = "Admin")]
     public async Task<IActionResult> GetStats([FromQuery] DateTime? date = null)
     {
+        if (!HasCompanyScope())
+            return CompanyScopeForbidden();
+
         var targetDate = date?.Date ?? DateTime.UtcNow.AddHours(3).Date;
-        var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+        var query = Scoped(_unitOfWork.SubscriptionLogs.AsQueryable())
             .Where(x => x.ActivationDate.HasValue && x.ActivationDate.Value.Date == targetDate);
 
         var stats = new
@@ -793,7 +890,10 @@ public class SubscriptionLogsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 500)
     {
-        var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+        if (!HasCompanyScope())
+            return CompanyScopeForbidden();
+
+        var query = Scoped(_unitOfWork.SubscriptionLogs.AsQueryable())
             .Where(x => !string.IsNullOrEmpty(x.TechnicianName));
 
         if (!string.IsNullOrEmpty(technicianName))
@@ -853,9 +953,12 @@ public class SubscriptionLogsController : ControllerBase
     [Authorize(Policy = "Admin")]
     public async Task<IActionResult> UpdatePaymentStatus(long id, [FromBody] UpdatePaymentStatusRequest request)
     {
-        var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+        if (!HasCompanyScope())
+            return CompanyScopeForbidden();
+
+        var log = await FindScopedAsync(id);
         if (log == null)
-            return NotFound(new { success = false, message = "السجل غير موجود" });
+            return LogNotFound();
 
         log.PaymentStatus = request.PaymentStatus;
         log.UpdatedAt = DateTime.UtcNow;
@@ -872,8 +975,13 @@ public class SubscriptionLogsController : ControllerBase
     [Authorize(Policy = "Admin")]
     public async Task<IActionResult> BulkUpdatePaymentStatus([FromBody] BulkUpdatePaymentStatusRequest request)
     {
-        var logs = await _unitOfWork.SubscriptionLogs
-            .FindAsync(x => request.Ids.Contains(x.Id));
+        if (!HasCompanyScope())
+            return CompanyScopeForbidden();
+
+        // Phase 0-D: ids of another company are silently skipped (count reflects updated rows only).
+        var logs = await Scoped(_unitOfWork.SubscriptionLogs.AsQueryable())
+            .Where(x => request.Ids.Contains(x.Id))
+            .ToListAsync();
 
         foreach (var log in logs)
         {
