@@ -23,7 +23,7 @@ namespace Sadara.Integration.Tests;
 ///     SuperAdmin/CompanyAdmin/صاحب الصلاحية => collections معبّأة.
 ///  6) فلترة assignee: تقصر التجميع على مهام الشخص (technician أو createdByName).
 /// </summary>
-[Collection("Postgres")]
+[Collection(PostgresSummaryCollection.Name)]
 public class ServiceRequestsSummaryTests
 {
     private readonly PostgresFixture _fx;
@@ -36,11 +36,15 @@ public class ServiceRequestsSummaryTests
     private const string RoleEmployee = "Employee";
 
     // مساعد: تنظيف الطلبات بين الاختبارات لتفادي التداخل عبر قاعدة مشتركة.
+    // TRUNCATE ... CASCADE also empties every table that references these (EmployeeSalaries,
+    // CashBoxes, logs, ...) in FK-safe order, so the reset never fails with 23503 regardless of
+    // which rows earlier tests left behind. The class owns a dedicated database
+    // (PostgresSummaryCollection), so the cascade cannot touch another suite's data.
     private void ResetRequests()
     {
         using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
         ctx.Database.ExecuteSqlRaw(
-            "DELETE FROM \"ServiceRequests\"; DELETE FROM \"Users\"; DELETE FROM \"Companies\";");
+            "TRUNCATE \"ServiceRequests\", \"Users\", \"Companies\" CASCADE;");
     }
 
     // ══════════════════════════════════════════════════════════════════════
