@@ -375,7 +375,9 @@ class PermissionRegistry {
       icon: Icons.price_check_rounded,
       category: 'المالية',
       parent: 'accounting',
-      allowedActions: ['view', 'add', 'export', 'print'],
+      // edit/delete أُضيفا ليصبحا قابلين للمنح مستقبلاً. حالياً الخادم يحرس تعديل/حذف الرواتب بـ
+      // (accounting.salaries:add + accounting:edit|delete) — انظر AccountingController «Payroll write gates».
+      allowedActions: ['view', 'add', 'edit', 'delete', 'export', 'print'],
     ),
     PermissionEntry(
       key: 'accounting.cashbox',

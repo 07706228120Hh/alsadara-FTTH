@@ -469,7 +469,9 @@ class _SalariesPageState extends State<SalariesPage> {
                             child: Icon(Icons.payment, size: 18, color: SdColors.success),
                           ),
                         ),
-                      if (PermissionManager.instance.canEdit('accounting.salaries'))
+                      // نفس بوابة الخادم: accounting.salaries:add + accounting:edit
+                      if (PermissionManager.instance.canAdd('accounting.salaries') &&
+                          PermissionManager.instance.canEdit('accounting'))
                         InkWell(
                           onTap: () => _showEditDialog(s),
                           borderRadius: BorderRadius.circular(4),
@@ -478,7 +480,9 @@ class _SalariesPageState extends State<SalariesPage> {
                             child: Icon(Icons.edit, size: 18, color: SdColors.info),
                           ),
                         ),
-                      if (PermissionManager.instance.canDelete('accounting.salaries'))
+                      // نفس بوابة الخادم: accounting.salaries:add + accounting:delete
+                      if (PermissionManager.instance.canAdd('accounting.salaries') &&
+                          PermissionManager.instance.canDelete('accounting'))
                         InkWell(
                           onTap: () => _confirmDeleteSalary(Map<String, dynamic>.from(s)),
                           borderRadius: BorderRadius.circular(4),
