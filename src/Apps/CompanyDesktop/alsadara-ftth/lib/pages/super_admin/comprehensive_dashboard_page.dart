@@ -41,7 +41,6 @@ class _ComprehensiveDashboardPageState
       final response = await client.get(
         '/superadmin/comprehensive-dashboard',
         (json) => json,
-        useInternalKey: true,
       );
 
       if (mounted) {

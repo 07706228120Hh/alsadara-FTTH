@@ -99,7 +99,6 @@ class _PermissionsManagementV2PageState
       final response = await _apiClient.get(
         endpoint,
         (json) => json,
-        useInternalKey: true,
       );
 
       if (response.isSuccess && response.data != null) {
@@ -198,7 +197,6 @@ class _PermissionsManagementV2PageState
       final v2Res = await _apiClient.get(
         '/internal/companies/${widget.companyId}/permissions-v2',
         (json) => json,
-        useInternalKey: true,
       );
 
       if (v2Res.isSuccess && v2Res.data != null) {
@@ -280,7 +278,6 @@ class _PermissionsManagementV2PageState
         endpoint,
         body,
         (json) => json,
-        useInternalKey: true,
       );
 
       if (mounted) {

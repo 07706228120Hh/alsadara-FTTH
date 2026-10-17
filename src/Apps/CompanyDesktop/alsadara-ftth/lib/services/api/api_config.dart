@@ -131,15 +131,6 @@ class ApiConfig {
   static String iptvSubscriberById(int id) => '/iptv-subscribers/$id';
 
   // ============================================
-  // API Keys
-  // ============================================
-
-  /// ⚠️ تم نقل المفاتيح إلى AppSecrets للأمان
-  /// استخدم: AppSecrets.instance.internalApiKey
-  @Deprecated('استخدم AppSecrets.instance.internalApiKey بدلاً من هذا')
-  static const String internalApiKey = 'sadara-internal-2024-secure-key';
-
-  // ============================================
   // Timeouts
   // ============================================
 

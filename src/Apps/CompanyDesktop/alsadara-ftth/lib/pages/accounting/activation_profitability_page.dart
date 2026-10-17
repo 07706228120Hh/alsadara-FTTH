@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../services/api/api_config.dart';
+import '../../services/api/vps_auth_headers.dart';
 import '../../frontend/frontend.dart';
 
 /// تقرير ربحية التفعيلات — يعرض تكلفة المحفظة وربح الخصم وإيراد الصيانة
@@ -16,7 +17,6 @@ class ActivationProfitabilityPage extends StatefulWidget {
 class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPage> {
   static String get _baseUrl =>
       '${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/profitability';
-  static const _apiKey = 'sadara-internal-2024-secure-key';
 
   bool _isLoading = true;
   Map<String, dynamic>? _summary;
@@ -42,7 +42,7 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
       if (_fromDate != null) url += 'fromDate=${_fromDate!.toIso8601String().split('T')[0]}&';
       if (_toDate != null) url += 'toDate=${_toDate!.toIso8601String().split('T')[0]}&';
 
-      final res = await http.get(Uri.parse(url), headers: {'X-Api-Key': _apiKey});
+      final res = await http.get(Uri.parse(url), headers: await VpsAuthHeaders.build(json: false));
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body);
         if (body['success'] == true) {

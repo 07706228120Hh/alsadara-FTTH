@@ -10867,7 +10867,6 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       final token = _getAuthToken();
       final headers = <String, String>{
         'Content-Type': 'application/json',
-        'X-Api-Key': 'sadara-internal-2024-secure-key',
       };
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
@@ -10961,7 +10960,6 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       final token = _getAuthToken();
       final headers = <String, String>{
         'Content-Type': 'application/json',
-        'X-Api-Key': 'sadara-internal-2024-secure-key',
       };
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';

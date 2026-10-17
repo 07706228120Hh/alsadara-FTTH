@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
+import '../config/app_secrets.dart';
 import '../permissions/permission_manager.dart';
 import 'employee_tracking_report_page.dart';
 import 'package:path_provider/path_provider.dart';
@@ -127,7 +128,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
   /// الاتصال بـ SignalR Hub للبث المباشر
   Future<void> _connectSignalR() async {
     try {
-      final apiKey = 'sadara-internal-2024-secure-key';
+      final apiKey = appSecrets.internalApiKey; // LEGACY: LocationHub key-only
       final hubUrl = '${ApiConfig.vpsBaseUrl}/hubs/location?apiKey=$apiKey';
 
       _hubConnection = HubConnectionBuilder()

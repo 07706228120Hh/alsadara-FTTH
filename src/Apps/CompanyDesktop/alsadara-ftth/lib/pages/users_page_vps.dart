@@ -82,7 +82,6 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       final response = await _apiClient.get(
         ApiConfig.internalCompanyEmployees(widget.companyId),
         (json) => json,
-        useInternalKey: true,
       );
 
       if (response.isSuccess && response.data != null) {
@@ -398,7 +397,6 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
             'secondSystemPermissionsV2': secondPerms,
           },
           (json) => json,
-          useInternalKey: true,
         );
         if (response.isSuccess) {
           successCount++;
@@ -1076,7 +1074,6 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
         final response = await _apiClient.delete(
           ApiConfig.internalEmployeeById(widget.companyId, employee.id),
           (json) => json,
-          useInternalKey: true,
         );
 
         if (response.isSuccess && mounted) {
@@ -1235,7 +1232,6 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                               widget.companyId, employee.id),
                           {'NewPassword': passwordController.text},
                           (json) => json,
-                          useInternalKey: true,
                         );
 
                         if (response.isSuccess) {
@@ -1560,13 +1556,11 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                   widget.companyId, widget.employee!.id),
               data,
               (json) => json,
-              useInternalKey: true,
             )
           : await widget.apiClient.post(
               ApiConfig.internalCompanyEmployees(widget.companyId),
               data,
               (json) => json,
-              useInternalKey: true,
             );
 
       if (response.isSuccess) {

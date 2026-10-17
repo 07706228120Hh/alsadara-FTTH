@@ -25,7 +25,6 @@ class EmployeeProfileService {
       final response = await _api.get(
         ApiConfig.internalEmployeeById(companyId, empId),
         (json) => json,
-        useInternalKey: true,
       );
       if (response.isSuccess && response.data != null) {
         if (response.data is Map)
@@ -47,7 +46,6 @@ class EmployeeProfileService {
         ApiConfig.internalEmployeeById(companyId, empId),
         data,
         (json) => json,
-        useInternalKey: true,
       );
       return response.isSuccess;
     } catch (e) {
@@ -64,7 +62,6 @@ class EmployeeProfileService {
         ApiConfig.internalEmployeePassword(companyId, empId),
         {'NewPassword': newPassword},
         (json) => json,
-        useInternalKey: true,
       );
       return response.isSuccess;
     } catch (e) {
@@ -84,7 +81,6 @@ class EmployeeProfileService {
       final response = await _api.get(
         '/attendance/$userId/monthly?month=$month&year=$year',
         (json) => json,
-        useInternalKey: true,
       );
       if (response.isSuccess && response.data != null) {
         if (response.data is List) {
@@ -114,7 +110,6 @@ class EmployeeProfileService {
       final response = await _api.get(
         '/accounting/salaries?userId=$userId',
         (json) => json,
-        useInternalKey: true,
       );
       if (response.isSuccess && response.data != null) {
         if (response.data is List) {
@@ -145,7 +140,6 @@ class EmployeeProfileService {
       final response = await _api.get(
         '/servicerequests?assignedTo=$userId',
         (json) => json,
-        useInternalKey: true,
       );
       if (response.isSuccess && response.data != null) {
         if (response.data is List) {
@@ -177,7 +171,6 @@ class EmployeeProfileService {
       final response = await _api.get(
         '/technician-transactions/by-technician/$userId',
         (json) => json,
-        useInternalKey: true,
       );
       if (response.isSuccess && response.data != null) {
         if (response.data is List) {
@@ -209,7 +202,6 @@ class EmployeeProfileService {
       final response = await _api.get(
         '/taskaudits?userId=$userId',
         (json) => json,
-        useInternalKey: true,
       );
       if (response.isSuccess && response.data != null) {
         if (response.data is List) {
@@ -240,7 +232,6 @@ class EmployeeProfileService {
       final response = await _api.get(
         '/ftth-accounting/operator-summary/$userId',
         (json) => json,
-        useInternalKey: true,
       );
       if (response.isSuccess && response.data != null) {
         if (response.data is Map) {
@@ -265,7 +256,6 @@ class EmployeeProfileService {
       final response = await _api.get(
         ApiConfig.internalEmployeePermissionsV2(companyId, empId),
         (json) => json,
-        useInternalKey: true,
       );
       if (response.isSuccess && response.data != null) {
         if (response.data is Map) {
@@ -287,7 +277,6 @@ class EmployeeProfileService {
         ApiConfig.internalEmployeePermissionsV2(companyId, empId),
         permissions,
         (json) => json,
-        useInternalKey: true,
       );
       return response.isSuccess;
     } catch (e) {

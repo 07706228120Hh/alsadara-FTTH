@@ -38,7 +38,6 @@ class _AuditLogPageState extends State<AuditLogPage> {
       final response = await client.get(
         '/superadmin/audit-logs?page=$_currentPage&pageSize=$_pageSize',
         (json) => json,
-        useInternalKey: true,
       );
 
       if (mounted) {

@@ -12,7 +12,6 @@ import '../../../services/unified_auth_manager.dart';
 
 import '../../../services/whatsapp_business_service.dart';
 import '../models/diagnostic_test.dart';
-import '../../../config/app_secrets.dart';
 
 /// خدمة التشخيص الشاملة
 class DiagnosticService {
@@ -1202,7 +1201,8 @@ ${_getSolutionSuggestion(response.statusCode, endpoint)}''',
       final response = await _httpClient.get(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.internalCitizens}'),
         headers: {
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
       ).timeout(const Duration(seconds: 10));
 
@@ -1245,7 +1245,7 @@ ${_getSolutionSuggestion(response.statusCode, endpoint)}''',
 ━━━━━━━━━━━━━━━━━━━━━━━
 📊 الحالة: ${response.statusCode}
 💡 السبب: ${_analyzeHttpError(response.statusCode)}
-🔑 تم استخدام: X-Api-Key''',
+🔑 تم استخدام: JWT (Bearer)''',
         duration: stopwatch.elapsed,
       );
     } catch (e) {
@@ -2566,7 +2566,8 @@ ${success ? '✓ أداء جيد' : '⚠️ يحتاج تحسين'}''',
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.internalCompanies}'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
       );
       stopwatch.stop();
@@ -2630,7 +2631,8 @@ ${!success ? '❌ Response: ${response.body.substring(0, response.body.length.cl
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.internalCompanies}'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
         body: jsonEncode({}), // بيانات فارغة للفحص فقط
       );
@@ -2682,7 +2684,8 @@ ${response.statusCode == 401 ? '🔐 يحتاج مصادقة' : ''}
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.internalCompanies}'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
       );
 
@@ -2720,7 +2723,8 @@ ${response.statusCode == 401 ? '🔐 يحتاج مصادقة' : ''}
             '${ApiConfig.baseUrl}${ApiConfig.internalCompanies}/$testCompanyId'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
         body: jsonEncode({
           'name': testCompanyName, // نفس الاسم - لا تغيير فعلي
@@ -2772,7 +2776,8 @@ ${success ? '✅ التحديث يعمل بشكل صحيح' : '❌ Response: ${u
             '${ApiConfig.baseUrl}${ApiConfig.internalCompanies}/00000000-0000-0000-0000-000000000000'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
       );
       stopwatch.stop();
@@ -2822,7 +2827,8 @@ ${response.statusCode == 404 ? '✅ الـ Endpoint يعمل (404 = شركة غ�
             '${ApiConfig.baseUrl}${ApiConfig.internalCompanies}/00000000-0000-0000-0000-000000000000/suspend'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
         body: jsonEncode({'reason': 'test'}),
       );
@@ -2872,7 +2878,8 @@ ${response.statusCode == 405 ? '❌ Method Not Allowed - الـ Endpoint غير 
             '${ApiConfig.baseUrl}${ApiConfig.internalCompanies}/00000000-0000-0000-0000-000000000000/activate'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
       );
       stopwatch.stop();
@@ -2921,7 +2928,8 @@ ${response.statusCode == 405 ? '❌ Method Not Allowed - الـ Endpoint غير 
             '${ApiConfig.baseUrl}${ApiConfig.internalCompanies}/00000000-0000-0000-0000-000000000000/renew'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
         body: jsonEncode({
           'months': 1,
@@ -2974,7 +2982,8 @@ ${response.statusCode == 405 ? '❌ Method Not Allowed - الـ Endpoint غير 
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.internalCompanies}'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
       );
 
@@ -3040,7 +3049,8 @@ ${response.statusCode == 405 ? '❌ Method Not Allowed - الـ Endpoint غير 
             '${ApiConfig.baseUrl}${ApiConfig.internalCompanies}/$testCompanyId'),
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': appSecrets.internalApiKey,
+          if (VpsAuthService.instance.accessToken != null)
+            'Authorization': 'Bearer ${VpsAuthService.instance.accessToken}',
         },
         body: jsonEncode(testPermissions),
       );

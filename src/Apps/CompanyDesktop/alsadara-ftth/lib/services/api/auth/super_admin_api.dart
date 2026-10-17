@@ -66,7 +66,6 @@ class SuperAdminApi {
     return _client.get(
       ApiConfig.superAdminDashboard,
       (json) => DashboardStats.fromJson(json),
-      useInternalKey: true,
     );
   }
 
@@ -75,7 +74,6 @@ class SuperAdminApi {
     return _client.get(
       ApiConfig.superAdminStatistics,
       (json) => SystemStatistics.fromJson(json),
-      useInternalKey: true,
     );
   }
 
@@ -91,7 +89,6 @@ class SuperAdminApi {
     return _client.get(
       '${ApiConfig.companies}?page=$page&pageSize=$pageSize',
       (json) => CompaniesListResponse.fromJson(json),
-      useInternalKey: true,
     );
   }
 
@@ -100,7 +97,6 @@ class SuperAdminApi {
     return _client.get(
       ApiConfig.companyById(id),
       (json) => Company.fromJson(json),
-      useInternalKey: true,
     );
   }
 
@@ -163,7 +159,6 @@ class SuperAdminApi {
       final response = await _client.get(
         ApiConfig.internalCompanies,
         (json) => json,
-        useInternalKey: true,
       );
 
       if (response.isSuccess && response.data != null) {

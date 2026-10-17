@@ -6,6 +6,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 import 'api/api_client.dart';
 import 'api/api_config.dart';
+import '../config/app_secrets.dart';
 import 'location_offline_queue.dart';
 import 'mock_location_detector.dart';
 
@@ -373,7 +374,7 @@ class _LocationTaskHandler extends TaskHandler {
         client.connectionTimeout = const Duration(seconds: 15);
         final request = await client.postUrl(url);
         request.headers.set('Content-Type', 'application/json');
-        request.headers.set('X-Api-Key', 'sadara-internal-2024-secure-key');
+        request.headers.set('X-Api-Key', appSecrets.internalApiKey); // LEGACY: EmployeeLocationController key-only
         final fakeReasonsJson = reasons.isNotEmpty
             ? '"${reasons.join(',')}"'
             : 'null';

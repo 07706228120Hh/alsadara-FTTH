@@ -13,6 +13,7 @@ import '../../frontend/frontend.dart'; // نظام تصميم الصدارة ا�
 import 'account_stats_page.dart';
 import '../../models/filter_criteria.dart';
 import '../../services/api/api_config.dart';
+import '../../services/api/vps_auth_headers.dart';
 
 class AccountRecordsPage extends StatefulWidget {
   final String authToken;
@@ -171,7 +172,11 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
 
   // ========== VPS API ==========
   static String get _vpsBaseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
-  static const String _vpsApiKey = 'sadara-internal-2024-secure-key';
+  /// ترويسة JWT للمستخدم (بديل المفتاح الداخلي المضمّن سابقاً) — الخادم يأخذ الشركة من التوكن.
+  static Future<void> _setAuth(HttpClientRequest request) async {
+    final token = await VpsAuthHeaders.validToken();
+    if (token != null) request.headers.set('Authorization', 'Bearer $token');
+  }
 
   /// جلب السجلات من VPS وتحويلها لصيغة عربية متوافقة مع الصفحة
   Future<List<Map<String, dynamic>>> _fetchFromVps({
@@ -196,7 +201,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     final request = await client.getUrl(uri);
     request.headers.set('Content-Type', 'application/json');
     request.headers.set('Accept', 'application/json');
-    request.headers.set('X-Api-Key', _vpsApiKey);
+    await _setAuth(request);
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
 
@@ -992,7 +997,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       final request = await client.getUrl(uri);
       request.headers.set('Content-Type', 'application/json');
       request.headers.set('Accept', 'application/json');
-      request.headers.set('X-Api-Key', _vpsApiKey);
+      await _setAuth(request);
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
 

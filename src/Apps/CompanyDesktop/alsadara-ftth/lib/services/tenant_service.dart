@@ -47,7 +47,6 @@ class TenantService {
           'adminPhone': adminPhone,
         },
         (json) => json,
-        useInternalKey: true,
       );
 
       if (response.isSuccess && response.data != null) {

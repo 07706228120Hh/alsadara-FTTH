@@ -344,7 +344,6 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
-          'X-Api-Key': 'sadara-internal-2024-secure-key',
         },
       );
 
