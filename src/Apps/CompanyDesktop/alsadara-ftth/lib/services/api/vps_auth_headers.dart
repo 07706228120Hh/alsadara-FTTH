@@ -8,6 +8,8 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../vps_auth_service.dart';
 
 class VpsAuthHeaders {
@@ -22,12 +24,40 @@ class VpsAuthHeaders {
     final token = auth.accessToken;
     if (token == null || token.isEmpty) return null;
     if (_isExpiringSoon(token)) {
-      _refreshing ??=
-          auth.refreshAccessToken().whenComplete(() => _refreshing = null);
-      await _refreshing;
+      await refreshNow();
     }
     final current = auth.accessToken;
     return (current == null || current.isEmpty) ? null : current;
+  }
+
+  /// تحديث فوري مشترك (قبل الانتهاء أو بعد 401). يُعيد true إن صار لدينا توكن صالح.
+  /// يتبنّى أولاً توكناً أحدث كتبته خدمة الموقع الخلفية (isolate منفصل) — لأن توكن التحديث
+  /// يُدوَّر عند كل تحديث، فالتحديث بنسخة قديمة في الذاكرة سيفشل.
+  static Future<bool> refreshNow() async {
+    if (await _adoptFromStorage()) return true;
+    _refreshing ??= VpsAuthService.instance
+        .refreshAccessToken()
+        .whenComplete(() => _refreshing = null);
+    if (await _refreshing!) return true;
+    return _adoptFromStorage();
+  }
+
+  /// يتبنّى توكناً محفوظاً أحدث وصالحاً (دون طلب شبكة) عبر استعادة الجلسة من التخزين.
+  static Future<bool> _adoptFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      final stored = prefs.getString(VpsAuthService.storageKeyAccessToken);
+      if (stored == null ||
+          stored.isEmpty ||
+          stored == VpsAuthService.instance.accessToken ||
+          _isExpiringSoon(stored)) {
+        return false;
+      }
+      return await VpsAuthService.instance.restoreSession();
+    } catch (_) {
+      return false;
+    }
   }
 
   /// ترويسات جاهزة لـ package:http (مع Content-Type افتراضياً).

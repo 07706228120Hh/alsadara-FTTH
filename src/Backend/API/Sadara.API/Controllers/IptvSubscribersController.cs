@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
 namespace Sadara.API.Controllers;
 
 /// <summary>
-/// إدارة مشتركي IPTV - يستخدم API Key للمصادقة
+/// إدارة مشتركي IPTV — JWT موظف الشركة (الشركة من التوكن) أو المفتاح القديم
 /// </summary>
 [ApiController]
 [Route("api/iptv-subscribers")]
@@ -21,20 +22,53 @@ public class IptvSubscribersController : ControllerBase
         _configuration = configuration;
     }
 
-    private bool ValidateApiKey()
+    // ══════════════════════════════════════
+    // المصادقة (المرحلة 0 / A2): JWT موظف الشركة، أو المفتاح القديم
+    // ══════════════════════════════════════
+    //
+    // IptvSubscriber.CompanyId نصّي (لا Guid) فلا يشمله أي فلتر مركزي ⇒ العزل هنا: على مسار JWT
+    // الشركة = شركة التوكن دائماً (companyId في الطلب يُتجاهل/يُرفض إن خالف)، وأي سجل بالمعرّف يجب أن
+    // يكون لشركة الطالب. الصلاحية: iptv (نفس بوابة الواجهة، دلالة RequirePermission).
+
+    private const string IptvPermission = "iptv";
+
+    private async Task<(InternalCaller Caller, IActionResult? Error)> AuthorizeIptvAsync()
     {
-        var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        var configKey = _configuration["Security:InternalApiKey"]
-            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? ""; // fail-closed: لا fallback مضمّن — يُقرأ من الإعدادات فقط
-        return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
+        var (caller, error) = await LegacyKeyOrJwtGate.AuthorizeAsync(HttpContext, _configuration, _unitOfWork);
+        if (error != null) return (caller, error);
+        if (caller.IsJwt && !caller.IsManagerOrHasPermission(IptvPermission))
+            return (caller, LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgNoPermission));
+        return (caller, null);
+    }
+
+    private static string CompanyKey(Guid companyId) => companyId.ToString().ToLowerInvariant();
+
+    /// <summary>هل يحق للطالب الوصول لسجل بهذه الشركة النصية؟</summary>
+    private static bool CanAccess(InternalCaller caller, string? recordCompanyId)
+    {
+        if (!caller.IsTenantBound) return true;
+        return Guid.TryParse(recordCompanyId, out var g) && g == caller.CompanyId!.Value;
     }
 
     /// <summary>جلب جميع مشتركي IPTV لشركة محددة</summary>
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] string companyId)
+    public async Task<IActionResult> GetAll([FromQuery] string? companyId)
     {
-        if (!ValidateApiKey()) return Unauthorized(new { message = "API Key غير صالح" });
+        var (caller, authError) = await AuthorizeIptvAsync();
+        if (authError != null) return authError;
+
+        if (caller.IsTenantBound)
+        {
+            if (!string.IsNullOrEmpty(companyId) && !CanAccess(caller, companyId))
+                return LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgOtherCompany);
+            var key = CompanyKey(caller.CompanyId!.Value);
+            var own = await _unitOfWork.IptvSubscribers.AsQueryable()
+                .Where(s => s.CompanyId.ToLower() == key)
+                .OrderByDescending(s => s.CreatedAt)
+                .ToListAsync();
+            return Ok(new { data = own });
+        }
+
         if (string.IsNullOrEmpty(companyId)) return BadRequest(new { message = "companyId مطلوب" });
 
         var items = await _unitOfWork.IptvSubscribers.AsQueryable()
@@ -49,10 +83,12 @@ public class IptvSubscribersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(long id)
     {
-        if (!ValidateApiKey()) return Unauthorized(new { message = "API Key غير صالح" });
+        var (caller, authError) = await AuthorizeIptvAsync();
+        if (authError != null) return authError;
 
         var subscriber = await _unitOfWork.IptvSubscribers.GetByIdAsync(id);
-        if (subscriber == null) return NotFound(new { message = "المشترك غير موجود" });
+        if (subscriber == null || !CanAccess(caller, subscriber.CompanyId))
+            return NotFound(new { message = "المشترك غير موجود" });
 
         return Ok(new { data = subscriber });
     }
@@ -61,13 +97,23 @@ public class IptvSubscribersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateIptvSubscriberRequest request)
     {
-        if (!ValidateApiKey()) return Unauthorized(new { message = "API Key غير صالح" });
-        if (string.IsNullOrEmpty(request.CompanyId)) return BadRequest(new { message = "companyId مطلوب" });
+        var (caller, authError) = await AuthorizeIptvAsync();
+        if (authError != null) return authError;
+
+        var companyId = request.CompanyId;
+        if (caller.IsTenantBound)
+        {
+            if (!string.IsNullOrEmpty(companyId) && !CanAccess(caller, companyId))
+                return LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgOtherCompany);
+            companyId = CompanyKey(caller.CompanyId!.Value); // الشركة من التوكن
+        }
+
+        if (string.IsNullOrEmpty(companyId)) return BadRequest(new { message = "companyId مطلوب" });
         if (string.IsNullOrEmpty(request.CustomerName)) return BadRequest(new { message = "customerName مطلوب" });
 
         var subscriber = new IptvSubscriber
         {
-            CompanyId = request.CompanyId,
+            CompanyId = companyId,
             SubscriptionId = request.SubscriptionId,
             CustomerName = request.CustomerName,
             Phone = request.Phone,
@@ -91,10 +137,12 @@ public class IptvSubscribersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateIptvSubscriberRequest request)
     {
-        if (!ValidateApiKey()) return Unauthorized(new { message = "API Key غير صالح" });
+        var (caller, authError) = await AuthorizeIptvAsync();
+        if (authError != null) return authError;
 
         var subscriber = await _unitOfWork.IptvSubscribers.GetByIdAsync(id);
-        if (subscriber == null) return NotFound(new { message = "المشترك غير موجود" });
+        if (subscriber == null || !CanAccess(caller, subscriber.CompanyId))
+            return NotFound(new { message = "المشترك غير موجود" });
 
         subscriber.SubscriptionId = request.SubscriptionId;
         subscriber.CustomerName = request.CustomerName;
@@ -119,10 +167,12 @@ public class IptvSubscribersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(long id)
     {
-        if (!ValidateApiKey()) return Unauthorized(new { message = "API Key غير صالح" });
+        var (caller, authError) = await AuthorizeIptvAsync();
+        if (authError != null) return authError;
 
         var subscriber = await _unitOfWork.IptvSubscribers.GetByIdAsync(id);
-        if (subscriber == null) return NotFound(new { message = "المشترك غير موجود" });
+        if (subscriber == null || !CanAccess(caller, subscriber.CompanyId))
+            return NotFound(new { message = "المشترك غير موجود" });
 
         subscriber.IsDeleted = true;
         subscriber.DeletedAt = DateTime.UtcNow;

@@ -1,25 +1,67 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
 namespace Sadara.API.Controllers;
 
+/// <summary>
+/// إحصائيات المناطق (الزونات).
+/// المصادقة (المرحلة 0 / A2): JWT موظف الشركة (كان SuperAdmin فقط) أو المفتاح القديم.
+/// مسار JWT: صفوف شركة التوكن فقط (+ الصفوف القديمة غير المختومة للشركة الافتراضية فقط)،
+/// وكل كتابة تُختم بشركة التوكن (CompanyId في الجسم يُتجاهل). مسار المفتاح القديم دون تغيير.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
+public class ZoneStatisticsController(IUnitOfWork unitOfWork, IConfiguration configuration) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IConfiguration _configuration = configuration;
+
+    private const string ZonesPermission = "zones";
+
+    /// <summary>
+    /// القراءة: صلاحية المناطق، أو المحاسبة (صفحة أجور صيانة الزونات تقرأ أسماء الزونات).
+    /// الكتابة: صلاحية المناطق (دلالة RequirePermission). المدير/المشرف يمرّ.
+    /// </summary>
+    private async Task<(InternalCaller Caller, IActionResult? Error)> AuthorizeAsync(bool write)
+    {
+        var (caller, error) = await LegacyKeyOrJwtGate.AuthorizeAsync(HttpContext, _configuration, _unitOfWork);
+        if (error != null) return (caller, error);
+        if (!caller.IsJwt) return (caller, null);
+
+        var allowed = caller.IsManagerOrHasPermission(ZonesPermission, "view")
+                      || (!write && caller.HasPermission("accounting", "view"));
+        return allowed
+            ? (caller, null)
+            : (caller, LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgNoPermission));
+    }
+
+    private IQueryable<ZoneStatistic> Scoped(InternalCaller caller)
+    {
+        var q = _unitOfWork.ZoneStatistics.AsQueryable();
+        if (!caller.IsTenantBound) return q;
+        var cid = caller.CompanyId;
+        var ownsUnstamped = caller.OwnsUnstampedRows(_configuration);
+        return q.Where(z => z.CompanyId == cid || (ownsUnstamped && z.CompanyId == null));
+    }
+
+    /// <summary>الشركة المختومة على الكتابة: شركة التوكن لمستخدم الشركة، وإلا قيمة الطلب (السلوك القديم).</summary>
+    private static Guid? StampCompany(InternalCaller caller, Guid? requested) =>
+        caller.IsTenantBound ? caller.CompanyId : requested;
 
     /// <summary>جلب إحصائيات جميع المناطق</summary>
     [HttpGet]
-    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetAll([FromQuery] string? search)
     {
-        var query = _unitOfWork.ZoneStatistics.AsQueryable();
+        var (caller, authError) = await AuthorizeAsync(write: false);
+        if (authError != null) return authError;
+
+        var query = Scoped(caller);
 
         if (!string.IsNullOrEmpty(search))
-            query = query.Where(z => z.ZoneName.Contains(search) || 
+            query = query.Where(z => z.ZoneName.Contains(search) ||
                                      (z.RegionName != null && z.RegionName.Contains(search)));
 
         var zones = await query.OrderBy(z => z.ZoneName).ToListAsync();
@@ -28,10 +70,12 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>جلب ملخص إحصائي (مجاميع ومتوسطات)</summary>
     [HttpGet("summary")]
-    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> GetSummary()
     {
-        var zones = await _unitOfWork.ZoneStatistics.AsQueryable().ToListAsync();
+        var (caller, authError) = await AuthorizeAsync(write: false);
+        if (authError != null) return authError;
+
+        var zones = await Scoped(caller).ToListAsync();
 
         if (!zones.Any())
             return Ok(new { totalZones = 0, totalUsers = 0, totalActive = 0, totalInactive = 0, totalFats = 0 });
@@ -54,9 +98,11 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>إضافة إحصائية منطقة</summary>
     [HttpPost]
-    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> Create([FromBody] CreateZoneStatisticRequest request)
     {
+        var (caller, authError) = await AuthorizeAsync(write: true);
+        if (authError != null) return authError;
+
         var zone = new ZoneStatistic
         {
             ZoneName = request.ZoneName,
@@ -65,7 +111,7 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
             ActiveUsers = request.ActiveUsers,
             InactiveUsers = request.InactiveUsers,
             RegionName = request.RegionName,
-            CompanyId = request.CompanyId,
+            CompanyId = StampCompany(caller, request.CompanyId),
         };
 
         await _unitOfWork.ZoneStatistics.AddAsync(zone);
@@ -76,9 +122,11 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>إضافة إحصائيات بالجملة</summary>
     [HttpPost("bulk")]
-    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> BulkCreate([FromBody] List<CreateZoneStatisticRequest> requests)
     {
+        var (caller, authError) = await AuthorizeAsync(write: true);
+        if (authError != null) return authError;
+
         var zones = requests.Select(r => new ZoneStatistic
         {
             ZoneName = r.ZoneName,
@@ -87,7 +135,7 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
             ActiveUsers = r.ActiveUsers,
             InactiveUsers = r.InactiveUsers,
             RegionName = r.RegionName,
-            CompanyId = r.CompanyId,
+            CompanyId = StampCompany(caller, r.CompanyId),
         }).ToList();
 
         foreach (var z in zones)
@@ -100,10 +148,12 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>تحديث إحصائية منطقة</summary>
     [HttpPut("{id}")]
-    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> Update(int id, [FromBody] CreateZoneStatisticRequest request)
     {
-        var zone = await _unitOfWork.ZoneStatistics.GetByIdAsync(id);
+        var (caller, authError) = await AuthorizeAsync(write: true);
+        if (authError != null) return authError;
+
+        var zone = await Scoped(caller).FirstOrDefaultAsync(z => z.Id == id);
         if (zone == null) return NotFound();
 
         zone.ZoneName = request.ZoneName;
@@ -122,15 +172,19 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>مزامنة الزونات من FTTH — إضافة الجديد وتحديث Fats فقط للموجود</summary>
     [HttpPost("sync")]
-    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> SyncZones([FromBody] List<SyncZoneRequest> requests)
     {
+        var (caller, authError) = await AuthorizeAsync(write: true);
+        if (authError != null) return authError;
+
         if (requests == null || requests.Count == 0)
             return BadRequest(new { message = "لا توجد بيانات للمزامنة" });
 
-        var existingZones = await _unitOfWork.ZoneStatistics.AsQueryable().ToListAsync();
+        // المطابقة بالاسم داخل نطاق الطالب فقط (لا تعديل زونات شركة أخرى بنفس الاسم).
+        var existingZones = await Scoped(caller).ToListAsync();
         var existingMap = existingZones
-            .ToDictionary(z => z.ZoneName.Trim().ToLowerInvariant(), z => z);
+            .GroupBy(z => z.ZoneName.Trim().ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.First());
 
         int added = 0, updated = 0, unchanged = 0;
 
@@ -163,9 +217,10 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
                     TotalUsers = 0,
                     ActiveUsers = 0,
                     InactiveUsers = 0,
-                    CompanyId = req.CompanyId,
+                    CompanyId = StampCompany(caller, req.CompanyId),
                 };
                 await _unitOfWork.ZoneStatistics.AddAsync(zone);
+                existingMap[key] = zone;
                 added++;
             }
         }
@@ -177,10 +232,12 @@ public class ZoneStatisticsController(IUnitOfWork unitOfWork) : ControllerBase
 
     /// <summary>حذف إحصائية منطقة</summary>
     [HttpDelete("{id}")]
-    [ApiKeyOrJwtAuth]
     public async Task<IActionResult> Delete(int id)
     {
-        var zone = await _unitOfWork.ZoneStatistics.GetByIdAsync(id);
+        var (caller, authError) = await AuthorizeAsync(write: true);
+        if (authError != null) return authError;
+
+        var zone = await Scoped(caller).FirstOrDefaultAsync(z => z.Id == id);
         if (zone == null) return NotFound();
 
         zone.IsDeleted = true;

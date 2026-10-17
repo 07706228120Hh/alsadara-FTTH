@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
@@ -28,14 +29,26 @@ public class ReminderController : ControllerBase
         _httpClientFactory = httpClientFactory;
     }
 
-    private bool ValidateApiKey()
-    {
-        var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        var configKey = _configuration["Security:InternalApiKey"]
-            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? ""; // fail-closed: يُقرأ من متغيّر البيئة بعد إزالة القيمة المكشوفة من appsettings
-        return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
-    }
+    // ══════════════════════════════════════
+    // المصادقة (المرحلة 0 / A2): JWT موظف الشركة، أو المفتاح القديم (n8n/نسخ قديمة)
+    // ══════════════════════════════════════
+    //
+    // مسار JWT: الشركة من التوكن دائماً (يُتجاهل tenantId في الطلب لغير SuperAdmin).
+    // سير عمل n8n للتذكير **واحد عام** للمنصّة (N8N:ReminderWorkflowId) ويعمل بحساب FTTH وواتساب
+    // الشركة الرئيسية ⇒ تعديل جدولته أو تشغيله يدوياً عبر JWT مقصور على مدير الشركة الافتراضية
+    // (Tenancy:DefaultCompanyId) أو SuperAdmin.
+
+    private Task<(InternalCaller Caller, IActionResult? Error)> AuthorizeAsync() =>
+        LegacyKeyOrJwtGate.AuthorizeAsync(HttpContext, _configuration, _unitOfWork);
+
+    private const string MsgReminderOwnerOnly = "التذكير الآلي (n8n) مرتبط بالشركة الرئيسية — متاح لمديرها فقط";
+
+    /// <summary>JWT: تعديل/تشغيل سير عمل n8n العام — مدير الشركة المالكة للبيانات غير المختومة، أو SuperAdmin.</summary>
+    private bool CanControlN8nWorkflow(InternalCaller caller) =>
+        caller.IsApiKey || caller.IsSuperAdmin
+        || (caller.IsCompanyManager() && caller.OwnsUnstampedRows(_configuration));
+
+    private static string TenantKey(Guid companyId) => companyId.ToString().ToLowerInvariant();
 
     private string N8nBaseUrl => _configuration["N8N:BaseUrl"] ?? "https://n8n.srv991906.hstgr.cloud";
     private string N8nApiKey => _configuration["N8N:ApiKey"] ?? "";
@@ -49,14 +62,30 @@ public class ReminderController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetSettings([FromQuery] string? tenantId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false });
+        var (caller, authError) = await AuthorizeAsync();
+        if (authError != null) return authError;
 
         try
         {
             var tid = tenantId ?? "default";
-            var settings = await _unitOfWork.ReminderSettings
-                .FirstOrDefaultAsync(s => s.TenantId == tid);
+            ReminderSettings? settings;
+            if (caller.IsTenantBound)
+            {
+                // الشركة من التوكن — tenantId في الاستعلام يُتجاهل.
+                var cid = caller.CompanyId!.Value;
+                tid = TenantKey(cid);
+                var key = tid;
+                settings = await _unitOfWork.ReminderSettings.AsQueryable()
+                    .FirstOrDefaultAsync(s => s.CompanyId == cid || s.TenantId.ToLower() == key);
+                if (settings == null && caller.OwnsUnstampedRows(_configuration))
+                    settings = await _unitOfWork.ReminderSettings
+                        .FirstOrDefaultAsync(s => s.TenantId == "default" && s.CompanyId == null);
+            }
+            else
+            {
+                settings = await _unitOfWork.ReminderSettings
+                    .FirstOrDefaultAsync(s => s.TenantId == tid);
+            }
 
             if (settings == null)
                 return Ok(new { success = true, data = new { tenantId = tid, isEnabled = false, batchesJson = "[]" } });
@@ -88,20 +117,37 @@ public class ReminderController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> SaveSettings([FromBody] SaveSettingsRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false });
+        var (caller, authError) = await AuthorizeAsync();
+        if (authError != null) return authError;
+        if (caller.IsJwt && !CanControlN8nWorkflow(caller))
+            return LegacyKeyOrJwtGate.Forbidden(MsgReminderOwnerOnly);
 
         try
         {
             var tid = request.TenantId ?? "default";
-            var existing = await _unitOfWork.ReminderSettings
-                .FirstOrDefaultAsync(s => s.TenantId == tid);
+            ReminderSettings? existing;
+            Guid? stampCompany = null;
+            if (caller.IsTenantBound)
+            {
+                var cid = caller.CompanyId!.Value;
+                stampCompany = cid;
+                tid = TenantKey(cid);
+                var key = tid;
+                existing = await _unitOfWork.ReminderSettings.AsQueryable()
+                    .FirstOrDefaultAsync(s => s.CompanyId == cid || s.TenantId.ToLower() == key);
+            }
+            else
+            {
+                existing = await _unitOfWork.ReminderSettings
+                    .FirstOrDefaultAsync(s => s.TenantId == tid);
+            }
 
             if (existing != null)
             {
                 existing.IsEnabled = request.IsEnabled;
                 existing.BatchesJson = request.BatchesJson ?? "[]";
                 existing.UpdatedAt = DateTime.UtcNow;
+                if (stampCompany.HasValue && existing.CompanyId == null) existing.CompanyId = stampCompany;
                 _unitOfWork.ReminderSettings.Update(existing);
             }
             else
@@ -109,6 +155,7 @@ public class ReminderController : ControllerBase
                 await _unitOfWork.ReminderSettings.AddAsync(new ReminderSettings
                 {
                     TenantId = tid,
+                    CompanyId = stampCompany,
                     IsEnabled = request.IsEnabled,
                     BatchesJson = request.BatchesJson ?? "[]",
                 });
@@ -136,12 +183,23 @@ public class ReminderController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetLogs([FromQuery] int limit = 50)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false });
+        var (caller, authError) = await AuthorizeAsync();
+        if (authError != null) return authError;
 
         try
         {
-            var logs = await _unitOfWork.ReminderExecutionLogs.AsQueryable()
+            var query = _unitOfWork.ReminderExecutionLogs.AsQueryable();
+            if (caller.IsTenantBound)
+            {
+                // سجلات شركة التوكن فقط؛ سجلات n8n غير المختومة للشركة الافتراضية فقط.
+                var cid = caller.CompanyId!.Value;
+                var key = TenantKey(cid);
+                var ownsUnstamped = caller.OwnsUnstampedRows(_configuration);
+                query = query.Where(l => l.CompanyId == cid
+                                         || (l.CompanyId == null && (l.TenantId.ToLower() == key || ownsUnstamped)));
+            }
+
+            var logs = await query
                 .OrderByDescending(l => l.ExecutedAt)
                 .Take(limit)
                 .Select(l => new
@@ -176,8 +234,11 @@ public class ReminderController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> SaveLog([FromBody] SaveLogRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false });
+        // خادم↔خادم فقط (n8n بالمفتاح من إعداده) — لا يستدعيه التطبيق.
+        var (caller, authError) = await AuthorizeAsync();
+        if (authError != null) return authError;
+        if (!caller.IsApiKey)
+            return LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgNoPermission);
 
         try
         {
@@ -213,8 +274,10 @@ public class ReminderController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> SendNow([FromBody] SendNowRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false });
+        var (caller, authError) = await AuthorizeAsync();
+        if (authError != null) return authError;
+        if (caller.IsJwt && !CanControlN8nWorkflow(caller))
+            return LegacyKeyOrJwtGate.Forbidden(MsgReminderOwnerOnly);
 
         try
         {

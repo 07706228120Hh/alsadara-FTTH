@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api/api_config.dart';
-import '../config/app_secrets.dart';
+import 'background_vps_token.dart';
 
 /// طابور الموقع — يحفظ النقاط عند انقطاع الإنترنت ويرسلها عند العودة
 class LocationOfflineQueue {
@@ -41,6 +41,10 @@ class LocationOfflineQueue {
       int sent = 0;
       final failed = <String>[];
 
+      // توكن المستخدم (لا مفتاح ثابت) — بلا جلسة نُبقي النقاط حتى تتوفر.
+      final token = await BackgroundVpsToken.get();
+      if (token == null) return 0;
+
       for (final item in queue) {
         try {
           final data = jsonDecode(item) as Map<String, dynamic>;
@@ -48,14 +52,20 @@ class LocationOfflineQueue {
           final client = HttpClient()..badCertificateCallback = (_, __, ___) => true;
           final request = await client.postUrl(url);
           request.headers.set('Content-Type', 'application/json');
-          request.headers.set('X-Api-Key', appSecrets.internalApiKey); // LEGACY: EmployeeLocationController key-only
-          request.write(jsonEncode(data));
+          request.headers.set('Authorization', 'Bearer $token');
+          request.add(utf8.encode(jsonEncode(data)));
           final response = await request.close();
           await response.drain();
           client.close();
 
-          if (response.statusCode >= 200 && response.statusCode < 300) {
+          final code = response.statusCode;
+          if (code >= 200 && code < 300) {
             sent++;
+          } else if (code == 401) {
+            // جلسة منتهية — نُبقي النقطة لإعادة المحاولة لاحقاً.
+            failed.add(item);
+          } else if (code >= 400 && code < 500) {
+            // رفض نهائي (403/409/400): إعادة الإرسال لن تنجح — نُسقط النقطة بدل تكديس الطابور.
           } else {
             failed.add(item);
           }

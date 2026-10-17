@@ -28,15 +28,17 @@ class WhatsAppBusinessService {
     }
   }
 
+  // أُزيلت القيم المضمّنة (رمز تحقق الـ webhook ومفتاح n8n العام) من الكود — لا يستدعي التطبيق
+  // واجهة n8n العامة إطلاقاً؛ القيمتان تُقرآن من .env/الإعدادات المحلية فقط (فارغة افتراضياً).
   // Webhook Verify Token
   static String get webhookVerifyToken =>
       _env('WHATSAPP_WEBHOOK_VERIFY_TOKEN') ??
-      '4bZXa4hJ6whfqWf9JsyNjQpHzaBZOxZA1A81SBGH4ce90e2e';
+      '';
 
   // n8n API Token
   static String get n8nApiToken =>
       _env('N8N_API_TOKEN') ??
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5ZDFmZTVkNy04OTczLTQ0ZmQtYjQzNi0yNWRhMTUyN2YzOTYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzY1OTQ3NjgzfQ.IjycTVGdoGHjM9xvVO1C2xyeaa0f2v09tpwSXOpq298';
+      '';
 
   /// الحصول على جميع إعدادات واجهة WhatsApp
   static Future<Map<String, String>> getConfiguration() async {

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
@@ -34,14 +35,8 @@ public class WhatsAppController : ControllerBase
     // Auth helpers
     // ══════════════════════════════════════
 
-    private bool ValidateApiKey()
-    {
-        var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        var configKey = _configuration["Security:InternalApiKey"]
-            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? ""; // fail-closed: لا fallback مضمّن — يُقرأ من الإعدادات فقط
-        return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
-    }
+    /// <summary>المفتاح الداخلي القديم (خادم↔خادم: n8n) — من الإعدادات فقط، مقارنة ثابتة الزمن.</summary>
+    private bool ValidateApiKey() => InternalCallerAccess.IsValidInternalApiKey(Request, _configuration);
 
     private bool ValidateWebhookSecret()
     {
@@ -51,6 +46,57 @@ public class WhatsAppController : ControllerBase
             ?? "";
         return !string.IsNullOrEmpty(secret) && secret == configSecret;
     }
+
+    // ══════════════════════════════════════
+    // المرحلة 0 / A2: JWT موظف الشركة أو المفتاح القديم
+    // ══════════════════════════════════════
+    //
+    // صندوق واتساب هو رقم واحد يغذّيه n8n؛ المحادثات القديمة/الواردة بلا CompanyId تخص الشركة
+    // الافتراضية (Tenancy:DefaultCompanyId). مسار JWT: محادثات شركة التوكن فقط (+ غير المختومة
+    // للشركة الافتراضية فقط)، وما يُنشأ عبره يُختم بشركة التوكن. الصلاحية بنفس دلالة الواجهة
+    // (whatsapp_conversations_fab: مسموح ما لم يُعطَّل صراحةً).
+
+    private const string InboxPermission = "whatsapp_conversations_fab";
+
+    private async Task<(InternalCaller Caller, IActionResult? Error)> AuthorizeInboxAsync()
+    {
+        var (caller, error) = await LegacyKeyOrJwtGate.AuthorizeAsync(HttpContext, _configuration, _unitOfWork);
+        if (error != null) return (caller, error);
+        if (caller.IsJwt && !caller.NotExplicitlyDenied(InboxPermission))
+            return (caller, LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgNoPermission));
+        return (caller, null);
+    }
+
+    private IQueryable<WhatsAppConversation> ScopedConversations(InternalCaller caller)
+    {
+        var q = _unitOfWork.WhatsAppConversations.AsQueryable();
+        if (!caller.IsTenantBound) return q;
+        var cid = caller.CompanyId;
+        var ownsUnstamped = caller.OwnsUnstampedRows(_configuration);
+        return q.Where(c => c.CompanyId == cid || (ownsUnstamped && c.CompanyId == null));
+    }
+
+    /// <summary>
+    /// الفهرس الفريد على PhoneNumber عام: لمسار JWT، محادثة بنفس الرقم خارج نطاق الطالب ⇒ تعارض (لا كتابة فوقها).
+    /// </summary>
+    private async Task<bool> PhoneTakenOutsideScopeAsync(InternalCaller caller, string normalizedPhone)
+    {
+        if (!caller.IsTenantBound) return false;
+        return await _unitOfWork.WhatsAppConversations.AnyAsync(c => c.PhoneNumber == normalizedPhone);
+    }
+
+    /// <summary>تقارير الإرسال الجماعي: شركة التوكن فقط (+ غير المختومة للشركة الافتراضية).</summary>
+    private IQueryable<WhatsAppBatchReport> ScopedBatchReports(InternalCaller caller)
+    {
+        var q = _unitOfWork.WhatsAppBatchReports.AsQueryable();
+        if (!caller.IsTenantBound) return q;
+        var cid = caller.CompanyId;
+        var ownsUnstamped = caller.OwnsUnstampedRows(_configuration);
+        return q.Where(r => r.CompanyId == cid || (ownsUnstamped && r.CompanyId == null));
+    }
+
+    private IActionResult PhoneConflict() =>
+        Conflict(new { success = false, message = "هذا الرقم مرتبط بمحادثة شركة أخرى" });
 
     /// <summary>تطبيع رقم الهاتف إلى صيغة 964XXXXXXXXX</summary>
     private static string NormalizePhone(string phone)
@@ -74,12 +120,12 @@ public class WhatsAppController : ControllerBase
         [FromQuery] int limit = 500,
         [FromQuery] DateTime? updatedSince = null)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInboxAsync();
+        if (authError != null) return authError;
 
         try
         {
-            var query = _unitOfWork.WhatsAppConversations.AsQueryable();
+            var query = ScopedConversations(caller);
 
             if (updatedSince.HasValue)
             {
@@ -123,14 +169,14 @@ public class WhatsAppController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetMessages(string phone, [FromQuery] int limit = 200)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInboxAsync();
+        if (authError != null) return authError;
 
         try
         {
             var normalizedPhone = NormalizePhone(phone);
 
-            var conversation = await _unitOfWork.WhatsAppConversations
+            var conversation = await ScopedConversations(caller)
                 .FirstOrDefaultAsync(c => c.PhoneNumber == normalizedPhone);
 
             if (conversation == null)
@@ -174,12 +220,12 @@ public class WhatsAppController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetUnreadCount()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInboxAsync();
+        if (authError != null) return authError;
 
         try
         {
-            var count = await _unitOfWork.WhatsAppConversations.AsQueryable()
+            var count = await ScopedConversations(caller)
                 .SumAsync(c => c.UnreadCount);
 
             return Ok(new { success = true, data = new { unreadCount = count } });
@@ -200,22 +246,26 @@ public class WhatsAppController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> SendMessage(string phone, [FromBody] SendMessageRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInboxAsync();
+        if (authError != null) return authError;
 
         try
         {
             var normalizedPhone = NormalizePhone(phone);
             var now = DateTime.UtcNow;
 
-            // البحث عن المحادثة أو إنشاؤها
-            var conversation = await _unitOfWork.WhatsAppConversations
+            // البحث عن المحادثة أو إنشاؤها (ضمن نطاق الطالب)
+            var conversation = await ScopedConversations(caller)
                 .FirstOrDefaultAsync(c => c.PhoneNumber == normalizedPhone);
+
+            if (conversation == null && await PhoneTakenOutsideScopeAsync(caller, normalizedPhone))
+                return PhoneConflict();
 
             if (conversation == null)
             {
                 conversation = new WhatsAppConversation
                 {
+                    CompanyId = caller.IsTenantBound ? caller.CompanyId : null,
                     PhoneNumber = normalizedPhone,
                     LastMessage = request.Message ?? "",
                     LastMessageTime = now,
@@ -268,13 +318,13 @@ public class WhatsAppController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> MarkAsRead(string phone)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInboxAsync();
+        if (authError != null) return authError;
 
         try
         {
             var normalizedPhone = NormalizePhone(phone);
-            var conversation = await _unitOfWork.WhatsAppConversations
+            var conversation = await ScopedConversations(caller)
                 .FirstOrDefaultAsync(c => c.PhoneNumber == normalizedPhone);
 
             if (conversation == null)
@@ -303,13 +353,13 @@ public class WhatsAppController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> MarkAsUnread(string phone)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInboxAsync();
+        if (authError != null) return authError;
 
         try
         {
             var normalizedPhone = NormalizePhone(phone);
-            var conversation = await _unitOfWork.WhatsAppConversations
+            var conversation = await ScopedConversations(caller)
                 .FirstOrDefaultAsync(c => c.PhoneNumber == normalizedPhone);
 
             if (conversation == null)
@@ -341,13 +391,13 @@ public class WhatsAppController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteConversation(string phone)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInboxAsync();
+        if (authError != null) return authError;
 
         try
         {
             var normalizedPhone = NormalizePhone(phone);
-            var conversation = await _unitOfWork.WhatsAppConversations
+            var conversation = await ScopedConversations(caller)
                 .FirstOrDefaultAsync(c => c.PhoneNumber == normalizedPhone);
 
             if (conversation == null)
@@ -389,8 +439,18 @@ public class WhatsAppController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> IncomingWebhook([FromBody] IncomingMessageRequest request)
     {
-        if (!ValidateWebhookSecret() && !ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid webhook secret" });
+        // n8n: سرّ الـ webhook أو المفتاح القديم (دون تغيير). التطبيق: JWT موظف (saveIncomingMessage).
+        InternalCaller caller;
+        if (ValidateWebhookSecret())
+        {
+            caller = new InternalCaller { Mode = InternalAuthMode.ApiKey };
+        }
+        else
+        {
+            var (c, authError) = await AuthorizeInboxAsync();
+            if (authError != null) return authError;
+            caller = c;
+        }
 
         try
         {
@@ -400,14 +460,18 @@ public class WhatsAppController : ControllerBase
 
             var now = DateTime.UtcNow;
 
-            // البحث عن المحادثة أو إنشاؤها
-            var conversation = await _unitOfWork.WhatsAppConversations
+            // البحث عن المحادثة أو إنشاؤها (ضمن نطاق الطالب)
+            var conversation = await ScopedConversations(caller)
                 .FirstOrDefaultAsync(c => c.PhoneNumber == normalizedPhone);
+
+            if (conversation == null && await PhoneTakenOutsideScopeAsync(caller, normalizedPhone))
+                return PhoneConflict();
 
             if (conversation == null)
             {
                 conversation = new WhatsAppConversation
                 {
+                    CompanyId = caller.IsTenantBound ? caller.CompanyId : null,
                     PhoneNumber = normalizedPhone,
                     ContactName = request.ContactName,
                     UserName = request.ContactName,
@@ -513,12 +577,12 @@ public class WhatsAppController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetBatchReports([FromQuery] int limit = 50)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await LegacyKeyOrJwtGate.AuthorizeAsync(HttpContext, _configuration, _unitOfWork);
+        if (authError != null) return authError;
 
         try
         {
-            var reports = await _unitOfWork.WhatsAppBatchReports.AsQueryable()
+            var reports = await ScopedBatchReports(caller)
                 .OrderByDescending(r => r.CreatedAt)
                 .Take(limit)
                 .Select(r => new
@@ -600,12 +664,12 @@ public class WhatsAppController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteBatchReport(long id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await LegacyKeyOrJwtGate.AuthorizeAsync(HttpContext, _configuration, _unitOfWork);
+        if (authError != null) return authError;
 
         try
         {
-            var report = await _unitOfWork.WhatsAppBatchReports
+            var report = await ScopedBatchReports(caller)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (report == null)

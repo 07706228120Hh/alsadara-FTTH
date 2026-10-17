@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 using Sadara.Infrastructure.Data;
@@ -32,21 +33,52 @@ public class CompanyFtthSettingsController : ControllerBase
         _logger = logger;
     }
 
-    private bool ValidateApiKey()
+    // ══════════════════════════════════════
+    // المصادقة (المرحلة 0 / A2): JWT موظف الشركة، أو المفتاح القديم
+    // ══════════════════════════════════════
+
+    private enum AccessLevel
     {
-        var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        var configKey = _configuration["Security:InternalApiKey"]
-            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? ""; // fail-closed: لا fallback مضمّن — يُقرأ من الإعدادات فقط
-        return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
+        /// <summary>أي موظف نشط في الشركة (قراءة الحالة/الإحصاءات).</summary>
+        Any,
+        /// <summary>إعدادات واتساب FTTH: مدير/مشرف أو صلاحية whatsapp_settings.</summary>
+        WhatsApp,
+        /// <summary>بيانات دخول FTTH والمزامنة ومسح البيانات: مدير/مشرف الشركة فقط (كما في الواجهة).</summary>
+        Manager,
+    }
+
+    /// <summary>
+    /// مسار JWT: companyId في المسار/الجسم يجب أن يطابق شركة التوكن (SuperAdmin يتجاوز).
+    /// مسار المفتاح القديم دون تغيير.
+    /// </summary>
+    private async Task<(InternalCaller Caller, IActionResult? Error)> AuthorizeCompanyAsync(Guid companyId, AccessLevel level)
+    {
+        var (caller, error) = await LegacyKeyOrJwtGate.AuthorizeAsync(HttpContext, _configuration, _unitOfWork);
+        if (error != null) return (caller, error);
+        if (!caller.IsJwt) return (caller, null);
+
+        if (!caller.CanAccessCompany(companyId))
+            return (caller, LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgOtherCompany));
+
+        var allowed = level switch
+        {
+            AccessLevel.Manager => caller.IsCompanyManager(),
+            AccessLevel.WhatsApp => caller.IsManagerOrHasPermission("whatsapp_settings"),
+            _ => true,
+        };
+        return allowed
+            ? (caller, null)
+            : (caller, LegacyKeyOrJwtGate.Forbidden(level == AccessLevel.Manager
+                ? LegacyKeyOrJwtGate.MsgManagerOnly
+                : LegacyKeyOrJwtGate.MsgNoPermission));
     }
 
     /// <summary>جلب إعدادات FTTH للشركة</summary>
     [HttpGet("{companyId}")]
     public async Task<IActionResult> GetSettings(Guid companyId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Any);
+        if (authError != null) return authError;
 
         var settings = await _unitOfWork.CompanyFtthSettings.AsQueryable()
             .FirstOrDefaultAsync(x => x.CompanyId == companyId);
@@ -68,7 +100,8 @@ public class CompanyFtthSettingsController : ControllerBase
                 id = settings.Id,
                 companyId = settings.CompanyId,
                 ftthUsername = settings.FtthUsername,
-                ftthPassword = settings.FtthPassword, // Flutter يحتاجها لإعادة عرضها
+                // Flutter يحتاجها لإعادة عرضها في شاشة المدير فقط؛ لا تُكشف لبقية الموظفين على مسار JWT.
+                ftthPassword = caller.IsCompanyManager() ? settings.FtthPassword : string.Empty,
                 syncIntervalMinutes = settings.SyncIntervalMinutes,
                 isAutoSyncEnabled = settings.IsAutoSyncEnabled,
                 syncStartHour = settings.SyncStartHour,
@@ -94,8 +127,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpPut("{companyId}/whatsapp")]
     public async Task<IActionResult> SaveWhatsAppSettings(Guid companyId, [FromBody] SaveWhatsAppSettingsRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.WhatsApp);
+        if (authError != null) return authError;
 
         var settings = await _unitOfWork.CompanyFtthSettings.AsQueryable()
             .FirstOrDefaultAsync(x => x.CompanyId == companyId);
@@ -135,8 +168,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> SaveSettings([FromBody] SaveFtthSettingsRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(request.CompanyId, AccessLevel.Manager);
+        if (authError != null) return authError;
 
         if (string.IsNullOrEmpty(request.FtthUsername) || string.IsNullOrEmpty(request.FtthPassword))
             return BadRequest(new { success = false, message = "اسم المستخدم وكلمة المرور مطلوبان" });
@@ -181,8 +214,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpPost("{companyId}/test")]
     public async Task<IActionResult> TestConnection(Guid companyId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Manager);
+        if (authError != null) return authError;
 
         var settings = await _unitOfWork.CompanyFtthSettings.AsQueryable()
             .FirstOrDefaultAsync(x => x.CompanyId == companyId);
@@ -259,8 +292,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpGet("{companyId}/sync-status")]
     public async Task<IActionResult> GetSyncStatus(Guid companyId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Any);
+        if (authError != null) return authError;
 
         var settings = await _unitOfWork.CompanyFtthSettings.AsQueryable()
             .FirstOrDefaultAsync(x => x.CompanyId == companyId);
@@ -310,8 +343,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpPost("{companyId}/trigger-sync")]
     public async Task<IActionResult> TriggerSync(Guid companyId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Manager);
+        if (authError != null) return authError;
 
         var settings = await _unitOfWork.CompanyFtthSettings.AsQueryable()
             .FirstOrDefaultAsync(x => x.CompanyId == companyId);
@@ -348,8 +381,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpPost("{companyId}/cancel-sync")]
     public async Task<IActionResult> CancelSync(Guid companyId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Manager);
+        if (authError != null) return authError;
 
         var settings = await _unitOfWork.CompanyFtthSettings.AsQueryable()
             .FirstOrDefaultAsync(x => x.CompanyId == companyId);
@@ -383,8 +416,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpGet("{companyId}/sync-logs")]
     public async Task<IActionResult> GetSyncLogs(Guid companyId, [FromQuery] int limit = 50)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Any);
+        if (authError != null) return authError;
 
         var logs = await _unitOfWork.FtthSyncLogs.AsQueryable()
             .Where(x => x.CompanyId == companyId)
@@ -415,8 +448,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpDelete("{companyId}/sync-logs/{logId}")]
     public async Task<IActionResult> DeleteSyncLog(Guid companyId, long logId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Manager);
+        if (authError != null) return authError;
 
         var log = await _unitOfWork.FtthSyncLogs.AsQueryable()
             .FirstOrDefaultAsync(x => x.Id == logId && x.CompanyId == companyId);
@@ -436,8 +469,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpDelete("{companyId}/sync-logs")]
     public async Task<IActionResult> DeleteAllSyncLogs(Guid companyId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Manager);
+        if (authError != null) return authError;
 
         var logs = await _unitOfWork.FtthSyncLogs.AsQueryable()
             .Where(x => x.CompanyId == companyId)
@@ -458,8 +491,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpGet("{companyId}/missing-stats")]
     public async Task<IActionResult> GetMissingStats(Guid companyId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Any);
+        if (authError != null) return authError;
 
         var query = _unitOfWork.FtthSubscriberCaches.AsQueryable()
             .Where(x => x.CompanyId == companyId);
@@ -491,8 +524,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpPost("{companyId}/refetch-missing")]
     public async Task<IActionResult> RefetchMissing(Guid companyId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Manager);
+        if (authError != null) return authError;
 
         var settings = await _unitOfWork.CompanyFtthSettings.AsQueryable()
             .FirstOrDefaultAsync(x => x.CompanyId == companyId);
@@ -529,8 +562,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpGet("{companyId}/detailed-stats")]
     public async Task<IActionResult> GetDetailedStats(Guid companyId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Any);
+        if (authError != null) return authError;
 
         var query = _context.FtthSubscriberCaches
             .Where(x => x.CompanyId == companyId && !x.IsDeleted);
@@ -596,8 +629,8 @@ public class CompanyFtthSettingsController : ControllerBase
     [HttpPost("{companyId}/clear-data")]
     public async Task<IActionResult> ClearData(Guid companyId, [FromBody] ClearDataRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeCompanyAsync(companyId, AccessLevel.Manager);
+        if (authError != null) return authError;
 
         var query = _context.FtthSubscriberCaches
             .Where(x => x.CompanyId == companyId && !x.IsDeleted);

@@ -1,12 +1,13 @@
-/// ⚠️ ملف المفاتيح السرية - يجب عدم رفعه إلى Git
+/// ⚠️ ملف المفاتيح السرية — لا تضع أي قيمة سرّية حقيقية هنا (الملف متتبَّع في Git).
 ///
-/// هذا الملف يحتوي على قيم افتراضية للتطوير فقط.
-/// في بيئة الإنتاج، يجب تحميل القيم من:
+/// القيم تُحمَّل من:
 /// - Environment Variables
 /// - Secure Storage
 /// - ملف secrets.json محلي
 ///
-/// 🔒 تم إضافة هذا الملف إلى .gitignore
+/// المرحلة 0 / A2: أُزيل المفتاح الداخلي (internal API key) نهائياً من التطبيق — كل نداءات خادم
+/// الصدارة تُصادَق بتوكن JWT للمستخدم (انظر `services/api/vps_auth_headers.dart`). المفتاح الداخلي
+/// يبقى سرّاً خادمياً فقط (n8n/السكربتات) ولا يجوز إعادته إلى كود التطبيق.
 library;
 
 import 'dart:io';
@@ -28,9 +29,6 @@ class AppSecrets {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    // محاولة تحميل من Environment Variables أولاً
-    _internalApiKey = Platform.environment['SADARA_INTERNAL_API_KEY'] ??
-        _defaultInternalApiKey;
     _googleDriveApiKey = Platform.environment['GOOGLE_DRIVE_API_KEY'] ??
         _defaultGoogleDriveApiKey;
 
@@ -38,33 +36,20 @@ class AppSecrets {
   }
 
   // ============================================
-  // القيم الافتراضية (للتطوير فقط)
-  // ⚠️ يجب تغييرها في الإنتاج
+  // القيم الافتراضية (فارغة — لا أسرار في الكود)
   // ============================================
 
-  static const String _defaultInternalApiKey =
-      'sadara-internal-2024-secure-key';
   static const String _defaultGoogleDriveApiKey = ''; // فارغ - يجب تعيينه
 
   // ============================================
   // القيم الفعلية
   // ============================================
 
-  String _internalApiKey = _defaultInternalApiKey;
   String _googleDriveApiKey = _defaultGoogleDriveApiKey;
 
   // ============================================
   // Getters
   // ============================================
-
-  /// مفتاح API الداخلي (LEGACY — مصدر وحيد متبقٍّ في التطبيق).
-  ///
-  /// المرحلة 0-أ: نقاط `/api/internal/*` و`/api/ftth-accounting/*` ولوحات SuperAdmin صارت تُصادَق
-  /// بتوكن JWT (انظر `services/api/vps_auth_headers.dart`) ولا تستخدم هذا المفتاح.
-  /// ما زال مستخدماً فقط لمتحكّمات خادمية لم تُرحَّل بعد إلى JWT (تيار لاحق):
-  /// EmployeeLocation + LocationHub، Reminder، WhatsApp، CompanyFtthSettings، IptvSubscribers،
-  /// SubscriberCache، ZoneStatistics. لا تُضِف استخدامات جديدة له.
-  String get internalApiKey => _internalApiKey;
 
   /// مفتاح Google Drive API
   String get googleDriveApiKey => _googleDriveApiKey;
@@ -73,19 +58,11 @@ class AppSecrets {
   // التحقق من الأمان
   // ============================================
 
-  /// هل المفاتيح آمنة (ليست القيم الافتراضية)؟
-  bool get isSecure {
-    return _internalApiKey != _defaultInternalApiKey &&
-        _internalApiKey.isNotEmpty;
-  }
+  /// لا توجد مفاتيح خادمية مضمّنة في التطبيق بعد الآن.
+  bool get isSecure => true;
 
-  /// طباعة تحذير إذا كانت المفاتيح افتراضية
-  void warnIfInsecure() {
-    if (!isSecure) {
-      print('⚠️ تحذير أمني: يتم استخدام مفاتيح API الافتراضية!');
-      print('⚠️ يجب تعيين SADARA_INTERNAL_API_KEY في Environment Variables');
-    }
-  }
+  /// (للتوافق مع main.dart) لا شيء للتحذير منه — لا مفاتيح افتراضية مضمّنة.
+  void warnIfInsecure() {}
 }
 
 /// للوصول السريع

@@ -5,7 +5,7 @@ import 'package:http/io_client.dart';
 import 'package:flutter/foundation.dart';
 import 'api_config.dart';
 import 'api_response.dart';
-import '../../config/app_secrets.dart';
+import 'vps_auth_headers.dart';
 
 /// العميل الأساسي للاتصال بـ API
 class ApiClient {
@@ -72,13 +72,33 @@ class ApiClient {
         if (_authToken != null) 'Authorization': 'Bearer $_authToken',
       };
 
-  /// LEGACY: لا تستخدم useInternalKey لنقاط /internal/* أو SuperAdmin أو أي متحكّم يقبل JWT —
-  /// تبقى فقط للمتحكّمات الخادمية التي لم تُرحَّل بعد إلى JWT (انظر AppSecrets.internalApiKey).
-  Map<String, String> get _internalHeaders => {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-Api-Key': appSecrets.internalApiKey,
-      };
+  /// ترويسات نداءات `useInternalKey: true`.
+  ///
+  /// المرحلة 0 / A2: لم يعد التطبيق يحمل أي مفتاح داخلي. المتحكّمات التي كانت تقبل المفتاح فقط
+  /// (EmployeeLocation، Reminder، WhatsApp، CompanyFtthSettings، IptvSubscribers، SubscriberCache،
+  /// ZoneStatistics) صارت تقبل توكن المستخدم وتشتق الشركة منه. الاسم `useInternalKey` باقٍ للتوافق
+  /// مع نقاط الاستدعاء فقط، ويعني الآن: Bearer مع تحديث مسبق قبل الانتهاء.
+  Future<Map<String, String>> _internalHeaders() async {
+    final token = await VpsAuthHeaders.validToken() ?? _authToken;
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  Future<Map<String, String>> _headersFor(bool useInternalKey) async =>
+      useInternalKey ? await _internalHeaders() : _headers;
+
+  /// رسالة انتهاء الجلسة عند فشل التحديث بعد 401.
+  static const String sessionExpiredMessage =
+      'انتهت الجلسة — يرجى تسجيل الخروج ثم الدخول مجدداً';
+
+  /// لا نعيد المحاولة لنقاط الدخول/التحديث نفسها (تجنّب الحلقات).
+  static bool _isAuthEndpoint(String endpoint) {
+    final e = endpoint.toLowerCase();
+    return e.contains('refresh') || e.contains('login');
+  }
 
   // ============================================
   // HTTP Methods
@@ -143,7 +163,7 @@ class ApiClient {
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-      final headers = useInternalKey ? _internalHeaders : _headers;
+      final headers = await _headersFor(useInternalKey);
       final response = await _client
           .get(uri, headers: headers)
           .timeout(ApiConfig.connectionTimeout);
@@ -165,8 +185,8 @@ class ApiClient {
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-      final headers = Map<String, String>.from(
-          useInternalKey ? _internalHeaders : _headers);
+      final headers =
+          Map<String, String>.from(await _headersFor(useInternalKey));
       if (extraHeaders != null) headers.addAll(extraHeaders);
       final response = await _client
           .delete(uri, headers: headers)
@@ -194,7 +214,7 @@ class ApiClient {
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-      final headers = useInternalKey ? _internalHeaders : _headers;
+      final headers = await _headersFor(useInternalKey);
 
       if (kDebugMode) {
         print('🌐 API Request: $method $uri');
@@ -212,42 +232,22 @@ class ApiClient {
         }
       }
 
-      http.Response response;
+      var response = await _send(method, uri, headers, body);
 
-      switch (method) {
-        case 'GET':
-          response = await _client
-              .get(uri, headers: headers)
-              .timeout(ApiConfig.connectionTimeout);
-          break;
-        case 'POST':
-          response = await _client
-              .post(uri,
-                  headers: headers,
-                  body: body != null ? jsonEncode(body) : null)
-              .timeout(ApiConfig.connectionTimeout);
-          break;
-        case 'PUT':
-          response = await _client
-              .put(uri,
-                  headers: headers,
-                  body: body != null ? jsonEncode(body) : null)
-              .timeout(ApiConfig.connectionTimeout);
-          break;
-        case 'PATCH':
-          response = await _client
-              .patch(uri,
-                  headers: headers,
-                  body: body != null ? jsonEncode(body) : null)
-              .timeout(ApiConfig.connectionTimeout);
-          break;
-        case 'DELETE':
-          response = await _client
-              .delete(uri, headers: headers)
-              .timeout(ApiConfig.connectionTimeout);
-          break;
-        default:
-          throw Exception('Unsupported HTTP method: $method');
+      // 401 لطلب يحمل توكن: تحديث الجلسة مرة واحدة ثم إعادة المحاولة مرة واحدة.
+      // إن فشل التحديث نُظهر رسالة إعادة الدخول بدل «غير مصرح» الصامتة.
+      if (response.statusCode == 401 &&
+          headers.containsKey('Authorization') &&
+          !_isAuthEndpoint(endpoint)) {
+        final refreshed = await VpsAuthHeaders.refreshNow();
+        if (!refreshed) {
+          return ApiResponse.error(sessionExpiredMessage, statusCode: 401);
+        }
+        final retryHeaders = await _internalHeaders();
+        response = await _send(method, uri, retryHeaders, body);
+        if (response.statusCode == 401) {
+          return ApiResponse.error(sessionExpiredMessage, statusCode: 401);
+        }
       }
 
       return _handleResponse(response, parser);
@@ -261,6 +261,36 @@ class ApiClient {
       if (kDebugMode) print('❌ API Error');
       return ApiResponse.error('فشل الاتصال بالخادم', statusCode: 0);
     }
+  }
+
+  Future<http.Response> _send(
+    String method,
+    Uri uri,
+    Map<String, String> headers,
+    dynamic body,
+  ) {
+    final encoded = body != null ? jsonEncode(body) : null;
+    final Future<http.Response> future;
+    switch (method) {
+      case 'GET':
+        future = _client.get(uri, headers: headers);
+        break;
+      case 'POST':
+        future = _client.post(uri, headers: headers, body: encoded);
+        break;
+      case 'PUT':
+        future = _client.put(uri, headers: headers, body: encoded);
+        break;
+      case 'PATCH':
+        future = _client.patch(uri, headers: headers, body: encoded);
+        break;
+      case 'DELETE':
+        future = _client.delete(uri, headers: headers);
+        break;
+      default:
+        throw Exception('Unsupported HTTP method: $method');
+    }
+    return future.timeout(ApiConfig.connectionTimeout);
   }
 
   // ============================================

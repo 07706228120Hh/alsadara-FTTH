@@ -31,7 +31,7 @@
             { "id": "cfg-manager", "name": "managerPhone", "value": "9647727787789", "type": "string" },
             { "id": "cfg-phone-id", "name": "phoneNumberId", "value": "879614651900630", "type": "string" },
             { "id": "cfg-contact", "name": "contactNumbers", "value": "07705210210", "type": "string" },
-            { "id": "cfg-api-key", "name": "apiKey", "value": "sadara-internal-2024-secure-key", "type": "string" }
+            { "id": "cfg-api-key", "name": "apiKey", "value": "SET_IN_N8N_FROM_SERVER_CONFIG", "type": "string" }
           ]
         },
         "options": {}
