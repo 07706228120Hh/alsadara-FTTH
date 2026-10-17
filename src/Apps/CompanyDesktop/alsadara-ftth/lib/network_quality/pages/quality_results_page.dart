@@ -460,7 +460,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       gradient: const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF7E57C2), SdColors.platformBase],
+        colors: [SdColors.primarySoft, SdColors.platformBase],
       ),
       semanticLabel: label,
       child: SizedBox(
@@ -790,7 +790,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
                       SdColors.danger,
                       SdColors.warning,
                       SdColors.warning,
-                      Color(0xFF66BB6A),
+                      SdColors.successLight,
                       SdColors.success,
                     ],
                   ),

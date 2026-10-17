@@ -422,7 +422,7 @@ class _FtthOperatorTransactionsPageState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم نسخ جميع العمليات'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 2),
         ),
@@ -703,7 +703,7 @@ class _FtthOperatorTransactionsPageState
             Icon(
               _isAscending ? Icons.arrow_upward : Icons.arrow_downward,
               size: context.accR.iconS,
-              color: Colors.teal,
+              color: SdColors.accent,
             ),
           SizedBox(width: context.accR.spaceXS),
           Text(label, style: TextStyle(fontSize: context.accR.small)),

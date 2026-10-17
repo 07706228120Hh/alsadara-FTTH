@@ -34,6 +34,7 @@ analyzer:
   # استثناء مجلد المحذوفات من التحليل
   exclude:
     - lib/_deleted/**
+    - _to_delete_theme_cleanup_2026-10-17/**
     - third_party/**
     - build/**
     

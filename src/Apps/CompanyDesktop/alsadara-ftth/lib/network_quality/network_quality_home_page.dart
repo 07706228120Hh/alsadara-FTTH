@@ -59,7 +59,7 @@ class NetworkToolsHomePage extends StatelessWidget {
             subtitle:
                 'فحص دقيق: السرعة، زمن الاستجابة، إشارة الفايبر الضوئية، WiFi، الجهاز',
             icon: Icons.network_check_rounded,
-            gradient: const [Color(0xFF26A69A), Nq3d.teal],
+            gradient: const [SdColors.fieldBase, Nq3d.teal],
             iconEdge: Nq3d.tealDark,
             cardEdge: SdColors.accentTint,
             glow: const Color(0x7300838F),

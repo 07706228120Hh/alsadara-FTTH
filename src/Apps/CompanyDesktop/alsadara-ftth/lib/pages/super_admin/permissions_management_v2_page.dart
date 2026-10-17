@@ -1367,7 +1367,7 @@ class _PermissionsManagementV2PageState
                                         : Icons
                                             .keyboard_arrow_left_rounded,
                                     size: 18,
-                                    color: Colors.grey,
+                                    color: SdColors.faint,
                                   )
                                 else
                                   const SizedBox(width: 18),
@@ -1617,7 +1617,7 @@ class _PermissionsManagementV2PageState
                                   fontFamily: 'Cairo',
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.grey)),
+                                  color: SdColors.faint)),
                         ),
                         ..._actions.map((a) => SizedBox(
                               width: 32,
@@ -1787,7 +1787,7 @@ class _PermissionsManagementV2PageState
             // إلغاء الكل
             ListTile(
               leading: const Icon(Icons.check_box_outline_blank_rounded,
-                  color: Colors.grey),
+                  color: SdColors.faint),
               title: const Text('إلغاء جميع الصلاحيات'),
               subtitle: const Text('تعطيل جميع الإجراءات لجميع الصلاحيات'),
               onTap: () {
@@ -1881,7 +1881,7 @@ class _PermissionsManagementV2PageState
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('تم تفعيل صلاحية العرض فقط لجميع الميزات'),
-        backgroundColor: Colors.blue,
+        backgroundColor: SdColors.info,
       ),
     );
   }

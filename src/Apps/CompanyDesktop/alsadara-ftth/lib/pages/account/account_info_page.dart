@@ -323,7 +323,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   Widget _buildProfileCard() {
     final gradient = _isSuperAdmin
         ? const LinearGradient(
-            colors: [Color(0xFF7B1FA2), SdColors.platformEdge],
+            colors: [SdColors.platformBase, SdColors.platformEdge],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           )

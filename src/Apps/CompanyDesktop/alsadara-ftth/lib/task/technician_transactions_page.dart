@@ -33,7 +33,7 @@ class _TechnicianTransactionsPageState
   static const _bgPage = SdColors.surfaceAlt;
   static const _bgCard = Colors.white;
   static const _bgToolbar = SdColors.ink;
-  static const _textDark = Color(0xFF333333);
+  static const _textDark = SdColors.neutralBase;
   static const _textGray = SdColors.faint;
   static const _textSubtle = SdColors.muted;
   static const _shadowColor = Color(0x14000000);

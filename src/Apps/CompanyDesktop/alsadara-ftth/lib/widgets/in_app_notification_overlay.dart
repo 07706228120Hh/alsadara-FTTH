@@ -252,14 +252,14 @@ class _NotificationBannerState extends State<_NotificationBanner>
         return _BannerTypeConfig(
           icon: Icons.person_rounded,
           bgColor: SdColors.platformEdge,
-          borderColor: const Color(0xFF8E24AA),
+          borderColor: SdColors.platformBase,
           iconBgColor: SdColors.platformBase,
           textColor: Colors.white,
         );
       case InAppNotificationType.system:
         return _BannerTypeConfig(
           icon: Icons.notifications_rounded,
-          bgColor: const Color(0xFF263238),
+          bgColor: SdColors.neutralBase,
           borderColor: SdColors.muted,
           iconBgColor: SdColors.muted,
           textColor: Colors.white,

@@ -169,7 +169,7 @@ class _UpdateDialogState extends State<UpdateDialog>
       case _UpdatePhase.downloading:
         return SdColors.accentGlow;
       case _UpdatePhase.installing:
-        return const Color(0xFF00E676);
+        return SdColors.fieldLight;
       case _UpdatePhase.error:
         return SdColors.danger;
     }
@@ -368,7 +368,7 @@ class _UpdateDialogState extends State<UpdateDialog>
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       fontFamily: 'Cairo',
-                      color: const Color(0xFFFF9E9E), fontSize: 13),
+                      color: SdColors.dangerLight, fontSize: 13),
                 ),
               ),
               const SizedBox(height: 16),

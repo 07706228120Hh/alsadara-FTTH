@@ -8,6 +8,7 @@ import '../models/tenant_user.dart';
 import '../services/custom_auth_service.dart';
 import 'user_details_page.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class UsersPageFirebase extends StatefulWidget {
   final String tenantId; // معرف الشركة
@@ -692,31 +693,8 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.people_alt, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'إدارة الموظفين',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: SdColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 4,
+      appBar: SdAppBar(
+        title: 'إدارة الموظفين',
         actions: [
           Container(
             margin: const EdgeInsets.only(left: 8),

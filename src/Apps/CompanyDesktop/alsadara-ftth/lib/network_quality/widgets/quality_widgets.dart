@@ -15,7 +15,7 @@ Color ratingColor(QualityRating r) {
     case QualityRating.excellent:
       return SdColors.success;
     case QualityRating.good:
-      return const Color(0xFF66BB6A);
+      return SdColors.successLight;
     case QualityRating.fair:
       return SdColors.warning;
     case QualityRating.poor:
@@ -31,15 +31,15 @@ Color ratingColor(QualityRating r) {
 Color ratingColorOnDark(QualityRating r) {
   switch (r) {
     case QualityRating.excellent:
-      return const Color(0xFF81C784); // أخضر فاتح
+      return SdColors.successLight; // أخضر فاتح
     case QualityRating.good:
-      return const Color(0xFF9CCC65); // أخضر ليموني
+      return SdColors.successLight; // أخضر ليموني
     case QualityRating.fair:
-      return const Color(0xFFFFD54F); // كهرماني فاتح
+      return SdColors.warningLight; // كهرماني فاتح
     case QualityRating.poor:
-      return const Color(0xFFFFB74D); // برتقالي فاتح
+      return SdColors.warningLight; // برتقالي فاتح
     case QualityRating.bad:
-      return const Color(0xFFE57373); // أحمر فاتح
+      return SdColors.dangerLight; // أحمر فاتح
     case QualityRating.unknown:
       return SdColors.sideShade; // رمادي فاتح
   }
@@ -241,7 +241,7 @@ class SectionCard extends StatelessWidget {
                             style: const TextStyle(
                                 fontWeight: FontWeight.w900,
                                 fontSize: 15,
-                                color: Color(0xFF1B1E2B))),
+                                color: SdColors.neutralBase)),
                         if (subtitle != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 1),

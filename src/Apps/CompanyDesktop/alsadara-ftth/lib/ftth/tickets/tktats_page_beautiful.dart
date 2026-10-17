@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../utils/status_translator.dart';
 import '../auth/auth_error_handler.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class TKTATsPage extends StatefulWidget {
   final String authToken;
@@ -278,21 +279,8 @@ class _TKTATsPageState extends State<TKTATsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SdColors.surfaceAlt,
-      appBar: AppBar(
-        toolbarHeight: 50,
-        elevation: 0,
-        backgroundColor: SdColors.info,
-        foregroundColor: Colors.white,
-        title: Row(
-          children: [
-            Icon(Icons.task_alt, color: Colors.white, size: 20),
-            SizedBox(width: 8),
-            Text(
-              'TKTATs',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-          ],
-        ),
+      appBar: SdAppBar(
+        title: 'TKTATs',
         actions: [
           Container(
             margin: EdgeInsets.symmetric(horizontal: 8),

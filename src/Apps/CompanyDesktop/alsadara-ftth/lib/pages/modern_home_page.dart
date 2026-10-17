@@ -54,7 +54,7 @@ class _ModernHomePageState extends State<ModernHomePage>
   // الألوان الفخمة
   final Color _primaryColor = SdColors.primaryEdge; // Slate 900
   final Color _secondaryColor = SdColors.ink; // Slate 800
-  final Color _accentColor = const Color(0xFF38BDF8); // Cyan 400
+  final Color _accentColor = SdColors.accentLight; // Cyan 400
   final Color _goldColor = SdColors.warning; // Amber 500
   final Color _surfaceColor = SdColors.groundAlt; // Slate 50
 

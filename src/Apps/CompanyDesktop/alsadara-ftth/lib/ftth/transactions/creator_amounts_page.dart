@@ -241,7 +241,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
         const SnackBar(
           content: Text('تم نسخ نتائج المنشآت إلى الحافظة'),
           duration: Duration(seconds: 2),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -346,7 +346,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
               ),
             ],
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -366,7 +366,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('فشل في تصدير بيانات المنشآت'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

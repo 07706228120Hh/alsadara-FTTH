@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../models/tenant_user.dart';
 import '../../whatsapp/services/whatsapp_permissions_service.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class UserWhatsAppPermissionsPage extends StatefulWidget {
   final String tenantId;
@@ -112,33 +113,9 @@ class _UserWhatsAppPermissionsPageState
     final isAdmin = widget.user.role == UserRole.admin;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'صلاحيات الواتساب',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            Text(
-              widget.user.fullName.isNotEmpty
+      appBar: SdAppBar(title: 'صلاحيات الواتساب', subtitle: widget.user.fullName.isNotEmpty
                   ? widget.user.fullName
-                  : widget.user.username,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: SdColors.whatsapp,
-        foregroundColor: Colors.white,
-        actions: [
+                  : widget.user.username, actions: [
           if (_hasChanges && !_isSaving && !isAdmin)
             TextButton.icon(
               onPressed: _savePermissions,
@@ -160,8 +137,7 @@ class _UserWhatsAppPermissionsPageState
                 ),
               ),
             ),
-        ],
-      ),
+        ]),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : !_hasAnyWhatsAppSystem

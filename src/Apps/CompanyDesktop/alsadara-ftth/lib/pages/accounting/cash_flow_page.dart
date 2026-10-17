@@ -374,7 +374,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
             icon: Icons.trending_up_rounded,
             color: _investingColor,
             gradient: const LinearGradient(
-              colors: [SdColors.platformBase, Color(0xFF7D3C98)],
+              colors: [SdColors.platformBase, SdColors.platformEdge],
             ),
             items: _investingItems,
             total: _totalInvesting,

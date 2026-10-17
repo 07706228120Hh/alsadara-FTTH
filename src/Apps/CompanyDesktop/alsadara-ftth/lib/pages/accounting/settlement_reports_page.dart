@@ -384,7 +384,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
               children: [
                 SizedBox(
                   width: (MediaQuery.of(context).size.width - 22) / 2,
-                  child: _statCard('التقارير', '$_totalReports', Icons.description, const Color(0xFF880E4F), expanded: false),
+                  child: _statCard('التقارير', '$_totalReports', Icons.description, SdColors.commsEdge, expanded: false),
                 ),
                 SizedBox(
                   width: (MediaQuery.of(context).size.width - 22) / 2,
@@ -404,7 +404,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _statCard('التقارير', '$_totalReports', Icons.description, const Color(0xFF880E4F)),
+            _statCard('التقارير', '$_totalReports', Icons.description, SdColors.commsEdge),
             const SizedBox(width: 6),
             _statCard('نقد النظام', '${fmt.format(_totalSystemCash)} د.ع', Icons.attach_money, SdColors.success),
             const SizedBox(width: 6),
@@ -613,7 +613,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                       spacing: 4,
                       runSpacing: 4,
                       children: [
-                        _miniCard('إجمالي', sysTotal, fmt, const Color(0xFF880E4F)),
+                        _miniCard('إجمالي', sysTotal, fmt, SdColors.commsEdge),
                         _miniCard('نقد', sysCash, fmt, SdColors.success),
                         _miniCard('آجل', sysCredit, fmt, SdColors.warningEdge),
                         _miniCard('ماستر', sysMaster, fmt, SdColors.platformEdge),

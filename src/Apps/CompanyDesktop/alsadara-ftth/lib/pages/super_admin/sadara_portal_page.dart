@@ -830,7 +830,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
     final cardBgColor =
         isPayment ? SdColors.successTint : SdColors.dangerTint;
     final cardBorderColor =
-        isPayment ? const Color(0xFF86EFAC) : SdColors.dangerTintEdge;
+        isPayment ? SdColors.fieldLight : SdColors.dangerTintEdge;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),

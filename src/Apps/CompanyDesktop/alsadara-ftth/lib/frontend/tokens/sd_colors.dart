@@ -86,6 +86,20 @@ class SdColors {
   static const platformTintEdge = Color(0xFFDCD0FA);
 
   // ── علامات تجارية خارجية (للأيقونة/الشعار فقط، لا للشريط أو الخلفية) ──
+  // ── درجات وسيطة للتدرّجات والرسوم (مطابقة لنبرات SdGroup/SdStatus — إضافة فقط) ──
+  static const successLight = Color(0xFF66BB6A);
+  static const warningLight = Color(0xFFFFA726);
+  static const dangerLight = Color(0xFFE57373);
+  static const infoLight = Color(0xFF60A5FA);
+  static const platformMid = Color(0xFF7C3AED);
+  static const fieldBase = Color(0xFF047857);
+  static const fieldLight = Color(0xFF34D399);
+  static const commsBase = Color(0xFF9F1239);
+  static const commsEdge = Color(0xFF6B0F2A);
+  static const commsLight = Color(0xFFFB7185);
+  static const neutralBase = Color(0xFF57534E);
+  static const neutralLight = Color(0xFFA8A29E);
+
   static const whatsapp = Color(0xFF25D366);
   static const whatsappEdge = Color(0xFF128C7E); // الدرجة الداكنة لحافّة شعار واتساب
 

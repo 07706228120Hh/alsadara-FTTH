@@ -232,3 +232,52 @@ analyze: كل الملفات الأربعة عشر المُرحَّلة = No iss
 - تحقق: توازن الأقواس، ترتيب الـ imports، ملفات part، الآباء — كلها سليمة.
 - النتيجة: ملتزمة 57→76، غير مرحّلة 3→2، Color(0x) 435→222، AccountingTheme/Energy → 0، AppBar خام 82→21.
 - نسخة احتياطية قبل المرحلة: _backups/theme-cleanup-phase4-start/
+
+## 2026-10-17 — المرحلة 5 (أ): Colors.x المجرّدة في ملفات MaterialColor
+- حُذف import غير مستخدم في ftth/reports/data_page.dart (التحذير الوحيد في analyze بعد المرحلة 4).
+- أداة color_codemod_risky.py: تحويل Colors.<لون> فقط حين يكون قيمة وسيط Color مسمّى (color:, backgroundColor: …) داخل استدعاء مسمّى، مع تخطّي أي دالة/صنف في نفس الملف يصرّح بمعامل MaterialColor، وتخطّي records/maps.
+- 207 استبدالاً في 12 ملفاً؛ تُخطّي 6 (‏_buildInlineWhatsAppIcon، _squareTile تأخذ MaterialColor). كل الدوال المستقبِلة الأخرى تم التحقق يدوياً أن نوعها Color.
+- تحقق: توازن الأقواس مطابق للنسخة الاحتياطية، لا ملفات part معدّلة، كل ملف يستخدم SdColors يستورده.
+- النتيجة: Colors.x 421→214.
+
+## 2026-10-17 — المرحلة 5 (ب): ألوان hex المتبقية + AppBar بعنوان وسطر ثانوي
+- analyze بعد 5أ: 0 أخطاء، 0 تحذيرات، 29 info.
+- نسخة احتياطية: _backups/theme-cleanup-phase5b-start/ (lib كاملة).
+- sd_colors.dart (إضافة فقط): successLight, warningLight, dangerLight, infoLight, platformMid, fieldBase/Light, commsBase/Edge/Light, neutralBase/Light — مطابقة لنبرات SdGroup/SdStatus الموجودة.
+- hex_semantic_codemod.py: 129 لوناً في 45 ملفاً → أقرب رمز من نفس العائلة (ΔE<30 وفرق hue<28°، الرمادي→رمادي)، مع منع تحوّل تدرّج إلى لونين متطابقين. مستثنى: شاشة الدخول الزجاجية، depth_3d، خريطة KML، ألوان العلامات (فيسبوك/واتساب) والميداليات. بقي 13 لوناً عمداً.
+- appbar_codemod2.py: 3 AppBar بعنوان Column[نص، نص] → SdAppBar(title, subtitle). بقي 19 AppBar مخصّصة (عناوين تفاعلية/بحث/تخطيط خاص) تحتاج تصميماً يدوياً لكل شاشة.
+- تحقق: توازن الأقواس، الـ imports، لا ملفات part، كل رموز SdColors المستخدمة معرّفة.
+
+## 2026-10-17 — المرحلة 7 (جزئياً): نقل الثيمات القديمة الميتة
+- analyze بعد 5ب: 0 أخطاء، 0 تحذيرات، 29 info (مطابق لـ 5أ).
+- تَحقّق: لا أي import/export للملفات الثلاثة في lib (باستثناء تعليقات توثيقية).
+- نُقلت خارج lib إلى: src/Apps/CompanyDesktop/alsadara-ftth/_to_delete_theme_cleanup_2026-10-17/theme/ (لا يترجمها Flutter):
+  - accounting_theme.dart (بُدّل بـ frontend/SdUiKit)
+  - energy_dashboard_theme.dart (بُدّل بـ frontend/SdDashKit)
+  - themes.dart (ملف تصدير ميت؛ كان يُصدّر app_theme + energy؛ لا أحد يستورده)
+- أُبقي theme/app_theme.dart (يستخدمه main.dart — المرحلة 6 قيد الموافقة) و theme/accounting_responsive.dart (مساعد responsive، يستخدمه 33 ملفاً).
+- الحذف النهائي لمجلد _to_delete يتركه المالك.
+
+## 2026-10-17 — توحيد الأشرطة العلوية يدوياً (بحذر)
+- analyze بعد النقل (المرحلة 7): الكود الحيّ في lib/ نظيف 0 أخطاء/0 تحذيرات/29 info؛ أخطاء مجلد _to_delete ذاتية الاحتواء.
+- أُضيف _to_delete_theme_cleanup_2026-10-17/** إلى analyzer.exclude في analysis_options.yaml (غير مدمّر؛ الحذف النهائي للمالك).
+- نسخة احتياطية قبل الأشرطة: _backups/theme-cleanup-appbars-start/
+- اكتُشف أن ResponsiveAppBar (utils/responsive_app_bar.dart) و AppTheme.appBarGradient كلاهما غير مستخدم (كود ميت).
+- حُوّلت 8 أشرطة عنوان قياسية إلى SdAppBar (العنوان/الإجراءات محفوظة؛ التدرّجات/الشارات الزخرفية أُسقطت لصالح الشريط الموحّد):
+  technicians, export (reports), company_settings, users_page, users_page_firebase, tktats_page_beautiful, local_storage (العدّاد الحيّ → subtitle), tenant_whatsapp_permissions (title+subtitle).
+- أُبقيت 10 أشرطة مخصّصة عمداً لأن الشريط نفسه يحمل محتوى وظيفياً/تفاعلياً أو تصميماً فاتحاً مميّزاً لا يعيد SdAppBar إنتاجه بأمان (خطر نص داكن على خلفية كحلية لا يلتقطه analyze):
+  subscriptions_page (شريط تصفية كامل بلا عنوان)، ftth_operators_dashboard (أزرار تاريخ تفاعلية)، creator_amounts (إجمالي حيّ في العنوان)، vps_data_manager + company_details (رأس فاتح مفصّل مع bottom)، sas_agent_page، whatsapp_chat، chat_conversation (رأس محادثة)، ftth/auth/login (رأس شفاف)، إضافة لأي شريط فيه titleSpacing/تخطيط خاص. تحتاج مراجعة بصرية فردية.
+- النتيجة: ملتزمة 82→83، AppBar خام (حسب الأداة) 18→10.
+
+## 2026-10-17 — المرحلة 6: الثيم العام الموحّد في main.dart (بموافقة صريحة)
+- نسخة احتياطية: _backups/theme-cleanup-phase6-start/main.dart
+- main.dart: theme: AppTheme.lightTheme → SdTheme.light().copyWith(extensions:[AppTypography.build(...), const SdTokens()]).
+  - دُمج الامتدادان: AppTypography (الطباعة) + SdTokens (رموز Sd) حتى لا تفقد أي شاشة امتدادها.
+  - تحقق: context.sd = SdLayout (مستقل عن الثيم)؛ .typography بلا مستخدمين؛ قارئ SdTokens واحد. لا كسر متوقع.
+- darkTheme أُبقي AppTheme.darkTheme (ميت؛ themeMode.light مفروض) — لذا app_theme.dart يبقى مستورداً ولا يُحذف في المرحلة 7.
+- كلا الثيمين Material 3 بنفس seed (#132A5E) → التحول تفصيلي (إطارات switch/chip/dropdown، ألوان حالة أعمق قليلاً)، لا قفزة إصدار.
+- النتيجة: غير مرحّلة 2→1 (بقيت شاشة واحدة: قيد المتابعة).
+
+## 2026-10-17 — قرار الأشرطة الـ10 المخصّصة
+- القرار (المالك): تُترك كما هي (الخيار أ) للعشرة جميعاً. التوحيد الجوهري اكتمل بالمرحلة 6؛ هذه رؤوس وظيفية/مقصودة (تصفية، أزرار تاريخ، إجمالي حيّ، رؤوس محادثة، رأس دخول شفاف، رأسان فاتحان في super_admin)، وتحويلها الآلي يخاطر بتباين نص على خلفية كحلية لا يلتقطه analyze.
+- جدول المراجعة: docs/ui-unification/مراجعة_الأشرطة_المخصّصة.xlsx (الوضع/الخيارات/التوصية/القرار).

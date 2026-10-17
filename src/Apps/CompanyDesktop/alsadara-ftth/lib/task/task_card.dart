@@ -492,11 +492,11 @@ class _TaskCardState extends State<TaskCard> {
             Icons.storefront_outlined,
             'الوكيل',
             '${widget.task.agentName}${widget.task.pageId.isNotEmpty ? ' - ${widget.task.pageId}' : ''}',
-            const Color(0xFF6C3483),
+            SdColors.primaryLight,
             compact: compact,
             trailing: widget.task.pageId.isNotEmpty
                 ? _buildMiniIconButton(
-                    Icons.copy_rounded, const Color(0xFF6C3483), () {
+                    Icons.copy_rounded, SdColors.primaryLight, () {
                     Clipboard.setData(ClipboardData(text: widget.task.pageId));
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text('تم نسخ: ${widget.task.pageId}'),
@@ -513,7 +513,7 @@ class _TaskCardState extends State<TaskCard> {
             compact: compact),
       if (widget.task.createdByName.isNotEmpty)
         _buildInfoTile(Icons.person_add_outlined, 'أنشأها',
-            widget.task.createdByName, const Color(0xFF2E86C1),
+            widget.task.createdByName, SdColors.infoLight,
             compact: compact),
       if (widget.task.serviceType.isNotEmpty)
         _buildInfoTile(Icons.speed_outlined, 'الخدمة',

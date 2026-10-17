@@ -344,10 +344,10 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
         color: SdColors.ground,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: const Color(0xFF3D5AFE).withValues(alpha: 0.18), width: 1.2),
+            color: SdColors.primarySoft.withValues(alpha: 0.18), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3D5AFE).withValues(alpha: 0.05),
+            color: SdColors.primarySoft.withValues(alpha: 0.05),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),

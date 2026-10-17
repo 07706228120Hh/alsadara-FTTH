@@ -762,34 +762,9 @@ class _ExportPageState extends State<ExportPage>
         final bgColors = _animatedBgColors(scheme, t);
         return Scaffold(
           extendBody: true,
-          appBar: AppBar(
-            backgroundColor: scheme.primary,
-            foregroundColor: scheme.onPrimary,
-            iconTheme: IconThemeData(color: scheme.onPrimary),
-            toolbarHeight: 60,
-            elevation: 8,
-            shadowColor: scheme.primary.withValues(alpha: 0.35),
-            centerTitle: true,
-            title: ShaderMask(
-              shaderCallback: (rect) => LinearGradient(
-                colors: [
-                  scheme.onPrimary,
-                  scheme.onPrimary.withValues(alpha: 0.75)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(rect),
-              blendMode: BlendMode.srcIn,
-              child: const Text(
-                'تصدير البيانات',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 19,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ),
-            actions: [
+          appBar: SdAppBar(
+        title: 'تصدير البيانات',
+        actions: [
               if (isExporting)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -808,7 +783,7 @@ class _ExportPageState extends State<ExportPage>
                   ),
                 ),
             ],
-          ),
+      ),
           body: Container(
             // خلفية متعددة الألوان متحركة
             decoration: BoxDecoration(
@@ -870,7 +845,7 @@ class _ExportPageState extends State<ExportPage>
                                       color: const Color.fromARGB(
                                           255, 36, 117, 43),
                                       iconGradientColors: const [
-                                        Color(0xFFFFC107),
+                                        SdColors.warningLight,
                                         SdColors.warning,
                                       ],
                                       onPressed: () => _exportToExcel(
@@ -894,8 +869,8 @@ class _ExportPageState extends State<ExportPage>
                                       color: const Color.fromARGB(
                                           255, 170, 69, 38),
                                       iconGradientColors: const [
-                                        Color(0xFFFF7043), // deepOrange lighten
-                                        Color(0xFFFF5722), // deepOrange base
+                                        SdColors.warning, // deepOrange lighten
+                                        SdColors.warningText, // deepOrange base
                                       ],
                                       onPressed: () => _exportToExcel(
                                         'https://api.ftth.iq/api/subscriptions',
@@ -925,8 +900,8 @@ class _ExportPageState extends State<ExportPage>
                                       icon: Icons.manage_search_rounded,
                                       color: SdColors.platformBase,
                                       iconGradientColors: const [
-                                        Color(0xFFE040FB),
-                                        Color(0xFF7C4DFF),
+                                        SdColors.platformMid,
+                                        SdColors.platformBase,
                                       ],
                                       onPressed: _exportCustomerDetailsToExcel,
                                     ),

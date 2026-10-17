@@ -104,7 +104,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       case CompanyStatus.active:
         return SdColors.success;
       case CompanyStatus.warning:
-        return const Color(0xFFf7971e);
+        return SdColors.warningLight;
       case CompanyStatus.critical:
         return SdColors.danger;
       case CompanyStatus.expired:
@@ -590,7 +590,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     const Color subscriptionBlue = SdColors.platformTint; // خلفية زرقاء فاتحة
     const Color subscriptionGreen = SdColors.successTintEdge; // خلفية خضراء فاتحة
     const Color blueText = SdColors.primaryLight; // نص أزرق داكن جداً
-    const Color greenText = Color(0xFF064E3B); // نص أخضر داكن جداً
+    const Color greenText = SdColors.fieldBase; // نص أخضر داكن جداً
     const Color orangeText = SdColors.warningEdge; // برتقالي داكن جداً
     const Color redText = SdColors.dangerEdge; // أحمر داكن جداً
 
@@ -838,20 +838,20 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   Widget _buildAllActionsGrid(bool isCompact) {
     // ألوان التصميم الفخم - أغمق وأكثر تبايناً
     const Color primaryBlue = SdColors.info;
-    const Color lightBlue = Color(0xFF2563EB); // أغمق من 3B82F6
+    const Color lightBlue = SdColors.primarySoft; // أغمق من 3B82F6
     const Color lightBlueBg = SdColors.infoTintEdge; // أزرق أغمق
-    const Color purple = Color(0xFF7C3AED);
+    const Color purple = SdColors.platformMid;
     const Color purpleBg = SdColors.platformLight; // بنفسجي أغمق
-    const Color green = Color(0xFF059669);
-    const Color greenBg = Color(0xFF6EE7B7);
+    const Color green = SdColors.fieldBase;
+    const Color greenBg = SdColors.fieldLight;
     const Color orange = SdColors.warningText;
-    const Color orangeLightBg = Color(0xFFFCD34D);
-    const Color orangeBg = Color(0xFFFBBF24);
-    const Color teal = Color(0xFF0F766E);
+    const Color orangeLightBg = SdColors.warningLight;
+    const Color orangeBg = SdColors.warningLight;
+    const Color teal = SdColors.fieldBase;
     const Color indigo = SdColors.platformBase;
-    const Color indigoBg = Color(0xFF93C5FD); // نيلي أغمق
+    const Color indigoBg = SdColors.infoLight; // نيلي أغمق
     const Color dangerRed = SdColors.danger;
-    const Color dangerBg = Color(0xFFFCA5A5);
+    const Color dangerBg = SdColors.dangerTintEdge;
     const Color dangerBorder = SdColors.danger;
 
     return Container(

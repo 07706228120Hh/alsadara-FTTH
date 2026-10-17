@@ -276,7 +276,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [SdColors.info, Color(0xFF1D4ED8)],
+                  colors: [SdColors.info, SdColors.primaryLight],
                 ),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: SdDashKit.glowShadow(

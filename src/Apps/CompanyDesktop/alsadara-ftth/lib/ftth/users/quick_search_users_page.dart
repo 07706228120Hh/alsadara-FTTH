@@ -1184,7 +1184,7 @@ class _SnowPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     final glow = Paint()
       ..color =
-          const Color(0xFF90CAF9).withValues(alpha: 0.35) // أزرق فاتح كالهالة
+          SdColors.primaryTintEdge.withValues(alpha: 0.35) // أزرق فاتح كالهالة
       ..style = PaintingStyle.fill
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 

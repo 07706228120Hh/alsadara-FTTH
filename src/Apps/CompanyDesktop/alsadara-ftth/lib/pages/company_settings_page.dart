@@ -183,9 +183,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
   // ── ألوان الثيم الفاتح (موحّدة على نظام sd) ──
   static const _bgPage = SdColors.ground;
   static const _bgCard = SdColors.surface;
-  static const _bgToolbar = SdColors.primary;
   static const _accent = SdColors.accent;
-  static const _textDark = Color(0xFF333333);
+  static const _textDark = SdColors.neutralBase;
   static const _textGray = SdColors.faint;
   static const _textSubtle = SdColors.muted;
   static const _shadowColor = Color(0x14000000);
@@ -233,40 +232,16 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
   }
 
   PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: _bgToolbar,
-      elevation: 2,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _accent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.settings, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            'إعدادات الشركة',
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-      iconTheme: const IconThemeData(color: Colors.white),
-      actions: [
+    return SdAppBar(
+        title: 'إعدادات الشركة',
+        actions: [
         IconButton(
           icon: const Icon(Icons.refresh, color: Colors.white70),
           tooltip: 'تحديث البيانات',
           onPressed: _loadCompanyData,
         ),
       ],
-    );
+      );
   }
 
   Widget _buildErrorView() {
@@ -3665,7 +3640,7 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
   bool _isActive = true;
 
   static const _accent = SdColors.info;
-  static const _textDark = Color(0xFF333333);
+  static const _textDark = SdColors.neutralBase;
   static const _textGray = SdColors.faint;
   static const _bgCard = Colors.white;
 

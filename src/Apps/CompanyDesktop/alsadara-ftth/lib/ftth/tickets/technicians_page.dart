@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../permissions/permissions.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 /// صفحة محلية لإدارة فني التوصيل (اسم + رقم)
 /// يتم حفظ البيانات محلياً في SharedPreferences تحت المفتاح 'local_technicians_list'
@@ -221,28 +222,8 @@ class _TechniciansPageState extends State<TechniciansPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(50),
-              ),
-              child: const Icon(Icons.engineering, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            const Text('فني التوصيل'),
-          ],
-        ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [SdColors.primary, SdColors.primaryLight],
-            ),
-          ),
-        ),
+      appBar: SdAppBar(
+        title: 'فني التوصيل',
         actions: [
           if (PermissionManager.instance.canAdd('technicians'))
             IconButton(

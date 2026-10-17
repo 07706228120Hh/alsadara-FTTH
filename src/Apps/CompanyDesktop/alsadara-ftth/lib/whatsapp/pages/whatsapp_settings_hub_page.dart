@@ -143,7 +143,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                                 icon: Icons.dns_rounded,
                                 gradientColors: const [
                                   SdColors.info,
-                                  Color(0xFF42A5F5)
+                                  SdColors.infoLight
                                 ],
                                 features: [
                                   'إرسال تلقائي بدون API',
@@ -177,7 +177,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                                 icon: Icons.phone_android_rounded,
                                 gradientColors: const [
                                   SdColors.whatsapp,
-                                  Color(0xFF5EE896)
+                                  SdColors.fieldLight
                                 ],
                                 features: [
                                   'إرسال يدوي سريع',
@@ -310,14 +310,14 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
             child: ElevatedButton.icon(
               icon: const Icon(
                 Icons.description_rounded,
-                color: Color(0xFF7C3AED),
+                color: SdColors.platformMid,
                 size: 24,
               ),
               label: Text(
                 'القوالب',
                 style: TextStyle(
                   fontFamily: 'Cairo',
-                  color: Color(0xFF7C3AED),
+                  color: SdColors.platformMid,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -498,7 +498,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                                       gradient: const LinearGradient(
                                         colors: [
                                           Color(0xFFFFD700),
-                                          Color(0xFFFFA500)
+                                          SdColors.warningLight
                                         ],
                                       ),
                                       borderRadius: BorderRadius.circular(12),
@@ -595,7 +595,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [SdColors.whatsapp, Color(0xFF5EE896)],
+                    colors: [SdColors.whatsapp, SdColors.fieldLight],
                   ),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [

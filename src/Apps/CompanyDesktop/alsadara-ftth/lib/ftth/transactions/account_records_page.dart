@@ -2316,7 +2316,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                       'إجمالي العمليات',
                       _formatAmountShort(_calculateTotalAmount()),
                       '${filteredRecords.length} عملية',
-                      [Color(0xFF880E4F), Color(0xFFAD1457)],
+                      [SdColors.commsEdge, SdColors.commsBase],
                       Icons.receipt_long,
                     ),
                   ),
@@ -2350,7 +2350,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                         'ماستر',
                         _formatAmountShort(masterTotal),
                         '$masterCount عملية',
-                        [SdColors.platformBase, Color(0xFF8E24AA)],
+                        [SdColors.platformBase, SdColors.platformBase],
                         Icons.credit_card,
                       ),
                     ),
@@ -2451,7 +2451,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                                     SdColors.warning
                                   ]
                                 : [
-                                    const Color(0xFF7B1FA2),
+                                    SdColors.platformBase,
                                     const Color(0xFFAB47BC)
                                   ],
                             begin: Alignment.centerLeft,
@@ -2519,7 +2519,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                                   ]
                                 : [
                                     SdColors.accent,
-                                    const Color(0xFF26A69A)
+                                    SdColors.fieldBase
                                   ],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,

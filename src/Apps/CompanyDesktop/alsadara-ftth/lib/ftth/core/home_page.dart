@@ -1016,7 +1016,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       context,
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
@@ -1075,7 +1075,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         content: Text(
                           'لم يتم تعيين كلمة مرور افتراضية بعد. يرجى تعيينها من صفحة الصلاحيات.',
                         ),
-                        backgroundColor: Colors.orange,
+                        backgroundColor: SdColors.warning,
                         duration: Duration(seconds: 3),
                       ),
                     );
@@ -1089,7 +1089,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ScaffoldMessenger.of(this.context).showSnackBar(
                       const SnackBar(
                         content: Text('كلمة المرور غير صحيحة'),
-                        backgroundColor: Colors.red,
+                        backgroundColor: SdColors.danger,
                         duration: Duration(seconds: 2),
                       ),
                     );
@@ -1101,7 +1101,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ScaffoldMessenger.of(this.context).showSnackBar(
                     SnackBar(
                       content: Text('خطأ في التحقق من كلمة المرور'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: SdColors.danger,
                       duration: const Duration(seconds: 3),
                     ),
                   );
@@ -1405,7 +1405,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            icon: Icon(IconsaxPlusBold.warning_2, color: Colors.red, size: 48),
+            icon: Icon(IconsaxPlusBold.warning_2, color: SdColors.danger, size: 48),
             title: const Text('خطأ في ربط الواتساب'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1739,7 +1739,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   Icon(
                                     IconsaxPlusBold.tick_circle,
                                     size: 16,
-                                    color: Colors.green,
+                                    color: SdColors.success,
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
@@ -2094,7 +2094,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 const SizedBox(width: 6),
                 IconButton(
                   icon: Icon(IconsaxPlusLinear.copy, size: 18),
-                  color: Colors.blueGrey,
+                  color: SdColors.faint,
                   tooltip: 'نسخ',
                   onPressed: hasValue
                       ? () async {
@@ -3983,7 +3983,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           style: TextStyle(
                             fontSize: valueFont,
                             fontWeight: FontWeight.w900,
-                            color: const Color(0xFF1A1A1A),
+                            color: SdColors.neutralBase,
                             shadows: [
                               Shadow(
                                 color: const Color(
@@ -4685,7 +4685,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
             child: Icon(
               IconsaxPlusBold.clock,
-              color: const Color(0xFF6EE7B7),
+              color: SdColors.fieldLight,
               size: 16,
             ),
           ),
@@ -4694,7 +4694,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             'آخر تحديث: ${DateFormat('yyyy/MM/dd - HH:mm:ss').format(lastUpdateTime!)}',
             style: TextStyle(
               fontSize: isLargeScreen ? 13 : 11,
-              color: const Color(0xFF1A1A1A),
+              color: SdColors.neutralBase,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
             ),
@@ -5450,7 +5450,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
               content: Text(
                 'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.',
               ),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               duration: Duration(seconds: 5),
             ),
           );
@@ -5464,7 +5464,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
             content: Text(
               'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.',
             ),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
             duration: Duration(seconds: 5),
           ),
         );
@@ -5488,7 +5488,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(IconsaxPlusBold.warning_2, size: 48, color: Colors.red),
+              Icon(IconsaxPlusBold.warning_2, size: 48, color: SdColors.danger),
               const SizedBox(height: 12),
               Text(
                 _error!,
@@ -5511,7 +5511,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
                       icon: Icon(IconsaxPlusLinear.document_download),
                       label: const Text('تحميل WebView2'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: SdColors.info,
                         foregroundColor: Colors.white,
                       ),
                     ),

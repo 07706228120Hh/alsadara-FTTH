@@ -2286,31 +2286,7 @@ class _CreatorTransactionsDetailPageState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SdColors.surfaceAlt,
-      appBar: AppBar(
-        backgroundColor: SdColors.primary,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'تفاصيل معاملات',
-              style: TextStyle(
-                fontSize: _fs(18),
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            Text(
-              widget.creatorName,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.white70,
-              ),
-            ),
-          ],
-        ),
-        actions: [
+      appBar: SdAppBar(title: 'تفاصيل معاملات', subtitle: widget.creatorName, actions: [
           IconButton(
             icon: const Icon(Icons.sort, color: Colors.white),
             onPressed: _showSortDialog,
@@ -2331,8 +2307,7 @@ class _CreatorTransactionsDetailPageState
             onPressed: _exportToExcel,
             tooltip: 'تصدير إلى Excel',
           ),
-        ],
-      ),
+        ]),
       body: Column(
         children: [
           // بطاقة الإحصائيات

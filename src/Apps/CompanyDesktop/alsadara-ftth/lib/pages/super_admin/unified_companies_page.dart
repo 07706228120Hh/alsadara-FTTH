@@ -162,7 +162,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       case CompanyStatus.active:
         return SdColors.success;
       case CompanyStatus.warning:
-        return const Color(0xFFf7971e);
+        return SdColors.warningLight;
       case CompanyStatus.critical:
         return SdColors.danger;
       case CompanyStatus.expired:
@@ -692,7 +692,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           Row(
             children: [
               _buildStatChip('الكل', stats['total']!, Icons.apps_rounded,
-                  const Color(0xFF6366F1), null),
+                  SdColors.platformBase, null),
               const SizedBox(width: 10),
               _buildStatChip(
                   'نشطة',
@@ -852,21 +852,21 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               title: 'إجمالي الشركات',
               value: stats['total'].toString(),
               icon: Icons.business_rounded,
-              gradient: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+              gradient: const [SdColors.platformBase, SdColors.platformMid],
               onTap: () => setState(() => _statusFilter = null),
             ),
             _buildStatCard(
               title: 'نشطة',
               value: stats['active'].toString(),
               icon: Icons.check_circle_rounded,
-              gradient: const [SdColors.success, Color(0xFF34D399)],
+              gradient: const [SdColors.success, SdColors.fieldLight],
               onTap: () => setState(() => _statusFilter = CompanyStatus.active),
             ),
             _buildStatCard(
               title: 'تحتاج تجديد',
               value: stats['warning'].toString(),
               icon: Icons.schedule_rounded,
-              gradient: const [Color(0xFFf7971e), Color(0xFFffd200)],
+              gradient: const [SdColors.warningLight, Color(0xFFffd200)],
               onTap: () =>
                   setState(() => _statusFilter = CompanyStatus.warning),
             ),
@@ -874,7 +874,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               title: 'حرج',
               value: stats['critical'].toString(),
               icon: Icons.warning_rounded,
-              gradient: const [SdColors.danger, Color(0xFFf45c43)],
+              gradient: const [SdColors.danger, SdColors.danger],
               onTap: () =>
                   setState(() => _statusFilter = CompanyStatus.critical),
             ),
@@ -882,7 +882,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               title: 'منتهية',
               value: stats['expired'].toString(),
               icon: Icons.cancel_rounded,
-              gradient: const [SdColors.danger, Color(0xFFf45c43)],
+              gradient: const [SdColors.danger, SdColors.danger],
               onTap: () =>
                   setState(() => _statusFilter = CompanyStatus.expired),
             ),
@@ -1710,7 +1710,7 @@ class _UnifiedCompanyCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isLinkedToCitizen
-                  ? const Color(0xFF0D9488)
+                  ? SdColors.fieldBase
                   : statusColor.withOpacity(0.25),
               width: isLinkedToCitizen ? 2 : 1,
             ),

@@ -701,7 +701,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                               decoration: BoxDecoration(
                                                 color: loginMessage
                                                         .contains("نجاح")
-                                                    ? const Color(0xFF48BB78)
+                                                    ? SdColors.successLight
                                                         .withValues(alpha: 0.1)
                                                     : SdColors.danger
                                                         .withValues(alpha: 0.1),
@@ -710,7 +710,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                 border: Border.all(
                                                   color: loginMessage
                                                           .contains("نجاح")
-                                                      ? const Color(0xFF48BB78)
+                                                      ? SdColors.successLight
                                                       : SdColors.danger,
                                                   width: 1.5,
                                                 ),
@@ -818,7 +818,7 @@ class _FiberPainter extends CustomPainter {
       }
 
       // ألوان زرقاء ثابتة للأشرطة
-      final Color cStart = const Color(0xFF42A5F5); // Blue 400
+      final Color cStart = SdColors.infoLight; // Blue 400
       final Color cEnd = SdColors.info; // Blue 600
 
       final Paint glow = Paint()
@@ -865,7 +865,7 @@ class _FiberPainter extends CustomPainter {
                 (0.4 + 0.6 * (1 - p));
 
         // لون الفوتون أخضر ساطع
-        final Color pulseCore = const Color(0xFF00E676); // Green A400
+        final Color pulseCore = SdColors.fieldLight; // Green A400
         final double pulseR = baseStroke * (4.0 + 5.0 * (1 - p));
 
         // توهج الفوتون

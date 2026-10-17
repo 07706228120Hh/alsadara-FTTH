@@ -473,7 +473,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         ]),
         SizedBox(height: 12.h),
         _infoGrid('الشبكة', Icons.lan_rounded,
-            const [Color(0xFF7B1FA2), SdColors.platformBase], [
+            const [SdColors.platformBase, SdColors.platformBase], [
           _fv('IP ثابت', d['static_ip'], mono: true),
           _fv('آخر عنوان IP', d['last_ip_address'], mono: true),
           _fv('مصادقة MAC', d['mac_auth']),

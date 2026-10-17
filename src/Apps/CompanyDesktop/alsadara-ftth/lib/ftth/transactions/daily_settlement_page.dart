@@ -1088,13 +1088,13 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         final fmt = NumberFormat('#,###');
         final row1 = [
           _statBarCard('إجمالي العمليات', fmt.format(_subsTotalAmount),
-              '${_subscriptionLogs.length} عملية', [const Color(0xFF880E4F), const Color(0xFFAD1457)], Icons.receipt_long),
+              '${_subscriptionLogs.length} عملية', [SdColors.commsEdge, SdColors.commsBase], Icons.receipt_long),
           _statBarCard('نقد', fmt.format(_subsCashTotal),
               '$_subsCashCount عملية', [SdColors.success, SdColors.success], Icons.attach_money),
           _statBarCard('آجل', fmt.format(_subsCreditTotal),
               '$_subsCreditCount عملية', [SdColors.warningEdge, SdColors.warning], Icons.access_time),
           _statBarCard('ماستر', fmt.format(_subsMasterTotal),
-              '$_subsMasterCount عملية', [SdColors.platformEdge, const Color(0xFF7B1FA2)], Icons.credit_card),
+              '$_subsMasterCount عملية', [SdColors.platformEdge, SdColors.platformBase], Icons.credit_card),
           _statBarCard('وكيل', fmt.format(_subsAgentTotal),
               '$_subsAgentCount عملية', [SdColors.info, SdColors.info], Icons.storefront),
           _statBarCard('فني', fmt.format(_subsTechTotal),
@@ -1114,13 +1114,13 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               pair(
-                cCard('الإجمالي', fmt.format(_subsTotalAmount), '${_subscriptionLogs.length} عملية', [const Color(0xFF880E4F), const Color(0xFFAD1457)], Icons.receipt_long),
+                cCard('الإجمالي', fmt.format(_subsTotalAmount), '${_subscriptionLogs.length} عملية', [SdColors.commsEdge, SdColors.commsBase], Icons.receipt_long),
                 cCard('نقد', fmt.format(_subsCashTotal), '$_subsCashCount عملية', [SdColors.success, SdColors.success], Icons.attach_money),
               ),
               const SizedBox(height: 4),
               pair(
                 cCard('آجل', fmt.format(_subsCreditTotal), '$_subsCreditCount عملية', [SdColors.warningEdge, SdColors.warning], Icons.access_time),
-                cCard('ماستر', fmt.format(_subsMasterTotal), '$_subsMasterCount عملية', [SdColors.platformEdge, const Color(0xFF7B1FA2)], Icons.credit_card),
+                cCard('ماستر', fmt.format(_subsMasterTotal), '$_subsMasterCount عملية', [SdColors.platformEdge, SdColors.platformBase], Icons.credit_card),
               ),
               const SizedBox(height: 4),
               pair(

@@ -576,7 +576,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                           fontFamily: 'Cairo',
                           fontSize: ar.tableCellFont + 1,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF82E0AA)),
+                          color: SdColors.fieldLight),
                     ),
                   ),
                   SizedBox(
@@ -588,7 +588,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                           fontFamily: 'Cairo',
                           fontSize: ar.tableCellFont + 1,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFFF1948A)),
+                          color: SdColors.dangerLight),
                     ),
                   ),
                 ],

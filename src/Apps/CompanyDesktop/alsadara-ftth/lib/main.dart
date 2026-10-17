@@ -38,6 +38,7 @@ import 'widgets/in_app_notification_overlay.dart';
 import 'pages/settings_text_scale_page.dart';
 import 'utils/app_typography.dart';
 import 'theme/app_theme.dart';
+import 'frontend/theme/sd_theme.dart';
 import 'services/firebase_auth_service.dart'; // ✅ خدمة Firebase
 import 'services/unified_auth_manager.dart'; // ✅ نظام مصادقة موحد
 // ✅ خدمة VPS API
@@ -355,10 +356,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       ),
                     );
                   },
-                  theme: AppTheme.lightTheme.copyWith(
-                    // دمج نظام القياسات الطباعية الحالي
+                  // الثيم العام الموحّد (نظام تصميم الصدارة Sd) — المرحلة 6
+                  theme: SdTheme.light().copyWith(
+                    // دمج نظام القياسات الطباعية + رموز Sd في الامتدادات
                     extensions: [
                       AppTypography.build(overallScale, fontFamily: 'Cairo'),
+                      const SdTokens(),
                     ],
                   ),
                   darkTheme: AppTheme.darkTheme.copyWith(

@@ -207,7 +207,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: raisedShadow(
-            edge: const Color(0xFF14421A),
+            edge: SdColors.successEdge,
             depth: 5,
             glow: const Color(0x592E7D32)),
       ),
@@ -298,7 +298,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
     final rating = _loadRating(frac);
     final shade = recommended
         ? const IsoShade(
-            Color(0xFF81C784), SdColors.success, SdColors.success)
+            SdColors.successLight, SdColors.success, SdColors.success)
         : ratingShade(rating);
     return SizedBox(
       width: colW,

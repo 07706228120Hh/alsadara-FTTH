@@ -86,7 +86,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
   static const _accent = SdColors.info;
   static const _headerDark = SdColors.ink;
   static const _labelColor = SdColors.faint;
-  static const _valueColor = Color(0xFF2D3436);
+  static const _valueColor = SdColors.neutralBase;
   static const _success = SdColors.success;
   static const _warning = SdColors.warning;
   static const _ftthColor = SdColors.accentLight;
@@ -1271,7 +1271,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
   // ═══════════════ بطاقة جدول الدوام ═══════════════
 
   Widget _scheduleCard() {
-    const scheduleColor = Color(0xFF6C5CE7);
+    const scheduleColor = SdColors.platformBase;
 
     // عرض اسم الجدول الحالي
     String currentScheduleName = 'افتراضي (حسب المركز)';

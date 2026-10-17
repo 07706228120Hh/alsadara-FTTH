@@ -245,25 +245,7 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'بيانات المستخدمين',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            if (_pageTitle.isNotEmpty && !_pageTitle.contains('moment'))
-              Text(
-                _pageTitle,
-                style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.normal),
-              ),
-          ],
-        ),
-        backgroundColor: SdColors.primary,
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: 'بيانات المستخدمين', subtitle: (_pageTitle.isNotEmpty && !_pageTitle.contains('moment')) ? _pageTitle : null, actions: [
           // زر تحديث
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -285,8 +267,7 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
                 await _controller!.goBack();
               },
             ),
-        ],
-      ),
+        ]),
       body: Stack(
         children: [
           // WebView

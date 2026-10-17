@@ -44,7 +44,7 @@ class _EmployeeTrackingReportPageState
   final MapController _mapController = MapController();
 
   static const _primaryColor = SdColors.primaryEdge;
-  static const _accentColor = Color(0xFF38BDF8);
+  static const _accentColor = SdColors.accentLight;
 
   // ═══ ألوان السرعة ═══
   static const _speedSlow = SdColors.success;    // أخضر < 10 كم/س (مشي)
@@ -970,7 +970,7 @@ class _EmployeeTrackingReportPageState
         final progress = i / (points.length - 1);
         color = Color.lerp(
           const Color(0x6038BDF8),
-          const Color(0xFF0284C7),
+          SdColors.infoLight,
           progress,
         )!;
       }
@@ -1004,7 +1004,7 @@ class _EmployeeTrackingReportPageState
           angle: -angle + pi / 2, // تحويل إلى اتجاه الخريطة
           child: Icon(
             Icons.navigation,
-            color: const Color(0xFF0284C7),
+            color: SdColors.infoLight,
             size: 16,
           ),
         ),

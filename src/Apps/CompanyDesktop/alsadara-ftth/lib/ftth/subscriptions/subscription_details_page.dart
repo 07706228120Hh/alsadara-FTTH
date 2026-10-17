@@ -1986,7 +1986,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         context,
         const SnackBar(
           content: Text('يرجى اختيار الخطة وفترة الالتزام أولاً'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -2078,7 +2078,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
               side: BorderSide(color: SdColors.dangerTintEdge, width: 2)),
           title: Row(
             children: const [
-              Icon(Icons.warning_amber_rounded, color: Colors.red),
+              Icon(Icons.warning_amber_rounded, color: SdColors.danger),
               SizedBox(width: 8),
               Text('تحذير مدة طويلة'),
             ],
@@ -2143,7 +2143,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('إلغاء', style: TextStyle(color: Colors.red)),
+              child: const Text('إلغاء', style: TextStyle(color: SdColors.danger)),
             ),
             ElevatedButton.icon(
               onPressed: () => Navigator.of(ctx).pop(true),
@@ -2783,7 +2783,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             context,
             const SnackBar(
               content: Text('تم حفظ الوصل كـ PDF بنجاح!'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -2922,7 +2922,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                       icon: const Icon(Icons.print),
                       label: const Text('طباعة'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
+                        backgroundColor: SdColors.warning,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         elevation: 2,
@@ -3018,7 +3018,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             context,
             const SnackBar(
               content: Text('تم طباعة الوصل بنجاح! ✅'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
           debugPrint('✅ تم تحديث حالة الطباعة: مطبوع');
@@ -3027,7 +3027,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             context,
             const SnackBar(
               content: Text('فشل في طباعة الوصل! ❌'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -3310,7 +3310,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                     Navigator.of(ctx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('تم حفظ القالب'),
-                        backgroundColor: Colors.green));
+                        backgroundColor: SdColors.success));
                   }
                 },
                 child: const Text('حفظ'),
@@ -3364,7 +3364,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.preview, color: Colors.blue),
+            Icon(Icons.preview, color: SdColors.info),
             SizedBox(width: 8),
             Text('معاينة قالب الطباعة'),
           ],
@@ -3620,7 +3620,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                     PopupMenuButton<String>(
                       tooltip: 'نماذج جاهزة',
                       icon: const Icon(Icons.article_outlined,
-                          color: Colors.teal),
+                          color: SdColors.accent),
                       onSelected: (key) {
                         final sample = sampleTemplates[key];
                         if (sample != null) {
@@ -3639,7 +3639,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                     ),
                     IconButton(
                       icon:
-                          const Icon(Icons.remove_red_eye, color: Colors.blue),
+                          const Icon(Icons.remove_red_eye, color: SdColors.info),
                       tooltip: 'معاينة الرسالة',
                       onPressed: () {
                         final msg = _generateWhatsAppMessageWithTemplate(
@@ -3733,7 +3733,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('✅ تم حفظ قالب الرسالة بنجاح'),
-                    backgroundColor: Colors.blue,
+                    backgroundColor: SdColors.info,
                   ),
                 );
               },
@@ -3763,7 +3763,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.chat_outlined, color: Colors.green),
+                leading: const Icon(Icons.chat_outlined, color: SdColors.success),
                 title: const Text('تعديل قالب الواتساب'),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -3772,7 +3772,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
               ),
               const Divider(height: 0),
               ListTile(
-                leading: const Icon(Icons.print_outlined, color: Colors.purple),
+                leading: const Icon(Icons.print_outlined, color: SdColors.platformBase),
                 title: const Text('تعديل قالب الطابعة'),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -3790,7 +3790,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
               ),
               const Divider(height: 0),
               ListTile(
-                leading: const Icon(Icons.send, color: Colors.green),
+                leading: const Icon(Icons.send, color: SdColors.success),
                 title: const Text('إرسال إلى الواتساب'),
                 enabled: widget.hasWhatsAppPermission,
                 onTap: () async {
@@ -3800,7 +3800,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
               ),
               const Divider(height: 0),
               ListTile(
-                leading: const Icon(Icons.cloud_upload, color: Colors.orange),
+                leading: const Icon(Icons.cloud_upload, color: SdColors.warning),
                 title: const Text('حفظ في الخادم'),
                 subtitle: const Text('VPS'),
                 enabled: widget.hasServerSavePermission,
@@ -3811,7 +3811,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
               ),
               const Divider(height: 0),
               ListTile(
-                leading: const Icon(Icons.password, color: Colors.indigo),
+                leading: const Icon(Icons.password, color: SdColors.primary),
                 title: const Text('تغيير كلمة المرور'),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -3903,7 +3903,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('✅ تم تغيير كلمة المرور بنجاح'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: SdColors.success,
                 ),
               );
             },
@@ -3997,7 +3997,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         context,
         SnackBar(
           content: Text('الرصيد غير كافٍ في المحفظة المحددة'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
       return;
@@ -4082,7 +4082,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('✅ تم شراء الاشتراك بنجاح!'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
               duration: Duration(seconds: 3),
             ),
           );
@@ -4116,7 +4116,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ حدث خطأ في شراء الاشتراك'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: Duration(seconds: 5),
           ),
         );
@@ -4381,7 +4381,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           context,
           const SnackBar(
             content: Text('هناك تغيير مجدول قيد الانتظار يمنع التمديد حالياً'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
         // نواصل لكن نحاول بمحاولات Change لاحقاً كحل أخير
@@ -4771,7 +4771,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             SnackBar(
               content: Text(
                   'تم تمديد الاشتراك بنجاح (محاولة $idx) | خطة: $selectedPlan | مدة: $selectedCommitmentPeriod شهر'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
           try {
@@ -4828,7 +4828,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     debugPrint('❌ $failMsg | usedAttempt=$usedAttempt');
     ftthShowSnackBar(
       context,
-      SnackBar(content: Text(failMsg), backgroundColor: Colors.red),
+      SnackBar(content: Text(failMsg), backgroundColor: SdColors.danger),
     );
     setState(() => errorMessage = failMsg);
   }
@@ -4862,7 +4862,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         context,
         const SnackBar(
           content: Text('الرصيد غير كافٍ في المحفظة المحددة'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
       return;
@@ -4998,7 +4998,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
                   child: Text('تم $opText بنجاح ✅',
                       style: const TextStyle(fontSize: 13))),
             ]),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -5380,7 +5380,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         SnackBar(
           content: Text(
               'يجب حفظ البيانات أولاً عن طريق أحد الأزرار (تم التفعيل، طباعة، أو واتساب)'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -5404,7 +5404,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('✅ تم تحديث الملاحظات بنجاح'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
         ),
       );
     } catch (e) {
@@ -5412,7 +5412,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ فشل في تحديث الملاحظات'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
     }
@@ -5432,7 +5432,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('رقم الهاتف غير متوفر لإرسال رسالة WhatsApp!'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -5495,7 +5495,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   ),
                 ],
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
               duration: Duration(seconds: 3),
             ),
           );
@@ -5515,7 +5515,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   ),
                 ],
               ),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               duration: Duration(seconds: 4),
             ),
           );
@@ -5527,7 +5527,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تعذر فتح WhatsApp — تم نسخ النص للحافظة'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -5601,7 +5601,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ تم الحفظ في الخادم'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         setState(() {
@@ -5643,7 +5643,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ فشل الحفظ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -5744,7 +5744,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           const SnackBar(
             content: Text(
                 'لا توجد قائمة فنيين محفوظة. يرجى إضافة الفنيين من الإعدادات'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -6140,28 +6140,28 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                               'نوع العملية:',
                               operationType,
                               icon: Icons.sync,
-                              color: Colors.blue,
+                              color: SdColors.info,
                             ),
                             const Divider(height: 16),
                             _buildActivationInfoRow(
                               'العميل:',
                               subscriptionInfo?.customerName ?? 'غير محدد',
                               icon: Icons.person,
-                              color: Colors.indigo,
+                              color: SdColors.primary,
                             ),
                             const Divider(height: 16),
                             _buildActivationInfoRow(
                               'الباقة:',
                               selectedPlan ?? 'غير محدد',
                               icon: Icons.wifi,
-                              color: Colors.purple,
+                              color: SdColors.platformBase,
                             ),
                             const Divider(height: 16),
                             _buildActivationInfoRow(
                               'المدة:',
                               '${selectedCommitmentPeriod ?? 0} شهر',
                               icon: Icons.calendar_month,
-                              color: Colors.orange,
+                              color: SdColors.warning,
                             ),
                             const Divider(height: 16),
                             _buildActivationInfoRow(
@@ -6170,7 +6170,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                   ? '${_formatNumber(_getFinalTotal().round())} IQD'
                                   : 'لم يُحسب بعد',
                               icon: Icons.payments,
-                              color: Colors.green,
+                              color: SdColors.success,
                             ),
                           ],
                         ),
@@ -6222,7 +6222,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                               child: const Text(
                                 'إلغاء',
                                 style: TextStyle(
-                                  color: Colors.grey,
+                                  color: SdColors.faint,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -7609,7 +7609,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                   const SizedBox(height: 10),
                   Text(
                     _extendPriceError!,
-                    style: const TextStyle(color: Colors.red),
+                    style: const TextStyle(color: SdColors.danger),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
@@ -8070,7 +8070,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                           title: _effectiveMainWalletTitle,
                           balance: _effectiveMainBalance,
                           value: 'main',
-                          color: Colors.teal,
+                          color: SdColors.accent,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -8080,7 +8080,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                             title: 'محفظة المشترك',
                             balance: customerWalletBalance,
                             value: 'customer',
-                            color: Colors.deepPurple,
+                            color: SdColors.platformBase,
                           ),
                         ),
                     ],
@@ -8179,7 +8179,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                           scale: 0.7,
                                           child: Switch(
                                               value: systemDiscountEnabled,
-                                              activeColor: Colors.green,
+                                              activeColor: SdColors.success,
                                               onChanged: (v) => setState(() =>
                                                   systemDiscountEnabled = v))),
                                     ]),
@@ -8307,7 +8307,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                 icon: const Icon(Icons.edit_note, size: 18),
                                 tooltip: 'تحديث الملاحظات',
                                 style: IconButton.styleFrom(
-                                    backgroundColor: Colors.orange,
+                                    backgroundColor: SdColors.warning,
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(6)),
@@ -8466,7 +8466,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                                 child: Switch(
                                                     value:
                                                         systemDiscountEnabled,
-                                                    activeColor: Colors.green,
+                                                    activeColor: SdColors.success,
                                                     onChanged: (v) => setState(
                                                         () =>
                                                             systemDiscountEnabled =
@@ -8623,7 +8623,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                   icon: const Icon(Icons.edit_note, size: 18),
                                   tooltip: 'تحديث الملاحظات',
                                   style: IconButton.styleFrom(
-                                      backgroundColor: Colors.orange,
+                                      backgroundColor: SdColors.warning,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                           borderRadius:
@@ -8838,7 +8838,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       title: _effectiveMainWalletTitle,
                       balance: _effectiveMainBalance,
                       value: 'main',
-                      color: Colors.teal)),
+                      color: SdColors.accent)),
               if (hasCustomerWallet) ...[
                 const SizedBox(width: 6),
                 Expanded(
@@ -8846,7 +8846,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         title: 'محفظة المشترك',
                         balance: customerWalletBalance,
                         value: 'customer',
-                        color: Colors.deepPurple)),
+                        color: SdColors.platformBase)),
               ],
             ],
           ),
@@ -8885,7 +8885,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                 scale: 0.7,
                 child: Switch(
                     value: systemDiscountEnabled,
-                    activeColor: Colors.green,
+                    activeColor: SdColors.success,
                     onChanged: (v) =>
                         setState(() => systemDiscountEnabled = v)),
               ),
@@ -9582,7 +9582,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('إغلاق', style: TextStyle(color: Colors.grey)),
+            child: const Text('إغلاق', style: TextStyle(color: SdColors.faint)),
           ),
         ],
       ),
@@ -9633,7 +9633,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           context,
           const SnackBar(
             content: Text('معرف العميل غير متوفر!'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -10033,7 +10033,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             context,
             SnackBar(
               content: Text('تم فتح صفحة تفاصيل العميل في المتصفح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
               duration: const Duration(seconds: 2),
             ),
           );
@@ -10048,7 +10048,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           context,
           SnackBar(
             content: Text('فشل في فتح رابط تفاصيل العميل'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -10698,7 +10698,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                           icon: const Icon(Icons.edit_note, size: 18),
                           tooltip: 'تحديث الملاحظات',
                           style: IconButton.styleFrom(
-                            backgroundColor: Colors.orange,
+                            backgroundColor: SdColors.warning,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(6),
@@ -12263,7 +12263,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(Icons.error_outline, size: 48, color: SdColors.danger),
               const SizedBox(height: 12),
               Text(_error!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
@@ -12828,7 +12828,7 @@ class _WhatsAppWebSendPageState extends State<WhatsAppWebSendPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error, size: 64, color: Colors.red),
+                  Icon(Icons.error, size: 64, color: SdColors.danger),
                   SizedBox(height: 16),
                   Text(_error!, textAlign: TextAlign.center),
                   SizedBox(height: 16),

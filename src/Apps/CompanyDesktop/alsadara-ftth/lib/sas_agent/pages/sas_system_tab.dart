@@ -100,7 +100,7 @@ class _SasSystemTabState extends State<SasSystemTab>
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         children: [
           _actionChip('أسعار الباقات', Icons.sell_rounded,
-              const [SdColors.warning, Color(0xFFFFB74D)],
+              const [SdColors.warning, SdColors.warningLight],
               () => _open(SasPackagePricesPage(account: widget.account))),
           SizedBox(width: 8.w),
           _actionChip('الترخيص', Icons.verified_user_rounded,

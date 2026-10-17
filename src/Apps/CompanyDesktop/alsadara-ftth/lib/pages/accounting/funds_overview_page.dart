@@ -114,7 +114,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
           _buildCategoryCard(
             title: 'صناديق المشغلين (نقد)',
             icon: Icons.account_balance_wallet,
-            color: Colors.green,
+            color: SdColors.success,
             total: _toDouble(cashBoxes['total']),
             items: cashBoxes['items'] as List? ?? [],
             accountCode: '1110',
@@ -125,7 +125,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
           _buildCategoryCard(
             title: 'ذمم المشغلين (آجل)',
             icon: Icons.schedule,
-            color: Colors.orange,
+            color: SdColors.warning,
             total: _toDouble(operatorDebts['total']),
             items: operatorDebts['items'] as List? ?? [],
             accountCode: '1160',
@@ -136,7 +136,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
           _buildCategoryCard(
             title: 'ذمم الوكلاء',
             icon: Icons.store,
-            color: Colors.blue,
+            color: SdColors.info,
             total: _toDouble(agentDebts['total']),
             items: agentDebts['items'] as List? ?? [],
             accountCode: '1150',
@@ -147,7 +147,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
           _buildCategoryCard(
             title: 'ذمم الفنيين',
             icon: Icons.engineering,
-            color: Colors.brown,
+            color: SdColors.warning,
             total: _toDouble(techDebs['total']),
             items: techDebs['items'] as List? ?? [],
             accountCode: '1140',
@@ -158,7 +158,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
           _buildCategoryCard(
             title: 'الدفع الإلكتروني (ماستر)',
             icon: Icons.credit_card,
-            color: Colors.purple,
+            color: SdColors.platformBase,
             total: _toDouble(electronic['total']),
             items: electronic['items'] as List? ?? [],
             accountCode: '1170',

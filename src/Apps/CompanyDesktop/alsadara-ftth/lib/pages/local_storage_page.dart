@@ -1833,76 +1833,9 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
     return SdTheme.scope(
       child: Scaffold(
       backgroundColor: SdColors.ground,
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('التخزين المحلي'),
-            if (_subscribersCount > 0) ...[
-              const SizedBox(width: 10),
-              // عدد المشتركين
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: SdColors.warning,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.people, size: 16, color: Colors.black87),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_subscribersCount',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // عدد الهواتف
-              if (_phonesCount > 0) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: SdColors.success,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.phone, size: 14, color: Colors.white),
-                      const SizedBox(width: 3),
-                      Text(
-                        '$_phonesCount',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ],
-        ),
-        backgroundColor: SdColors.primary,
-        foregroundColor: Colors.white,
+      appBar: SdAppBar(
+        title: 'التخزين المحلي',
+        subtitle: _subscribersCount > 0 ? '$_subscribersCount مشترك' : null,
         actions: [
           // زر الاستيراد - يظهر فقط عند وجود الصلاحية
           if (!_isSyncing && _hasImportPermission)

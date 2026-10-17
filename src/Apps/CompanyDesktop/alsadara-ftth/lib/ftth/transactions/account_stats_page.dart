@@ -144,7 +144,7 @@ class AccountStatsPage extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(_isPhone(context) ? 10 : 16, 12, _isPhone(context) ? 10 : 16, 24),
         children: [
           Row(children: const [
-            Icon(Icons.insights, color: Colors.deepPurple),
+            Icon(Icons.insights, color: SdColors.platformBase),
             SizedBox(width: 8),
             Expanded(
                 child: Text('ملخص العمليات والمبالغ',

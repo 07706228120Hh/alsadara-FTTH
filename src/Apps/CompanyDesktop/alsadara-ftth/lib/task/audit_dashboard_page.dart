@@ -14,14 +14,14 @@ const _bgDark = SdColors.primaryEdge;
 const _bgCard = SdColors.primaryEdge;
 const _navy = SdColors.primaryEdge;
 const _navyDark = Color(0xFF0A0F1A);
-const _blue = Color(0xFF4A9FFF);
+const _blue = SdColors.infoLight;
 const _green = SdColors.success;
 const _red = SdColors.danger;
-const _amber = Color(0xFFFFB74D);
-const _orange = Color(0xFFFF7043);
-const _purple = Color(0xFFAB47BC);
+const _amber = SdColors.warningLight;
+const _orange = SdColors.warning;
+const _purple = SdColors.platformBase;
 const _cyan = SdColors.accentGlow;
-const _teal = Color(0xFF26A69A);
+const _teal = SdColors.fieldBase;
 const _textPrimary = SdColors.divider;
 const _textSecondary = SdColors.faint;
 const _glassBorder = Color(0x20FFFFFF);
@@ -743,7 +743,7 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
             const SizedBox(width: 12),
             ShaderMask(
               shaderCallback: (bounds) => const LinearGradient(
-                colors: [SdColors.infoTintEdge, Color(0xFF42A5F5)],
+                colors: [SdColors.infoTintEdge, SdColors.infoLight],
               ).createShader(bounds),
               child: const Text('لوحة تحكم التدقيق',
                   style: TextStyle(
@@ -1802,7 +1802,7 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
       _teal,
       Color(0xFF795548),
       SdColors.muted,
-      Color(0xFFAD1457),
+      SdColors.commsBase,
     ];
     return colors[idx % colors.length];
   }

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../models/tenant.dart';
 import '../../whatsapp/services/whatsapp_permissions_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class TenantWhatsAppPermissionsPage extends StatefulWidget {
   final Tenant tenant;
@@ -94,30 +95,9 @@ class _TenantWhatsAppPermissionsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'صلاحيات الواتساب',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            Text(
-              widget.tenant.name,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: SdColors.whatsapp, // لون الواتساب
-        foregroundColor: Colors.white,
+      appBar: SdAppBar(
+        title: 'صلاحيات الواتساب',
+        subtitle: widget.tenant.name,
         actions: [
           if (_hasChanges && !_isSaving)
             TextButton.icon(

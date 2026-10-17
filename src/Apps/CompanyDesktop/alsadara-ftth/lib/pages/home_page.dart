@@ -1813,7 +1813,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         style: TextStyle(
                                           fontSize: r.counterValueSize,
                                           fontWeight: FontWeight.w900,
-                                          color: const Color(0xFF1A1A1A),
+                                          color: SdColors.neutralBase,
                                           letterSpacing: -0.3,
                                           height: 1.0,
                                         ),
@@ -1837,7 +1837,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         Text(
                           label,
                           style: TextStyle(
-                            color: const Color(0xFF1A1A1A),
+                            color: SdColors.neutralBase,
                             fontSize: r.counterLabelSize,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2136,7 +2136,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         width: double.infinity,
                         child: Text(
                           ann['body']?.toString() ?? '',
-                          style: TextStyle(fontSize: isMobile ? 14 : 15, color: const Color(0xFF333333), height: 1.7),
+                          style: TextStyle(fontSize: isMobile ? 14 : 15, color: SdColors.neutralBase, height: 1.7),
                         ),
                       ),
                     ),

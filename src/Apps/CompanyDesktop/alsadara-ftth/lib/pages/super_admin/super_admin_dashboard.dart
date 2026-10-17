@@ -715,7 +715,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               title: 'إجمالي الشركات',
               value: totalTenants.toString(),
               icon: Icons.business_rounded,
-              gradient: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+              gradient: const [SdColors.platformBase, SdColors.platformMid],
               onTap: () => _showFilteredCompanies(
                   context, tenants, 'جميع الشركات', null),
             ),
@@ -723,7 +723,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               title: 'الشركات النشطة',
               value: activeTenants.toString(),
               icon: Icons.check_circle_rounded,
-              gradient: const [SdColors.success, Color(0xFF34D399)],
+              gradient: const [SdColors.success, SdColors.fieldLight],
               onTap: () => _showFilteredCompanies(context, tenants,
                   'الشركات النشطة', (t) => t.isActive && !t.isExpired),
             ),
@@ -731,7 +731,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               title: 'الشركات المعلقة',
               value: suspendedTenants.toString(),
               icon: Icons.pause_circle_rounded,
-              gradient: const [Color(0xFFf093fb), Color(0xFFf5576c)],
+              gradient: const [Color(0xFFf093fb), SdColors.commsLight],
               onTap: () => _showFilteredCompanies(
                   context, tenants, 'الشركات المعلقة', (t) => !t.isActive),
             ),
@@ -761,7 +761,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               title: 'تحتاج تجديد',
               value: warningTenants.toString(),
               icon: Icons.schedule_rounded,
-              gradient: const [Color(0xFF4facfe), SdColors.accentGlow],
+              gradient: const [SdColors.infoLight, SdColors.accentGlow],
               onTap: () => _showFilteredCompanies(context, tenants,
                   'تحتاج تجديد (30 يوم)', (t) => t.needsWarning),
             ),
@@ -1506,7 +1506,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               child: _buildActionButton(
                 icon: Icons.edit_rounded,
                 label: 'تعديل',
-                gradient: const [Color(0xFF4facfe), SdColors.accentGlow],
+                gradient: const [SdColors.infoLight, SdColors.accentGlow],
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -1526,7 +1526,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     : Icons.play_arrow_rounded,
                 label: tenant.isActive ? 'تعليق' : 'تفعيل',
                 gradient: tenant.isActive
-                    ? const [Color(0xFFf093fb), Color(0xFFf5576c)]
+                    ? const [Color(0xFFf093fb), SdColors.commsLight]
                     : const [
                         SdColors.success,
                         SdColors.success

@@ -52,7 +52,7 @@ class AdvancedToolsPage extends StatelessWidget {
                 title: 'المراقبة الحيّة',
                 subtitle: 'مراقبة فورية لاستقرار الاتصال ورسم حيّ للـping',
                 icon: Icons.monitor_heart_rounded,
-                gradient: const [Color(0xFF26A69A), Nq3d.teal],
+                gradient: const [SdColors.fieldBase, Nq3d.teal],
                 iconEdge: Nq3d.tealDark,
                 glow: const Color(0x7300838F),
                 onTap: () => Navigator.push(
@@ -65,7 +65,7 @@ class AdvancedToolsPage extends StatelessWidget {
                 title: 'محلّل قنوات WiFi',
                 subtitle: 'عرض القنوات المزدحمة واقتراح الأفضل (2.4/5GHz)',
                 icon: Icons.wifi_find_rounded,
-                gradient: const [Color(0xFF9575CD), SdColors.platformBase],
+                gradient: const [SdColors.primarySoft, SdColors.platformBase],
                 iconEdge: SdColors.platformEdge,
                 glow: const Color(0x595E35B1),
                 onTap: () => Navigator.push(

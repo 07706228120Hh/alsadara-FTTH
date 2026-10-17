@@ -87,7 +87,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
 
   // الألوان
   final Color _primaryColor = SdColors.primaryEdge;
-  final Color _accentColor = const Color(0xFF38BDF8);
+  final Color _accentColor = SdColors.accentLight;
   final Color _surfaceColor = SdColors.groundAlt;
   final Color _cardColor = Colors.white;
 

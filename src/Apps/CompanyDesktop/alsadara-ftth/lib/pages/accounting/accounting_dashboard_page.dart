@@ -321,7 +321,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
 
   // ── ألوان الثيم الفاتح (XONEPROO Style) ──
   static const _bgCard = Colors.white;
-  static const _textDark = Color(0xFF333333);
+  static const _textDark = SdColors.neutralBase;
   static const _textGray = SdColors.faint;
   static const _shadowColor = Color(0x14000000);
 
@@ -712,7 +712,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         value: _formatCurrency(advances['TotalPaid']),
         subtitle: '${advances['Count'] ?? 0} سلفة هذا الشهر',
         icon: Icons.money_off,
-        color: const Color(0xFFFF5722),
+        color: SdColors.warning,
       ),
       _SummaryItem(
         title: 'إيجارات المكاتب',

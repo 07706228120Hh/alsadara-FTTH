@@ -652,7 +652,7 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
       builder: (context) => AlertDialog(
         title: Row(
           children: const [
-            Icon(Icons.info_outline, color: Colors.blue),
+            Icon(Icons.info_outline, color: SdColors.info),
             SizedBox(width: 8),
             Text('تفاصيل السجل'),
           ],
@@ -1182,7 +1182,7 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
                   onPressed: _clearFilters,
                   icon: const Icon(Icons.clear),
                   label: const Text('مسح'),
-                  style: ElevatedButton.styleFrom(foregroundColor: Colors.red),
+                  style: ElevatedButton.styleFrom(foregroundColor: SdColors.danger),
                 ),
               ),
             ],
@@ -1274,7 +1274,7 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
                           style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Colors.green)),
+                              color: SdColors.success)),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(

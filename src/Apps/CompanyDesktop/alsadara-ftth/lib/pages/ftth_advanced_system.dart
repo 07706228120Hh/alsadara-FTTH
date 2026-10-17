@@ -709,7 +709,7 @@ class _AdvancedLoginPageState extends State<AdvancedLoginPage> {
                           'تسجيل الدخول إلى لوحة التحكم',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.grey,
+                            color: SdColors.faint,
                           ),
                         ),
                         const SizedBox(height: 40),
@@ -796,7 +796,7 @@ class _AdvancedLoginPageState extends State<AdvancedLoginPage> {
                             'بيانات تجريبية:\nاسم المستخدم: sa\nكلمة المرور: Ss123456123456',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.blue,
+                              color: SdColors.info,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -880,7 +880,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
               foregroundColor: Colors.white,
             ),
             child: const Text('تسجيل الخروج'),
@@ -917,7 +917,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             SnackBar(
               content: const Text(
                   '🔧 الوضع التجريبي: سيتم فتح رابط تجريبي عام للمعاينة'),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               duration: const Duration(seconds: 3),
             ),
           );
@@ -934,7 +934,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('لا يمكن فتح الرابط'),
-                backgroundColor: Colors.red,
+                backgroundColor: SdColors.danger,
               ),
             );
           }
@@ -956,7 +956,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في فتح الداشبورد'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -972,7 +972,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('لا يمكن فتح الرابط'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -1146,7 +1146,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
                   title: 'داشبورد المقاولين',
                   subtitle: 'إدارة شاملة للمقاولين',
                   icon: Icons.business,
-                  color: Colors.blue,
+                  color: SdColors.info,
                   onTap: () => _openDashboard('1', 'داشبورد المقاولين'),
                 ),
               ),
@@ -1156,7 +1156,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
                   title: 'داشبورد التحليلات',
                   subtitle: 'تحليلات متقدمة',
                   icon: Icons.analytics,
-                  color: Colors.green,
+                  color: SdColors.success,
                   onTap: () => _openDashboard('7', 'داشبورد التحليلات'),
                 ),
               ),
@@ -1403,7 +1403,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('تم تجديد التوكن بنجاح'),
-                              backgroundColor: Colors.green,
+                              backgroundColor: SdColors.success,
                             ),
                           );
                         }
@@ -1416,7 +1416,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
                           SnackBar(
                             content:
                                 Text('خطأ في تجديد التوكن'),
-                            backgroundColor: Colors.red,
+                            backgroundColor: SdColors.danger,
                           ),
                         );
                       }
@@ -1509,7 +1509,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             value,
             style: const TextStyle(
               fontSize: 16,
-              color: Color(0xFF2D3748),
+              color: SdColors.ink,
             ),
           ),
         ],
@@ -1549,7 +1549,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
                   _buildSettingItem('إصدار التطبيق', '3.0.0', Icons.info),
                   _buildSettingItem('نوع النظام', 'متقدم', Icons.star),
                   _buildSettingItem('حالة الاتصال', 'متصل', Icons.wifi,
-                      valueColor: Colors.green),
+                      valueColor: SdColors.success),
                   _buildSettingItem('آخر تحديث',
                       DateTime.now().toString().substring(0, 19), Icons.update),
                 ],
@@ -1564,7 +1564,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
               icon: const Icon(Icons.logout),
               label: const Text('تسجيل الخروج من النظام'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: SdColors.danger,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
@@ -1600,7 +1600,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             value,
             style: TextStyle(
               fontSize: 16,
-              color: valueColor ?? const Color(0xFF2D3748),
+              color: valueColor ?? SdColors.ink,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1767,14 +1767,14 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
             const Icon(
               Icons.warning,
               size: 64,
-              color: Colors.orange,
+              color: SdColors.warning,
             ),
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
                 _errorMessage!,
-                style: const TextStyle(fontSize: 16, color: Colors.orange),
+                style: const TextStyle(fontSize: 16, color: SdColors.warning),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -1788,7 +1788,7 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('لا يمكن فتح الرابط'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: SdColors.danger,
                     ),
                   );
                 }
@@ -1796,7 +1796,7 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
               icon: const Icon(Icons.open_in_browser),
               label: const Text('فتح في المتصفح الخارجي'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: SdColors.info,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
@@ -1828,7 +1828,7 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
                     'معلومات الرابط:',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+                      color: SdColors.info,
                     ),
                   ),
                   const SizedBox(height: 8),

@@ -1119,7 +1119,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('لا توجد بيانات FTTH لمزامنتها — جلب البيانات أولاً'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -1170,7 +1170,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             icon: Icon(Icons.sync, size: context.accR.iconM),
             label: const Text('مزامنة'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
+              backgroundColor: SdColors.accent,
               foregroundColor: Colors.white,
             ),
           ),
@@ -1246,7 +1246,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('جاري مزامنة ${txList.length} عملية...'),
-          backgroundColor: Colors.teal,
+          backgroundColor: SdColors.accent,
           duration: const Duration(seconds: 10),
         ),
       );
@@ -1294,7 +1294,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -1978,7 +1978,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   const PopupMenuItem(
                     value: 'pricing',
                     child: ListTile(
-                      leading: Icon(Icons.price_change_outlined, color: Colors.amber),
+                      leading: Icon(Icons.price_change_outlined, color: SdColors.warning),
                       title: Text('أسعار الباقات'),
                       dense: true,
                       contentPadding: EdgeInsets.zero,
@@ -1988,7 +1988,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     const PopupMenuItem(
                       value: 'team',
                       child: ListTile(
-                        leading: Icon(Icons.group, color: Colors.cyan),
+                        leading: Icon(Icons.group, color: SdColors.accent),
                         title: Text('الفريق'),
                         dense: true,
                         contentPadding: EdgeInsets.zero,
@@ -2123,7 +2123,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.accent),
               child: Text('تصحيح', style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
             ),
           ],
@@ -2169,7 +2169,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('خطأ', style: TextStyle(fontFamily: 'Cairo')),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
     }
@@ -2198,7 +2198,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.primary),
               child:
                   Text('تصحيح', style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
             ),
@@ -2241,7 +2241,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('خطأ', style: TextStyle(fontFamily: 'Cairo')),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
     }
@@ -2270,7 +2270,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     if (users.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('لم يتم جلب المستخدمين', style: TextStyle(fontFamily: 'Cairo')),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
       ));
       return;
     }
@@ -2320,7 +2320,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               ),
               ElevatedButton(
                 onPressed: selectedUserId == null ? null : () => Navigator.of(ctx).pop(true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                style: ElevatedButton.styleFrom(backgroundColor: SdColors.accent),
                 child: Text('تعيين', style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
               ),
             ],
@@ -2359,7 +2359,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('خطأ', style: TextStyle(fontFamily: 'Cairo')),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
       ));
     }
   }
@@ -2791,7 +2791,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text('إلغاء',
-                        style: TextStyle(fontFamily: 'Cairo', color: Colors.grey)),
+                        style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
                   ),
                   ElevatedButton.icon(
                     onPressed: () async {
@@ -2832,7 +2832,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               style: TextStyle(fontFamily: 'Cairo'),
                               textDirection: TextDirection.rtl,
                             ),
-                            backgroundColor: Colors.teal,
+                            backgroundColor: SdColors.accent,
                             duration: const Duration(seconds: 2),
                           ),
                         );
@@ -2843,7 +2843,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     label: Text('حفظ الأسعار',
                         style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
+                      backgroundColor: SdColors.accent,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -3860,7 +3860,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   label: 'الفنيون (${_oursOperators.where((o) => o['isTechnician'] == true).length})',
                   selected: _oursTabIndex == 1,
                   icon: Icons.engineering,
-                  color: Colors.teal,
+                  color: SdColors.accent,
                   onTap: () => setState(() => _oursTabIndex = 1),
                 ),
                 const SizedBox(width: 12),
@@ -3874,8 +3874,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     textDirection: TextDirection.rtl,
                     decoration: InputDecoration(
                       hintText: _oursTabIndex == 0 ? 'بحث عن مشغل...' : 'بحث عن فني...',
-                      hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey),
-                      prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                      hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.faint),
+                      prefixIcon: const Icon(Icons.search, size: 16, color: SdColors.faint),
                       suffixIcon: _oursSearchQuery.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.close, size: 14),
@@ -3900,7 +3900,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Colors.blue, width: 2),
+                        borderSide: const BorderSide(color: SdColors.info, width: 2),
                       ),
                     ),
                   ),
@@ -3974,12 +3974,12 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       DataColumn(label: _sortableHeader('فني', 'technicianAmount')),
                       DataColumn(label: _sortableHeader('المسلّم', 'deliveredCash')),
                       if (_oursTabIndex == 0)
-                        DataColumn(label: _sortableHeader('صندوق', 'cashBoxBalance', color: Colors.teal)),
+                        DataColumn(label: _sortableHeader('صندوق', 'cashBoxBalance', color: SdColors.accent)),
                       if (_oursTabIndex == 0)
-                        DataColumn(label: _sortableHeader('ذمم فني', 'techDebt', color: Colors.deepOrange)),
+                        DataColumn(label: _sortableHeader('ذمم فني', 'techDebt', color: SdColors.warning)),
                       if (_oursTabIndex == 0)
-                        DataColumn(label: _sortableHeader('ذمم مشغل', 'operatorCredit', color: Colors.orange)),
-                      DataColumn(label: _sortableHeader('المستحق', 'netOwed', color: Colors.red)),
+                        DataColumn(label: _sortableHeader('ذمم مشغل', 'operatorCredit', color: SdColors.warning)),
+                      DataColumn(label: _sortableHeader('المستحق', 'netOwed', color: SdColors.danger)),
                       const DataColumn(label: Expanded(child: Center(child: Text('مطابقة')))),
                       DataColumn(label: Expanded(child: Center(child: Text('إجراءات')))),
                     ],
@@ -4032,7 +4032,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     if (isTech) ...[
-                                      Icon(Icons.engineering, size: 13, color: Colors.teal),
+                                      Icon(Icons.engineering, size: 13, color: SdColors.accent),
                                       SizedBox(width: 3),
                                     ],
                                     Text(op['operatorName'] ?? '-',
@@ -4216,7 +4216,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               child: Center(child: () {
                             final cashBox = (op['cashBoxBalance'] ?? 0).toDouble();
                             if (cashBox == 0) {
-                              return Text('-', style: TextStyle(fontSize: context.accR.small, color: Colors.grey));
+                              return Text('-', style: TextStyle(fontSize: context.accR.small, color: SdColors.faint));
                             }
                             return Text(
                               _currencyFormat.format(cashBox),
@@ -4234,7 +4234,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               child: Center(child: () {
                             final tDebt = (op['techDebt'] ?? 0).toDouble();
                             if (tDebt == 0) {
-                              return Text('-', style: TextStyle(fontSize: context.accR.small, color: Colors.grey));
+                              return Text('-', style: TextStyle(fontSize: context.accR.small, color: SdColors.faint));
                             }
                             return Text(
                               _currencyFormat.format(tDebt),
@@ -4252,7 +4252,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                               child: Center(child: () {
                             final opCr = (op['operatorCredit'] ?? 0).toDouble();
                             if (opCr == 0) {
-                              return Text('-', style: TextStyle(fontSize: context.accR.small, color: Colors.grey));
+                              return Text('-', style: TextStyle(fontSize: context.accR.small, color: SdColors.faint));
                             }
                             return Text(
                               _currencyFormat.format(opCr),
@@ -4349,11 +4349,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['technicianAmount'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['deliveredCash'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w700)))),
                         if (_oursTabIndex == 0)
-                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['cashBoxBalance'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.teal)))),
+                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['cashBoxBalance'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.accent)))),
                         if (_oursTabIndex == 0)
-                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['techDebt'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.deepOrange)))),
+                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['techDebt'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.warning)))),
                         if (_oursTabIndex == 0)
-                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['operatorCredit'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: Colors.orange)))),
+                          DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['operatorCredit'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.warning)))),
                         DataCell(Center(child: Text(_currencyFormat.format(filtered.fold<double>(0, (s, o) => s + ((o['netOwed'] ?? 0) as num).toDouble())), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.danger)))),
                         DataCell(Center(child: Text('', style: TextStyle(fontSize: context.accR.small)))),
                         DataCell(Center(child: Text(''))),
@@ -4731,7 +4731,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تفصيل المستحق', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+        title: const Text('تفصيل المستحق', style: TextStyle(fontWeight: FontWeight.bold, color: SdColors.danger)),
         content: SizedBox(
           width: 600,
           child: SingleChildScrollView(
@@ -4740,25 +4740,25 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               columnSpacing: 16,
               columns: const [
                 DataColumn(label: Text('المشغل', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('صندوق', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)), numeric: true),
-                DataColumn(label: Text('ذمم فني', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange)), numeric: true),
-                DataColumn(label: Text('ذمم مشغل', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)), numeric: true),
-                DataColumn(label: Text('المستحق', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)), numeric: true),
+                DataColumn(label: Text('صندوق', style: TextStyle(fontWeight: FontWeight.bold, color: SdColors.accent)), numeric: true),
+                DataColumn(label: Text('ذمم فني', style: TextStyle(fontWeight: FontWeight.bold, color: SdColors.warning)), numeric: true),
+                DataColumn(label: Text('ذمم مشغل', style: TextStyle(fontWeight: FontWeight.bold, color: SdColors.warning)), numeric: true),
+                DataColumn(label: Text('المستحق', style: TextStyle(fontWeight: FontWeight.bold, color: SdColors.danger)), numeric: true),
               ],
               rows: [
                 ...operators.map((op) => DataRow(cells: [
                   DataCell(Text(op['operatorName'] ?? '-')),
-                  DataCell(Text(_currencyFormat.format(((op['cashBoxBalance'] ?? 0) as num).toDouble()), style: const TextStyle(color: Colors.teal))),
-                  DataCell(Text(_currencyFormat.format(((op['techDebt'] ?? 0) as num).toDouble()), style: const TextStyle(color: Colors.deepOrange))),
-                  DataCell(Text(_currencyFormat.format(((op['operatorCredit'] ?? 0) as num).toDouble()), style: const TextStyle(color: Colors.orange))),
-                  DataCell(Text(_currencyFormat.format(((op['netOwed'] ?? 0) as num).toDouble()), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red))),
+                  DataCell(Text(_currencyFormat.format(((op['cashBoxBalance'] ?? 0) as num).toDouble()), style: const TextStyle(color: SdColors.accent))),
+                  DataCell(Text(_currencyFormat.format(((op['techDebt'] ?? 0) as num).toDouble()), style: const TextStyle(color: SdColors.warning))),
+                  DataCell(Text(_currencyFormat.format(((op['operatorCredit'] ?? 0) as num).toDouble()), style: const TextStyle(color: SdColors.warning))),
+                  DataCell(Text(_currencyFormat.format(((op['netOwed'] ?? 0) as num).toDouble()), style: const TextStyle(fontWeight: FontWeight.bold, color: SdColors.danger))),
                 ])),
                 DataRow(color: WidgetStateProperty.all(SdColors.divider), cells: [
                   const DataCell(Text('المجموع', style: TextStyle(fontWeight: FontWeight.w900))),
-                  DataCell(Text(_currencyFormat.format(totalCB), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.teal))),
-                  DataCell(Text(_currencyFormat.format(totalTD), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.deepOrange))),
-                  DataCell(Text(_currencyFormat.format(totalOC), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.orange))),
-                  DataCell(Text(_currencyFormat.format(totalOwed), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.red))),
+                  DataCell(Text(_currencyFormat.format(totalCB), style: const TextStyle(fontWeight: FontWeight.w900, color: SdColors.accent))),
+                  DataCell(Text(_currencyFormat.format(totalTD), style: const TextStyle(fontWeight: FontWeight.w900, color: SdColors.warning))),
+                  DataCell(Text(_currencyFormat.format(totalOC), style: const TextStyle(fontWeight: FontWeight.w900, color: SdColors.warning))),
+                  DataCell(Text(_currencyFormat.format(totalOwed), style: const TextStyle(fontWeight: FontWeight.w900, color: SdColors.danger))),
                 ]),
               ],
             ),
@@ -4809,7 +4809,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             const Text(
               'هذه السجلات ناتجة عن مزامنة FTTH ولم يُعرَّف مشغلها لأن نظام FTTH لم يُرسل اسم المنشئ.\n\n'
               'لتصحيحها: اذهب إلى تبويب FTTH وأعد الضغط على "مزامنة FTTH → خادمنا".',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+              style: TextStyle(fontSize: 13, color: SdColors.faint),
             ),
           ],
         ),
@@ -4843,7 +4843,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('لا يوجد مشغلون بصناديق نقد'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -5107,7 +5107,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         SnackBar(
           content: Text(
               'تم استلام النقد من ${selectedOp?['operatorName'] ?? 'المشغل'} بنجاح'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
         ),
       );
       _loadOursData();
@@ -5213,7 +5213,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             icon: Icon(Icons.check, size: context.accR.iconM),
             label: const Text('تسليم'),
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green, foregroundColor: Colors.white),
+                backgroundColor: SdColors.success, foregroundColor: Colors.white),
           ),
         ],
       )),
@@ -5226,7 +5226,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('أدخل مبلغاً صحيحاً'),
-              backgroundColor: Colors.orange),
+              backgroundColor: SdColors.warning),
         );
       }
       return;
@@ -5254,7 +5254,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -5350,11 +5350,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_today, color: Colors.blue, size: 18),
+                        Icon(Icons.calendar_today, color: SdColors.info, size: 18),
                         const SizedBox(width: 8),
                         Text('التاريخ: ${selectedDate.year}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.day.toString().padLeft(2, '0')}'),
                         const Spacer(),
-                        Icon(Icons.edit, color: Colors.grey, size: 16),
+                        Icon(Icons.edit, color: SdColors.faint, size: 16),
                       ],
                     ),
                   ),
@@ -5381,7 +5381,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               icon: Icon(Icons.check, size: context.accR.iconM),
               label: const Text('تسديد'),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green, foregroundColor: Colors.white),
+                  backgroundColor: SdColors.success, foregroundColor: Colors.white),
             ),
           ],
         ),
@@ -5396,7 +5396,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('أدخل مبلغاً صحيحاً'),
-              backgroundColor: Colors.orange),
+              backgroundColor: SdColors.warning),
         );
       }
       return;
@@ -5424,7 +5424,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -6028,7 +6028,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('أدخل مبلغاً صحيحاً'),
-              backgroundColor: Colors.orange),
+              backgroundColor: SdColors.warning),
         );
       }
       return;
@@ -6069,7 +6069,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -6261,7 +6261,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         SnackBar(
           content: Text('لا توجد بيانات للتصدير',
               style: TextStyle(fontFamily: 'Cairo')),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -6403,7 +6403,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل إنشاء الملف', style: TextStyle(fontFamily: 'Cairo')),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -7844,13 +7844,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               child: Wrap(spacing: 8, runSpacing: 4, children: [
                 if (_compareNoCustomerIdCount > 0)
                   Chip(
-                    avatar: const Icon(Icons.warning, color: Colors.orange, size: 18),
+                    avatar: const Icon(Icons.warning, color: SdColors.warning, size: 18),
                     label: Text('$_compareNoCustomerIdCount عملية بدون معرّف عميل (لا يمكن مطابقتها)'),
                     backgroundColor: SdColors.warningTint,
                   ),
                 if (_compareDuplicates.isNotEmpty)
                   ActionChip(
-                    avatar: const Icon(Icons.copy, color: Colors.red, size: 18),
+                    avatar: const Icon(Icons.copy, color: SdColors.danger, size: 18),
                     label: Text('${_compareDuplicates.length} عملية مكررة محتملة'),
                     backgroundColor: SdColors.dangerTint,
                     onPressed: () => _showDuplicatesDialog(),
@@ -7893,7 +7893,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('عمليات مكررة محتملة', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+        title: const Text('عمليات مكررة محتملة', style: TextStyle(fontWeight: FontWeight.bold, color: SdColors.danger)),
         content: SizedBox(
           width: 500,
           child: ConstrainedBox(
@@ -7908,7 +7908,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   dense: true,
                   leading: CircleAvatar(
                     backgroundColor: SdColors.dangerTint,
-                    child: Text('${d['Count'] ?? d['count'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                    child: Text('${d['Count'] ?? d['count'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.bold, color: SdColors.danger)),
                   ),
                   title: Text(d['PlanName'] ?? d['planName'] ?? '-'),
                   subtitle: Text('العميل: ${d['CustomerId'] ?? d['customerId'] ?? '-'} — ${d['Date'] ?? d['date'] ?? '-'}'),
@@ -8271,11 +8271,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               Text('عندنا فقط', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: SdColors.info)),
             ]))),
             DataCell(Center(child: Text(customerName, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis))),
-            cc('-', color: Colors.grey),
-            cc('-', color: Colors.grey),
-            cc('-', color: Colors.grey),
-            cc('-', color: Colors.grey),
-            cc('-', color: Colors.grey),
+            cc('-', color: SdColors.faint),
+            cc('-', color: SdColors.faint),
+            cc('-', color: SdColors.faint),
+            cc('-', color: SdColors.faint),
+            cc('-', color: SdColors.faint),
             cc(_currencyFormat.format(planPrice)),
             cc(_currencyFormat.format(pageDeduction), color: SdColors.primary),
             cc(collType),
@@ -8438,7 +8438,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               icon: Icon(Icons.sync, size: context.accR.iconM),
               label: Text('مزامنة ${txs.length} عملية → خادمنا'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: SdColors.accent,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -8478,7 +8478,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('جاري مزامنة ${txList.length} عملية لـ $operatorName...'),
-          backgroundColor: Colors.teal,
+          backgroundColor: SdColors.accent,
           duration: const Duration(seconds: 10),
         ),
       );
@@ -8529,7 +8529,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -8556,7 +8556,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               children: [
                 if (_ftthAuthenticated)
                   IconButton(
-                    icon: Icon(Icons.cloud_download, size: context.accR.iconM, color: Colors.teal),
+                    icon: Icon(Icons.cloud_download, size: context.accR.iconM, color: SdColors.accent),
                     onPressed: _syncFtthToOurServer,
                     tooltip: 'مزامنة FTTH → خادمنا',
                     padding: EdgeInsets.zero,
@@ -9558,7 +9558,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('خطأ في التصدير: $e', style: TextStyle(fontFamily: 'Cairo')),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ));
       }
     }
@@ -9629,7 +9629,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('خطأ: $e', style: TextStyle(fontFamily: 'Cairo')),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
       ));
     } finally {
       if (mounted) setState(() => _isSyncing = false);
@@ -9860,7 +9860,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
             TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(foregroundColor: SdColors.danger),
               onPressed: () => Navigator.pop(ctx, true),
               child: Text('حذف', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
@@ -10112,13 +10112,13 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text('فشل: ${res.statusCode}', style: TextStyle(fontFamily: 'Cairo')),
-                          backgroundColor: Colors.red,
+                          backgroundColor: SdColors.danger,
                         ));
                       }
                     } catch (e) {
                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text('خطأ: $e', style: TextStyle(fontFamily: 'Cairo')),
-                        backgroundColor: Colors.red,
+                        backgroundColor: SdColors.danger,
                       ));
                     }
                   },
@@ -10398,7 +10398,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
 
     if (mergeItems.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لم يتم العثور على أزواج قابلة للدمج'), backgroundColor: Colors.orange));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لم يتم العثور على أزواج قابلة للدمج'), backgroundColor: SdColors.warning));
       }
       return;
     }
@@ -10439,7 +10439,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
       }
     }
     if (mounted) setState(() => _isMerging = false);
@@ -10532,13 +10532,13 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
               color: SdColors.groundAlt,
               child: Row(
                 children: [
-                  Icon(Icons.dns, size: 16, color: Colors.indigo),
+                  Icon(Icons.dns, size: 16, color: SdColors.primary),
                   const SizedBox(width: 4),
-                  Text('خادمنا: ${_oursTxs.length} عملية  ${fmt.format(liveOursAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.indigo)),
+                  Text('خادمنا: ${_oursTxs.length} عملية  ${fmt.format(liveOursAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: SdColors.primary)),
                   const SizedBox(width: 24),
-                  Icon(Icons.cloud, size: 16, color: Colors.teal),
+                  Icon(Icons.cloud, size: 16, color: SdColors.accent),
                   const SizedBox(width: 4),
-                  Text('FTTH: ${row.ftthCount} عملية  ${fmt.format(row.ftthAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.teal)),
+                  Text('FTTH: ${row.ftthCount} عملية  ${fmt.format(row.ftthAmount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: SdColors.accent)),
                   const SizedBox(width: 24),
                   Builder(builder: (_) {
                     final liveFtthAmount = rawData.fold<double>(0, (s, d) => s + (d[4] as num).toDouble());
@@ -10653,7 +10653,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
               child: _oursLoading
                   ? const Center(child: CircularProgressIndicator())
                   : rawData.isEmpty
-                      ? Center(child: Text('لا توجد معاملات', style: TextStyle(color: Colors.grey)))
+                      ? Center(child: Text('لا توجد معاملات', style: TextStyle(color: SdColors.faint)))
                       : LayoutBuilder(builder: (context, constraints) {
                           return SingleChildScrollView(
                             child: ConstrainedBox(
@@ -12637,7 +12637,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           decoration: InputDecoration(
             isDense: true,
             hintText: hint,
-            hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 9, color: Colors.grey),
+            hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 9, color: SdColors.faint),
             contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
             focusedBorder: OutlineInputBorder(
@@ -12868,13 +12868,13 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('فشل الحفظ: ${res.statusCode}', style: TextStyle(fontFamily: 'Cairo')),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ));
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('خطأ', style: TextStyle(fontFamily: 'Cairo')),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
       ));
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -12900,7 +12900,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                 onPressed: () => Navigator.pop(ctx, false),
                 child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
             TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(foregroundColor: SdColors.danger),
               onPressed: () => Navigator.pop(ctx, true),
               child: Text('حذف',
                   style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
@@ -12927,13 +12927,13 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('فشل: ${res.statusCode}', style: TextStyle(fontFamily: 'Cairo')),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ));
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('خطأ', style: TextStyle(fontFamily: 'Cairo')),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
       ));
     }
   }
@@ -12955,7 +12955,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                 onPressed: () => Navigator.pop(ctx, false),
                 child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
             TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(foregroundColor: SdColors.danger),
               onPressed: () => Navigator.pop(ctx, true),
               child: Text('حذف الكل',
                   style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
@@ -13269,9 +13269,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       {'title': 'آجل', 'amount': creditAmount, 'count': creditCount,
        'icon': Icons.schedule, 'colors': [SdColors.warning, SdColors.warning]},
       {'title': 'ماستر', 'amount': masterAmount, 'count': masterCount,
-       'icon': Icons.credit_card, 'colors': [SdColors.platformBase, const Color(0xFF7D3C98)]},
+       'icon': Icons.credit_card, 'colors': [SdColors.platformBase, SdColors.platformEdge]},
       {'title': 'وكيل', 'amount': agentAmount, 'count': agentCount,
-       'icon': Icons.store, 'colors': [SdColors.ink, const Color(0xFF1A252F)]},
+       'icon': Icons.store, 'colors': [SdColors.ink, SdColors.neutralBase]},
     ];
 
     return Row(
@@ -13593,8 +13593,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                     style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                     decoration: InputDecoration(
                       hintText: 'بحث في النتائج الحالية...',
-                      hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey),
-                      prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                      hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.faint),
+                      prefixIcon: const Icon(Icons.search, size: 16, color: SdColors.faint),
                       suffixIcon: _searchCtrl.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.close, size: 14),
@@ -13608,7 +13608,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.blue, width: 2)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SdColors.info, width: 2)),
                     ),
                   ),
                 ),

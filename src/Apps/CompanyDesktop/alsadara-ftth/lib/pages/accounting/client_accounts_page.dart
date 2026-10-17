@@ -2733,10 +2733,10 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     SdColors.platformBase, // بنفسجي
     SdColors.warning, // برتقالي
     SdColors.accent, // فيروزي
-    Color(0xFFE91E63), // وردي
+    SdColors.commsLight, // وردي
     Color(0xFF795548), // بني
     SdColors.muted, // رمادي أزرق
-    Color(0xFFFF5722), // أحمر برتقالي
+    SdColors.warning, // أحمر برتقالي
     SdColors.accentLight, // سماوي
   ];
 

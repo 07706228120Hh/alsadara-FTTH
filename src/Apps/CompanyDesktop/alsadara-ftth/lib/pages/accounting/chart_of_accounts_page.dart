@@ -318,7 +318,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                 Icons.balance),
             SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
             _buildStatChip(
-                'ملكية', '$equity', Color(0xFF8B5CF6), Icons.verified),
+                'ملكية', '$equity', SdColors.platformMid, Icons.verified),
             SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
             _buildStatChip('إيرادات', '$revenue', SdColors.success,
                 Icons.trending_up),
@@ -1578,7 +1578,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
       case 'Liabilities':
         return SdColors.warning;
       case 'Equity':
-        return const Color(0xFF8B5CF6);
+        return SdColors.platformMid;
       case 'Revenue':
         return SdColors.success;
       case 'Expenses':

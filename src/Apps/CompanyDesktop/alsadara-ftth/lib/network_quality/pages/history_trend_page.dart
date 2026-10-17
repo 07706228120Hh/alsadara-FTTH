@@ -208,7 +208,7 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
       child: Row(
         children: [
           tab(_Metric.score, 'الدرجة', SdColors.primary),
-          tab(_Metric.download, 'تنزيل', const Color(0xFF26A69A)),
+          tab(_Metric.download, 'تنزيل', SdColors.fieldBase),
           tab(_Metric.upload, 'رفع', SdColors.warning),
           tab(_Metric.ping, 'الاستجابة', SdColors.platformBase),
         ],
@@ -226,7 +226,7 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
         );
       case _Metric.download:
         return (
-          color: const Color(0xFF26A69A),
+          color: SdColors.fieldBase,
           unit: 'Mbps',
           pick: (s) => s.downloadMbps
         );

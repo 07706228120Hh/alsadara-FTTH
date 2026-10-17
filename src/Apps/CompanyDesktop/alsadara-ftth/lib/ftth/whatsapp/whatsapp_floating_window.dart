@@ -272,7 +272,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('✅ تم إرسال الرسالة بنجاح'),
-        backgroundColor: Colors.green,
+        backgroundColor: SdColors.success,
         duration: Duration(seconds: 3),
       ),
     );
@@ -345,7 +345,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const Icon(Icons.error_outline, size: 48, color: SdColors.danger),
             const SizedBox(height: 16),
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 16),

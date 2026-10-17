@@ -511,9 +511,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       {'title': 'آجل', 'amount': credit, 'count': _data?['creditCount'] ?? 0,
        'icon': Icons.schedule, 'colors': [SdColors.warning, SdColors.warning]},
       {'title': 'ماستر', 'amount': master, 'count': _data?['masterCount'] ?? 0,
-       'icon': Icons.credit_card, 'colors': [SdColors.platformBase, const Color(0xFF7D3C98)]},
+       'icon': Icons.credit_card, 'colors': [SdColors.platformBase, SdColors.platformEdge]},
       {'title': 'وكيل', 'amount': agent, 'count': _data?['agentCount'] ?? 0,
-       'icon': Icons.store, 'colors': [SdColors.ink, const Color(0xFF1A252F)]},
+       'icon': Icons.store, 'colors': [SdColors.ink, SdColors.neutralBase]},
       if (unclassified > 0)
         {'title': 'غير مصنف', 'amount': unclassified, 'count': _data?['unclassifiedCount'] ?? 0,
          'icon': Icons.help_outline, 'colors': [SdColors.faint, SdColors.faint]},
@@ -1114,8 +1114,8 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                 textDirection: TextDirection.rtl,
                 decoration: InputDecoration(
                   hintText: 'بحث عن عميل، هاتف، فني، وكيل، منطقة...',
-                  hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey),
-                  prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                  hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.faint),
+                  prefixIcon: const Icon(Icons.search, size: 16, color: SdColors.faint),
                   suffixIcon: _txSearchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.close, size: 14),
@@ -1132,7 +1132,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.blue, width: 2)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SdColors.info, width: 2)),
                 ),
               ),
             ),
@@ -1654,7 +1654,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     final logId = tx['Id']?.toString() ?? tx['id']?.toString();
     if (logId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا يمكن التعديل - معرف السجل غير متوفر'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('لا يمكن التعديل - معرف السجل غير متوفر'), backgroundColor: SdColors.danger),
       );
       return;
     }
@@ -2332,7 +2332,7 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     )
-                  : const Icon(Icons.search, size: 16, color: Colors.grey),
+                  : const Icon(Icons.search, size: 16, color: SdColors.faint),
             ),
             onTap: () => setState(() => _showList = true),
             onChanged: (v) => setState(() {

@@ -52,45 +52,49 @@ P_SHADE=re.compile(r'(?<![A-Za-z0-9_$.])(const\s+)?Colors\.(red|green|lightGreen
 P_BARE=re.compile(r'(?<![A-Za-z0-9_$.])Colors\.(red|green|lightGreen|lime|orange|amber|deepOrange|yellow|brown|blue|lightBlue|indigo|teal|cyan|purple|deepPurple|pink|grey|blueGrey)\b(?!\s*\.\s*shade|\s*\[|\s*\.\s*(?!withOpacity|withValues|withAlpha)[A-Za-z])')
 P_HEX=re.compile(r'(?<![A-Za-z0-9_$.])(const\s+)?Color\(0[xX]FF([0-9A-Fa-f]{6})\)')
 RISKY=re.compile(r'MaterialColor|primarySwatch|ColorSwatch|(?<!Colors\.)(?<![A-Za-z])[a-z_]\w*\.shade\d|(?<![A-Za-z.])[a-z_]\w*\[(?:50|[1-9]00)\]')
-rep={'files':0,'shade':0,'bare':0,'hex':0,'bareSkippedFiles':[],'hexLeft':{}}
-for dp,_,fs in os.walk(LIB):
-    for f in fs:
-        if not f.endswith('.dart'): continue
-        p=os.path.join(dp,f); rel=os.path.relpath(p,LIB).replace('\\','/')
-        if rel.startswith(('frontend/','theme/')) or rel.endswith(('.g.dart','.freezed.dart')): continue
-        if FILTERS and not any(rel.startswith(x) for x in FILTERS): continue
-        s=io.open(p,encoding='utf-8').read()
-        if 'Colors.' not in s and 'Color(0x' not in s and 'Color(0X' not in s: continue
-        mask=code_mask(s)
-        code_only=''.join(ch if mask[i] else ' ' for i,ch in enumerate(s))
-        risky=bool(RISKY.search(code_only))
-        edits=[]
-        for m in P_SHADE.finditer(s):
-            if mask[m.start()]: edits.append((m.start(),m.end(),mat_token(m.group(2),m.group(3) or m.group(4)),'shade'))
-        if not risky:
-            for m in P_BARE.finditer(s):
-                if mask[m.start()]: edits.append((m.start(),m.end(),mat_token(m.group(1),None),'bare'))
-        elif P_BARE.search(code_only): rep['bareSkippedFiles'].append(rel)
-        for m in P_HEX.finditer(s):
-            if not mask[m.start()]: continue
-            h=m.group(2).upper()
-            if h in HEX: edits.append((m.start(),m.end(),S+HEX[h],'hex'))
-            else: rep['hexLeft'][h]=rep['hexLeft'].get(h,0)+1
-        if not edits: continue
-        edits.sort(); out=[]; last=0; n=0
-        for a,b,t,k in edits:
-            if a<last: continue
-            out.append(s[last:a]); out.append(t); last=b; rep[k]+=1; n+=1
-        out.append(s[last:]); ns=''.join(out)
-        if not re.search(r"^\s*part of\b",ns,re.M) and not re.search(r"frontend/(frontend|tokens/sd_colors)\.dart",ns):
-            relimp=os.path.relpath(os.path.join(LIB,'frontend/tokens/sd_colors.dart'),os.path.dirname(p)).replace('\\','/')
-            imps=list(re.finditer(r'^import\s+[^\n]+;[ \t]*$',ns,re.M))
-            at=imps[-1].end() if imps else 0
-            ns=ns[:at]+"\nimport '"+relimp+"' show SdColors;"+ns[at:]
-        rep['files']+=1
-        if APPLY: io.open(p,'w',encoding='utf-8').write(ns)
-        elif '--diff' in sys.argv:
-            import difflib; sys.stdout.writelines(list(difflib.unified_diff(s.splitlines(1),ns.splitlines(1),rel,rel,n=0))[:24])
-top=sorted(rep['hexLeft'].items(),key=lambda x:-x[1])[:25]
-print(json.dumps({'files':rep['files'],'shade':rep['shade'],'bare':rep['bare'],'hex':rep['hex'],'bareSkippedFiles':len(rep['bareSkippedFiles']),'hexLeftTotal':sum(rep['hexLeft'].values())},ensure_ascii=False))
-print('bare skipped in:',rep['bareSkippedFiles'][:30]); print('hex left top:',top)
+def main():
+    rep={'files':0,'shade':0,'bare':0,'hex':0,'bareSkippedFiles':[],'hexLeft':{}}
+    for dp,_,fs in os.walk(LIB):
+        for f in fs:
+            if not f.endswith('.dart'): continue
+            p=os.path.join(dp,f); rel=os.path.relpath(p,LIB).replace('\\','/')
+            if rel.startswith(('frontend/','theme/')) or rel.endswith(('.g.dart','.freezed.dart')): continue
+            if FILTERS and not any(rel.startswith(x) for x in FILTERS): continue
+            s=io.open(p,encoding='utf-8').read()
+            if 'Colors.' not in s and 'Color(0x' not in s and 'Color(0X' not in s: continue
+            mask=code_mask(s)
+            code_only=''.join(ch if mask[i] else ' ' for i,ch in enumerate(s))
+            risky=bool(RISKY.search(code_only))
+            edits=[]
+            for m in P_SHADE.finditer(s):
+                if mask[m.start()]: edits.append((m.start(),m.end(),mat_token(m.group(2),m.group(3) or m.group(4)),'shade'))
+            if not risky:
+                for m in P_BARE.finditer(s):
+                    if mask[m.start()]: edits.append((m.start(),m.end(),mat_token(m.group(1),None),'bare'))
+            elif P_BARE.search(code_only): rep['bareSkippedFiles'].append(rel)
+            for m in P_HEX.finditer(s):
+                if not mask[m.start()]: continue
+                h=m.group(2).upper()
+                if h in HEX: edits.append((m.start(),m.end(),S+HEX[h],'hex'))
+                else: rep['hexLeft'][h]=rep['hexLeft'].get(h,0)+1
+            if not edits: continue
+            edits.sort(); out=[]; last=0; n=0
+            for a,b,t,k in edits:
+                if a<last: continue
+                out.append(s[last:a]); out.append(t); last=b; rep[k]+=1; n+=1
+            out.append(s[last:]); ns=''.join(out)
+            if not re.search(r"^\s*part of\b",ns,re.M) and not re.search(r"frontend/(frontend|tokens/sd_colors)\.dart",ns):
+                relimp=os.path.relpath(os.path.join(LIB,'frontend/tokens/sd_colors.dart'),os.path.dirname(p)).replace('\\','/')
+                imps=list(re.finditer(r'^import\s+[^\n]+;[ \t]*$',ns,re.M))
+                at=imps[-1].end() if imps else 0
+                ns=ns[:at]+"\nimport '"+relimp+"' show SdColors;"+ns[at:]
+            rep['files']+=1
+            if APPLY: io.open(p,'w',encoding='utf-8').write(ns)
+            elif '--diff' in sys.argv:
+                import difflib; sys.stdout.writelines(list(difflib.unified_diff(s.splitlines(1),ns.splitlines(1),rel,rel,n=0))[:24])
+    top=sorted(rep['hexLeft'].items(),key=lambda x:-x[1])[:25]
+    print(json.dumps({'files':rep['files'],'shade':rep['shade'],'bare':rep['bare'],'hex':rep['hex'],'bareSkippedFiles':len(rep['bareSkippedFiles']),'hexLeftTotal':sum(rep['hexLeft'].values())},ensure_ascii=False))
+    print('bare skipped in:',rep['bareSkippedFiles'][:30]); print('hex left top:',top)
+
+if __name__=='__main__':
+    main()
