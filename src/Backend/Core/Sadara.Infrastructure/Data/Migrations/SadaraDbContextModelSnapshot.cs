@@ -7537,6 +7537,13 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId", "FtthTransactionId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_SubscriptionLogs_Company_FtthTx")
+                        .HasFilter("\"FtthTransactionId\" IS NOT NULL AND NOT \"IsDeleted\"");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("CompanyId", "FtthTransactionId"), false);
+
                     b.ToTable("SubscriptionLogs");
                 });
 
@@ -8037,9 +8044,15 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.HasIndex("CompanyId");
 
-                    b.HasIndex("ServiceRequestId");
+                    b.HasIndex("ServiceRequestId")
+                        .HasDatabaseName("IX_TechnicianTransactions_ServiceRequestId");
 
                     b.HasIndex("TechnicianId");
+
+                    b.HasIndex("ServiceRequestId", "Category")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TechnicianTransactions_ServiceRequest_Category_Charge")
+                        .HasFilter("\"ServiceRequestId\" IS NOT NULL AND NOT \"IsDeleted\" AND \"Type\" = 0");
 
                     b.ToTable("TechnicianTransactions");
                 });
