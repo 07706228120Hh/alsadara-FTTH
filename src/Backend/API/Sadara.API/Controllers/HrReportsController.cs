@@ -5,6 +5,7 @@ using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using Sadara.API.Authorization;
+using Sadara.Application.Interfaces;
 using System.Globalization;
 using System.Text;
 
@@ -17,10 +18,27 @@ namespace Sadara.API.Controllers;
 [Route("api/hr-reports")]
 [Authorize]
 [RequirePermission("hr.reports", "view")]
-public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsController> logger) : ControllerBase
+public class HrReportsController(
+    IUnitOfWork unitOfWork,
+    ILogger<HrReportsController> logger,
+    ICurrentTenant tenant) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<HrReportsController> _logger = logger;
+    private readonly ICurrentTenant _tenant = tenant;
+
+    /// <summary>
+    /// Tenant isolation (Tenancy:EnforceIsolation is OFF ⇒ enforced here): for non-SuperAdmin callers the
+    /// client-supplied companyId is ignored and replaced by the token company. Returns 403 when the token has none.
+    /// </summary>
+    private IActionResult? ScopeCompany(ref Guid companyId)
+    {
+        if (_tenant.IsSuperAdmin) return null;
+        if (_tenant.CompanyId is not Guid own)
+            return StatusCode(403, new { success = false, message = "تعذّر تحديد شركة المستخدم من الجلسة" });
+        companyId = own;
+        return null;
+    }
 
     // ==================== تقرير الحضور الشهري ====================
 
@@ -34,6 +52,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
         [FromQuery] int? month = null,
         [FromQuery] int? year = null)
     {
+        if (ScopeCompany(ref companyId) is { } denied) return denied;
         try
         {
             var targetMonth = month ?? DateTime.UtcNow.Month;
@@ -108,6 +127,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
         [FromQuery] int? month = null,
         [FromQuery] int? year = null)
     {
+        if (ScopeCompany(ref companyId) is { } denied) return denied;
         try
         {
             var targetMonth = month ?? DateTime.UtcNow.Month;
@@ -182,6 +202,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
         [FromQuery] int? year = null,
         [FromQuery] int? month = null)
     {
+        if (ScopeCompany(ref companyId) is { } denied) return denied;
         try
         {
             var targetYear = year ?? DateTime.UtcNow.Year;
@@ -258,6 +279,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
     [Authorize(Policy = "Admin")]
     public async Task<IActionResult> GetHrDashboard([FromQuery] Guid companyId)
     {
+        if (ScopeCompany(ref companyId) is { } denied) return denied;
         try
         {
             var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
@@ -406,8 +428,12 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
             var startDate = new DateOnly(targetYear, targetMonth, 1);
             var endDate = startDate.AddMonths(1).AddDays(-1);
 
+            // Tenant isolation: a non-SuperAdmin may only report on employees of the token company.
+            var ownCompanyId = _tenant.CompanyId;
+            var isSuperAdmin = _tenant.IsSuperAdmin;
             var employee = await _unitOfWork.Users.AsQueryable()
                 .Where(u => u.Id == userId)
+                .Where(u => isSuperAdmin || (ownCompanyId != null && u.CompanyId == ownCompanyId))
                 .Select(u => new { u.Id, u.FullName, u.PhoneNumber, u.Email, u.Role, u.Salary })
                 .FirstOrDefaultAsync();
 
@@ -650,6 +676,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
         [FromQuery] int? month = null,
         [FromQuery] int? year = null)
     {
+        if (ScopeCompany(ref companyId) is { } denied) return denied;
         try
         {
             var targetMonth = month ?? DateTime.UtcNow.Month;
@@ -703,6 +730,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
         [FromQuery] int? month = null,
         [FromQuery] int? year = null)
     {
+        if (ScopeCompany(ref companyId) is { } denied) return denied;
         try
         {
             var targetMonth = month ?? DateTime.UtcNow.Month;
@@ -759,6 +787,7 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
         [FromQuery] Guid companyId,
         [FromQuery] int? year = null)
     {
+        if (ScopeCompany(ref companyId) is { } denied) return denied;
         try
         {
             var targetYear = year ?? DateTime.UtcNow.Year;

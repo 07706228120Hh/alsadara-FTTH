@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.API.Constants;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
@@ -12,16 +14,59 @@ namespace Sadara.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "Admin")]
-public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<WithdrawalRequestController> logger) : ControllerBase
+public class WithdrawalRequestController(
+    IUnitOfWork unitOfWork,
+    ILogger<WithdrawalRequestController> logger,
+    ICurrentTenant tenant) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<WithdrawalRequestController> _logger = logger;
+    private readonly ICurrentTenant _tenant = tenant;
+
+    /// <summary>Permission key of the accounting "withdrawal requests" screen (same key the client gates on).</summary>
+    private const string WithdrawalsPermission = "accounting.withdrawals";
 
     private Guid? GetAuthenticatedUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                  ?? User.FindFirst("sub")?.Value;
         return Guid.TryParse(claim, out var id) ? id : null;
+    }
+
+    /// <summary>
+    /// Tenant isolation (Tenancy:EnforceIsolation is OFF ⇒ enforced here): a record is visible to a
+    /// non-SuperAdmin caller only when it belongs to the company in the caller's token.
+    /// </summary>
+    private bool IsOwnCompany(Guid? entityCompanyId) =>
+        _tenant.IsSuperAdmin || (_tenant.CompanyId.HasValue && entityCompanyId == _tenant.CompanyId);
+
+    private ObjectResult RequestNotFound() =>
+        NotFound(new { success = false, message = "الطلب غير موجود" });
+
+    /// <summary>
+    /// Does the withdrawal request belong to the caller's company? Legacy rows with a null CompanyId are
+    /// attributed to the requesting employee's company (so they are not orphaned, nor exposed cross-tenant).
+    /// </summary>
+    private async Task<bool> RequestBelongsToCaller(WithdrawalRequest req)
+    {
+        if (_tenant.IsSuperAdmin) return true;
+        if (req.CompanyId != null) return IsOwnCompany(req.CompanyId);
+        var owner = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == req.UserId);
+        return owner != null && IsOwnCompany(owner.CompanyId);
+    }
+
+    /// <summary>
+    /// Does the current caller hold <paramref name="key"/>/<paramref name="action"/>? Same evaluation as
+    /// <see cref="RequirePermissionAttribute"/> (SuperAdmin bypass, legacy fail-open when V2 is empty).
+    /// Used where access depends on the target (self vs. another employee), so a static attribute cannot express it.
+    /// </summary>
+    private async Task<bool> CallerHasPermission(string key, string action)
+    {
+        if (_tenant.IsSuperAdmin) return true;
+        var callerId = GetAuthenticatedUserId();
+        if (callerId == null) return false;
+        var caller = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == callerId.Value);
+        return caller != null && RequirePermissionAttribute.HasPermission(caller.FirstSystemPermissionsV2, key, action);
     }
 
     // ============================================================
@@ -82,8 +127,17 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
         if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var uid))
             query = query.Where(r => r.UserId == uid);
 
-        // فلترة حسب الشركة
-        if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cid))
+        // فلترة حسب الشركة — غير SuperAdmin: شركة التوكن دائماً (يُتجاهل companyId القادم من العميل)
+        if (!_tenant.IsSuperAdmin)
+        {
+            if (_tenant.CompanyId is not Guid ownCompanyId)
+                return StatusCode(403, new { success = false, message = "تعذّر تحديد شركة المستخدم من الجلسة" });
+            // Legacy rows with a null CompanyId are attributed to the requesting employee's company.
+            var users = _unitOfWork.Users.AsQueryable();
+            query = query.Where(r => r.CompanyId == ownCompanyId
+                || (r.CompanyId == null && users.Any(u => u.Id == r.UserId && u.CompanyId == ownCompanyId)));
+        }
+        else if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cid))
             query = query.Where(r => r.CompanyId == cid);
 
         // فلترة حسب الحالة
@@ -189,10 +243,11 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
 
     /// <summary>الموافقة على طلب سحب أموال (موافقة فقط بدون صرف)</summary>
     [HttpPost("requests/{id}/approve")]
+    [RequirePermission(WithdrawalsPermission, "edit")]
     public async Task<IActionResult> ApproveWithdrawalRequest(long id, [FromBody] ReviewWithdrawalDto? review = null)
     {
         var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
-        if (req == null) return NotFound(new { message = "الطلب غير موجود" });
+        if (req == null || !await RequestBelongsToCaller(req)) return RequestNotFound();
 
         if (req.Status != WithdrawalRequestStatus.Pending)
             return BadRequest(new { message = "لا يمكن تغيير حالة طلب غير معلق" });
@@ -227,7 +282,12 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
         var targetYear = year ?? DateTime.UtcNow.Year;
 
         var employee = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (employee == null) return NotFound(new { message = "الموظف غير موجود" });
+        if (employee == null || !IsOwnCompany(employee.CompanyId))
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        // Salary-derived figures: the employee themself, or a reviewer holding the withdrawals permission.
+        if (GetAuthenticatedUserId() != userId && !await CallerHasPermission(WithdrawalsPermission, "view"))
+            return StatusCode(403, new { success = false, message = "لا تملك صلاحية عرض بيانات هذا الموظف" });
 
         var result = await CalculateMaxWithdrawal(employee, targetMonth, targetYear);
         return Ok(result);
@@ -292,12 +352,13 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     }
 
     [HttpPost("requests/{id}/pay")]
+    [RequirePermission(WithdrawalsPermission, "edit")]
     public async Task<IActionResult> PayWithdrawalRequest(long id, [FromBody] PayWithdrawalDto? review = null)
     {
         try
         {
             var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
-            if (req == null) return NotFound(new { message = "الطلب غير موجود" });
+            if (req == null || !await RequestBelongsToCaller(req)) return RequestNotFound();
 
             if (req.Status != WithdrawalRequestStatus.Pending && req.Status != WithdrawalRequestStatus.Approved)
                 return BadRequest(new { message = "لا يمكن صرف طلب في هذه الحالة" });
@@ -408,10 +469,11 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
 
     /// <summary>رفض طلب سحب أموال</summary>
     [HttpPost("requests/{id}/reject")]
+    [RequirePermission(WithdrawalsPermission, "edit")]
     public async Task<IActionResult> RejectWithdrawalRequest(long id, [FromBody] ReviewWithdrawalDto? review = null)
     {
         var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
-        if (req == null) return NotFound(new { message = "الطلب غير موجود" });
+        if (req == null || !await RequestBelongsToCaller(req)) return RequestNotFound();
 
         if (req.Status != WithdrawalRequestStatus.Pending)
             return BadRequest(new { message = "لا يمكن تغيير حالة طلب غير معلق" });
@@ -441,18 +503,16 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     public async Task<IActionResult> CancelWithdrawalRequest(long id)
     {
         var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
-        if (req == null) return NotFound(new { message = "الطلب غير موجود" });
+        if (req == null || !await RequestBelongsToCaller(req)) return RequestNotFound();
 
         // التحقق من أن المعلقة فقط يمكن إلغاؤها
         if (req.Status != WithdrawalRequestStatus.Pending)
             return BadRequest(new { message = "لا يمكن إلغاء طلب غير معلق" });
 
-        // التحقق من أن الموظف نفسه هو من يلغي
+        // التحقق من أن الموظف نفسه هو من يلغي، أو مراجع يملك صلاحية تعديل طلبات السحب
         var tokenUserId = GetAuthenticatedUserId();
-        if (tokenUserId.HasValue && req.UserId != tokenUserId.Value)
-        {
-            // السماح للمدير بالإلغاء أيضاً
-        }
+        if (req.UserId != tokenUserId && !await CallerHasPermission(WithdrawalsPermission, "edit"))
+            return StatusCode(403, new { success = false, message = "لا يمكنك إلغاء طلب موظف آخر" });
 
         req.Status = WithdrawalRequestStatus.Cancelled;
         req.UpdatedAt = DateTime.UtcNow;
