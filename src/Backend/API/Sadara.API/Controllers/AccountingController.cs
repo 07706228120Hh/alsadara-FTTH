@@ -31,13 +31,68 @@ public class AccountingController : ControllerBase
         _tenant = tenant;
     }
 
-    /// <summary>عزل الشركة: يمنع عملية على شركة غير شركة المستخدم (SuperAdmin يتجاوز). null = مسموح.</summary>
-    private IActionResult? GuardCompanyAccess(Guid? companyId)
+    // ==================== Tenant isolation helpers ====================
+    // Tenancy:EnforceIsolation is OFF, so isolation is enforced here per action.
+    // Rule: a non-SuperAdmin caller is always confined to the company in its token (company_id claim);
+    // SuperAdmin keeps the pre-existing cross-company behaviour (explicit companyId, or all companies).
+
+    private ObjectResult MissingCompanyResult() =>
+        StatusCode(403, new { success = false, message = "تعذّر تحديد شركة المستخدم من الجلسة" });
+
+    private ObjectResult ForeignCompanyResult() =>
+        StatusCode(403, new { success = false, message = "لا تملك صلاحية إجراء عملية على شركة أخرى" });
+
+    /// <summary>
+    /// Read scope: for non-SuperAdmin the client-supplied companyId is ignored and replaced by the token company
+    /// (so legacy clients that send their own company keep working). Returns a 403 result if the token has no company.
+    /// </summary>
+    private IActionResult? ScopeReadCompany(ref Guid? companyId)
     {
         if (_tenant.IsSuperAdmin) return null;
-        if (companyId == null || _tenant.CompanyId == null || _tenant.CompanyId.Value != companyId.Value)
-            return StatusCode(403, new { success = false, message = "لا تملك صلاحية إجراء عملية على شركة أخرى" });
+        if (_tenant.CompanyId is not Guid own) return MissingCompanyResult();
+        companyId = own;
         return null;
+    }
+
+    /// <summary>Read scope for actions that take a non-nullable companyId.</summary>
+    private IActionResult? ScopeReadCompany(ref Guid companyId)
+    {
+        Guid? scoped = companyId;
+        var denied = ScopeReadCompany(ref scoped);
+        if (denied == null && scoped.HasValue) companyId = scoped.Value;
+        return denied;
+    }
+
+    /// <summary>
+    /// Write scope: an empty companyId is stamped with the token company; an explicit foreign companyId is rejected
+    /// with 403 (a cross-company write must never silently land on another tenant, nor silently on the caller's own).
+    /// </summary>
+    private IActionResult? ScopeWriteCompany(ref Guid companyId)
+    {
+        if (_tenant.IsSuperAdmin) return null;
+        if (_tenant.CompanyId is not Guid own) return MissingCompanyResult();
+        if (companyId != Guid.Empty && companyId != own) return ForeignCompanyResult();
+        companyId = own;
+        return null;
+    }
+
+    /// <summary>Does an existing record belong to the caller's company? (SuperAdmin: always.)</summary>
+    private bool IsOwnCompany(Guid? entityCompanyId) =>
+        _tenant.IsSuperAdmin || (_tenant.CompanyId.HasValue && entityCompanyId == _tenant.CompanyId);
+
+    /// <summary>
+    /// Are all referenced accounts owned by <paramref name="companyId"/>? Prevents posting journal lines
+    /// onto another tenant's accounts. SuperAdmin is not restricted (existing behaviour).
+    /// </summary>
+    private async Task<bool> AccountsBelongToCompany(IEnumerable<Guid> accountIds, Guid companyId)
+    {
+        if (_tenant.IsSuperAdmin) return true;
+        var ids = accountIds.Distinct().ToList();
+        if (ids.Count == 0) return true;
+        var owned = await _unitOfWork.Accounts.AsQueryable()
+            .IgnoreQueryFilters()
+            .CountAsync(a => ids.Contains(a.Id) && a.CompanyId == companyId);
+        return owned == ids.Count;
     }
 
     // ==================== شجرة الحسابات - Chart of Accounts ====================
@@ -48,6 +103,7 @@ public class AccountingController : ControllerBase
     [HttpGet("accounts")]
     public async Task<IActionResult> GetAccounts([FromQuery] Guid? companyId = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.Accounts.AsQueryable();
@@ -87,6 +143,7 @@ public class AccountingController : ControllerBase
     [HttpGet("accounts/tree")]
     public async Task<IActionResult> GetAccountsTree([FromQuery] Guid? companyId = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.Accounts.AsQueryable();
@@ -195,6 +252,9 @@ public class AccountingController : ControllerBase
     [HttpPost("accounts")]
     public async Task<IActionResult> CreateAccount([FromBody] CreateAccountDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
             // التحقق من عدم تكرار الكود
@@ -206,7 +266,7 @@ public class AccountingController : ControllerBase
             if (dto.ParentAccountId.HasValue)
             {
                 var parent = await _unitOfWork.Accounts.GetByIdAsync(dto.ParentAccountId.Value);
-                if (parent == null)
+                if (parent == null || (!_tenant.IsSuperAdmin && parent.CompanyId != dto.CompanyId))
                     return BadRequest(new { success = false, message = "الحساب الأب غير موجود" });
                 level = parent.Level + 1;
 
@@ -257,7 +317,7 @@ public class AccountingController : ControllerBase
         try
         {
             var account = await _unitOfWork.Accounts.GetByIdAsync(id);
-            if (account == null)
+            if (account == null || !IsOwnCompany(account.CompanyId))
                 return NotFound(new { success = false, message = "الحساب غير موجود" });
 
             if (account.IsSystemAccount)
@@ -294,7 +354,7 @@ public class AccountingController : ControllerBase
             else if (dto.ParentAccountId.HasValue && dto.ParentAccountId != account.ParentAccountId)
             {
                 var newParent = await _unitOfWork.Accounts.GetByIdAsync(dto.ParentAccountId.Value);
-                if (newParent == null)
+                if (newParent == null || (!_tenant.IsSuperAdmin && newParent.CompanyId != account.CompanyId))
                     return BadRequest(new { success = false, message = "الحساب الأب غير موجود" });
                 account.ParentAccountId = dto.ParentAccountId.Value;
                 account.Level = newParent.Level + 1;
@@ -321,7 +381,7 @@ public class AccountingController : ControllerBase
         try
         {
             var account = await _unitOfWork.Accounts.GetByIdAsync(id);
-            if (account == null)
+            if (account == null || !IsOwnCompany(account.CompanyId))
                 return NotFound(new { success = false, message = "الحساب غير موجود" });
 
             if (account.IsSystemAccount)
@@ -357,6 +417,9 @@ public class AccountingController : ControllerBase
     [HttpPost("accounts/seed")]
     public async Task<IActionResult> SeedDefaultAccounts([FromBody] SeedAccountsDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
             var exists = await _unitOfWork.Accounts.AnyAsync(a => a.CompanyId == dto.CompanyId);
@@ -391,6 +454,7 @@ public class AccountingController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.JournalEntries.AsQueryable();
@@ -465,8 +529,11 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            var ownCompanyId = _tenant.CompanyId;
+            var isSuperAdmin = _tenant.IsSuperAdmin;
             var entry = await _unitOfWork.JournalEntries.AsQueryable()
                 .Where(j => j.Id == id)
+                .Where(j => isSuperAdmin || (ownCompanyId != null && j.CompanyId == ownCompanyId))
                 .Select(j => new
                 {
                     j.Id,
@@ -516,10 +583,16 @@ public class AccountingController : ControllerBase
     [HttpPost("journal-entries")]
     public async Task<IActionResult> CreateJournalEntry([FromBody] CreateJournalEntryDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
             if (dto.Lines == null || dto.Lines.Count < 2)
                 return BadRequest(new { success = false, message = "القيد يجب أن يحتوي على سطرين على الأقل" });
+
+            if (!await AccountsBelongToCompany(dto.Lines.Select(l => l.AccountId), dto.CompanyId))
+                return BadRequest(new { success = false, message = "أحد حسابات القيد غير موجود" });
 
             // فحص الفترة المقفلة
             var entryDateForCheck = dto.EntryDate ?? DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).DateTime;
@@ -602,7 +675,7 @@ public class AccountingController : ControllerBase
                 .Include(j => j.Lines)
                 .FirstOrDefaultAsync(j => j.Id == id);
 
-            if (entry == null)
+            if (entry == null || !IsOwnCompany(entry.CompanyId))
                 return NotFound(new { success = false, message = "القيد غير موجود" });
 
             if (entry.Status != JournalEntryStatus.Draft)
@@ -667,7 +740,7 @@ public class AccountingController : ControllerBase
                 .Include(j => j.Lines)
                 .FirstOrDefaultAsync(j => j.Id == id);
 
-            if (entry == null)
+            if (entry == null || !IsOwnCompany(entry.CompanyId))
                 return NotFound(new { success = false, message = "القيد غير موجود" });
 
             if (entry.Status == JournalEntryStatus.Voided)
@@ -748,7 +821,7 @@ public class AccountingController : ControllerBase
             {
                 var logId = long.TryParse(entry.ReferenceId, out var lid) ? lid : 0;
                 var log = logId > 0 ? await _unitOfWork.SubscriptionLogs.GetByIdAsync(logId) : null;
-                if (log != null)
+                if (log != null && (log.CompanyId == null || log.CompanyId == entry.CompanyId))
                 {
                     log.JournalEntryId = null;
                     log.UpdatedAt = DateTime.UtcNow;
@@ -818,6 +891,7 @@ public class AccountingController : ControllerBase
     [HttpGet("cashboxes")]
     public async Task<IActionResult> GetCashBoxes([FromQuery] Guid? companyId = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.CashBoxes.AsQueryable();
@@ -853,8 +927,15 @@ public class AccountingController : ControllerBase
     [HttpPost("cashboxes")]
     public async Task<IActionResult> CreateCashBox([FromBody] CreateCashBoxDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
+            if (dto.LinkedAccountId.HasValue
+                && !await AccountsBelongToCompany(new[] { dto.LinkedAccountId.Value }, dto.CompanyId))
+                return BadRequest(new { success = false, message = "الحساب المرتبط غير موجود" });
+
             // البحث عن حساب النقد و الصندوق (1110) الأب
             var parentCashAccount = await FindAccountByCode(AccountCodes.Cash, dto.CompanyId);
             
@@ -944,6 +1025,10 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            var ownerBox = await _unitOfWork.CashBoxes.GetByIdAsync(id);
+            if (ownerBox == null || !IsOwnCompany(ownerBox.CompanyId))
+                return NotFound(new { success = false, message = "الصندوق غير موجود" });
+
             var query = _unitOfWork.CashTransactions.AsQueryable()
                 .Where(t => t.CashBoxId == id);
 
@@ -996,7 +1081,7 @@ public class AccountingController : ControllerBase
         try
         {
             var box = await _unitOfWork.CashBoxes.GetByIdAsync(id);
-            if (box == null)
+            if (box == null || !IsOwnCompany(box.CompanyId))
                 return NotFound(new { success = false, message = "الصندوق غير موجود" });
 
             // مجموع العمليات
@@ -1059,8 +1144,12 @@ public class AccountingController : ControllerBase
         try
         {
             var box = await _unitOfWork.CashBoxes.GetByIdAsync(id);
-            if (box == null)
+            if (box == null || !IsOwnCompany(box.CompanyId))
                 return NotFound(new { success = false, message = "الصندوق غير موجود" });
+
+            if (dto.CounterAccountId.HasValue
+                && !await AccountsBelongToCompany(new[] { dto.CounterAccountId.Value }, box.CompanyId))
+                return BadRequest(new { success = false, message = "حساب الطرف المقابل غير موجود" });
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -1145,11 +1234,15 @@ public class AccountingController : ControllerBase
         try
         {
             var box = await _unitOfWork.CashBoxes.GetByIdAsync(id);
-            if (box == null)
+            if (box == null || !IsOwnCompany(box.CompanyId))
                 return NotFound(new { success = false, message = "الصندوق غير موجود" });
 
             if (box.CurrentBalance < dto.Amount)
                 return BadRequest(new { success = false, message = "رصيد الصندوق غير كافي" });
+
+            if (dto.CounterAccountId.HasValue
+                && !await AccountsBelongToCompany(new[] { dto.CounterAccountId.Value }, box.CompanyId))
+                return BadRequest(new { success = false, message = "حساب الطرف المقابل غير موجود" });
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -1237,6 +1330,7 @@ public class AccountingController : ControllerBase
         [FromQuery] int? year = null,
         [FromQuery] string? status = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.EmployeeSalaries.AsQueryable();
@@ -1316,10 +1410,12 @@ public class AccountingController : ControllerBase
     /// إنشاء مسيّر رواتب شهري (لجميع موظفي الشركة)
     /// </summary>
     [HttpPost("salaries/generate")]
+    [RequirePermission("accounting.salaries", "add")]
     public async Task<IActionResult> GenerateMonthlySalaries([FromBody] GenerateSalariesDto dto)
     {
-        var guard = GuardCompanyAccess(dto.CompanyId);
-        if (guard != null) return guard;
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
 
         try
         {
@@ -1687,12 +1783,13 @@ public class AccountingController : ControllerBase
     /// تعديل سطر راتب (بدلات، خصومات، مكافآت)
     /// </summary>
     [HttpPut("salaries/{id}")]
+    [RequirePermission("accounting.salaries", "edit")]
     public async Task<IActionResult> UpdateSalary(long id, [FromBody] UpdateSalaryDto dto)
     {
         try
         {
             var salary = await _unitOfWork.EmployeeSalaries.GetByIdAsync(id);
-            if (salary == null)
+            if (salary == null || !IsOwnCompany(salary.CompanyId))
                 return NotFound(new { success = false, message = "سجل الراتب غير موجود" });
 
             if (salary.Status == SalaryStatus.Paid)
@@ -1730,6 +1827,7 @@ public class AccountingController : ControllerBase
     [HttpGet("salary-roster")]
     public async Task<IActionResult> GetSalaryRoster([FromQuery] Guid companyId)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var employees = await _unitOfWork.Users.AsQueryable()
@@ -1760,8 +1858,12 @@ public class AccountingController : ControllerBase
     /// تحديث كادر الرواتب
     /// </summary>
     [HttpPost("salary-roster")]
+    [RequirePermission("accounting.salaries", "add")]
     public async Task<IActionResult> UpdateSalaryRoster([FromBody] UpdateSalaryRosterDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
             var users = await _unitOfWork.Users.AsQueryable()
@@ -1794,16 +1896,25 @@ public class AccountingController : ControllerBase
     /// صرف راتب (تحديث الحالة وإنشاء حركة صندوق)
     /// </summary>
     [HttpPost("salaries/{id}/pay")]
+    [RequirePermission("accounting.salaries", "add")]
     public async Task<IActionResult> PaySalary(long id, [FromBody] PaySalaryDto dto)
     {
         try
         {
             var salary = await _unitOfWork.EmployeeSalaries.GetByIdAsync(id);
-            if (salary == null)
+            if (salary == null || !IsOwnCompany(salary.CompanyId))
                 return NotFound(new { success = false, message = "سجل الراتب غير موجود" });
 
             if (salary.Status == SalaryStatus.Paid)
                 return BadRequest(new { success = false, message = "الراتب مصروف بالفعل" });
+
+            // Cash box (if any) must belong to the salary's company.
+            if (dto.CashBoxId.HasValue)
+            {
+                var payBox = await _unitOfWork.CashBoxes.GetByIdAsync(dto.CashBoxId.Value);
+                if (payBox == null || payBox.CompanyId != salary.CompanyId)
+                    return BadRequest(new { success = false, message = "الصندوق غير موجود" });
+            }
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -1941,10 +2052,22 @@ public class AccountingController : ControllerBase
     /// صرف جميع رواتب شهر دفعة واحدة
     /// </summary>
     [HttpPost("salaries/pay-all")]
+    [RequirePermission("accounting.salaries", "add")]
     public async Task<IActionResult> PayAllSalaries([FromBody] PayAllSalariesDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
+            // Cash box (if any) must belong to the payroll company.
+            if (dto.CashBoxId.HasValue)
+            {
+                var payBox = await _unitOfWork.CashBoxes.GetByIdAsync(dto.CashBoxId.Value);
+                if (payBox == null || payBox.CompanyId != dto.CompanyId)
+                    return BadRequest(new { success = false, message = "الصندوق غير موجود" });
+            }
+
             await _unitOfWork.BeginTransactionAsync();
 
             // جلب الرواتب داخل الـ Transaction لمنع التداخل مع PaySalary
@@ -2035,6 +2158,7 @@ public class AccountingController : ControllerBase
     [HttpGet("salary-policies")]
     public async Task<IActionResult> GetSalaryPolicies([FromQuery] Guid companyId)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var policies = await _unitOfWork.SalaryPolicies.AsQueryable()
@@ -2063,8 +2187,12 @@ public class AccountingController : ControllerBase
     /// إنشاء أو تحديث سياسة رواتب
     /// </summary>
     [HttpPost("salary-policies")]
+    [RequirePermission("accounting.salaries", "add")]
     public async Task<IActionResult> CreateSalaryPolicy([FromBody] SalaryPolicyDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
             // إذا تم تعيينها كافتراضية، إزالة الافتراضية من السياسات الأخرى
@@ -2112,12 +2240,13 @@ public class AccountingController : ControllerBase
     /// تحديث سياسة رواتب
     /// </summary>
     [HttpPut("salary-policies/{id}")]
+    [RequirePermission("accounting.salaries", "edit")]
     public async Task<IActionResult> UpdateSalaryPolicy(int id, [FromBody] SalaryPolicyDto dto)
     {
         try
         {
             var policy = await _unitOfWork.SalaryPolicies.GetByIdAsync(id);
-            if (policy == null)
+            if (policy == null || !IsOwnCompany(policy.CompanyId))
                 return NotFound(new { success = false, message = "السياسة غير موجودة" });
 
             if (dto.IsDefault)
@@ -2160,12 +2289,13 @@ public class AccountingController : ControllerBase
     /// حذف سياسة رواتب (حذف ناعم)
     /// </summary>
     [HttpDelete("salary-policies/{id}")]
+    [RequirePermission("accounting.salaries", "delete")]
     public async Task<IActionResult> DeleteSalaryPolicy(int id)
     {
         try
         {
             var policy = await _unitOfWork.SalaryPolicies.GetByIdAsync(id);
-            if (policy == null)
+            if (policy == null || !IsOwnCompany(policy.CompanyId))
                 return NotFound(new { success = false, message = "السياسة غير موجودة" });
 
             policy.IsDeleted = true;
@@ -2190,8 +2320,11 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            var ownCompanyId = _tenant.CompanyId;
+            var isSuperAdmin = _tenant.IsSuperAdmin;
             var salary = await _unitOfWork.EmployeeSalaries.AsQueryable()
                 .Where(s => s.Id == id)
+                .Where(s => isSuperAdmin || (ownCompanyId != null && s.CompanyId == ownCompanyId))
                 .Select(s => new
                 {
                     s.Id, s.UserId,
@@ -2227,8 +2360,10 @@ public class AccountingController : ControllerBase
     /// حذف مسيّر رواتب شهر (فقط إذا كانت جميعها Pending) - مع عكس قيد الاستحقاق
     /// </summary>
     [HttpDelete("salaries/payroll")]
+    [RequirePermission("accounting.salaries", "delete")]
     public async Task<IActionResult> DeletePayroll([FromQuery] Guid companyId, [FromQuery] int month, [FromQuery] int year)
     {
+        if (ScopeWriteCompany(ref companyId) is { } denied) return denied;
         try
         {
             var salaries = await _unitOfWork.EmployeeSalaries.AsQueryable()
@@ -2301,8 +2436,10 @@ public class AccountingController : ControllerBase
     /// </summary>
     [HttpPost("salaries/repair-journal-entries")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("accounting.salaries", "edit")]
     public async Task<IActionResult> RepairSalaryJournalEntries([FromQuery] Guid companyId)
     {
+        if (ScopeWriteCompany(ref companyId) is { } denied) return denied;
         try
         {
             // جلب جميع مسيّرات الرواتب بدون قيود استحقاق (JournalEntryId == null أو Guid.Empty)
@@ -2396,6 +2533,7 @@ public class AccountingController : ControllerBase
         [FromQuery] int? year = null,
         [FromQuery] AdjustmentType? type = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.EmployeeDeductionBonuses.AsQueryable();
@@ -2450,13 +2588,17 @@ public class AccountingController : ControllerBase
     /// إضافة خصم أو مكافأة يدوية
     /// </summary>
     [HttpPost("employee-adjustments")]
+    [RequirePermission("accounting.salaries", "add")]
     public async Task<IActionResult> CreateEmployeeAdjustment([FromBody] CreateAdjustmentDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
-            // التحقق من أن الموظف موجود
+            // التحقق من أن الموظف موجود (وضمن نفس الشركة)
             var employee = await _unitOfWork.Users.GetByIdAsync(dto.UserId);
-            if (employee == null)
+            if (employee == null || (!_tenant.IsSuperAdmin && employee.CompanyId != dto.CompanyId))
                 return NotFound(new { success = false, message = "الموظف غير موجود" });
 
             var adjustment = new EmployeeDeductionBonus
@@ -2497,12 +2639,13 @@ public class AccountingController : ControllerBase
     /// تعديل خصم أو مكافأة
     /// </summary>
     [HttpPut("employee-adjustments/{id}")]
+    [RequirePermission("accounting.salaries", "edit")]
     public async Task<IActionResult> UpdateEmployeeAdjustment(long id, [FromBody] UpdateAdjustmentDto dto)
     {
         try
         {
             var adjustment = await _unitOfWork.EmployeeDeductionBonuses.GetByIdAsync(id);
-            if (adjustment == null)
+            if (adjustment == null || !IsOwnCompany(adjustment.CompanyId))
                 return NotFound(new { success = false, message = "السجل غير موجود" });
 
             if (adjustment.IsApplied)
@@ -2532,12 +2675,13 @@ public class AccountingController : ControllerBase
     /// حذف خصم أو مكافأة
     /// </summary>
     [HttpDelete("employee-adjustments/{id}")]
+    [RequirePermission("accounting.salaries", "delete")]
     public async Task<IActionResult> DeleteEmployeeAdjustment(long id)
     {
         try
         {
             var adjustment = await _unitOfWork.EmployeeDeductionBonuses.GetByIdAsync(id);
-            if (adjustment == null)
+            if (adjustment == null || !IsOwnCompany(adjustment.CompanyId))
                 return NotFound(new { success = false, message = "السجل غير موجود" });
 
             if (adjustment.IsApplied)
@@ -2572,6 +2716,7 @@ public class AccountingController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.TechnicianCollections.AsQueryable();
@@ -2645,8 +2790,19 @@ public class AccountingController : ControllerBase
     [HttpPost("collections")]
     public async Task<IActionResult> CreateCollection([FromBody] CreateCollectionDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
+            if (!_tenant.IsSuperAdmin)
+            {
+                var technicianInCompany = await _unitOfWork.Users.AnyAsync(
+                    u => u.Id == dto.TechnicianId && u.CompanyId == dto.CompanyId);
+                if (!technicianInCompany)
+                    return NotFound(new { success = false, message = "الفني غير موجود" });
+            }
+
             var collection = new TechnicianCollection
             {
                 TechnicianId = dto.TechnicianId,
@@ -2717,11 +2873,20 @@ public class AccountingController : ControllerBase
         try
         {
             var collection = await _unitOfWork.TechnicianCollections.GetByIdAsync(id);
-            if (collection == null)
+            if (collection == null || !IsOwnCompany(collection.CompanyId))
                 return NotFound(new { success = false, message = "التحصيل غير موجود" });
 
             if (collection.IsDelivered)
                 return BadRequest(new { success = false, message = "التحصيل مُسلّم بالفعل" });
+
+            // Cash box (if any) must belong to the collection's company.
+            if (dto.CashBoxId.HasValue)
+            {
+                var targetBox = await _unitOfWork.CashBoxes.GetByIdAsync(dto.CashBoxId.Value);
+                // (a missing box keeps the legacy behaviour: delivery without cash movement)
+                if (targetBox != null && targetBox.CompanyId != collection.CompanyId)
+                    return BadRequest(new { success = false, message = "الصندوق غير موجود" });
+            }
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -2797,8 +2962,13 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            var ownCompanyId = _tenant.CompanyId;
+            var isSuperAdmin = _tenant.IsSuperAdmin;
+            if (!isSuperAdmin && ownCompanyId == null) return MissingCompanyResult();
+
             var collections = await _unitOfWork.TechnicianCollections.AsQueryable()
                 .Where(c => c.TechnicianId == technicianId)
+                .Where(c => isSuperAdmin || c.CompanyId == ownCompanyId)
                 .ToListAsync();
 
             var summary = new
@@ -2834,6 +3004,7 @@ public class AccountingController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.Expenses.AsQueryable();
@@ -2893,8 +3064,27 @@ public class AccountingController : ControllerBase
     [HttpPost("expenses")]
     public async Task<IActionResult> CreateExpense([FromBody] CreateExpenseDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
+            // Referenced account / cash box must belong to the expense company.
+            if (!_tenant.IsSuperAdmin)
+            {
+                var expenseAcct = await _unitOfWork.Accounts.AsQueryable().IgnoreQueryFilters()
+                    .Where(a => a.Id == dto.AccountId).Select(a => (Guid?)a.CompanyId).FirstOrDefaultAsync();
+                if (expenseAcct.HasValue && expenseAcct.Value != dto.CompanyId)
+                    return BadRequest(new { success = false, message = "حساب المصروف غير موجود" });
+
+                if (dto.PaidFromCashBoxId.HasValue)
+                {
+                    var paidBox = await _unitOfWork.CashBoxes.GetByIdAsync(dto.PaidFromCashBoxId.Value);
+                    if (paidBox != null && paidBox.CompanyId != dto.CompanyId)
+                        return BadRequest(new { success = false, message = "الصندوق غير موجود" });
+                }
+            }
+
             await _unitOfWork.BeginTransactionAsync();
 
             var expense = new Expense
@@ -2991,7 +3181,7 @@ public class AccountingController : ControllerBase
         try
         {
             var expense = await _unitOfWork.Expenses.GetByIdAsync(id);
-            if (expense == null)
+            if (expense == null || !IsOwnCompany(expense.CompanyId))
                 return NotFound(new { success = false, message = "المصروف غير موجود" });
 
             await _unitOfWork.BeginTransactionAsync();
@@ -3025,6 +3215,7 @@ public class AccountingController : ControllerBase
                     .Include(j => j.Lines)
                     .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.Expense
                         && j.ReferenceId == expense.Id.ToString()
+                        && j.CompanyId == expense.CompanyId
                         && j.Status == JournalEntryStatus.Posted);
                 if (je != null)
                 {
@@ -3080,7 +3271,7 @@ public class AccountingController : ControllerBase
         try
         {
             var expense = await _unitOfWork.Expenses.GetByIdAsync(id);
-            if (expense == null)
+            if (expense == null || !IsOwnCompany(expense.CompanyId))
                 return NotFound(new { success = false, message = "المصروف غير موجود" });
 
             await _unitOfWork.BeginTransactionAsync();
@@ -3099,7 +3290,7 @@ public class AccountingController : ControllerBase
             // إلغاء القيد المحاسبي المرتبط
             var relatedEntry = await _unitOfWork.JournalEntries.AsQueryable()
                 .Include(j => j.Lines)
-                .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.Expense && j.ReferenceId == id.ToString() && j.Status != JournalEntryStatus.Voided);
+                .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.Expense && j.ReferenceId == id.ToString() && j.CompanyId == expense.CompanyId && j.Status != JournalEntryStatus.Voided);
             if (relatedEntry != null)
             {
                 foreach (var line in relatedEntry.Lines)
@@ -3140,7 +3331,7 @@ public class AccountingController : ControllerBase
         try
         {
             var collection = await _unitOfWork.TechnicianCollections.GetByIdAsync(id);
-            if (collection == null)
+            if (collection == null || !IsOwnCompany(collection.CompanyId))
                 return NotFound(new { success = false, message = "التحصيل غير موجود" });
 
             if (collection.IsDelivered)
@@ -3172,7 +3363,7 @@ public class AccountingController : ControllerBase
         try
         {
             var collection = await _unitOfWork.TechnicianCollections.GetByIdAsync(id);
-            if (collection == null)
+            if (collection == null || !IsOwnCompany(collection.CompanyId))
                 return NotFound(new { success = false, message = "التحصيل غير موجود" });
 
             await _unitOfWork.BeginTransactionAsync();
@@ -3191,7 +3382,7 @@ public class AccountingController : ControllerBase
             // إلغاء القيد المحاسبي المرتبط
             var relatedEntry = await _unitOfWork.JournalEntries.AsQueryable()
                 .Include(j => j.Lines)
-                .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.TechnicianCollection && j.ReferenceId == id.ToString() && j.Status != JournalEntryStatus.Voided);
+                .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.TechnicianCollection && j.ReferenceId == id.ToString() && j.CompanyId == collection.CompanyId && j.Status != JournalEntryStatus.Voided);
             if (relatedEntry != null)
             {
                 foreach (var line in relatedEntry.Lines)
@@ -3232,7 +3423,7 @@ public class AccountingController : ControllerBase
         try
         {
             var box = await _unitOfWork.CashBoxes.GetByIdAsync(id);
-            if (box == null)
+            if (box == null || !IsOwnCompany(box.CompanyId))
                 return NotFound(new { success = false, message = "الصندوق غير موجود" });
 
             box.Name = dto.Name ?? box.Name;
@@ -3259,7 +3450,7 @@ public class AccountingController : ControllerBase
         try
         {
             var box = await _unitOfWork.CashBoxes.GetByIdAsync(id);
-            if (box == null)
+            if (box == null || !IsOwnCompany(box.CompanyId))
                 return NotFound(new { success = false, message = "الصندوق غير موجود" });
 
             // التحقق من عدم وجود رصيد
@@ -3291,11 +3482,15 @@ public class AccountingController : ControllerBase
                 .Include(j => j.Lines)
                 .FirstOrDefaultAsync(j => j.Id == id);
 
-            if (entry == null)
+            if (entry == null || !IsOwnCompany(entry.CompanyId))
                 return NotFound(new { success = false, message = "القيد غير موجود" });
 
             if (entry.Status == JournalEntryStatus.Voided)
                 return BadRequest(new { success = false, message = "لا يمكن تعديل قيد ملغي" });
+
+            if (dto.Lines != null && dto.Lines.Any()
+                && !await AccountsBelongToCompany(dto.Lines.Select(l => l.AccountId), entry.CompanyId))
+                return BadRequest(new { success = false, message = "أحد حسابات القيد غير موجود" });
 
             // فحص الفترة المقفلة
             var periodError = await CheckPeriodLockForUser(entry.CompanyId, entry.EntryDate);
@@ -3401,7 +3596,7 @@ public class AccountingController : ControllerBase
                 {
                     var logId = long.TryParse(entry.ReferenceId, out var lid) ? lid : 0;
                     var log = logId > 0 ? await _unitOfWork.SubscriptionLogs.GetByIdAsync(logId) : null;
-                    if (log != null)
+                    if (log != null && (log.CompanyId == null || log.CompanyId == entry.CompanyId))
                     {
                         // تصفير الحقول المحاسبية أولاً — ثم ملئها من أسطر القيد
                         log.BasePrice = 0;
@@ -3499,7 +3694,7 @@ public class AccountingController : ControllerBase
                 .Include(j => j.Lines)
                 .FirstOrDefaultAsync(j => j.Id == id);
 
-            if (entry == null)
+            if (entry == null || !IsOwnCompany(entry.CompanyId))
                 return NotFound(new { success = false, message = "القيد غير موجود" });
 
             // فحص الفترة المقفلة
@@ -3540,7 +3735,7 @@ public class AccountingController : ControllerBase
                     if (long.TryParse(refId, out var expenseId))
                     {
                         var expense = await _unitOfWork.Expenses.GetByIdAsync(expenseId);
-                        if (expense != null && !expense.IsDeleted)
+                        if (expense != null && !expense.IsDeleted && expense.CompanyId == entry.CompanyId)
                         {
                             // إعادة المبلغ للصندوق
                             if (expense.PaidFromCashBoxId.HasValue)
@@ -3564,7 +3759,7 @@ public class AccountingController : ControllerBase
                     if (long.TryParse(refId, out var collectionId))
                     {
                         var collection = await _unitOfWork.TechnicianCollections.GetByIdAsync(collectionId);
-                        if (collection != null && !collection.IsDeleted)
+                        if (collection != null && !collection.IsDeleted && collection.CompanyId == entry.CompanyId)
                         {
                             // إذا مسلّم، إعادة المبلغ من الصندوق
                             if (collection.IsDelivered && collection.CashBoxId.HasValue)
@@ -3588,7 +3783,7 @@ public class AccountingController : ControllerBase
                     if (long.TryParse(refId, out var salaryId))
                     {
                         var salary = await _unitOfWork.EmployeeSalaries.GetByIdAsync(salaryId);
-                        if (salary != null && !salary.IsDeleted)
+                        if (salary != null && !salary.IsDeleted && salary.CompanyId == entry.CompanyId)
                         {
                             salary.IsDeleted = true;
                             salary.DeletedAt = DateTime.UtcNow;
@@ -3667,7 +3862,8 @@ public class AccountingController : ControllerBase
                     if (long.TryParse(refId, out var subLogId))
                     {
                         var subLog = await _unitOfWork.SubscriptionLogs.GetByIdAsync(subLogId);
-                        if (subLog != null && !subLog.IsDeleted)
+                        if (subLog != null && !subLog.IsDeleted
+                            && (subLog.CompanyId == null || subLog.CompanyId == entry.CompanyId))
                         {
                             // معاملة الفني المرتبطة
                             if (subLog.LinkedTechnicianId.HasValue)
@@ -3789,12 +3985,13 @@ public class AccountingController : ControllerBase
     /// حذف راتب (ناعم) - فقط إذا لم يُصرف
     /// </summary>
     [HttpDelete("salaries/{id}")]
+    [RequirePermission("accounting.salaries", "delete")]
     public async Task<IActionResult> DeleteSalary(long id)
     {
         try
         {
             var salary = await _unitOfWork.EmployeeSalaries.GetByIdAsync(id);
-            if (salary == null)
+            if (salary == null || !IsOwnCompany(salary.CompanyId))
                 return NotFound(new { success = false, message = "الراتب غير موجود" });
 
             if (salary.Status == SalaryStatus.Paid)
@@ -3825,6 +4022,8 @@ public class AccountingController : ControllerBase
     [HttpGet("audit")]
     public async Task<IActionResult> RunComprehensiveAudit([FromQuery] Guid? companyId = null)
     {
+        // Non-SuperAdmin: always audit the token company (client value ignored).
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             // تحديد الشركة — نفس نمط GetDashboard
@@ -3921,6 +4120,7 @@ public class AccountingController : ControllerBase
                 var je = await _unitOfWork.JournalEntries.AsQueryable()
                     .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.Expense
                         && j.ReferenceId == exp.Id.ToString()
+                        && j.CompanyId == cid.Value
                         && j.Status == JournalEntryStatus.Posted && !j.IsDeleted);
                 if (je == null)
                     issues.Add(new { category = "ExpenseNoEntry", severity = "medium",
@@ -4170,7 +4370,7 @@ public class AccountingController : ControllerBase
 
             // 9D: مصاريف ثابتة مدفوعة بدون قيد
             var fixedExpNoEntry = await _unitOfWork.FixedExpensePayments.AsQueryable()
-                .Where(p => !p.IsDeleted && p.IsPaid && p.JournalEntryId == null)
+                .Where(p => p.CompanyId == cid.Value && !p.IsDeleted && p.IsPaid && p.JournalEntryId == null)
                 .Select(p => new { p.Id, p.FixedExpenseId, p.Amount, p.Month, p.Year })
                 .Take(50)
                 .ToListAsync();
@@ -4209,6 +4409,7 @@ public class AccountingController : ControllerBase
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboard([FromQuery] Guid? companyId = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var now = DateTime.UtcNow;
@@ -4305,6 +4506,7 @@ public class AccountingController : ControllerBase
             // رصيد حساب النقد و الصندوق (1110 وفروعه)
             var cashAccount1110 = await _unitOfWork.Accounts.AsQueryable()
                 .Where(a => a.Code == AccountCodes.Cash)
+                .Where(a => !companyId.HasValue || a.CompanyId == companyId)
                 .Select(a => a.Id)
                 .FirstOrDefaultAsync();
             decimal cashAccountBalance = 0;
@@ -4484,6 +4686,7 @@ public class AccountingController : ControllerBase
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             // عمليات الساس فقط من الدفتر الموحّد.
@@ -4627,7 +4830,7 @@ public class AccountingController : ControllerBase
         try
         {
             var account = await _unitOfWork.Accounts.GetByIdAsync(id);
-            if (account == null)
+            if (account == null || !IsOwnCompany(account.CompanyId))
                 return NotFound(new { success = false, message = "الحساب غير موجود" });
 
             // ═══ حساب الرصيد الافتتاحي (ما قبل fromDate) ═══
@@ -4719,6 +4922,7 @@ public class AccountingController : ControllerBase
         [FromQuery] DateTime? fromDate = null,
         [FromQuery] DateTime? toDate = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var pid = userId.ToString();
@@ -4843,6 +5047,7 @@ public class AccountingController : ControllerBase
     [HttpGet("reports/trial-balance")]
     public async Task<IActionResult> GetTrialBalance([FromQuery] Guid? companyId = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.Accounts.AsQueryable().Where(a => a.IsLeaf && a.IsActive);
@@ -4885,11 +5090,15 @@ public class AccountingController : ControllerBase
     [HttpPost("recalculate-balances")]
     public async Task<IActionResult> RecalculateAllBalances()
     {
+        // Non-SuperAdmin: only the caller's company accounts (previously recalculated every tenant).
+        Guid? scopeCompanyId = null;
+        if (ScopeReadCompany(ref scopeCompanyId) is { } denied) return denied;
         try
         {
             // جلب كل الحسابات النشطة (leaf)
             var accounts = await _unitOfWork.Accounts.AsQueryable()
                 .Where(a => a.IsLeaf && a.IsActive)
+                .Where(a => !scopeCompanyId.HasValue || a.CompanyId == scopeCompanyId)
                 .ToListAsync();
 
             var results = new List<object>();
@@ -4971,6 +5180,10 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            var rateAgent = await _unitOfWork.Agents.GetByIdAsync(agentId);
+            if (rateAgent == null || !IsOwnCompany(rateAgent.CompanyId))
+                return NotFound(new { success = false, message = "الوكيل غير موجود" });
+
             var rates = await _unitOfWork.AgentCommissionRates.AsQueryable()
                 .Where(r => r.AgentId == agentId)
                 .Join(_unitOfWork.InternetPlans.AsQueryable(),
@@ -5008,6 +5221,7 @@ public class AccountingController : ControllerBase
     [HttpGet("agent-commissions/rates")]
     public async Task<IActionResult> GetAllCommissionRates([FromQuery] Guid companyId)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var rates = await _unitOfWork.AgentCommissionRates.AsQueryable()
@@ -5050,14 +5264,19 @@ public class AccountingController : ControllerBase
     [HttpPost("agent-commissions/rates")]
     public async Task<IActionResult> SetAgentCommissionRate([FromBody] SetAgentCommissionRateDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
             // التحقق من الوكيل والباقة
             var agent = await _unitOfWork.Agents.GetByIdAsync(dto.AgentId);
-            if (agent == null) return NotFound(new { success = false, message = "الوكيل غير موجود" });
+            if (agent == null || (!_tenant.IsSuperAdmin && agent.CompanyId != dto.CompanyId))
+                return NotFound(new { success = false, message = "الوكيل غير موجود" });
 
             var plan = await _unitOfWork.InternetPlans.GetByIdAsync(dto.InternetPlanId);
-            if (plan == null) return NotFound(new { success = false, message = "الباقة غير موجودة" });
+            if (plan == null || (!_tenant.IsSuperAdmin && plan.CompanyId != null && plan.CompanyId != dto.CompanyId))
+                return NotFound(new { success = false, message = "الباقة غير موجودة" });
 
             // البحث عن نسبة موجودة
             var existing = await _unitOfWork.AgentCommissionRates.FirstOrDefaultAsync(
@@ -5109,16 +5328,21 @@ public class AccountingController : ControllerBase
     [HttpPost("agent-commissions/rates/bulk")]
     public async Task<IActionResult> SetBulkCommissionRates([FromBody] BulkSetCommissionRatesDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
             var agent = await _unitOfWork.Agents.GetByIdAsync(dto.AgentId);
-            if (agent == null) return NotFound(new { success = false, message = "الوكيل غير موجود" });
+            if (agent == null || (!_tenant.IsSuperAdmin && agent.CompanyId != dto.CompanyId))
+                return NotFound(new { success = false, message = "الوكيل غير موجود" });
 
             int updated = 0, created = 0;
             foreach (var item in dto.Rates)
             {
                 var plan = await _unitOfWork.InternetPlans.GetByIdAsync(item.InternetPlanId);
                 if (plan == null) continue;
+                if (!_tenant.IsSuperAdmin && plan.CompanyId != null && plan.CompanyId != dto.CompanyId) continue;
 
                 var existing = await _unitOfWork.AgentCommissionRates.FirstOrDefaultAsync(
                     r => r.AgentId == dto.AgentId && r.InternetPlanId == item.InternetPlanId);
@@ -5165,7 +5389,8 @@ public class AccountingController : ControllerBase
         try
         {
             var rate = await _unitOfWork.AgentCommissionRates.GetByIdAsync(id);
-            if (rate == null) return NotFound(new { success = false, message = "نسبة العمولة غير موجودة" });
+            if (rate == null || !IsOwnCompany(rate.CompanyId))
+                return NotFound(new { success = false, message = "نسبة العمولة غير موجودة" });
 
             rate.IsDeleted = true;
             rate.DeletedAt = DateTime.UtcNow;
@@ -5190,7 +5415,10 @@ public class AccountingController : ControllerBase
         try
         {
             var plan = await _unitOfWork.InternetPlans.GetByIdAsync(id);
-            if (plan == null) return NotFound(new { success = false, message = "الباقة غير موجودة" });
+            // Company-owned plans are restricted to their company; shared plans (CompanyId == null) keep the
+            // legacy behaviour (see report: shared-plan profit is still editable by any accounting user).
+            if (plan == null || (plan.CompanyId != null && !IsOwnCompany(plan.CompanyId)))
+                return NotFound(new { success = false, message = "الباقة غير موجودة" });
 
             plan.ProfitAmount = dto.ProfitAmount;
             plan.UpdatedAt = DateTime.UtcNow;
@@ -5212,6 +5440,7 @@ public class AccountingController : ControllerBase
     [HttpGet("internet-plans/with-profit")]
     public async Task<IActionResult> GetPlansWithProfit([FromQuery] Guid companyId)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var plans = await _unitOfWork.InternetPlans.AsQueryable()
@@ -5249,12 +5478,23 @@ public class AccountingController : ControllerBase
     [HttpPost("agent-commissions/pay")]
     public async Task<IActionResult> PayAgentCommission([FromBody] PayAgentCommissionDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
             // التحقق من الوكيل
             var agent = await _unitOfWork.Agents.GetByIdAsync(dto.AgentId);
-            if (agent == null)
+            if (agent == null || (!_tenant.IsSuperAdmin && agent.CompanyId != dto.CompanyId))
                 return NotFound(new { success = false, message = "الوكيل غير موجود" });
+
+            // Cash box (if any) must belong to the same company.
+            if (dto.CashBoxId.HasValue)
+            {
+                var payBox = await _unitOfWork.CashBoxes.GetByIdAsync(dto.CashBoxId.Value);
+                if (payBox == null || payBox.CompanyId != dto.CompanyId)
+                    return BadRequest(new { success = false, message = "الصندوق غير موجود" });
+            }
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -5768,6 +6008,7 @@ public class AccountingController : ControllerBase
     [HttpGet("fixed-expenses")]
     public async Task<IActionResult> GetFixedExpenses([FromQuery] Guid? companyId = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var query = _unitOfWork.FixedExpenses.AsQueryable();
@@ -5802,6 +6043,9 @@ public class AccountingController : ControllerBase
     [HttpPost("fixed-expenses")]
     public async Task<IActionResult> CreateFixedExpense([FromBody] CreateFixedExpenseDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
             var expense = new FixedExpense
@@ -5832,7 +6076,8 @@ public class AccountingController : ControllerBase
         try
         {
             var expense = await _unitOfWork.FixedExpenses.FirstOrDefaultAsync(f => f.Id == id);
-            if (expense == null) return NotFound(new { success = false, message = "المصروف غير موجود" });
+            if (expense == null || !IsOwnCompany(expense.CompanyId))
+                return NotFound(new { success = false, message = "المصروف غير موجود" });
 
             if (dto.Name != null) expense.Name = dto.Name;
             if (dto.Category.HasValue) expense.Category = dto.Category.Value;
@@ -5860,7 +6105,8 @@ public class AccountingController : ControllerBase
         try
         {
             var expense = await _unitOfWork.FixedExpenses.FirstOrDefaultAsync(f => f.Id == id);
-            if (expense == null) return NotFound(new { success = false, message = "المصروف غير موجود" });
+            if (expense == null || !IsOwnCompany(expense.CompanyId))
+                return NotFound(new { success = false, message = "المصروف غير موجود" });
 
             // حذف ناعم لجميع سجلات الدفع المرتبطة
             var relatedPayments = await _unitOfWork.FixedExpensePayments.AsQueryable()
@@ -5894,7 +6140,8 @@ public class AccountingController : ControllerBase
         try
         {
             var payment = await _unitOfWork.FixedExpensePayments.FirstOrDefaultAsync(p => p.Id == paymentId);
-            if (payment == null) return NotFound(new { success = false, message = "سجل الدفع غير موجود" });
+            if (payment == null || !IsOwnCompany(payment.CompanyId))
+                return NotFound(new { success = false, message = "سجل الدفع غير موجود" });
 
             payment.IsDeleted = true;
             payment.DeletedAt = DateTime.UtcNow;
@@ -5917,6 +6164,7 @@ public class AccountingController : ControllerBase
         [FromQuery] int? month = null,
         [FromQuery] int? year = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var m = month ?? DateTime.UtcNow.Month;
@@ -6005,8 +6253,16 @@ public class AccountingController : ControllerBase
     [HttpPost("fixed-expenses/pay")]
     public async Task<IActionResult> PayFixedExpense([FromBody] PayFixedExpenseDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         try
         {
+            // The fixed expense itself must belong to the caller's company.
+            var ownerFe = await _unitOfWork.FixedExpenses.FirstOrDefaultAsync(f => f.Id == dto.FixedExpenseId);
+            if (ownerFe != null && !_tenant.IsSuperAdmin && ownerFe.CompanyId != dto.CompanyId)
+                return NotFound(new { success = false, message = "المصروف غير موجود" });
+
             // ابحث عن السجل
             var payment = await _unitOfWork.FixedExpensePayments.FirstOrDefaultAsync(
                 p => p.FixedExpenseId == dto.FixedExpenseId && p.Month == dto.Month && p.Year == dto.Year);
@@ -6014,7 +6270,7 @@ public class AccountingController : ControllerBase
             if (payment == null)
             {
                 // أنشئ سجل جديد
-                var fe = await _unitOfWork.FixedExpenses.FirstOrDefaultAsync(f => f.Id == dto.FixedExpenseId);
+                var fe = ownerFe;
                 if (fe == null) return NotFound(new { success = false, message = "المصروف غير موجود" });
 
                 payment = new FixedExpensePayment
@@ -6104,7 +6360,8 @@ public class AccountingController : ControllerBase
         try
         {
             var payment = await _unitOfWork.FixedExpensePayments.FirstOrDefaultAsync(p => p.Id == paymentId);
-            if (payment == null) return NotFound(new { success = false, message = "السجل غير موجود" });
+            if (payment == null || !IsOwnCompany(payment.CompanyId))
+                return NotFound(new { success = false, message = "السجل غير موجود" });
 
             payment.IsPaid = false;
             payment.PaidAt = null;
@@ -6128,6 +6385,7 @@ public class AccountingController : ControllerBase
         [FromQuery] int? beforeMonth = null,
         [FromQuery] int? beforeYear = null)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         try
         {
             var m = beforeMonth ?? DateTime.UtcNow.Month;
@@ -6182,6 +6440,7 @@ public class AccountingController : ControllerBase
     [HttpGet("closed-periods")]
     public async Task<IActionResult> GetClosedPeriods([FromQuery] Guid? companyId)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         var query = _unitOfWork.ClosedPeriods.AsQueryable().Where(p => !p.IsDeleted);
         if (companyId.HasValue) query = query.Where(p => p.CompanyId == companyId);
         var periods = await query.OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).ToListAsync();
@@ -6193,6 +6452,9 @@ public class AccountingController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> ClosePeriod([FromBody] ClosePeriodDto dto)
     {
+        var scopedCompanyId = dto.CompanyId;
+        if (ScopeWriteCompany(ref scopedCompanyId) is { } denied) return denied;
+        dto = dto with { CompanyId = scopedCompanyId };
         var exists = await _unitOfWork.ClosedPeriods.AnyAsync(
             p => p.CompanyId == dto.CompanyId && p.Year == dto.Year && p.Month == dto.Month && !p.IsDeleted);
         if (exists)
@@ -6233,6 +6495,7 @@ public class AccountingController : ControllerBase
     [HttpGet("closed-periods/check")]
     public async Task<IActionResult> CheckPeriodClosed([FromQuery] Guid companyId, [FromQuery] int year, [FromQuery] int month)
     {
+        if (ScopeReadCompany(ref companyId) is { } denied) return denied;
         var isClosed = await IsPeriodClosed(companyId, new DateTime(year, month, 1));
         return Ok(new { success = true, isClosed });
     }
