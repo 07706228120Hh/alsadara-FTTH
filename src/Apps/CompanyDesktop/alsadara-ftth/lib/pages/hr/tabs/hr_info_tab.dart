@@ -68,6 +68,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
   // Attendance security code
   late TextEditingController _securityCodeCtrl;
+  String _initialSecurityCode = '';
 
   // Password controllers
   late TextEditingController _newPasswordCtrl;
@@ -174,6 +175,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
     _securityCodeCtrl = TextEditingController(
         text: e['attendanceSecurityCode'] ?? e['AttendanceSecurityCode'] ?? '');
+    _initialSecurityCode = _securityCodeCtrl.text;
 
     _newPasswordCtrl = TextEditingController();
     _ftthPasswordCtrl = TextEditingController();
@@ -269,7 +271,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
         if (_dateOfBirth != null)
           'dateOfBirth': _dateOfBirth!.toIso8601String(),
         if (_hireDate != null) 'hireDate': _hireDate!.toIso8601String(),
-        'attendanceSecurityCode': _securityCodeCtrl.text,
+        if (_securityCodeCtrl.text != _initialSecurityCode)
+          'attendanceSecurityCode': _securityCodeCtrl.text,
         if (_ftthPasswordCtrl.text.isNotEmpty)
           'ftthPassword': _ftthPasswordCtrl.text,
         // Schedule fields
@@ -307,6 +310,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
       if (ok && mounted) {
         setState(() => _editing = false);
+        _initialSecurityCode = _securityCodeCtrl.text;
         _newPasswordCtrl.clear();
         _ftthPasswordCtrl.clear();
         widget.onSaved();
@@ -359,13 +363,13 @@ class _HrInfoTabState extends State<HrInfoTab> {
   String get _role =>
       (widget.employee['role'] ?? widget.employee['Role'] ?? '').toString();
 
-  String get _password =>
-      (widget.employee['plainPassword'] ??
-              widget.employee['PlainPassword'] ??
-              widget.employee['password'] ??
-              widget.employee['Password'] ??
-              '')
-          .toString();
+  /// الخادم يُخفي كود البصمة/كلمة مرور FTTH عن غير صاحب الحساب (ويُعيد علماً بذلك).
+  bool get _securityCodeHidden =>
+      widget.employee['SecurityCodeHidden'] == true ||
+      widget.employee['securityCodeHidden'] == true;
+  bool get _credentialsHidden =>
+      widget.employee['CredentialsHidden'] == true ||
+      widget.employee['credentialsHidden'] == true;
 
   // ═══════════════ البناء ═══════════════
 
@@ -1176,7 +1180,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
       );
     }
 
-    // View mode: show masked password
+    // View mode: كلمة المرور لا تُعرض (الخادم لا يعيدها) — إعادة التعيين هي المسار المعتمد
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -1197,70 +1201,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: SdColors.warningTint,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _warning.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _password.isEmpty
-                          ? '—'
-                          : _showPassword
-                              ? _password
-                              : '•' * _password.length.clamp(6, 16),
-                      style: _password.isNotEmpty
-                          ? TextStyle(
-                              fontSize: 13,
-                              fontFamily: _showPassword ? 'monospace' : null,
-                              color: _valueColor,
-                              letterSpacing: _showPassword ? 0 : 2,
-                            )
-                          : TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 13,
-                              color: _labelColor,
-                            ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () =>
-                        setState(() => _showPassword = !_showPassword),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Padding(
-                      padding: const EdgeInsets.all(2),
-                      child: Icon(
-                        _showPassword
-                            ? Icons.visibility_off_rounded
-                            : Icons.visibility_rounded,
-                        size: 16,
-                        color: _warning.withOpacity(0.7),
-                      ),
-                    ),
-                  ),
-                  if (_password.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    InkWell(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: _password));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('تم نسخ كلمة المرور',
-                                style: TextStyle(fontFamily: 'Cairo')),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                      child: Icon(Icons.copy_rounded,
-                          size: 16, color: _warning.withOpacity(0.7)),
-                    ),
-                  ],
-                ],
-              ),
+            child: Text(
+              'لا تُعرض لأسباب أمنية — لتغييرها استخدم «كلمة مرور جديدة» في وضع التعديل',
+              style: TextStyle(
+                  fontFamily: 'Cairo', fontSize: 12, color: _labelColor),
             ),
           ),
         ],
@@ -1558,7 +1502,9 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 8),
-                    hintText: 'مثال: 1234',
+                    hintText: _securityCodeHidden
+                        ? 'مخفي — اكتب كوداً جديداً لتغييره'
+                        : 'مثال: 1234',
                     hintStyle: TextStyle(
                         fontFamily: 'Cairo',
                         color: _labelColor.withOpacity(0.4), fontSize: 13),
@@ -1601,9 +1547,11 @@ class _HrInfoTabState extends State<HrInfoTab> {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              hasCode
-                  ? 'عند البصمة سيُطابق السيرفر هذا الكود مع الكود المحفوظ في جهاز الموظف'
-                  : 'لم يتم تعيين كود — البصمة لا تحتاج كود',
+              _securityCodeHidden
+                  ? 'الكود مخفي — يظهر لصاحب الحساب أو لمن يملك صلاحية «كود الأمان»'
+                  : hasCode
+                      ? 'عند البصمة سيُطابق السيرفر هذا الكود مع الكود المحفوظ في جهاز الموظف'
+                      : 'لم يتم تعيين كود — البصمة لا تحتاج كود',
               style: TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 11),
             ),
           ),
@@ -1798,9 +1746,11 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       ] else
                         _ftthRow(
                           'كلمة مرور FTTH',
-                          _ftthPassword.isNotEmpty ? _ftthPassword : '—',
+                          _credentialsHidden
+                              ? 'مخفية — تظهر لصاحب الحساب فقط'
+                              : (_ftthPassword.isNotEmpty ? _ftthPassword : '—'),
                           Icons.vpn_key_outlined,
-                          isSensitive: true,
+                          isSensitive: !_credentialsHidden,
                         ),
                     ],
                   )

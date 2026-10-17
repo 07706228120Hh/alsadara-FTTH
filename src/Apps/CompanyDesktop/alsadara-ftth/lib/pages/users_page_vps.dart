@@ -1520,6 +1520,45 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
     super.dispose();
   }
 
+  /// عرض كلمة المرور المولّدة مرة واحدة (لا يمكن استرجاعها لاحقاً — إعادة التعيين هي البديل)
+  Future<void> _showGeneratedPassword(String password) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('كلمة مرور الموظف',
+            style: TextStyle(fontFamily: 'Cairo')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'تم توليد كلمة مرور عشوائية. انسخها وسلّمها للموظف الآن — لن تظهر مرة أخرى.',
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            SelectableText(password,
+                style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Clipboard.setData(ClipboardData(text: password)),
+            child: const Text('نسخ', style: TextStyle(fontFamily: 'Cairo')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('تم', style: TextStyle(fontFamily: 'Cairo')),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -1564,6 +1603,14 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
             );
 
       if (response.isSuccess) {
+        // عند ترك كلمة المرور فارغة يولّد الخادم كلمة عشوائية ويعيدها مرة واحدة فقط
+        final created = response.data;
+        final generated = (!isEditing && created is Map)
+            ? created['GeneratedPassword']?.toString()
+            : null;
+        if (generated != null && generated.isNotEmpty && mounted) {
+          await _showGeneratedPassword(generated);
+        }
         if (mounted) {
           Navigator.pop(context, true);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1684,10 +1731,14 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                         decoration: _inputDecoration(
                           isEditing
                               ? 'كلمة المرور الجديدة (اختياري)'
-                              : 'كلمة المرور (افتراضي: 123456)',
+                              : 'كلمة المرور (اتركها فارغة لتوليد كلمة عشوائية)',
                           Icons.lock_outline,
                         ),
                         obscureText: true,
+                        validator: (v) =>
+                            v != null && v.isNotEmpty && v.length < 6
+                                ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       // البريد

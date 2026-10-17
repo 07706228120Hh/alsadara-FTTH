@@ -39,6 +39,26 @@ public sealed class InternalCaller
     public bool IsSuperAdmin { get; init; }
     public UserRole? Role { get; init; }
     public string? FirstSystemPermissionsV2 { get; init; }
+    public string? SecondSystemPermissionsV2 { get; init; }
+
+    /// <summary>For <see cref="InternalAuthMode.None"/>: a Bearer token was sent but did not authenticate (expired/invalid).</summary>
+    public bool PresentedBearerToken { get; init; }
+
+    /// <summary>Identity names of the JWT user (to match legacy name-keyed records such as settlement reports).</summary>
+    public string? FullName { get; init; }
+    public string? Username { get; init; }
+    public string? FtthUsername { get; init; }
+
+    /// <summary>Does <paramref name="name"/> designate this JWT caller (FTTH username, username or full name)?</summary>
+    public bool IsNamed(string? name)
+    {
+        if (!IsJwt || string.IsNullOrWhiteSpace(name)) return false;
+        var n = name.Trim();
+        return Matches(FtthUsername) || Matches(Username) || Matches(FullName);
+
+        bool Matches(string? v) => !string.IsNullOrWhiteSpace(v)
+            && string.Equals(v.Trim(), n, StringComparison.OrdinalIgnoreCase);
+    }
 
     public bool IsApiKey => Mode == InternalAuthMode.ApiKey;
     public bool IsJwt => Mode == InternalAuthMode.Jwt;
@@ -57,12 +77,17 @@ public sealed class InternalCaller
     /// Same semantics as <see cref="RequirePermissionAttribute"/> (hierarchical V2 keys; fail-open on an
     /// empty V2 column unless <paramref name="failClosed"/>). Legacy key and SuperAdmin pass.
     /// </summary>
-    public bool HasPermission(string key, string action, bool failClosed = false)
+    public bool HasPermission(string key, string action, bool failClosed = false,
+        PermissionSystem system = PermissionSystem.First)
     {
         if (IsApiKey || IsSuperAdmin) return true;
         if (!IsJwt) return false;
-        return RequirePermissionAttribute.HasPermission(FirstSystemPermissionsV2, key, action, failClosed);
+        var json = system == PermissionSystem.First ? FirstSystemPermissionsV2 : SecondSystemPermissionsV2;
+        return RequirePermissionAttribute.HasPermission(json, key, action, failClosed);
     }
+
+    /// <summary>Company management roles (CompanyAdmin/Manager) — full employee management in their company.</summary>
+    public bool IsCompanyManager => IsJwt && Role is UserRole.CompanyAdmin or UserRole.Manager;
 
     /// <summary>
     /// May manage employees (create/update/password/permissions/delete) of its own company:
@@ -82,13 +107,37 @@ public sealed class InternalCaller
         return false;
     }
 
-    /// <summary>Role ceiling for a tenant-bound caller: may not touch/assign roles above its own.</summary>
+    /// <summary>
+    /// Management tier of <see cref="UserRole"/>. Below it the enum is NOT hierarchical
+    /// (Employee=10 &lt; Viewer=11 &lt; Technician=12 &lt; TechnicalLeader=13 are peers, not ranks),
+    /// so a numeric comparison is only meaningful inside this set.
+    /// </summary>
+    public static readonly IReadOnlySet<UserRole> ManagementRoles =
+        new HashSet<UserRole> { UserRole.Manager, UserRole.CompanyAdmin, UserRole.SuperAdmin };
+
+    public static bool IsManagementRole(UserRole role) => ManagementRoles.Contains(role);
+
+    /// <summary>
+    /// May a tenant-bound caller act on (read sensitive data / edit / reset password / delete) a user
+    /// holding <paramref name="targetRole"/>? Non-management staff roles: yes (subject to
+    /// <see cref="CanManageEmployees"/>). Management roles: only if not above the caller
+    /// (Manager on Manager ok; Manager on CompanyAdmin denied; nobody here touches SuperAdmin).
+    /// </summary>
     public bool CanActOnRole(UserRole targetRole)
     {
         if (IsApiKey || IsSuperAdmin) return true;
         if (!IsJwt || Role is null) return false;
-        return targetRole <= Role.Value;
+        if (targetRole == UserRole.SuperAdmin) return false;
+        if (!IsManagementRole(targetRole)) return targetRole >= UserRole.Employee; // staff peers only
+        return IsManagementRole(Role.Value) && targetRole <= Role.Value;
     }
+
+    /// <summary>
+    /// May the caller ASSIGN <paramref name="newRole"/> (create/update)? Never a role higher than its own:
+    /// non-management staff roles are assignable by anyone allowed to manage employees; management roles
+    /// only by an equal-or-higher manager (same rule as <see cref="CanActOnRole"/>).
+    /// </summary>
+    public bool CanAssignRole(UserRole newRole) => CanActOnRole(newRole);
 
     private static readonly string[] EmployeeManagementPermissionKeys =
         { "users", "hr.employees", "hr.permissions" };
@@ -142,7 +191,16 @@ public static class InternalCallerAccess
 
         var principal = http.User;
         if (principal?.Identity?.IsAuthenticated != true)
-            return new InternalCaller { Mode = InternalAuthMode.None };
+        {
+            // Bearer presented but not authenticated (expired/invalid token) ⇒ session-expired message, not "Invalid API Key".
+            var authHeader = http.Request.Headers.Authorization.FirstOrDefault();
+            return new InternalCaller
+            {
+                Mode = InternalAuthMode.None,
+                PresentedBearerToken = authHeader != null
+                    && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase),
+            };
+        }
 
         var rejected = new InternalCaller { Mode = InternalAuthMode.Rejected };
 
@@ -154,7 +212,12 @@ public static class InternalCallerAccess
 
         var user = await unitOfWork.Users.AsQueryable()
             .Where(u => u.Id == userId && !u.IsDeleted)
-            .Select(u => new { u.Id, u.CompanyId, u.Role, u.IsActive, u.FirstSystemPermissionsV2 })
+            .Select(u => new
+            {
+                u.Id, u.CompanyId, u.Role, u.IsActive,
+                u.FirstSystemPermissionsV2, u.SecondSystemPermissionsV2,
+                u.FullName, u.Username, u.FtthUsername,
+            })
             .FirstOrDefaultAsync();
 
         // Only real staff users: not agents/citizens/merchants, not deleted, not deactivated.
@@ -182,6 +245,10 @@ public static class InternalCallerAccess
             IsSuperAdmin = isSuperAdmin,
             Role = user.Role,
             FirstSystemPermissionsV2 = user.FirstSystemPermissionsV2,
+            SecondSystemPermissionsV2 = user.SecondSystemPermissionsV2,
+            FullName = user.FullName,
+            Username = user.Username,
+            FtthUsername = user.FtthUsername,
         };
     }
 }

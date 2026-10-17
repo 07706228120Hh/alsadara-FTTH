@@ -63,6 +63,8 @@ public sealed class InternalDataJwtIsolationTests
         };
 
         var userA = NewUser(companyA.Id, UserRole.Employee, "opA");
+        // S9: مشغّل التفعيل يملك منحاً صريحاً لإضافة الاشتراكات (النظام الثاني) كما في التطبيق
+        userA.SecondSystemPermissionsV2 = "{\"subscriptions\":{\"view\":true,\"add\":true}}";
         var userA2 = NewUser(companyA.Id, UserRole.Employee, "opA2");
         var userB = NewUser(companyB.Id, UserRole.Employee, "opB");
         var techA = NewUser(companyA.Id, UserRole.Technician, "techA");
