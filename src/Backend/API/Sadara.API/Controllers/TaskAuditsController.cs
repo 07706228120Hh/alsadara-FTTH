@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,9 @@ namespace Sadara.API.Controllers;
 
 /// <summary>
 /// تدقيق المهام - حفظ واسترجاع حالة التدقيق والتقييم
+/// Phase 0-D: every read/write is scoped to the caller company from the token (SuperAdmin keeps
+/// cross-company access). An audit is visible when its CompanyId is the caller company, or — for
+/// legacy rows saved without CompanyId — when its RequestNumber belongs to a task of the caller company.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -16,12 +20,61 @@ public class TaskAuditsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<TaskAuditsController> _logger;
+    private readonly ICurrentTenant _tenant;
 
-    public TaskAuditsController(IUnitOfWork unitOfWork, ILogger<TaskAuditsController> logger)
+    public TaskAuditsController(IUnitOfWork unitOfWork, ILogger<TaskAuditsController> logger, ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _tenant = tenant;
     }
+
+    // ═══════ Tenant scope helpers (Phase 0-D) ═══════
+
+    private bool HasCompanyScope() => _tenant.IsSuperAdmin || _tenant.CompanyId.HasValue;
+
+    private ObjectResult CompanyScopeForbidden() =>
+        StatusCode(StatusCodes.Status403Forbidden,
+            new { success = false, message = "تعذّر تحديد شركة المستخدم من رمز الدخول — لا يمكن الوصول" });
+
+    /// <summary>
+    /// Audits of the caller company: CompanyId match, or legacy CompanyId=null rows whose RequestNumber
+    /// belongs to a task of the caller company. SuperAdmin: unrestricted.
+    /// </summary>
+    private IQueryable<TaskAudit> ScopedAudits()
+    {
+        var query = _unitOfWork.TaskAudits.AsQueryable();
+        if (_tenant.IsSuperAdmin)
+            return query;
+
+        var companyId = _tenant.CompanyId;
+        var companyRequestNumbers = _unitOfWork.ServiceRequests.AsQueryable()
+            .Where(r => r.CompanyId == companyId)
+            .Select(r => r.RequestNumber);
+
+        return query.Where(a =>
+            a.CompanyId == companyId
+            || (a.CompanyId == null && a.RequestNumber != null && companyRequestNumbers.Contains(a.RequestNumber)));
+    }
+
+    /// <summary>
+    /// Writes are refused for a RequestNumber that belongs to another company's task (non-SuperAdmin).
+    /// A RequestNumber that matches no task at all is allowed (legacy behaviour).
+    /// </summary>
+    private async Task<bool> RequestNumberBelongsToOtherCompanyAsync(string requestNumber)
+    {
+        if (_tenant.IsSuperAdmin)
+            return false;
+        var companyId = _tenant.CompanyId;
+        return await _unitOfWork.ServiceRequests.AsQueryable()
+            .AnyAsync(r => r.RequestNumber == requestNumber && r.CompanyId != companyId)
+            && !await _unitOfWork.ServiceRequests.AsQueryable()
+                .AnyAsync(r => r.RequestNumber == requestNumber && r.CompanyId == companyId);
+    }
+
+    /// <summary>CompanyId of a new audit: the token company (client value honoured only for SuperAdmin).</summary>
+    private Guid? NewAuditCompanyId(SaveTaskAuditDto dto) =>
+        _tenant.IsSuperAdmin ? (dto.CompanyId ?? _tenant.CompanyId) : _tenant.CompanyId;
 
     /// <summary>
     /// جلب جميع سجلات التدقيق
@@ -31,8 +84,10 @@ public class TaskAuditsController : ControllerBase
     {
         try
         {
-            var audits = await _unitOfWork.TaskAudits
-                .AsQueryable()
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
+            var audits = await ScopedAudits()
                 .OrderByDescending(a => a.AuditedAt ?? a.CreatedAt)
                 .ToListAsync();
 
@@ -53,8 +108,10 @@ public class TaskAuditsController : ControllerBase
     {
         try
         {
-            var audit = await _unitOfWork.TaskAudits
-                .AsQueryable()
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
+            var audit = await ScopedAudits()
                 .FirstOrDefaultAsync(a => a.RequestNumber == requestNumber);
 
             if (audit == null)
@@ -78,21 +135,30 @@ public class TaskAuditsController : ControllerBase
     {
         try
         {
-            var audits = await _unitOfWork.TaskAudits
-                .AsQueryable()
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
+            var audits = await ScopedAudits()
                 .Where(a => a.RequestNumber != null)
                 .ToListAsync();
 
-            var map = audits.ToDictionary(
-                a => a.RequestNumber!,
-                a => new
-                {
-                    a.AuditStatus,
-                    a.Rating,
-                    a.Notes,
-                    a.AuditedBy,
-                    a.AuditedAt
-                });
+            // Duplicate RequestNumbers (no unique index) would throw in ToDictionary ⇒ keep the latest.
+            var map = audits
+                .GroupBy(a => a.RequestNumber!)
+                .ToDictionary(
+                    g => g.Key,
+                    g =>
+                    {
+                        var a = g.OrderByDescending(x => x.UpdatedAt ?? x.AuditedAt ?? x.CreatedAt).First();
+                        return new
+                        {
+                            a.AuditStatus,
+                            a.Rating,
+                            a.Notes,
+                            a.AuditedBy,
+                            a.AuditedAt
+                        };
+                    });
 
             return Ok(new { success = true, data = map });
         }
@@ -111,9 +177,15 @@ public class TaskAuditsController : ControllerBase
     {
         try
         {
-            // البحث عن تدقيق موجود
-            var existing = await _unitOfWork.TaskAudits
-                .AsQueryable()
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
+            if (!string.IsNullOrEmpty(dto.RequestNumber)
+                && await RequestNumberBelongsToOtherCompanyAsync(dto.RequestNumber))
+                return NotFound(new { success = false, message = "المهمة غير موجودة" });
+
+            // البحث عن تدقيق موجود (ضمن شركة المستخدم فقط)
+            var existing = await ScopedAudits()
                 .FirstOrDefaultAsync(a => a.RequestNumber == dto.RequestNumber);
 
             if (existing != null)
@@ -140,7 +212,7 @@ public class TaskAuditsController : ControllerBase
                     Notes = dto.Notes,
                     AuditedBy = dto.AuditedBy,
                     AuditedAt = DateTime.UtcNow,
-                    CompanyId = dto.CompanyId,
+                    CompanyId = NewAuditCompanyId(dto),
                 };
 
                 await _unitOfWork.TaskAudits.AddAsync(audit);
@@ -165,14 +237,19 @@ public class TaskAuditsController : ControllerBase
     {
         try
         {
+            if (!HasCompanyScope())
+                return CompanyScopeForbidden();
+
             var requestNumbers = dtos.Select(d => d.RequestNumber).Where(r => r != null).ToList();
-            var existingAudits = await _unitOfWork.TaskAudits
-                .AsQueryable()
+            var existingAudits = await ScopedAudits()
                 .Where(a => a.RequestNumber != null && requestNumbers.Contains(a.RequestNumber))
                 .ToListAsync();
 
-            var existingMap = existingAudits.ToDictionary(a => a.RequestNumber!);
+            var existingMap = existingAudits
+                .GroupBy(a => a.RequestNumber!)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.UpdatedAt ?? x.AuditedAt ?? x.CreatedAt).First());
 
+            var saved = 0;
             foreach (var dto in dtos)
             {
                 if (string.IsNullOrEmpty(dto.RequestNumber)) continue;
@@ -186,9 +263,18 @@ public class TaskAuditsController : ControllerBase
                     existing.AuditedAt = DateTime.UtcNow;
                     existing.UpdatedAt = DateTime.UtcNow;
                     _unitOfWork.TaskAudits.Update(existing);
+                    saved++;
                 }
                 else
                 {
+                    // Never create an audit attached to another company's task.
+                    if (await RequestNumberBelongsToOtherCompanyAsync(dto.RequestNumber))
+                    {
+                        _logger.LogWarning("Bulk audit: RequestNumber {RequestNumber} belongs to another company — skipped",
+                            dto.RequestNumber);
+                        continue;
+                    }
+
                     var audit = new TaskAudit
                     {
                         RequestNumber = dto.RequestNumber,
@@ -198,15 +284,16 @@ public class TaskAuditsController : ControllerBase
                         Notes = dto.Notes,
                         AuditedBy = dto.AuditedBy,
                         AuditedAt = DateTime.UtcNow,
-                        CompanyId = dto.CompanyId,
+                        CompanyId = NewAuditCompanyId(dto),
                     };
                     await _unitOfWork.TaskAudits.AddAsync(audit);
+                    saved++;
                 }
             }
 
             await _unitOfWork.SaveChangesAsync();
 
-            return Ok(new { success = true, message = $"تم حفظ {dtos.Count} سجل تدقيق بنجاح" });
+            return Ok(new { success = true, message = $"تم حفظ {saved} سجل تدقيق بنجاح" });
         }
         catch (Exception ex)
         {
