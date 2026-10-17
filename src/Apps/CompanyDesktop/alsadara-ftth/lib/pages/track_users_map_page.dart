@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
-import '../config/app_secrets.dart';
+import '../services/api/vps_auth_headers.dart';
 import '../permissions/permission_manager.dart';
 import 'employee_tracking_report_page.dart';
 import 'package:path_provider/path_provider.dart';
@@ -128,11 +128,17 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
   /// الاتصال بـ SignalR Hub للبث المباشر
   Future<void> _connectSignalR() async {
     try {
-      final apiKey = appSecrets.internalApiKey; // LEGACY: LocationHub key-only
-      final hubUrl = '${ApiConfig.vpsBaseUrl}/hubs/location?apiKey=$apiKey';
+      // JWT عبر access_token (نمط SignalR القياسي) — الخادم يحصر البث بشركة المستخدم.
+      final hubUrl = '${ApiConfig.vpsBaseUrl}/hubs/location';
 
       _hubConnection = HubConnectionBuilder()
-          .withUrl(hubUrl)
+          .withUrl(
+            hubUrl,
+            options: HttpConnectionOptions(
+              accessTokenFactory: () async =>
+                  await VpsAuthHeaders.validToken() ?? '',
+            ),
+          )
           .withAutomaticReconnect()
           .build();
 

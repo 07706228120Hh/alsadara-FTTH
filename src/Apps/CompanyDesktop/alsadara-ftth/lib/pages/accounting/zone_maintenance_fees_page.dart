@@ -6,7 +6,7 @@ import '../../frontend/frontend.dart'; // نظام تصميم الصدارة ا�
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
-import '../../config/app_secrets.dart';
+import '../../services/api/vps_auth_headers.dart';
 /// صفحة إدارة أجور صيانة الزونات
 class ZoneMaintenanceFeesPage extends StatefulWidget {
   final String? companyId;
@@ -224,7 +224,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
     try {
       final res = await http.get(
         Uri.parse('${ApiConfig.vpsBaseUrl}/api/zonestatistics'),
-        headers: {'X-Api-Key': appSecrets.internalApiKey}, // LEGACY: ZoneStatistics (JWT = SuperAdmin only)
+        headers: await VpsAuthHeaders.build(json: false),
       );
       if (res.statusCode == 200) {
         final List<dynamic> data = jsonDecode(res.body);

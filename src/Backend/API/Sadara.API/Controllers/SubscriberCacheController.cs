@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 using Sadara.Infrastructure.Data;
@@ -32,21 +33,29 @@ public class SubscriberCacheController : ControllerBase
         _context = context;
     }
 
-    private bool ValidateApiKey()
+    // ══════════════════════════════════════
+    // المصادقة (المرحلة 0 / A2): JWT موظف الشركة، أو المفتاح القديم
+    // ══════════════════════════════════════
+
+    /// <summary>
+    /// مسار JWT: tenantId في المسار يجب أن يطابق شركة التوكن (SuperAdmin يتجاوز) — بيانات المشتركين
+    /// (هواتف/مواقع) لا تُقرأ ولا تُكتب لشركة أخرى. مسار المفتاح القديم دون تغيير.
+    /// </summary>
+    private async Task<IActionResult?> AuthorizeTenantAsync(Guid tenantId)
     {
-        var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        var configKey = _configuration["Security:InternalApiKey"]
-            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? ""; // fail-closed: لا fallback مضمّن — يُقرأ من الإعدادات فقط
-        return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
+        var (caller, error) = await LegacyKeyOrJwtGate.AuthorizeAsync(HttpContext, _configuration, _unitOfWork);
+        if (error != null) return error;
+        if (caller.IsJwt && !caller.CanAccessCompany(tenantId))
+            return LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgOtherCompany);
+        return null;
     }
 
     /// <summary>تنزيل كامل لبيانات المشتركين</summary>
     [HttpGet("{tenantId}/download")]
     public async Task<IActionResult> Download(Guid tenantId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var authError = await AuthorizeTenantAsync(tenantId);
+        if (authError != null) return authError;
 
         var subscribers = await _unitOfWork.FtthSubscriberCaches.AsQueryable()
             .Where(x => x.CompanyId == tenantId)
@@ -95,8 +104,8 @@ public class SubscriberCacheController : ControllerBase
     [HttpGet("{tenantId}/updated-since")]
     public async Task<IActionResult> UpdatedSince(Guid tenantId, [FromQuery] DateTime since)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var authError = await AuthorizeTenantAsync(tenantId);
+        if (authError != null) return authError;
 
         // تحويل إلى UTC إذا لم يكن كذلك
         var sinceUtc = since.Kind == DateTimeKind.Utc ? since : since.ToUniversalTime();
@@ -148,8 +157,8 @@ public class SubscriberCacheController : ControllerBase
     [HttpGet("{tenantId}")]
     public async Task<IActionResult> GetInfo(Guid tenantId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var authError = await AuthorizeTenantAsync(tenantId);
+        if (authError != null) return authError;
 
         var query = _unitOfWork.FtthSubscriberCaches.AsQueryable()
             .Where(x => x.CompanyId == tenantId);
@@ -171,8 +180,8 @@ public class SubscriberCacheController : ControllerBase
     [HttpPost("{tenantId}/upload")]
     public async Task<IActionResult> Upload(Guid tenantId, [FromBody] MasterUploadRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var authError = await AuthorizeTenantAsync(tenantId);
+        if (authError != null) return authError;
 
         // التحقق أن وضع الجهاز الرئيسي مفعّل
         var settings = await _context.CompanyFtthSettings

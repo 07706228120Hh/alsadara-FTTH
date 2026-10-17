@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.API.Hubs;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
@@ -38,13 +40,129 @@ public class EmployeeLocationController : ControllerBase
         _fcm = fcm;
     }
 
-    private bool ValidateApiKey()
+    // ══════════════════════════════════════
+    // المصادقة (المرحلة 0 / A2): JWT موظف الشركة، أو المفتاح القديم (خادم↔خادم/نسخ قديمة)
+    // ══════════════════════════════════════
+    //
+    // EmployeeLocation.UserId هو «اسم العرض» (FullName أو Username) لا معرّف المستخدم، وأغلب الصفوف
+    // القديمة بلا CompanyId. لذلك نطاق الشركة على مسار JWT =
+    //   CompanyId == شركة التوكن  أو  (CompanyId فارغ و UserId ∈ أسماء موظفي الشركة).
+    // مسار المفتاح القديم بلا تقييد (السلوك السابق) حتى تدوير المفتاح.
+
+    private const string TrackingPermission = "tracking";
+
+    private Task<(InternalCaller Caller, IActionResult? Error)> AuthorizeAsync() =>
+        LegacyKeyOrJwtGate.AuthorizeAsync(HttpContext, _configuration, _unitOfWork);
+
+    /// <summary>عرض مواقع/سجلات الآخرين: مدير/مشرف أو منح صريح لـ tracking (fail-closed) — نفس بوابة الواجهة.</summary>
+    private static bool CanViewTracking(InternalCaller caller) =>
+        caller.IsManagerOrHasPermission(TrackingPermission, "view", failClosed: true);
+
+    /// <summary>نطاق قراءة/كتابة سجلات المواقع لطالب معيّن.</summary>
+    private sealed class LocationScope
     {
-        var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        var configKey = _configuration["Security:InternalApiKey"]
-            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? "";
-        return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
+        public bool Unrestricted { get; init; }
+        public Guid? CompanyId { get; init; }
+        public List<string> Labels { get; init; } = new();
+
+        public IQueryable<EmployeeLocation> Apply(IQueryable<EmployeeLocation> q)
+        {
+            if (Unrestricted) return q;
+            var cid = CompanyId;
+            var labels = Labels;
+            return q.Where(e => e.CompanyId == cid || (e.CompanyId == null && labels.Contains(e.UserId)));
+        }
+
+        public IQueryable<EmployeeLocationLog> Apply(IQueryable<EmployeeLocationLog> q)
+        {
+            if (Unrestricted) return q;
+            var cid = CompanyId;
+            var labels = Labels;
+            return q.Where(l => l.CompanyId == cid || (l.CompanyId == null && labels.Contains(l.UserId)));
+        }
+    }
+
+    /// <summary>بوابة نقاط القراءة (الخريطة/التقارير): المفتاح القديم بلا تقييد، أو JWT بصلاحية التتبّع ونطاق شركته.</summary>
+    private async Task<(InternalCaller Caller, LocationScope Scope, IActionResult? Error)> AuthorizeTrackingViewAsync()
+    {
+        var (caller, error) = await AuthorizeAsync();
+        if (error != null) return (caller, new LocationScope(), error);
+        if (caller.IsJwt && !CanViewTracking(caller))
+            return (caller, new LocationScope(), LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgNoPermission));
+        return (caller, await BuildScopeAsync(caller), null);
+    }
+
+    private async Task<LocationScope> BuildScopeAsync(InternalCaller caller)
+    {
+        if (!caller.IsTenantBound) return new LocationScope { Unrestricted = true };
+        var cid = caller.CompanyId!.Value;
+        return new LocationScope { CompanyId = cid, Labels = await CompanyLabelsAsync(cid) };
+    }
+
+    /// <summary>أسماء العرض (FullName/Username) لموظفي الشركة — لربط الصفوف القديمة غير المختومة بشركتها.</summary>
+    private async Task<List<string>> CompanyLabelsAsync(Guid companyId)
+    {
+        var users = await _unitOfWork.Users.AsQueryable()
+            .Where(u => u.CompanyId == companyId && !u.IsDeleted)
+            .Select(u => new { u.FullName, u.Username })
+            .ToListAsync();
+        return users
+            .SelectMany(u => new[] { u.FullName, u.Username })
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s!)
+            .Distinct()
+            .ToList();
+    }
+
+    /// <summary>
+    /// اسم العرض الخاص بالطالب على مسار JWT: يُقبل الاسم المرسَل فقط إن طابق FullName أو Username
+    /// للمستخدم نفسه، وإلا يُستخدم الاسم القانوني (FullName ثم Username) — لا يمكن الكتابة باسم موظف آخر.
+    /// </summary>
+    private async Task<(string? Label, HashSet<string> Own)> ResolveOwnLabelAsync(InternalCaller caller, string? requested)
+    {
+        var me = await _unitOfWork.Users.AsQueryable()
+            .Where(u => u.Id == caller.UserId)
+            .Select(u => new { u.FullName, u.Username })
+            .FirstOrDefaultAsync();
+        var own = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (me == null) return (null, own);
+        if (!string.IsNullOrWhiteSpace(me.FullName)) own.Add(me.FullName);
+        if (!string.IsNullOrWhiteSpace(me.Username)) own.Add(me.Username!);
+
+        var req = requested?.Trim();
+        if (!string.IsNullOrEmpty(req))
+        {
+            if (!string.IsNullOrWhiteSpace(me.FullName) && string.Equals(me.FullName, req, StringComparison.OrdinalIgnoreCase))
+                return (me.FullName, own);
+            if (!string.IsNullOrWhiteSpace(me.Username) && string.Equals(me.Username, req, StringComparison.OrdinalIgnoreCase))
+                return (me.Username, own);
+        }
+        var canonical = !string.IsNullOrWhiteSpace(me.FullName) ? me.FullName : me.Username;
+        return (string.IsNullOrWhiteSpace(canonical) ? null : canonical, own);
+    }
+
+    // ذاكرة مؤقتة صغيرة: اسم العرض → شركة (لبثّ/تنبيه صفوف المسار القديم غير المختومة).
+    private static readonly ConcurrentDictionary<string, (Guid? CompanyId, DateTime At)> LabelCompanyCache = new();
+    private static readonly TimeSpan LabelCacheTtl = TimeSpan.FromMinutes(10);
+
+    /// <summary>شركة اسم العرض إن طابق موظفي شركة واحدة بالضبط؛ وإلا null.</summary>
+    private async Task<Guid?> ResolveLabelCompanyAsync(string label)
+    {
+        if (string.IsNullOrWhiteSpace(label)) return null;
+        if (LabelCompanyCache.TryGetValue(label, out var hit) && DateTime.UtcNow - hit.At < LabelCacheTtl)
+            return hit.CompanyId;
+
+        var companies = await _unitOfWork.Users.AsQueryable()
+            .Where(u => !u.IsDeleted && u.CompanyId != null && (u.FullName == label || u.Username == label))
+            .Select(u => u.CompanyId)
+            .Distinct()
+            .Take(2)
+            .ToListAsync();
+        Guid? resolved = companies.Count == 1 ? companies[0] : null;
+
+        if (LabelCompanyCache.Count > 5000) LabelCompanyCache.Clear();
+        LabelCompanyCache[label] = (resolved, DateTime.UtcNow);
+        return resolved;
     }
 
     // ══════════════════════════════════════
@@ -56,18 +174,36 @@ public class EmployeeLocationController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateLocation([FromBody] LocationUpdateRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeAsync();
+        if (authError != null) return authError;
 
         try
         {
+            if (caller.IsJwt)
+            {
+                // JWT: الموظف يحدّث موقعه هو فقط — الاسم من التوكن/قاعدة البيانات لا من الجسم.
+                var (label, _) = await ResolveOwnLabelAsync(caller, request.UserId);
+                if (label == null)
+                    return LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgRejected);
+                request.UserId = label;
+            }
+
             if (string.IsNullOrWhiteSpace(request.UserId))
                 return BadRequest(new { success = false, message = "userId مطلوب" });
 
             var now = DateTime.UtcNow;
+            var stampCompany = caller.IsTenantBound ? caller.CompanyId : null;
 
             var existing = await _unitOfWork.EmployeeLocations
                 .FirstOrDefaultAsync(e => e.UserId == request.UserId);
+
+            // الفهرس الفريد على UserId عام (لا لكل شركة): صف باسم مطابق لشركة أخرى ⇒ تعارض لا كتابة فوقه.
+            if (existing != null && stampCompany.HasValue && existing.CompanyId.HasValue
+                && existing.CompanyId.Value != stampCompany.Value)
+            {
+                _logger.LogWarning("Employee location label conflict across companies (company {CompanyId})", stampCompany);
+                return Conflict(new { success = false, message = "يوجد موظف بنفس الاسم في شركة أخرى — يرجى تمييز اسم الموظف" });
+            }
 
             if (existing != null)
             {
@@ -79,6 +215,7 @@ public class EmployeeLocationController : ControllerBase
                 if (request.Department != null) existing.Department = request.Department;
                 if (request.Center != null) existing.Center = request.Center;
                 if (request.Phone != null) existing.Phone = request.Phone;
+                if (stampCompany.HasValue && existing.CompanyId == null) existing.CompanyId = stampCompany;
                 _unitOfWork.EmployeeLocations.Update(existing);
             }
             else
@@ -93,6 +230,7 @@ public class EmployeeLocationController : ControllerBase
                     Longitude = request.Longitude,
                     IsActive = true,
                     LastUpdate = now,
+                    CompanyId = stampCompany,
                 };
                 await _unitOfWork.EmployeeLocations.AddAsync(location);
             }
@@ -163,6 +301,7 @@ public class EmployeeLocationController : ControllerBase
                 await _unitOfWork.EmployeeLocationLogs.AddAsync(new EmployeeLocationLog
                 {
                     UserId = request.UserId!,
+                    CompanyId = stampCompany,
                     Latitude = request.Latitude,
                     Longitude = request.Longitude,
                     RecordedAt = now,
@@ -179,7 +318,10 @@ public class EmployeeLocationController : ControllerBase
 
             await _unitOfWork.SaveChangesAsync();
 
-            // 🔴 بث مباشر — إبلاغ جميع المشاهدين فوراً عبر SignalR
+            // شركة الموظف للبث/التنبيه: من التوكن، أو الصف المختوم، أو مطابقة الاسم (المسار القديم).
+            var ownerCompany = stampCompany ?? existing?.CompanyId ?? await ResolveLabelCompanyAsync(request.UserId!);
+
+            // 🔴 بث مباشر — للمشاهدين العامّين ومشاهدي شركة الموظف فقط عبر SignalR
             _ = LocationHub.BroadcastLocationUpdate(_hubContext, new
             {
                 userId = request.UserId,
@@ -190,12 +332,12 @@ public class EmployeeLocationController : ControllerBase
                 department = existing?.Department ?? request.Department,
                 timestamp = now.ToString("o"),
                 isFake,
-            });
+            }, ownerCompany);
 
-            // 🔔 تنبيه FCM للمدراء عند كشف فيك لوكيشن
+            // 🔔 تنبيه FCM لمدراء شركة الموظف عند كشف فيك لوكيشن
             if (isFake)
             {
-                _ = SendAlertToManagersAsync(
+                _ = SendAlertToManagersAsync(ownerCompany,
                     "🚫 موقع وهمي",
                     $"الموظف {request.UserId} يستخدم موقع وهمي ({allReasons})",
                     new Dictionary<string, string>
@@ -229,13 +371,28 @@ public class EmployeeLocationController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> StopSharing(string userId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeAsync();
+        if (authError != null) return authError;
 
         try
         {
-            var existing = await _unitOfWork.EmployeeLocations
-                .FirstOrDefaultAsync(e => e.UserId == userId);
+            IQueryable<EmployeeLocation> query = _unitOfWork.EmployeeLocations.AsQueryable();
+            if (caller.IsJwt)
+            {
+                // الموظف يوقف مشاركته هو؛ إيقاف موظف آخر للمدير فقط وداخل شركته.
+                var (ownLabel, own) = await ResolveOwnLabelAsync(caller, userId);
+                if (own.Contains(userId.Trim()) && ownLabel != null)
+                {
+                    userId = ownLabel;
+                }
+                else if (!caller.IsCompanyManager())
+                {
+                    return LegacyKeyOrJwtGate.Forbidden(LegacyKeyOrJwtGate.MsgNoPermission);
+                }
+                query = (await BuildScopeAsync(caller)).Apply(query);
+            }
+
+            var existing = await query.FirstOrDefaultAsync(e => e.UserId == userId);
 
             if (existing != null)
             {
@@ -244,12 +401,21 @@ public class EmployeeLocationController : ControllerBase
                 _unitOfWork.EmployeeLocations.Update(existing);
                 await _unitOfWork.SaveChangesAsync();
             }
+            else if (caller.IsJwt)
+            {
+                // لا شيء في نطاق الطالب — لا بث ولا تنبيه (لا نكشف وجود اسم في شركة أخرى).
+                return Ok(new { success = true });
+            }
+
+            var ownerCompany = (caller.IsTenantBound ? caller.CompanyId : null)
+                               ?? existing?.CompanyId
+                               ?? await ResolveLabelCompanyAsync(userId);
 
             // بث مباشر — إبلاغ المشاهدين أن الموظف أوقف المشاركة
-            _ = LocationHub.BroadcastUserStopped(_hubContext, userId);
+            _ = LocationHub.BroadcastUserStopped(_hubContext, userId, ownerCompany);
 
-            // 🔔 تنبيه FCM للمدراء
-            _ = SendAlertToManagersAsync(
+            // 🔔 تنبيه FCM لمدراء الشركة
+            _ = SendAlertToManagersAsync(ownerCompany,
                 "📍 إيقاف مشاركة",
                 $"الموظف {userId} أوقف مشاركة موقعه",
                 new Dictionary<string, string>
@@ -276,13 +442,13 @@ public class EmployeeLocationController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetActiveLocations()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, scope, authError) = await AuthorizeTrackingViewAsync();
+        if (authError != null) return authError;
 
         try
         {
             var staleThreshold = DateTime.UtcNow.AddMinutes(-2);
-            var locations = await _unitOfWork.EmployeeLocations.AsQueryable()
+            var locations = await scope.Apply(_unitOfWork.EmployeeLocations.AsQueryable())
                 .Where(e => e.IsActive && e.LastUpdate > staleThreshold)
                 .Select(e => new
                 {
@@ -315,13 +481,13 @@ public class EmployeeLocationController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetTrackedUsers([FromQuery] int hours = 24)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, scope, authError) = await AuthorizeTrackingViewAsync();
+        if (authError != null) return authError;
 
         try
         {
             var since = DateTime.UtcNow.AddHours(-hours);
-            var users = await _unitOfWork.EmployeeLocationLogs.AsQueryable()
+            var users = await scope.Apply(_unitOfWork.EmployeeLocationLogs.AsQueryable())
                 .Where(l => l.RecordedAt >= since)
                 .GroupBy(l => l.UserId)
                 .Select(g => new
@@ -336,7 +502,7 @@ public class EmployeeLocationController : ControllerBase
                 .ToListAsync();
 
             // جلب معلومات إضافية (القسم، المركز) من جدول EmployeeLocations
-            var locationInfo = await _unitOfWork.EmployeeLocations.AsQueryable()
+            var locationInfo = await scope.Apply(_unitOfWork.EmployeeLocations.AsQueryable())
                 .Where(e => users.Select(u => u.userId).Contains(e.UserId))
                 .ToDictionaryAsync(e => e.UserId, e => new { e.Department, e.Center, e.IsActive });
 
@@ -371,15 +537,15 @@ public class EmployeeLocationController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetAlerts([FromQuery] int staleMinutes = 5)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, scope, authError) = await AuthorizeTrackingViewAsync();
+        if (authError != null) return authError;
 
         try
         {
             var cutoff = DateTime.UtcNow.AddMinutes(-staleMinutes);
 
             // موظفين نشطين لكن لم يحدّثوا منذ فترة
-            var stale = await _unitOfWork.EmployeeLocations.AsQueryable()
+            var stale = await scope.Apply(_unitOfWork.EmployeeLocations.AsQueryable())
                 .Where(e => e.IsActive && e.LastUpdate < cutoff)
                 .Select(e => new
                 {
@@ -393,7 +559,7 @@ public class EmployeeLocationController : ControllerBase
 
             // موظفين أوقفوا المشاركة اليوم
             var todayStart = DateTime.UtcNow.AddHours(3).Date;
-            var stopped = await _unitOfWork.EmployeeLocations.AsQueryable()
+            var stopped = await scope.Apply(_unitOfWork.EmployeeLocations.AsQueryable())
                 .Where(e => !e.IsActive && e.UpdatedAt != null && e.UpdatedAt > todayStart)
                 .Select(e => new
                 {
@@ -424,14 +590,14 @@ public class EmployeeLocationController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetHistory(string userId, [FromQuery] int hours = 24, [FromQuery] bool snap = true)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, scope, authError) = await AuthorizeTrackingViewAsync();
+        if (authError != null) return authError;
 
         try
         {
             var since = DateTime.UtcNow.AddHours(-hours);
 
-            var logs = await _unitOfWork.EmployeeLocationLogs.AsQueryable()
+            var logs = await scope.Apply(_unitOfWork.EmployeeLocationLogs.AsQueryable())
                 .Where(l => l.UserId == userId && l.RecordedAt >= since)
                 .OrderBy(l => l.RecordedAt)
                 .Select(l => new
@@ -630,8 +796,8 @@ public class EmployeeLocationController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetDailyReport([FromQuery] string? date = null)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, scope, authError) = await AuthorizeTrackingViewAsync();
+        if (authError != null) return authError;
 
         try
         {
@@ -639,8 +805,8 @@ public class EmployeeLocationController : ControllerBase
             var dayStart = targetDate;
             var dayEnd = targetDate.AddDays(1);
 
-            // جلب كل logs اليوم
-            var allLogs = await _unitOfWork.EmployeeLocationLogs.AsQueryable()
+            // جلب كل logs اليوم (ضمن نطاق الطالب)
+            var allLogs = await scope.Apply(_unitOfWork.EmployeeLocationLogs.AsQueryable())
                 .Where(l => l.RecordedAt >= dayStart && l.RecordedAt < dayEnd)
                 .OrderBy(l => l.RecordedAt)
                 .ToListAsync();
@@ -673,7 +839,7 @@ public class EmployeeLocationController : ControllerBase
                 var fakeCount = logs.Count(l => l.IsFakeDetected);
 
                 // جلب معلومات القسم
-                var empInfo = await _unitOfWork.EmployeeLocations
+                var empInfo = await scope.Apply(_unitOfWork.EmployeeLocations.AsQueryable())
                     .FirstOrDefaultAsync(e => e.UserId == group.Key);
 
                 report.Add(new
@@ -718,27 +884,39 @@ public class EmployeeLocationController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> PurgeOldData([FromQuery] int olderThanDays = 30, [FromQuery] bool all = false)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeAsync();
+        if (authError != null) return authError;
 
-        var callerRole = Request.Headers["X-Caller-Role"].FirstOrDefault();
-        if (callerRole != "manager" && callerRole != "admin" && callerRole != "super_admin")
+        if (caller.IsApiKey)
+        {
+            // LEGACY (المفتاح فقط): بوابة ترويسة الدور كما كانت.
+            var callerRole = Request.Headers["X-Caller-Role"].FirstOrDefault();
+            if (callerRole != "manager" && callerRole != "admin" && callerRole != "super_admin")
+                return StatusCode(403, new { success = false, message = "صلاحية المدير مطلوبة" });
+        }
+        else if (!caller.IsManagerOrHasPermission(TrackingPermission, "delete", failClosed: true))
+        {
+            // JWT: الدور/الصلاحية من قاعدة البيانات لا من ترويسة يرسلها العميل
+            // (مدير/مشرف، أو منح صريح لحذف tracking — نفس شرط الواجهة).
             return StatusCode(403, new { success = false, message = "صلاحية المدير مطلوبة" });
+        }
 
         try
         {
+            // JWT لمدير شركة ⇒ الحذف داخل شركته فقط؛ المفتاح/SuperAdmin ⇒ كما كان.
+            var scope = await BuildScopeAsync(caller);
             int logsCount = 0;
             int locationsCount = 0;
 
             if (all)
             {
-                // مسح كل البيانات
-                var allLogs = await _unitOfWork.EmployeeLocationLogs.AsQueryable().ToListAsync();
+                // مسح كل البيانات (ضمن النطاق)
+                var allLogs = await scope.Apply(_unitOfWork.EmployeeLocationLogs.AsQueryable()).ToListAsync();
                 logsCount = allLogs.Count;
                 foreach (var log in allLogs)
                     _unitOfWork.EmployeeLocationLogs.Delete(log);
 
-                var allLocations = await _unitOfWork.EmployeeLocations.AsQueryable().ToListAsync();
+                var allLocations = await scope.Apply(_unitOfWork.EmployeeLocations.AsQueryable()).ToListAsync();
                 locationsCount = allLocations.Count;
                 foreach (var loc in allLocations)
                     _unitOfWork.EmployeeLocations.Delete(loc);
@@ -746,7 +924,7 @@ public class EmployeeLocationController : ControllerBase
             else
             {
                 var cutoff = DateTime.UtcNow.AddDays(-olderThanDays);
-                var oldLogs = await _unitOfWork.EmployeeLocationLogs.AsQueryable()
+                var oldLogs = await scope.Apply(_unitOfWork.EmployeeLocationLogs.AsQueryable())
                     .Where(l => l.RecordedAt < cutoff)
                     .ToListAsync();
                 logsCount = oldLogs.Count;
@@ -773,17 +951,23 @@ public class EmployeeLocationController : ControllerBase
     }
 
     // ══════════════════════════════════════
-    // إرسال تنبيه FCM لجميع المدراء
+    // إرسال تنبيه FCM لمدراء شركة الموظف
     // ══════════════════════════════════════
 
-    private async Task SendAlertToManagersAsync(string title, string body, Dictionary<string, string>? data = null)
+    /// <summary>
+    /// المستلمون: SuperAdmin + مدراء/مشرفو/ليدرية شركة الموظف فقط (كان سابقاً كل مدراء كل الشركات).
+    /// إن تعذّر تحديد الشركة ⇒ SuperAdmin + مدراء الشركة الافتراضية (Tenancy:DefaultCompanyId) إن ضُبطت.
+    /// </summary>
+    private async Task SendAlertToManagersAsync(Guid? companyId, string title, string body, Dictionary<string, string>? data = null)
     {
         try
         {
-            // جلب كل المدراء ومدراء الشركات والسوبر أدمن
-            var managerRoles = new[] { UserRole.Manager, UserRole.CompanyAdmin, UserRole.SuperAdmin, UserRole.TechnicalLeader };
+            var targetCompany = companyId ?? LegacyKeyOrJwtGate.DefaultCompanyId(_configuration);
+            var companyRoles = new[] { UserRole.Manager, UserRole.CompanyAdmin, UserRole.TechnicalLeader };
             var managerIds = await _unitOfWork.Users.AsQueryable()
-                .Where(u => u.IsActive && managerRoles.Contains(u.Role))
+                .Where(u => u.IsActive && !u.IsDeleted
+                            && (u.Role == UserRole.SuperAdmin
+                                || (targetCompany != null && u.CompanyId == targetCompany && companyRoles.Contains(u.Role))))
                 .Select(u => u.Id)
                 .ToListAsync();
 
@@ -807,24 +991,27 @@ public class EmployeeLocationController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CheckLongStops([FromQuery] int minutes = 30)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, scope, authError) = await AuthorizeTrackingViewAsync();
+        if (authError != null) return authError;
 
         try
         {
             var cutoff = DateTime.UtcNow.AddMinutes(-minutes);
 
-            // موظفين نشطين لكن آخر تحديث قديم
-            var longStopped = await _unitOfWork.EmployeeLocations.AsQueryable()
+            // موظفين نشطين لكن آخر تحديث قديم (ضمن نطاق الطالب)
+            var longStopped = await scope.Apply(_unitOfWork.EmployeeLocations.AsQueryable())
                 .Where(e => e.IsActive && e.LastUpdate < cutoff)
-                .Select(e => new { e.UserId, e.Department, e.LastUpdate })
+                .Select(e => new { e.UserId, e.Department, e.LastUpdate, e.CompanyId })
                 .ToListAsync();
 
-            // إرسال تنبيه لكل واحد
+            // إرسال تنبيه لكل واحد — لمدراء شركته فقط، بالتتابع (سياق قاعدة البيانات لا يقبل التوازي)
             foreach (var emp in longStopped)
             {
                 var mins = (int)(DateTime.UtcNow - emp.LastUpdate).TotalMinutes;
-                _ = SendAlertToManagersAsync(
+                var ownerCompany = (caller.IsTenantBound ? caller.CompanyId : null)
+                                   ?? emp.CompanyId
+                                   ?? await ResolveLabelCompanyAsync(emp.UserId);
+                await SendAlertToManagersAsync(ownerCompany,
                     "⏱️ توقف طويل",
                     $"الموظف {emp.UserId} ({emp.Department}) متوقف منذ {mins} دقيقة",
                     new Dictionary<string, string>

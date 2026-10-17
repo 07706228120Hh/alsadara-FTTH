@@ -103,6 +103,12 @@ class VpsAuthService {
   static const _keyUserData = 'vps_user_data';
   static const _keyCompanyData = 'vps_company_data';
 
+  /// مفاتيح التخزين العامة — تقرؤها خدمة الموقع الخلفية (isolate منفصل) لمشاركة نفس الجلسة.
+  static const storageKeyAccessToken = _keyAccessToken;
+  static const storageKeyRefreshToken = _keyRefreshToken;
+  static const storageKeyTokenExpiresAt = _keyTokenExpiresAt;
+  static const storageKeyUserType = _keyUserType;
+
   /// تسجيل دخول Super Admin
   Future<VpsAuthResult> loginSuperAdmin(
       String username, String password) async {
