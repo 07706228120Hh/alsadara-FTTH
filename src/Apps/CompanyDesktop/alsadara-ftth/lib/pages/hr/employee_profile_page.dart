@@ -606,7 +606,6 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                                 widget.companyId, empId),
                             {'NewPassword': passwordController.text},
                             (json) => json,
-                            useInternalKey: true,
                           );
                           if (response.isSuccess && mounted) {
                             Navigator.pop(ctx);
@@ -709,7 +708,6 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         final response = await ApiClient.instance.delete(
           ApiConfig.internalEmployeeById(widget.companyId, widget.employeeId),
           (json) => json,
-          useInternalKey: true,
         );
         if (response.isSuccess && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

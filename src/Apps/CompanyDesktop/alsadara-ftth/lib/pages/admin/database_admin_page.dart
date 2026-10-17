@@ -12,6 +12,7 @@ import 'package:open_filex/open_filex.dart';
 import '../../utils/responsive_helper.dart';
 import '../super_admin/widgets/super_admin_widgets.dart';
 import '../../services/api/api_config.dart';
+import '../../services/api/vps_auth_headers.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
 import '../../frontend/components/sd_dash_kit.dart';
@@ -24,7 +25,11 @@ class DatabaseAdminPage extends StatefulWidget {
 
 class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   static String get baseUrl => '${ApiConfig.vpsBaseUrl}/api';
-  static const String apiKey = 'sadara-internal-2024-secure-key';
+  /// ترويسة JWT لمدير النظام (بديل المفتاح الداخلي المضمّن سابقاً).
+  static Future<void> _setAuth(HttpClientRequest request) async {
+    final token = await VpsAuthHeaders.validToken();
+    if (token != null) request.headers.set('Authorization', 'Bearer $token');
+  }
 
   // State
   List<Map<String, dynamic>> _tables = [];
@@ -71,7 +76,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       final client = HttpClient()
         ..badCertificateCallback = (_, __, ___) => true;
       final request = await client.getUrl(Uri.parse('$baseUrl$path'));
-      request.headers.set('X-Api-Key', apiKey);
+      await _setAuth(request);
       request.headers.set('Accept', 'application/json');
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
@@ -85,7 +90,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       final client = HttpClient()
         ..badCertificateCallback = (_, __, ___) => true;
       final request = await client.deleteUrl(Uri.parse('$baseUrl$path'));
-      request.headers.set('X-Api-Key', apiKey);
+      await _setAuth(request);
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
       return json.decode(body);
@@ -98,7 +103,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       final client = HttpClient()
         ..badCertificateCallback = (_, __, ___) => true;
       final request = await client.postUrl(Uri.parse('$baseUrl$path'));
-      request.headers.set('X-Api-Key', apiKey);
+      await _setAuth(request);
       request.headers.set('Content-Type', 'application/json');
       request.contentLength = 0;
       final response = await request.close();
@@ -114,7 +119,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       final client = HttpClient()
         ..badCertificateCallback = (_, __, ___) => true;
       final request = await client.putUrl(Uri.parse('$baseUrl$path'));
-      request.headers.set('X-Api-Key', apiKey);
+      await _setAuth(request);
       request.headers.set('Content-Type', 'application/json');
       request.write(json.encode(data));
       final response = await request.close();
@@ -246,7 +251,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         ..badCertificateCallback = (_, __, ___) => true;
       final request = await client.getUrl(
           Uri.parse('$baseUrl/databaseadmin/archive/$category'));
-      request.headers.set('X-Api-Key', apiKey);
+      await _setAuth(request);
       final response = await request.close();
 
       if (response.statusCode == 200) {

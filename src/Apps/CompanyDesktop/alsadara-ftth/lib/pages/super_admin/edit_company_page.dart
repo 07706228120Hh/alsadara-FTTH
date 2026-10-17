@@ -119,7 +119,6 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
           'isActive': _isActive,
         },
         (json) => json,
-        useInternalKey: true,
       );
 
       setState(() => _isLoading = false);

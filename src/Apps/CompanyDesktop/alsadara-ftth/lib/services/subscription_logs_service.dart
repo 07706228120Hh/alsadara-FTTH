@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'api_service.dart';
 import 'api/api_config.dart';
+import 'api/vps_auth_headers.dart';
 
 class SubscriptionLogsService {
   static SubscriptionLogsService? _instance;
@@ -18,8 +19,7 @@ class SubscriptionLogsService {
 
   static String get baseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
 
-  // API Key للوصول الداخلي
-  static const String apiKey = 'sadara-internal-2024-secure-key';
+  // المصادقة بتوكن JWT للمستخدم (الخادم يأخذ الشركة/المستخدم من التوكن) — لا مفتاح مضمّن.
 
   /// حفظ سجل اشتراك جديد — يرجع ID السجل عند النجاح، أو null عند الفشل
   Future<int?> saveSubscriptionLog({
@@ -145,10 +145,7 @@ class SubscriptionLogsService {
 
       final response = await http.post(
         Uri.parse('$baseUrl/subscriptionlogs'),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Api-Key': apiKey,
-        },
+        headers: await VpsAuthHeaders.build(),
         body: jsonEncode(body),
       );
 
@@ -197,10 +194,7 @@ class SubscriptionLogsService {
 
       final response = await http.put(
         Uri.parse('$baseUrl/subscriptionlogs/$logId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Api-Key': apiKey,
-        },
+        headers: await VpsAuthHeaders.build(),
         body: jsonEncode(body),
       );
 
@@ -227,10 +221,7 @@ class SubscriptionLogsService {
     try {
       final response = await http.put(
         Uri.parse('$baseUrl/subscriptionlogs/$logId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Api-Key': apiKey,
-        },
+        headers: await VpsAuthHeaders.build(),
         body: jsonEncode(fields),
       );
 
@@ -261,10 +252,12 @@ class SubscriptionLogsService {
         'customerId': customerId,
       });
 
-      final response = await http.get(
-        uri,
-        headers: {'X-Api-Key': apiKey},
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            uri,
+            headers: await VpsAuthHeaders.build(json: false),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -282,7 +275,7 @@ class SubscriptionLogsService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/subscriptionlogs/by-session/$sessionId'),
-        headers: {'X-Api-Key': apiKey},
+        headers: await VpsAuthHeaders.build(json: false),
       );
 
       if (response.statusCode == 200) {

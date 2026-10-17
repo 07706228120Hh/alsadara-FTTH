@@ -9,12 +9,17 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Sadara.API.Constants;
+using Sadara.API.Authorization;
 
 namespace Sadara.API.Controllers;
 
 /// <summary>
-/// API داخلي للوصول للبيانات من تطبيق Desktop
-/// يستخدم API Key للمصادقة
+/// API داخلي للوصول للبيانات من تطبيق Desktop.
+/// المصادقة (المرحلة 0-أ):
+///   - JWT الصدارة (المسار الجديد للتطبيق): الشركة والمستخدم من التوكن/قاعدة البيانات حصراً — يُتجاهل أي
+///     companyId/userId في الجسم أو الاستعلام، ويُتحقَّق أن الفني/الوكيل/السجل المُشار إليه من نفس الشركة.
+///   - X-Api-Key (مسار قديم مؤقت للنسخ المثبّتة والتكاملات الخادمية): سلوكه دون تغيير حتى تدوير المفتاح.
+/// نقاط الصيانة الجماعية (backfill/fix-*) تبقى بالمفتاح فقط.
 /// </summary>
 [ApiController]
 [Route("api/internal")]
@@ -45,17 +50,91 @@ public class InternalDataController : ControllerBase
         catch { return decimal.TryParse(val.GetRawText(), out var d) ? d : 0; }
     }
 
-    private bool ValidateApiKey()
+    /// <summary>مفتاح API الداخلي فقط (نقاط الصيانة الجماعية). يُقرأ من الإعدادات/البيئة حصراً، fail-closed.</summary>
+    private bool ValidateApiKey() => InternalCallerAccess.IsValidInternalApiKey(Request, _configuration);
+
+    // ═══════════════════════════════════════════════════════
+    // المصادقة المزدوجة: X-Api-Key (قديم) أو JWT (الشركة من التوكن)
+    // ═══════════════════════════════════════════════════════
+
+    private Task<InternalCaller> ResolveCallerAsync() =>
+        InternalCallerAccess.ResolveAsync(HttpContext, _configuration, _unitOfWork);
+
+    private IActionResult InvalidCredentials() =>
+        Unauthorized(new { success = false, message = "Invalid API Key" });
+
+    private IActionResult ForbiddenResult(string message) =>
+        StatusCode(403, new { success = false, message });
+
+    private const string MsgOtherCompany = "لا تملك صلاحية الوصول لبيانات شركة أخرى";
+    private const string MsgNoPermission = "لا تملك صلاحية كافية لهذه العملية";
+    private const string MsgSuperAdminOnly = "هذه العملية متاحة لمدير النظام فقط";
+
+    /// <summary>
+    /// بوابة موحّدة لنقاط /api/internal: تقبل المفتاح القديم (دون تغيير) أو JWT.
+    /// لمسار JWT: superAdminOnly ⇒ SuperAdmin فقط؛ companyId ⇒ يجب أن تطابق شركة التوكن (SuperAdmin يتجاوز)؛
+    /// permissionKey ⇒ نفس دلالات RequirePermission (هرمي، fail-open عند فراغ V2).
+    /// </summary>
+    private async Task<(InternalCaller Caller, IActionResult? Error)> AuthorizeInternalAsync(
+        bool superAdminOnly = false,
+        Guid? companyId = null,
+        string? permissionKey = null,
+        string permissionAction = "view")
     {
-        var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
-        
-        // قراءة من الإعدادات أولاً، ثم Environment Variable
-        var configKey = _configuration["Security:InternalApiKey"] 
-            ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY")
-            ?? ""; // fail-closed: أُزيل الـ fallback المضمّن — يُقرأ من الإعدادات فقط
-        
-        return !string.IsNullOrEmpty(apiKey) && apiKey == configKey;
+        var caller = await ResolveCallerAsync();
+        switch (caller.Mode)
+        {
+            case InternalAuthMode.None:
+                return (caller, InvalidCredentials());
+            case InternalAuthMode.Rejected:
+                return (caller, ForbiddenResult("غير مصرح"));
+            case InternalAuthMode.ApiKey:
+                return (caller, null); // المسار القديم دون تغيير
+        }
+
+        if (superAdminOnly && !caller.IsSuperAdmin)
+            return (caller, ForbiddenResult(MsgSuperAdminOnly));
+        if (companyId.HasValue && !caller.CanAccessCompany(companyId))
+            return (caller, ForbiddenResult(MsgOtherCompany));
+        if (permissionKey != null && !caller.HasPermission(permissionKey, permissionAction))
+            return (caller, ForbiddenResult(MsgNoPermission));
+        return (caller, null);
     }
+
+    /// <summary>
+    /// لمسار JWT: الشركة الفعّالة لاستعلامات القراءة — شركة التوكن دائماً للمستخدم العادي (يُتجاهل الاستعلام)،
+    /// وقيمة الاستعلام لـ SuperAdmin/المفتاح (السلوك القديم).
+    /// </summary>
+    private static Guid? EffectiveCompanyFilter(InternalCaller caller, string? requestedCompanyId)
+    {
+        if (caller.IsTenantBound) return caller.CompanyId;
+        return !string.IsNullOrEmpty(requestedCompanyId) && Guid.TryParse(requestedCompanyId, out var cId) ? cId : null;
+    }
+
+    /// <summary>
+    /// حقول سجل الاشتراك ذات الأثر المالي/المحاسبي (تُعدّل القيد أو ذمة فني/وكيل) — تعديلها عبر JWT
+    /// يتطلب صلاحية المحاسبة. الحقول التشغيلية (طباعة/واتساب/ملاحظات/حالة/تواريخ) لا تتطلبها.
+    /// </summary>
+    private static readonly string[] FinancialLogFields =
+    {
+        "PlanPrice", "CollectionType", "PaymentMethod", "ManualDiscount", "MaintenanceFee",
+        "LinkedTechnicianId", "LinkedAgentId", "TechnicianName", "ActivatedBy",
+    };
+
+    /// <summary>
+    /// صلاحية المحاسبة لعمليات JWT المالية — مطابقة لبوابة شاشة لوحة المشغلين في التطبيق
+    /// (accounting.ftth_operators أو accounting، عرض) وبنفس دلالات RequirePermission.
+    /// </summary>
+    private static bool HasAccountingAccess(InternalCaller caller) =>
+        caller.HasPermission("accounting", "view") || caller.HasPermission("accounting.ftth_operators", "view");
+
+    /// <summary>هل الفني (مستخدم) ينتمي للشركة المحدّدة؟</summary>
+    private Task<bool> TechnicianBelongsToCompanyAsync(Guid technicianId, Guid? companyId) =>
+        _unitOfWork.Users.AsQueryable().AnyAsync(u => u.Id == technicianId && !u.IsDeleted && u.CompanyId == companyId);
+
+    /// <summary>هل الوكيل ينتمي للشركة المحدّدة؟</summary>
+    private Task<bool> AgentBelongsToCompanyAsync(Guid agentId, Guid? companyId) =>
+        _unitOfWork.Agents.AsQueryable().AnyAsync(a => a.Id == agentId && !a.IsDeleted && (Guid?)a.CompanyId == companyId);
 
     // ═══════════════════════════════════════════════════════
     // Backfill: قيود محاسبية لأجور المهام التاريخية (بلا قيد) — المرحلة 2ب
@@ -259,8 +338,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetCompanies()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var now = DateTime.UtcNow;
         
@@ -325,8 +404,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CreateCompany([FromBody] InternalCreateCompanyRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Code))
             return BadRequest(new { success = false, message = "اسم الشركة والكود مطلوبان" });
@@ -408,8 +487,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateCompany(Guid id, [FromBody] InternalUpdateCompanyRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -471,8 +550,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> SuspendCompany(Guid id, [FromBody] SuspendCompanyRequest? request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -495,8 +574,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> ActivateCompany(Guid id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -519,8 +598,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateCompanyPermissions(Guid id, [FromBody] InternalUpdatePermissionsRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -562,8 +641,9 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetCompanyPermissionsV2(Guid id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        // JWT: قراءة ميزات الشركة لموظفيها فقط (SuperAdmin لأي شركة)
+        var (_, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -591,8 +671,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateCompanyPermissionsV2(Guid id, [FromBody] InternalUpdatePermissionsV2Request request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -700,8 +780,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> RenewCompanySubscription(Guid id, [FromBody] InternalRenewSubscriptionRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -738,8 +818,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteCompany(Guid id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -763,8 +843,9 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetCompanyEmployees(Guid id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        // JWT: موظفو الشركة نفسها فقط (يُستخدم لقوائم الفنيين/الموظفين داخل الشركة)
+        var (_, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -802,8 +883,11 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetCompanyEmployeeById(Guid id, Guid employeeId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        // JWT: نفس الشركة + (الموظف نفسه أو من يملك إدارة الموظفين) — الاستجابة تحوي حقولاً حسّاسة
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
+        if (caller.IsTenantBound && caller.UserId != employeeId && !caller.CanManageEmployees("view"))
+            return ForbiddenResult(MsgNoPermission);
 
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
@@ -861,14 +945,21 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateCompanyEmployee(Guid id, Guid employeeId, [FromBody] InternalUpdateEmployeeRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
+        if (!caller.CanManageEmployees("edit"))
+            return ForbiddenResult(MsgNoPermission);
 
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
 
         if (employee == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        // JWT: لا تعديل لمستخدم بدور أعلى من دور المستدعي، ولا منح دور أعلى منه
+        if (!caller.CanActOnRole(employee.Role)
+            || (!string.IsNullOrEmpty(request.Role) && !caller.CanActOnRole(ParseUserRole(request.Role))))
+            return ForbiddenResult(MsgNoPermission);
 
         // تحديث البيانات
         if (!string.IsNullOrEmpty(request.FullName))
@@ -982,14 +1073,18 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateEmployeePassword(Guid id, Guid employeeId, [FromBody] InternalUpdatePasswordRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
+        if (!caller.CanManageEmployees("edit"))
+            return ForbiddenResult(MsgNoPermission);
 
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
 
         if (employee == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
+        if (!caller.CanActOnRole(employee.Role))
+            return ForbiddenResult(MsgNoPermission);
 
         if (string.IsNullOrEmpty(request.NewPassword) || request.NewPassword.Length < 6)
             return BadRequest(new { success = false, message = "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
@@ -1011,8 +1106,10 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateEmployeePermissions(Guid id, Guid employeeId, [FromBody] InternalUpdateEmployeePermissionsRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
+        if (!caller.CanManageEmployees("edit"))
+            return ForbiddenResult(MsgNoPermission);
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -1023,6 +1120,8 @@ public class InternalDataController : ControllerBase
 
         if (employee == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
+        if (!CanEditPermissionsOf(caller, employee))
+            return ForbiddenResult(MsgNoPermission);
 
         // ═══ فلترة الصلاحيات: لا يمكن منح صلاحية غير ممنوحة للشركة ═══
         var companyFirstFeatures = DeserializeBoolDict(company.EnabledFirstSystemFeatures);
@@ -1070,8 +1169,11 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetEmployeePermissionsV2(Guid id, Guid employeeId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        // JWT: نفس الشركة + (الموظف نفسه أو من يملك إدارة الموظفين)
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
+        if (caller.IsTenantBound && caller.UserId != employeeId && !caller.CanManageEmployees("view"))
+            return ForbiddenResult(MsgNoPermission);
 
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
@@ -1101,8 +1203,10 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateEmployeePermissionsV2(Guid id, Guid employeeId, [FromBody] InternalUpdateEmployeePermissionsV2Request request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
+        if (!caller.CanManageEmployees("edit"))
+            return ForbiddenResult(MsgNoPermission);
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -1113,6 +1217,8 @@ public class InternalDataController : ControllerBase
 
         if (employee == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
+        if (!CanEditPermissionsOf(caller, employee))
+            return ForbiddenResult(MsgNoPermission);
 
         // ═══ فلترة الصلاحيات V2: لا يمكن منح إجراء غير مفعل للشركة ═══
         var companyFirstV2 = DeserializeV2Dict(company.EnabledFirstSystemFeaturesV2);
@@ -1158,14 +1264,18 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteCompanyEmployee(Guid id, Guid employeeId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
+        if (!caller.CanManageEmployees("delete"))
+            return ForbiddenResult(MsgNoPermission);
 
         var employee = await _unitOfWork.Users.AsQueryable()
             .FirstOrDefaultAsync(u => u.Id == employeeId && u.CompanyId == id && !u.IsDeleted);
 
         if (employee == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
+        if (!caller.CanActOnRole(employee.Role))
+            return ForbiddenResult(MsgNoPermission);
 
         employee.IsDeleted = true;
         employee.UpdatedAt = DateTime.UtcNow;
@@ -1185,8 +1295,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetPermissionTemplates(Guid id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -1204,8 +1314,10 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> SavePermissionTemplates(Guid id, [FromBody] SaveTemplatesRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
+        if (!caller.CanManageEmployees("edit"))
+            return ForbiddenResult(MsgNoPermission);
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -1227,8 +1339,10 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CreateCompanyEmployee(Guid id, [FromBody] InternalCreateEmployeeRequest request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
+        if (authError != null) return authError;
+        if (!caller.CanManageEmployees("add") || !caller.CanActOnRole(ParseUserRole(request.Role ?? "Employee")))
+            return ForbiddenResult(MsgNoPermission);
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
@@ -1303,7 +1417,19 @@ public class InternalDataController : ControllerBase
         });
     }
 
-    private Sadara.Domain.Enums.UserRole ParseUserRole(string role)
+    /// <summary>
+    /// JWT: تعديل صلاحيات موظف — لا لمن دوره أعلى من المستدعي، ولا تعديل المستدعي لصلاحياته هو
+    /// ما لم يكن مدير شركة (يمنع رفع الصلاحيات الذاتي). المفتاح القديم وSuperAdmin دون تغيير.
+    /// </summary>
+    private static bool CanEditPermissionsOf(InternalCaller caller, Sadara.Domain.Entities.User target)
+    {
+        if (!caller.IsTenantBound) return true;
+        if (!caller.CanActOnRole(target.Role)) return false;
+        if (caller.UserId == target.Id && caller.Role != UserRole.CompanyAdmin) return false;
+        return true;
+    }
+
+    private static Sadara.Domain.Enums.UserRole ParseUserRole(string role)
     {
         return role?.ToLower() switch
         {
@@ -1348,11 +1474,16 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetUsers()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        // JWT: مستخدم الشركة يرى موظفي شركته فقط (يُستخدم في صفحة التسديد اليومي)؛ SuperAdmin يرى الكل
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
-        var users = await _unitOfWork.Users.AsQueryable()
-            .Where(u => !u.IsDeleted)
+        var usersQuery = _unitOfWork.Users.AsQueryable()
+            .Where(u => !u.IsDeleted);
+        if (caller.IsTenantBound)
+            usersQuery = usersQuery.Where(u => u.CompanyId == caller.CompanyId);
+
+        var users = await usersQuery
             .OrderByDescending(u => u.CreatedAt)
             .Select(u => new
             {
@@ -1379,8 +1510,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetCustomers()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var customers = await _unitOfWork.Customers.AsQueryable()
             .Where(c => !c.IsDeleted)
@@ -1408,8 +1539,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetMerchants()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var merchants = await _unitOfWork.Merchants.AsQueryable()
             .Where(m => !m.IsDeleted)
@@ -1436,8 +1567,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetProducts()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var products = await _unitOfWork.Products.AsQueryable()
             .Where(p => !p.IsDeleted)
@@ -1468,8 +1599,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetOrders()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var orders = await _unitOfWork.Orders.AsQueryable()
             .OrderByDescending(o => o.CreatedAt)
@@ -1496,8 +1627,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetCities()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var cities = await _unitOfWork.Cities.AsQueryable()
             .Where(c => !c.IsDeleted)
@@ -1521,8 +1652,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetServiceRequests()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var requests = await _unitOfWork.ServiceRequests.AsQueryable()
             .OrderByDescending(r => r.CreatedAt)
@@ -1567,8 +1698,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CreateCustomer([FromBody] CreateCustomerDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1634,8 +1765,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateCustomer(int id, [FromBody] CreateCustomerDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1668,8 +1799,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteCustomer(int id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1696,8 +1827,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CreateCity([FromBody] CreateCityDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1727,8 +1858,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateCity(Guid id, [FromBody] CreateCityDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1757,8 +1888,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteCity(Guid id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1785,8 +1916,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CreateMerchant([FromBody] CreateMerchantDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1826,8 +1957,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateMerchant(Guid id, [FromBody] CreateMerchantDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1858,8 +1989,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteMerchant(Guid id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1886,8 +2017,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CreateProduct([FromBody] CreateProductDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1932,8 +2063,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateProduct(Guid id, [FromBody] CreateProductDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -1964,8 +2095,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteProduct(Guid id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -2002,14 +2133,16 @@ public class InternalDataController : ControllerBase
         [FromQuery] string? search,
         [FromQuery] int pageSize = 500)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         var query = _unitOfWork.SubscriptionLogs.AsQueryable()
             .Where(l => !l.IsDeleted);
 
-        if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cId))
-            query = query.Where(l => l.CompanyId == cId);
+        // JWT: شركة التوكن دائماً (يُتجاهل companyId في الاستعلام). المفتاح/SuperAdmin: السلوك القديم.
+        var companyFilter = EffectiveCompanyFilter(caller, companyId);
+        if (companyFilter.HasValue)
+            query = query.Where(l => l.CompanyId == companyFilter.Value);
 
         // بحث شامل في كل قاعدة البيانات (بدون فلتر تاريخ)
         if (!string.IsNullOrEmpty(search))
@@ -2143,12 +2276,35 @@ public class InternalDataController : ControllerBase
     [Consumes("application/json")]
     public async Task<IActionResult> UpdateSubscriptionLog(long id, [FromBody] JsonElement request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
         if (log == null)
             return NotFound(new { success = false, message = "السجل غير موجود" });
+
+        if (caller.IsJwt)
+        {
+            // JWT: السجل يجب أن يخص شركة المستدعي
+            if (!caller.CanAccessCompany(log.CompanyId))
+                return ForbiddenResult(MsgOtherCompany);
+
+            // تعديل الحقول المالية/الإسناد يتطلب صلاحية المحاسبة (حالة الطباعة/الواتساب/الملاحظات لا تتطلبها)
+            if (request.ValueKind == JsonValueKind.Object
+                && FinancialLogFields.Any(f => request.TryGetProperty(f, out _))
+                && !HasAccountingAccess(caller))
+                return ForbiddenResult(MsgNoPermission);
+
+            // الفني/الوكيل الجديد يجب أن يكون من شركة السجل نفسها
+            if (request.TryGetProperty("LinkedTechnicianId", out var jt) && jt.ValueKind == JsonValueKind.String
+                && Guid.TryParse(jt.GetString(), out var jtId) && jtId != log.LinkedTechnicianId
+                && !await TechnicianBelongsToCompanyAsync(jtId, log.CompanyId))
+                return BadRequest(new { success = false, message = "الفني المحدد لا ينتمي لهذه الشركة" });
+            if (request.TryGetProperty("LinkedAgentId", out var ja) && ja.ValueKind == JsonValueKind.String
+                && Guid.TryParse(ja.GetString(), out var jaId) && jaId != log.LinkedAgentId
+                && !await AgentBelongsToCompanyAsync(jaId, log.CompanyId))
+                return BadRequest(new { success = false, message = "الوكيل المحدد لا ينتمي لهذه الشركة" });
+        }
 
         // تحديث الحقول المرسلة فقط
         if (request.TryGetProperty("isPrinted", out var pp) && pp.ValueKind == JsonValueKind.True)
@@ -2540,11 +2696,15 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetSubscriptionLogBySession(string sessionId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
-        var log = await _unitOfWork.SubscriptionLogs.AsQueryable()
-            .Where(l => l.SessionId == sessionId)
+        var bySession = _unitOfWork.SubscriptionLogs.AsQueryable()
+            .Where(l => l.SessionId == sessionId);
+        if (caller.IsTenantBound)
+            bySession = bySession.Where(l => l.CompanyId == caller.CompanyId);
+
+        var log = await bySession
             .OrderByDescending(l => l.CreatedAt)
             .Select(l => new { l.Id, l.SessionId, l.IsPrinted, l.IsWhatsAppSent })
             .FirstOrDefaultAsync();
@@ -2565,15 +2725,19 @@ public class InternalDataController : ControllerBase
         [FromQuery] string subscriptionId,
         [FromQuery] string customerId)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         if (string.IsNullOrWhiteSpace(subscriptionId) || string.IsNullOrWhiteSpace(customerId))
             return BadRequest(new { success = false, message = "subscriptionId و customerId مطلوبان" });
 
         var todayUtc = DateTime.UtcNow.Date;
 
-        var existingLog = await _unitOfWork.SubscriptionLogs.AsQueryable()
+        var todayQuery = _unitOfWork.SubscriptionLogs.AsQueryable();
+        if (caller.IsTenantBound)
+            todayQuery = todayQuery.Where(l => l.CompanyId == caller.CompanyId);
+
+        var existingLog = await todayQuery
             .Where(l => l.SubscriptionId == subscriptionId
                      && l.CustomerId == customerId
                      && l.ActivationDate.HasValue
@@ -2662,12 +2826,21 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteSubscriptionLog(long id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
         if (log == null)
             return NotFound(new { success = false, message = "السجل غير موجود" });
+
+        // JWT: السجل من شركة المستدعي + صلاحية المحاسبة (الحذف يعكس قيداً وذمماً)
+        if (caller.IsJwt)
+        {
+            if (!caller.CanAccessCompany(log.CompanyId))
+                return ForbiddenResult(MsgOtherCompany);
+            if (!HasAccountingAccess(caller))
+                return ForbiddenResult(MsgNoPermission);
+        }
 
         // عكس رصيد الفني إذا كان مرتبطاً
         if (log.LinkedTechnicianId.HasValue && log.PlanPrice.HasValue)
@@ -2868,8 +3041,8 @@ public class InternalDataController : ControllerBase
     [Consumes("application/json")]
     public async Task<IActionResult> CreateSubscriptionLog([FromBody] JsonElement request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         try
         {
@@ -2930,6 +3103,29 @@ public class InternalDataController : ControllerBase
             if (request.TryGetProperty("linkedTechnicianId", out var pLt) && pLt.ValueKind == JsonValueKind.String && Guid.TryParse(pLt.GetString(), out var ltGuid))
                 log.LinkedTechnicianId = ltGuid;
 
+            // ═══ JWT: الهوية من التوكن لا من الجسم + تحقق ملكية المراجع ═══
+            if (caller.IsJwt)
+            {
+                // المستخدم المنفّذ = صاحب التوكن دائماً (يُتجاهل userId في الجسم)
+                log.UserId = caller.UserId;
+                // الشركة = شركة التوكن (يُتجاهل companyId في الجسم)؛ SuperAdmin فقط يحدّدها صراحةً
+                if (caller.IsTenantBound)
+                    log.CompanyId = caller.CompanyId;
+
+                if (log.LinkedTechnicianId.HasValue && !await TechnicianBelongsToCompanyAsync(log.LinkedTechnicianId.Value, log.CompanyId))
+                    return BadRequest(new { success = false, message = "الفني المحدد لا ينتمي لهذه الشركة" });
+                if (log.LinkedAgentId.HasValue && !await AgentBelongsToCompanyAsync(log.LinkedAgentId.Value, log.CompanyId))
+                    return BadRequest(new { success = false, message = "الوكيل المحدد لا ينتمي لهذه الشركة" });
+                if (log.ServiceRequestId.HasValue)
+                {
+                    var srId = log.ServiceRequestId.Value;
+                    var srOk = await _unitOfWork.ServiceRequests.AsQueryable()
+                        .AnyAsync(s => s.Id == srId && s.CompanyId == log.CompanyId);
+                    if (!srOk)
+                        return BadRequest(new { success = false, message = "طلب الخدمة المحدد لا ينتمي لهذه الشركة" });
+                }
+            }
+
             // أجور الصيانة وحقول التسعير
             if (request.TryGetProperty("maintenanceFee", out var pMf) && pMf.ValueKind == JsonValueKind.Number)
                 log.MaintenanceFee = pMf.GetDecimal();
@@ -2968,13 +3164,17 @@ public class InternalDataController : ControllerBase
             // حماية من التكرار — إذا وصل نفس الطلب مرتين (ضغط مزدوج أو خطأ شبكة)
             if (!string.IsNullOrEmpty(log.SessionId))
             {
-                var duplicate = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                    .AnyAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                // JWT (مستخدم شركة): فحص التكرار ضمن شركته فقط — لا يُكشف معرّف سجل شركة أخرى
+                var dupQuery = _unitOfWork.SubscriptionLogs.AsQueryable()
+                    .Where(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                if (caller.IsTenantBound)
+                    dupQuery = dupQuery.Where(l => l.CompanyId == log.CompanyId);
+
+                var duplicate = await dupQuery.AnyAsync();
                 if (duplicate)
                 {
                     _logger.LogWarning("طلب مكرر — SessionId {SessionId} موجود مسبقاً", log.SessionId);
-                    var existing = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                        .FirstOrDefaultAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                    var existing = await dupQuery.FirstOrDefaultAsync();
                     return Ok(new { success = true, id = existing?.Id, message = "السجل موجود مسبقاً", duplicate = true });
                 }
             }
@@ -3015,8 +3215,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetCitizens()
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         var citizens = await _context.Citizens
             .Where(c => !c.IsDeleted)
@@ -3048,8 +3248,8 @@ public class InternalDataController : ControllerBase
     [Consumes("application/json")]
     public async Task<IActionResult> CreateCitizen([FromBody] CreateCitizenDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -3112,8 +3312,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateCitizen(Guid id, [FromBody] CreateCitizenDto dto)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -3145,8 +3345,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteCitizen(Guid id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (_, authError) = await AuthorizeInternalAsync(superAdminOnly: true);
+        if (authError != null) return authError;
 
         try
         {
@@ -3187,14 +3387,17 @@ public class InternalDataController : ControllerBase
         [FromQuery] string? operatorName,
         [FromQuery] string? collectionType)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
+        if (caller.IsJwt && !HasAccountingAccess(caller))
+            return ForbiddenResult(MsgNoPermission);
 
         var query = _unitOfWork.SubscriptionLogs.AsQueryable()
             .Where(l => !l.IsDeleted && l.PlanPrice.HasValue && l.PlanPrice > 0);
 
-        if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cId))
-            query = query.Where(l => l.CompanyId == cId);
+        var companyFilter = EffectiveCompanyFilter(caller, companyId);
+        if (companyFilter.HasValue)
+            query = query.Where(l => l.CompanyId == companyFilter.Value);
         if (fromDate.HasValue)
             query = query.Where(l => l.ActivationDate >= DateTime.SpecifyKind(fromDate.Value.AddHours(-3), DateTimeKind.Utc));
         if (toDate.HasValue)
@@ -3589,8 +3792,8 @@ public class InternalDataController : ControllerBase
         [FromQuery] DateTime? toDate,
         [FromQuery] int pageSize = 500)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         var query = _unitOfWork.DailySettlementReports.AsQueryable()
             .Where(r => !r.IsDeleted);
@@ -3598,8 +3801,9 @@ public class InternalDataController : ControllerBase
         if (!string.IsNullOrEmpty(operatorName))
             query = query.Where(r => r.OperatorName == operatorName);
 
-        if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cId))
-            query = query.Where(r => r.CompanyId == cId);
+        var companyFilter = EffectiveCompanyFilter(caller, companyId);
+        if (companyFilter.HasValue)
+            query = query.Where(r => r.CompanyId == companyFilter.Value);
 
         if (fromDate.HasValue)
         {
@@ -3656,8 +3860,8 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> CreateSettlementReport([FromBody] JsonElement request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         try
         {
@@ -3676,6 +3880,17 @@ public class InternalDataController : ControllerBase
             var deliveredToId = request.TryGetProperty("deliveredToId", out var dtiProp) ? dtiProp.GetString() : null;
             var deliveredToName = request.TryGetProperty("deliveredToName", out var dtnProp) ? dtnProp.GetString() : null;
 
+            // ═══ JWT: الشركة من التوكن (يُتجاهل companyId في الجسم) + المشغل/المستلم من نفس الشركة ═══
+            if (caller.IsTenantBound)
+                companyId = caller.CompanyId;
+            if (caller.IsJwt)
+            {
+                if (Guid.TryParse(operatorId, out var opUserId) && !await TechnicianBelongsToCompanyAsync(opUserId, companyId))
+                    return BadRequest(new { success = false, message = "المشغل المحدد لا ينتمي لهذه الشركة" });
+                if (Guid.TryParse(deliveredToId, out var dtUserId) && !await TechnicianBelongsToCompanyAsync(dtUserId, companyId))
+                    return BadRequest(new { success = false, message = "المستلم المحدد لا ينتمي لهذه الشركة" });
+            }
+
             // Parse items
             var itemsJson = "[]";
             decimal totalAmount = 0;
@@ -3690,8 +3905,12 @@ public class InternalDataController : ControllerBase
             }
 
             // Upsert: check if report exists for this operator + date
-            var existing = await _unitOfWork.DailySettlementReports.AsQueryable()
-                .FirstOrDefaultAsync(r => !r.IsDeleted && r.OperatorName == operatorName && r.ReportDate == reportDate);
+            // JWT (مستخدم شركة): البحث ضمن شركته فقط — لا يُستبدل تقرير شركة أخرى بنفس اسم المشغل
+            var existingQuery = _unitOfWork.DailySettlementReports.AsQueryable()
+                .Where(r => !r.IsDeleted && r.OperatorName == operatorName && r.ReportDate == reportDate);
+            if (caller.IsTenantBound)
+                existingQuery = existingQuery.Where(r => r.CompanyId == companyId);
+            var existing = await existingQuery.FirstOrDefaultAsync();
 
             bool isUpdate = existing != null;
             DailySettlementReport report;
@@ -3805,14 +4024,26 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> AccountantPostSettlementReport(long id, [FromBody] JsonElement request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         try
         {
             var report = await _unitOfWork.DailySettlementReports.GetByIdAsync(id);
             if (report == null)
                 return NotFound(new { success = false, message = "التقرير غير موجود" });
+
+            if (caller.IsJwt)
+            {
+                // JWT: صلاحية المحاسبة + التقرير من شركة المستدعي. تقرير قديم بلا شركة يُنسب لشركة المستدعي
+                // (بدل «أول شركة» في المسار القديم).
+                if (!HasAccountingAccess(caller))
+                    return ForbiddenResult(MsgNoPermission);
+                if (report.CompanyId.HasValue && !caller.CanAccessCompany(report.CompanyId))
+                    return ForbiddenResult(MsgOtherCompany);
+                if (!report.CompanyId.HasValue && caller.IsTenantBound)
+                    report.CompanyId = caller.CompanyId;
+            }
 
             decimal receivedAmount = _safeDecimal(request, "receivedAmount");
             if (receivedAmount <= 0)
@@ -3827,8 +4058,11 @@ public class InternalDataController : ControllerBase
             // 1) محاولة إيجاد المشغل في جدول المستخدمين بالاسم
             if (!report.CompanyId.HasValue || string.IsNullOrEmpty(report.OperatorId) || !Guid.TryParse(report.OperatorId, out opGuid))
             {
+                var scopeToCompany = caller.IsTenantBound;
+                var scopeCompanyId = report.CompanyId;
                 var operatorUser = await _unitOfWork.Users.AsQueryable()
                     .Where(u => !u.IsDeleted && u.FullName == report.OperatorName)
+                    .Where(u => !scopeToCompany || u.CompanyId == scopeCompanyId)
                     .Select(u => new { u.Id, u.CompanyId })
                     .FirstOrDefaultAsync();
 
@@ -3922,6 +4156,9 @@ public class InternalDataController : ControllerBase
                 .Select(u => u.Id)
                 .FirstOrDefaultAsync();
             var createdByGuid = systemUserId != default ? systemUserId : companyId;
+            // JWT: المُنشئ هو المحاسب صاحب التوكن (تدقيق أدق من «أول مستخدم في الشركة»)
+            if (caller.IsJwt && caller.UserId.HasValue)
+                createdByGuid = caller.UserId.Value;
 
             var journalEntryId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
                 _unitOfWork, companyId, createdByGuid, description,
@@ -3950,12 +4187,14 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> UpdateSettlementReport(long id, [FromBody] JsonElement request)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         var report = await _unitOfWork.DailySettlementReports.GetByIdAsync(id);
         if (report == null)
             return NotFound(new { success = false, message = "التقرير غير موجود" });
+        if (caller.IsJwt && !caller.CanAccessCompany(report.CompanyId))
+            return ForbiddenResult(MsgOtherCompany);
 
         if (request.TryGetProperty("notes", out var nProp))
             report.Notes = nProp.GetString();
@@ -3986,12 +4225,23 @@ public class InternalDataController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> DeleteSettlementReport(long id)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         var report = await _unitOfWork.DailySettlementReports.GetByIdAsync(id);
         if (report == null)
             return NotFound(new { success = false, message = "التقرير غير موجود" });
+
+        if (caller.IsJwt)
+        {
+            // JWT: نفس الشركة + (صاحب التقرير نفسه أو صلاحية المحاسبة)
+            if (!caller.CanAccessCompany(report.CompanyId))
+                return ForbiddenResult(MsgOtherCompany);
+            var isOwner = caller.UserId.HasValue
+                && string.Equals(report.OperatorId, caller.UserId.Value.ToString(), StringComparison.OrdinalIgnoreCase);
+            if (!isOwner && !HasAccountingAccess(caller))
+                return ForbiddenResult(MsgNoPermission);
+        }
 
         report.IsDeleted = true;
         report.DeletedAt = DateTime.UtcNow;
@@ -4010,15 +4260,18 @@ public class InternalDataController : ControllerBase
         [FromQuery] string operatorName,
         [FromQuery] string? date)
     {
-        if (!ValidateApiKey())
-            return Unauthorized(new { success = false, message = "Invalid API Key" });
+        var (caller, authError) = await AuthorizeInternalAsync();
+        if (authError != null) return authError;
 
         var checkDate = !string.IsNullOrEmpty(date)
             ? DateTime.SpecifyKind(DateTime.Parse(date).Date.AddHours(-3), DateTimeKind.Utc)
             : DateTime.SpecifyKind(DateTime.UtcNow.AddHours(3).Date.AddHours(-3), DateTimeKind.Utc);
 
-        var report = await _unitOfWork.DailySettlementReports.AsQueryable()
-            .FirstOrDefaultAsync(r => !r.IsDeleted && r.OperatorName == operatorName && r.ReportDate == checkDate);
+        var checkQuery = _unitOfWork.DailySettlementReports.AsQueryable()
+            .Where(r => !r.IsDeleted && r.OperatorName == operatorName && r.ReportDate == checkDate);
+        if (caller.IsTenantBound)
+            checkQuery = checkQuery.Where(r => r.CompanyId == caller.CompanyId);
+        var report = await checkQuery.FirstOrDefaultAsync();
 
         return Ok(new
         {

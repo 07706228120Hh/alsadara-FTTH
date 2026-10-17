@@ -100,7 +100,6 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           }
           return <Company>[];
         },
-        useInternalKey: true,
       );
 
       if (mounted) {
@@ -2800,7 +2799,6 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
           'enabledSecondSystemFeatures': _secondSystemPermissions,
         },
         (json) => json,
-        useInternalKey: true,
       );
 
       debugPrint('📊 الاستجابة: ${response.isSuccess} - ${response.message}');

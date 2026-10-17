@@ -72,10 +72,12 @@ class ApiClient {
         if (_authToken != null) 'Authorization': 'Bearer $_authToken',
       };
 
+  /// LEGACY: لا تستخدم useInternalKey لنقاط /internal/* أو SuperAdmin أو أي متحكّم يقبل JWT —
+  /// تبقى فقط للمتحكّمات الخادمية التي لم تُرحَّل بعد إلى JWT (انظر AppSecrets.internalApiKey).
   Map<String, String> get _internalHeaders => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-Api-Key': appSecrets.internalApiKey, // 🔒 تم نقله إلى AppSecrets
+        'X-Api-Key': appSecrets.internalApiKey,
       };
 
   // ============================================

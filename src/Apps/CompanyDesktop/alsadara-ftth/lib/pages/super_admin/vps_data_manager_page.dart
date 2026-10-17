@@ -8,8 +8,8 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../config/app_secrets.dart';
 import '../../services/api/api_config.dart';
+import '../../services/api/vps_auth_headers.dart';
 import '../../frontend/frontend.dart';
 import '../../frontend/components/sd_dash_kit.dart';
 
@@ -27,8 +27,11 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   // يمكنك تغيير هذا الرابط حسب بيئة العمل
   static String get baseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
 
-  // API Key من AppSecrets
-  static String get apiKey => AppSecrets.instance.internalApiKey;
+  /// ترويسة JWT لمدير النظام (بديل المفتاح الداخلي المضمّن سابقاً).
+  static Future<void> _setAuth(HttpClientRequest request) async {
+    final token = await VpsAuthHeaders.validToken();
+    if (token != null) request.headers.set('Authorization', 'Bearer $token');
+  }
 
   // رابط بديل للتطوير المحلي
   // static const String baseUrl = 'http://localhost:5000/api/internal';
@@ -92,7 +95,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       final request = await client.getUrl(Uri.parse('$baseUrl/$endpoint'));
       request.headers.set('Content-Type', 'application/json');
       request.headers.set('Accept', 'application/json');
-      request.headers.set('X-Api-Key', apiKey); // إضافة API Key
+      await _setAuth(request);
 
       final response = await request.close();
       final responseBody = await response.transform(utf8.decoder).join();
@@ -161,7 +164,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       final request =
           await client.deleteUrl(Uri.parse('$baseUrl/$endpoint/$id'));
       request.headers.set('Content-Type', 'application/json');
-      request.headers.set('X-Api-Key', apiKey);
+      await _setAuth(request);
 
       final response = await request.close();
 
@@ -192,7 +195,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
 
       final request = await client.putUrl(Uri.parse('$baseUrl/$endpoint/$id'));
       request.headers.set('Content-Type', 'application/json; charset=utf-8');
-      request.headers.set('X-Api-Key', apiKey);
+      await _setAuth(request);
 
       // تحويل البيانات لـ UTF-8 bytes بشكل صحيح
       final jsonData = json.encode(data);
@@ -228,7 +231,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
 
       final request = await client.postUrl(Uri.parse('$baseUrl/$endpoint'));
       request.headers.set('Content-Type', 'application/json; charset=utf-8');
-      request.headers.set('X-Api-Key', apiKey);
+      await _setAuth(request);
 
       // تحويل البيانات لـ UTF-8 bytes بشكل صحيح
       final jsonData = json.encode(data);

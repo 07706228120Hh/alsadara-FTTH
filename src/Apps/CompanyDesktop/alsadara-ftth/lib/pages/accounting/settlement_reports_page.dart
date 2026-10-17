@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/accounting_responsive.dart';
 import '../../services/api/api_config.dart';
+import '../../services/api/vps_auth_headers.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
 /// صفحة تقارير التسديدات اليومية — عرض للمحاسب
@@ -17,7 +18,11 @@ class SettlementReportsPage extends StatefulWidget {
 
 class _SettlementReportsPageState extends State<SettlementReportsPage> {
   static String get _vpsBaseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
-  static const String _vpsApiKey = 'sadara-internal-2024-secure-key';
+  /// ترويسة JWT للمستخدم (بديل المفتاح الداخلي المضمّن سابقاً) — الخادم يأخذ الشركة من التوكن.
+  static Future<void> _setAuth(HttpClientRequest request) async {
+    final token = await VpsAuthHeaders.validToken();
+    if (token != null) request.headers.set('Authorization', 'Bearer $token');
+  }
 
   bool _isLoading = true;
   String? _error;
@@ -57,7 +62,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
     final request = await client.getUrl(Uri.parse('$_vpsBaseUrl/$path'));
     request.headers.set('Content-Type', 'application/json');
     request.headers.set('Accept', 'application/json');
-    request.headers.set('X-Api-Key', _vpsApiKey);
+    await _setAuth(request);
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
     client.close();
@@ -70,7 +75,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
     final request = await client.postUrl(Uri.parse('$_vpsBaseUrl/$path'));
     request.headers.set('Content-Type', 'application/json; charset=utf-8');
     request.headers.set('Accept', 'application/json');
-    request.headers.set('X-Api-Key', _vpsApiKey);
+    await _setAuth(request);
     request.add(utf8.encode(json.encode(data)));
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();

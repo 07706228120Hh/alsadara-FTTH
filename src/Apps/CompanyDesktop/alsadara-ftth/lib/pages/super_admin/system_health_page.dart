@@ -47,9 +47,9 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
       final client = ApiClient.instance;
 
       final results = await Future.wait([
-        client.get('/superadmin/vps/status', (json) => json, useInternalKey: true),
-        client.get('/superadmin/health/detailed', (json) => json, useInternalKey: true),
-        client.get('/superadmin/vps/services', (json) => json, useInternalKey: true),
+        client.get('/superadmin/vps/status', (json) => json),
+        client.get('/superadmin/health/detailed', (json) => json),
+        client.get('/superadmin/vps/services', (json) => json),
       ]);
 
       if (mounted) {

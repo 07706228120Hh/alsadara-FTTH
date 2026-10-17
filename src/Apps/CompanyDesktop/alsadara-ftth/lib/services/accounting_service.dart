@@ -743,7 +743,6 @@ class AccountingService {
     final response = await _client.get(
       '/internal/companies/$companyId/employees',
       (json) => json,
-      useInternalKey: true,
     );
     if (response.success && response.data != null) {
       final data = response.data;

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api/api_config.dart';
+import '../config/app_secrets.dart';
 
 /// طابور الموقع — يحفظ النقاط عند انقطاع الإنترنت ويرسلها عند العودة
 class LocationOfflineQueue {
@@ -47,7 +48,7 @@ class LocationOfflineQueue {
           final client = HttpClient()..badCertificateCallback = (_, __, ___) => true;
           final request = await client.postUrl(url);
           request.headers.set('Content-Type', 'application/json');
-          request.headers.set('X-Api-Key', 'sadara-internal-2024-secure-key');
+          request.headers.set('X-Api-Key', appSecrets.internalApiKey); // LEGACY: EmployeeLocationController key-only
           request.write(jsonEncode(data));
           final response = await request.close();
           await response.drain();

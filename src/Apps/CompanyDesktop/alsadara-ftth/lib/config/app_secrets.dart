@@ -57,7 +57,13 @@ class AppSecrets {
   // Getters
   // ============================================
 
-  /// مفتاح API الداخلي للاتصال بـ Sadara Backend
+  /// مفتاح API الداخلي (LEGACY — مصدر وحيد متبقٍّ في التطبيق).
+  ///
+  /// المرحلة 0-أ: نقاط `/api/internal/*` و`/api/ftth-accounting/*` ولوحات SuperAdmin صارت تُصادَق
+  /// بتوكن JWT (انظر `services/api/vps_auth_headers.dart`) ولا تستخدم هذا المفتاح.
+  /// ما زال مستخدماً فقط لمتحكّمات خادمية لم تُرحَّل بعد إلى JWT (تيار لاحق):
+  /// EmployeeLocation + LocationHub، Reminder، WhatsApp، CompanyFtthSettings، IptvSubscribers،
+  /// SubscriberCache، ZoneStatistics. لا تُضِف استخدامات جديدة له.
   String get internalApiKey => _internalApiKey;
 
   /// مفتاح Google Drive API

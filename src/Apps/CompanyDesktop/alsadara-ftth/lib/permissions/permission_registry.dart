@@ -1256,7 +1256,6 @@ class PermissionRegistry {
           final response = await api.get(
             '/internal/companies/$companyId/permission-templates',
             (data) => data,
-            useInternalKey: true,
           );
           if (response.isSuccess && response.data != null) {
             final serverData = response.data is Map ? response.data['data'] : response.data;
@@ -1335,7 +1334,6 @@ class PermissionRegistry {
             '/internal/companies/$_companyId/permission-templates',
             {'templates': encoded},
             (data) => data,
-            useInternalKey: true,
           );
         }
       } catch (_) {

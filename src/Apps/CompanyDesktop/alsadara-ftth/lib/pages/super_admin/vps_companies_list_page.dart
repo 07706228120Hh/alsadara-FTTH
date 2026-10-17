@@ -82,7 +82,6 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
           }
           return <Company>[];
         },
-        useInternalKey: true,
       );
 
       if (mounted) {

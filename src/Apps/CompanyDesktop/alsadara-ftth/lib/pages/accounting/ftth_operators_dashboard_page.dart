@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/api/api_config.dart';
+import '../../services/api/vps_auth_headers.dart';
 import '../../services/accounting_service.dart';
 import '../../services/task_api_service.dart';
 import '../../services/plan_pricing_service.dart';
@@ -596,7 +597,6 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
-          'X-Api-Key': 'sadara-internal-2024-secure-key',
         },
       );
 
@@ -1381,7 +1381,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         if (_companyId.isNotEmpty) txUrl += '&companyId=$_companyId';
         if (_fromDate != null) txUrl += '&fromDate=${_fromDate!.toIso8601String().split('T')[0]}';
         if (_toDate != null) txUrl += '&toDate=${_toDate!.toIso8601String().split('T')[0]}';
-        final txResponse = await http.get(Uri.parse(txUrl), headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'});
+        final txResponse = await http.get(Uri.parse(txUrl), headers: await VpsAuthHeaders.build(json: false));
         if (txResponse.statusCode == 200) {
           final txBody = jsonDecode(txResponse.body);
           final allTxsRaw = ((txBody is List ? txBody : (txBody['data'] ?? txBody['items'] ?? [])) as List)
@@ -2140,7 +2140,6 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
-          'X-Api-Key': 'sadara-internal-2024-secure-key',
         },
       );
       if (!mounted) return;
@@ -2217,7 +2216,6 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
-          'X-Api-Key': 'sadara-internal-2024-secure-key',
         },
       );
       if (!mounted) return;
@@ -2258,7 +2256,6 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           : '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/operators-linking';
       final res = await http.get(Uri.parse(url), headers: {
         if (vpsToken != null) 'Authorization': 'Bearer $vpsToken',
-        'X-Api-Key': 'sadara-internal-2024-secure-key',
       });
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body);
@@ -2338,7 +2335,6 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         headers: {
           'Content-Type': 'application/json',
           if (vpsToken != null) 'Authorization': 'Bearer $vpsToken',
-          'X-Api-Key': 'sadara-internal-2024-secure-key',
         },
       );
       if (!mounted) return;
@@ -9446,7 +9442,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
       if (widget._companyId.isNotEmpty) url += '&companyId=${widget._companyId}';
       url += '&fromDate=${effectiveFrom.toIso8601String().split('T')[0]}';
       url += '&toDate=${effectiveTo.toIso8601String().split('T')[0]}';
-      final response = await http.get(Uri.parse(url), headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'});
+      final response = await http.get(Uri.parse(url), headers: await VpsAuthHeaders.build(json: false));
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final List<dynamic> items = body is List ? body : ((body['data'] ?? body['items'] ?? []) as List<dynamic>);
@@ -9820,7 +9816,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
         if (updateBody.isNotEmpty) {
           await http.put(
             Uri.parse('${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/$logId'),
-            headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
+            headers: await VpsAuthHeaders.build(),
             body: jsonEncode(updateBody),
           );
           success++;
@@ -9872,7 +9868,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     try {
       final res = await http.delete(
         Uri.parse('${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/$logId'),
-        headers: {'X-Api-Key': 'sadara-internal-2024-secure-key'},
+        headers: await VpsAuthHeaders.build(json: false),
       );
       if (!mounted) return;
       if (res.statusCode == 200 || res.statusCode == 204) {
@@ -10097,7 +10093,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
                       final body = jsonEncode(bodyMap);
                       final res = await http.put(
                         Uri.parse('${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/$logId'),
-                        headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
+                        headers: await VpsAuthHeaders.build(),
                         body: body,
                       );
                       if (!mounted) return;
@@ -11871,7 +11867,6 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
 
   static String get _baseUrl =>
       '${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs';
-  static const _apiKey = 'sadara-internal-2024-secure-key';
 
   /// [label, dataKey, flex]  — flex يُستخدم لـ Expanded ويملأ الشاشة تلقائياً
   static const List<List<dynamic>> _cols = [
@@ -12103,7 +12098,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     try {
       String url = '$_baseUrl?pageSize=500&search=${Uri.encodeComponent(query.trim())}';
       if (widget.companyId.isNotEmpty) url += '&companyId=${widget.companyId}';
-      final response = await http.get(Uri.parse(url), headers: {'X-Api-Key': _apiKey});
+      final response = await http.get(Uri.parse(url), headers: await VpsAuthHeaders.build(json: false));
       if (response.statusCode != 200) throw Exception('خطأ ${response.statusCode}');
       final body = jsonDecode(response.body);
       final List<dynamic> items = body is List ? body : ((body['data'] ?? body['items'] ?? []) as List<dynamic>);
@@ -12190,11 +12185,13 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     if (_commitmentSaved.contains(logId)) return;
     _commitmentSaved.add(logId);
     // حفظ بالخلفية بدون انتظار
-    http.put(
-      Uri.parse('${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/$logId'),
-      headers: {'X-Api-Key': 'sadara-internal-2024-secure-key', 'Content-Type': 'application/json'},
-      body: jsonEncode({'CommitmentPeriod': months}),
-    ).ignore();
+    VpsAuthHeaders.build()
+        .then((headers) => http.put(
+              Uri.parse('${ApiConfig.vpsBaseUrl}/api/internal/subscriptionlogs/$logId'),
+              headers: headers,
+              body: jsonEncode({'CommitmentPeriod': months}),
+            ))
+        .ignore();
   }
 
   /// تحويل تاريخ UTC إلى التوقيت المحلي (العراق +3)
@@ -12257,7 +12254,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       url += '&fromDate=${effectiveFrom.toIso8601String().split('T')[0]}';
       url += '&toDate=${effectiveTo.toIso8601String().split('T')[0]}';
 
-      final response = await http.get(Uri.parse(url), headers: {'X-Api-Key': _apiKey});
+      final response = await http.get(Uri.parse(url), headers: await VpsAuthHeaders.build(json: false));
       if (response.statusCode != 200) {
         throw Exception('خطأ ${response.statusCode}: ${response.body}');
       }
@@ -12834,7 +12831,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       final body = jsonEncode(bodyMap);
       final res = await http.put(
         Uri.parse('$_baseUrl/$id'),
-        headers: {'X-Api-Key': _apiKey, 'Content-Type': 'application/json'},
+        headers: await VpsAuthHeaders.build(),
         body: body,
       );
       if (!mounted) return;
@@ -12912,7 +12909,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     if (confirmed != true) return;
     try {
       final res = await http.delete(Uri.parse('$_baseUrl/$id'),
-          headers: {'X-Api-Key': _apiKey});
+          headers: await VpsAuthHeaders.build(json: false));
       if (!mounted) return;
       if (res.statusCode == 200 || res.statusCode == 204) {
         setState(() {
@@ -12971,7 +12968,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     for (final id in ids) {
       try {
         final res = await http.delete(Uri.parse('$_baseUrl/$id'),
-            headers: {'X-Api-Key': _apiKey});
+            headers: await VpsAuthHeaders.build(json: false));
         if (res.statusCode == 200 || res.statusCode == 204) deleted++;
       } catch (_) {}
     }
@@ -13172,7 +13169,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         if (bodyMap.isEmpty) continue;
         final res = await http.put(
           Uri.parse('$_baseUrl/$id'),
-          headers: {'X-Api-Key': _apiKey, 'Content-Type': 'application/json'},
+          headers: await VpsAuthHeaders.build(),
           body: jsonEncode(bodyMap),
         );
         if (res.statusCode == 200 || res.statusCode == 204) {

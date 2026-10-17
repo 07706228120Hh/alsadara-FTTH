@@ -72,7 +72,6 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       final response = await _apiClient.get(
         '/internal/companies',
         (json) => (json as List).map((e) => Company.fromJson(e)).toList(),
-        useInternalKey: true,
       );
 
       if (response.isSuccess && response.data != null) {
@@ -2035,7 +2034,6 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
           'enabledSecondSystemFeatures': _secondSystemPermissions,
         },
         (json) => json,
-        useInternalKey: true,
       );
 
       if (mounted) {
@@ -2285,7 +2283,6 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
       final response = await widget.apiClient.get(
         ApiConfig.internalCompanyEmployees(widget.company.id),
         (json) => json,
-        useInternalKey: true,
       );
 
       if (response.isSuccess && response.data != null) {
@@ -2302,7 +2299,6 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
         final altResponse = await widget.apiClient.get(
           '/superadmin/companies/${widget.company.id}/users',
           (json) => json,
-          useInternalKey: true,
         );
 
         if (altResponse.isSuccess && altResponse.data != null) {
@@ -2894,7 +2890,6 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                           '/internal/companies/${widget.company.id}/employees/${user.id}/permissions',
                           {'secondSystemPermissions': userPermissions},
                           (json) => json,
-                          useInternalKey: true,
                         );
 
                         if (context.mounted) {
@@ -3146,7 +3141,6 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                               widget.company.id, user.id),
                           {'NewPassword': passwordController.text},
                           (json) => json,
-                          useInternalKey: true,
                         );
 
                         if (response.isSuccess) {
@@ -3355,7 +3349,6 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             'role': selectedRole,
                           },
                           (json) => json,
-                          useInternalKey: true,
                         );
 
                         if (response.isSuccess) {
@@ -3671,7 +3664,6 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                                 : null,
                           },
                           (json) => json,
-                          useInternalKey: true,
                         );
 
                         if (response.isSuccess) {
