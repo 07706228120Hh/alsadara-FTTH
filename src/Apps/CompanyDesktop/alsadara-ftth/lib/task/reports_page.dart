@@ -10,6 +10,7 @@ import '../services/task_export_service.dart';
 import 'task_status_colors.dart';
 import 'widgets/task_common_widgets.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class ReportsPage extends StatefulWidget {
   final List<Task> tasks;
@@ -487,29 +488,7 @@ class _ReportsPageState extends State<ReportsPage> {
         _dateRange != null;
 
     return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: gradientColors,
-            ),
-          ),
-        ),
-        title: Text(
-          _showDashboard ? 'لوحة التحكم' : 'التقارير',
-          style: SmartTextColor.getSmartTextStyle(
-            context: context,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            gradientColors: gradientColors,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: smartIconColor),
-        elevation: 4,
-        actions: [
+      appBar: SdAppBar(title: _showDashboard ? 'لوحة التحكم' : 'التقارير', actions: [
           // Toggle Dashboard / Reports
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -594,8 +573,7 @@ class _ReportsPageState extends State<ReportsPage> {
               onPressed: _clearAllFilters,
               tooltip: 'مسح الفلاتر',
             ),
-        ],
-      ),
+        ]),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

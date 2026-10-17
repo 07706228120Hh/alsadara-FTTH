@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../auth/auth_error_handler.dart';
 import '../../services/auth_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class AllSubscriptionsDetailsPage extends StatefulWidget {
   final String authToken;
@@ -216,20 +217,7 @@ class _AllSubscriptionsDetailsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
-            ),
-          ),
-        ),
-        title: const Text('كل الاشتراكات (تفاصيل كاملة)'),
-        actions: [
+      appBar: SdAppBar(title: 'كل الاشتراكات (تفاصيل كاملة)', actions: [
           if (_loading)
             IconButton(
               icon: const Icon(Icons.cancel),
@@ -239,8 +227,7 @@ class _AllSubscriptionsDetailsPageState
                 _statusMsg = 'تم الإلغاء';
               }),
             )
-        ],
-      ),
+        ]),
       body: Column(
         children: [
           if (_loading || _loadingDetails)

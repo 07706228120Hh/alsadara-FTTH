@@ -176,7 +176,7 @@ class _SasProfitsPageState extends State<SasProfitsPage> {
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF388E3C), SdColors.success],
+          colors: [SdColors.success, SdColors.success],
         ),
         borderRadius: BorderRadius.circular(SdRadius.lg),
         boxShadow: [

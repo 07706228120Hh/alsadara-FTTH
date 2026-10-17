@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import '../widgets/responsive_body.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class DashboardPage extends StatelessWidget {
   final String username;
@@ -23,10 +24,7 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('مرحبًا $username'),
-        backgroundColor: SdColors.info,
-      ),
+      appBar: SdAppBar(title: 'مرحبًا $username'),
       body: ResponsiveBody(
         padding: const EdgeInsets.all(16),
         child: Center(

@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class PermissionResetPage extends StatefulWidget {
   const PermissionResetPage({super.key});
@@ -80,11 +81,7 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('إعادة تعيين الصلاحيات'),
-        backgroundColor: SdColors.info,
-        foregroundColor: Colors.white,
-      ),
+      appBar: SdAppBar(title: 'إعادة تعيين الصلاحيات'),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

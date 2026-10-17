@@ -1526,7 +1526,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           children: [
             Expanded(
                 child: _miniCard('الإجمالي', total, Icons.people,
-                    const Color(0xFF37474F))),
+                    SdColors.muted)),
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('نشط', active, Icons.check_circle,
@@ -1569,7 +1569,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           children: [
             Expanded(
                 child: _miniCard('الإجمالي', total, Icons.router,
-                    const Color(0xFF37474F))),
+                    SdColors.muted)),
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('نشط', active, Icons.wifi,
@@ -1599,7 +1599,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('غير متصل (Offline)', offline,
-                    Icons.signal_wifi_off, const Color(0xFF78909C))),
+                    Icons.signal_wifi_off, SdColors.faint)),
             const Spacer(),
             const Spacer(),
           ],
@@ -1640,7 +1640,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
               _BarItem('متصل', (s['totalOnline'] ?? 0).toDouble(),
                   SdColors.accent),
               _BarItem('غير متصل', (s['totalOffline'] ?? 0).toDouble(),
-                  const Color(0xFF78909C)),
+                  SdColors.faint),
             ])),
         ],
       ),
@@ -1851,7 +1851,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                         SdColors.platformBase),
                     const Divider(),
                     _taskRow('الإجمالي', _tasksSummary!['totalCount'],
-                        const Color(0xFF37474F),
+                        SdColors.muted,
                         bold: true),
                   ],
                 ),
@@ -2068,7 +2068,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       SdColors.success, // أخضر — نشط
       SdColors.warningEdge, // برتقالي — غير نشط
       SdColors.danger, // أحمر — منتهي
-      const Color(0xFF00838F), // تيل — جديد
+      SdColors.accent, // تيل — جديد
     ];
     final icons = [
       Icons.people,
@@ -2441,7 +2441,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                     final isEven = e.key % 2 == 0;
                     return DataRow(
                       color: WidgetStatePropertyAll(
-                          isEven ? const Color(0xFFE0F2F1) : Colors.white),
+                          isEven ? SdColors.accentTint : Colors.white),
                       cells: [
                         DataCell(Text(
                           row['Zone']?.toString() ?? '',

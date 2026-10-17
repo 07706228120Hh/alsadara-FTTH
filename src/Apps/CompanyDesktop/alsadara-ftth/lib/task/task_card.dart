@@ -289,7 +289,7 @@ class _TaskCardState extends State<TaskCard> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFF8F00),
+                          color: SdColors.warning,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(

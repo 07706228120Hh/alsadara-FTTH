@@ -85,11 +85,11 @@ class _HrInfoTabState extends State<HrInfoTab> {
   static const _cardBg = Colors.white;
   static const _accent = SdColors.info;
   static const _headerDark = SdColors.ink;
-  static const _labelColor = Color(0xFF7F8C8D);
+  static const _labelColor = SdColors.faint;
   static const _valueColor = Color(0xFF2D3436);
   static const _success = SdColors.success;
   static const _warning = SdColors.warning;
-  static const _ftthColor = Color(0xFF00BCD4);
+  static const _ftthColor = SdColors.accentLight;
 
   static const List<Map<String, String>> _roles = [
     {'value': 'Employee', 'label': 'موظف'},
@@ -1156,7 +1156,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     borderSide: const BorderSide(color: _warning, width: 1.5),
                   ),
                   filled: true,
-                  fillColor: const Color(0xFFFFF8E1),
+                  fillColor: SdColors.warningTint,
                   suffixIcon: IconButton(
                     icon: Icon(
                       _showPassword
@@ -1200,7 +1200,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF8E1),
+                color: SdColors.warningTint,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: _warning.withOpacity(0.3)),
               ),
@@ -1517,7 +1517,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
   // ═══════════════ بطاقة كود أمان البصمة ═══════════════
 
   Widget _securityCodeCard() {
-    const cyanColor = Color(0xFF06B6D4);
+    const cyanColor = SdColors.accentLight;
     final hasCode = _securityCodeCtrl.text.trim().isNotEmpty;
 
     return _sectionCard(
@@ -2134,7 +2134,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
       case 'Employee':
         return SdColors.info;
       default:
-        return const Color(0xFF7F8C8D);
+        return SdColors.faint;
     }
   }
 

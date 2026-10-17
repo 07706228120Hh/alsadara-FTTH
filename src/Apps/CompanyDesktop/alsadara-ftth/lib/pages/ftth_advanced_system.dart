@@ -14,6 +14,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart' as windows_webview;
 import 'package:url_launcher/url_launcher.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 /// النظام الثالث - نظام إدارة داشبورد FTTH المتقدم
 class FTTHAdvancedSystemPage extends StatelessWidget {
@@ -989,27 +990,13 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
     }
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
-            ),
-          ),
-        ),
-        title: const Text('النظام المتقدم - لوحة التحكم'),
-        actions: [
+      appBar: SdAppBar(title: 'النظام المتقدم - لوحة التحكم', actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,
             tooltip: 'تسجيل الخروج',
           ),
-        ],
-        bottom: TabBar(
+        ], bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
           labelColor: Colors.white,
@@ -1024,15 +1011,14 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             Tab(icon: Icon(Icons.security), text: 'التوكنات'),
             Tab(icon: Icon(Icons.settings), text: 'الإعدادات'),
           ],
-        ),
-      ),
+        )),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFF7FAFC),
+              SdColors.groundAlt,
               Colors.white,
             ],
             stops: [0.0, 0.3],
@@ -1740,20 +1726,7 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
-            ),
-          ),
-        ),
-        title: Text(widget.title),
-        actions: [
+      appBar: SdAppBar(title: widget.title, actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -1780,8 +1753,7 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
             },
             tooltip: 'فتح في المتصفح',
           ),
-        ],
-      ),
+        ]),
       body: _buildBody(),
     );
   }

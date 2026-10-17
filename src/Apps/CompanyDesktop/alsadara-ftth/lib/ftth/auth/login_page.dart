@@ -263,8 +263,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFF0D1B2A), // dark blue
-                    Color(0xFF0A1929),
+                    SdColors.primaryEdge, // dark blue
+                    SdColors.primaryEdge,
                     Color(0xFF020817), // near black blue
                   ],
                   stops: [0.0, 0.5, 1.0],
@@ -408,7 +408,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                               decoration: InputDecoration(
                                                 labelText: 'اسم المستخدم',
                                                 labelStyle: const TextStyle(
-                                                  color: Color(0xFF718096),
+                                                  color: SdColors.muted,
                                                   fontSize: 15,
                                                 ),
                                                 prefixIcon: Container(
@@ -435,7 +435,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                 ),
                                                 filled: true,
                                                 fillColor:
-                                                    const Color(0xFFF7FAFC),
+                                                    SdColors.groundAlt,
                                                 border: OutlineInputBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(15),
@@ -477,7 +477,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                               decoration: InputDecoration(
                                                 labelText: 'كلمة المرور',
                                                 labelStyle: const TextStyle(
-                                                  color: Color(0xFF718096),
+                                                  color: SdColors.muted,
                                                   fontSize: 15,
                                                 ),
                                                 prefixIcon: Container(
@@ -507,7 +507,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                         ? Icons.visibility
                                                         : Icons.visibility_off,
                                                     color:
-                                                        const Color(0xFF718096),
+                                                        SdColors.muted,
                                                   ),
                                                   onPressed: () {
                                                     setState(() {
@@ -518,7 +518,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                 ),
                                                 filled: true,
                                                 fillColor:
-                                                    const Color(0xFFF7FAFC),
+                                                    SdColors.groundAlt,
                                                 border: OutlineInputBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(15),
@@ -571,7 +571,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                     'تذكرني',
                                                     style: TextStyle(
                                                       fontSize: 16,
-                                                      color: Color(0xFF4A5568),
+                                                      color: SdColors.muted,
                                                       fontWeight:
                                                           FontWeight.w500,
                                                     ),
@@ -703,7 +703,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                         .contains("نجاح")
                                                     ? const Color(0xFF48BB78)
                                                         .withValues(alpha: 0.1)
-                                                    : const Color(0xFFE53E3E)
+                                                    : SdColors.danger
                                                         .withValues(alpha: 0.1),
                                                 borderRadius:
                                                     BorderRadius.circular(12),
@@ -711,7 +711,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                   color: loginMessage
                                                           .contains("نجاح")
                                                       ? const Color(0xFF48BB78)
-                                                      : const Color(0xFFE53E3E),
+                                                      : SdColors.danger,
                                                   width: 1.5,
                                                 ),
                                               ),

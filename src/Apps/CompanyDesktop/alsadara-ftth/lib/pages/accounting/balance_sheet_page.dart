@@ -4,10 +4,10 @@ import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
 import '../../services/accounting_export_service.dart';
 import '../../services/accounting_pdf_export_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة الميزانية العمومية - Balance Sheet
 /// أصول = التزامات + حقوق ملكية
@@ -202,7 +202,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
             child: _isLoading
                 ? const AccountingSkeleton(rows: 8, columns: 4)
                 : _errorMessage != null
-                    ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                    ? SdUiKit.errorView(_errorMessage!, _loadData)
                     : _buildContent(ar),
           ),
         ],
@@ -286,7 +286,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                 title: 'الأصول',
                 icon: Icons.account_balance_wallet,
                 color: SdColors.primary,
-                gradient: AccountingTheme.neonBlueGradient,
+                gradient: SdUiKit.neonBlueGradient,
                 accounts: _assets,
                 total: _totalAssets,
                 ar: ar,
@@ -296,7 +296,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                 title: 'الالتزامات',
                 icon: Icons.receipt_long,
                 color: SdColors.warning,
-                gradient: AccountingTheme.neonOrangeGradient,
+                gradient: SdUiKit.neonOrangeGradient,
                 accounts: _liabilities,
                 total: _totalLiabilities,
                 ar: ar,
@@ -306,7 +306,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                 title: 'حقوق الملكية',
                 icon: Icons.business_center,
                 color: SdColors.platformBase,
-                gradient: AccountingTheme.neonPurpleGradient,
+                gradient: SdUiKit.neonPurpleGradient,
                 accounts: _equity,
                 total: _totalEquity,
                 ar: ar,
@@ -327,7 +327,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                     title: 'الأصول',
                     icon: Icons.account_balance_wallet,
                     color: SdColors.primary,
-                    gradient: AccountingTheme.neonBlueGradient,
+                    gradient: SdUiKit.neonBlueGradient,
                     accounts: _assets,
                     total: _totalAssets,
                     ar: ar,
@@ -342,7 +342,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                         title: 'الالتزامات',
                         icon: Icons.receipt_long,
                         color: SdColors.warning,
-                        gradient: AccountingTheme.neonOrangeGradient,
+                        gradient: SdUiKit.neonOrangeGradient,
                         accounts: _liabilities,
                         total: _totalLiabilities,
                         ar: ar,
@@ -352,7 +352,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                         title: 'حقوق الملكية',
                         icon: Icons.business_center,
                         color: SdColors.platformBase,
-                        gradient: AccountingTheme.neonPurpleGradient,
+                        gradient: SdUiKit.neonPurpleGradient,
                         accounts: _equity,
                         total: _totalEquity,
                         ar: ar,
@@ -404,7 +404,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius + 4),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
         border: Border.all(color: SdColors.divider),
       ),
       child: Column(
@@ -523,7 +523,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
   }) {
     final isMob = ar.isMobile;
     return Container(
-      decoration: AccountingTheme.card,
+      decoration: SdUiKit.card,
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [

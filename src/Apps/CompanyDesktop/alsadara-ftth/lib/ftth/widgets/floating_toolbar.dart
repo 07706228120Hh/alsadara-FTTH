@@ -1095,7 +1095,7 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
       case 'ChatMessage':
         return SdColors.success;
       default:
-        return const Color(0xFF546E7A);
+        return SdColors.muted;
     }
   }
 

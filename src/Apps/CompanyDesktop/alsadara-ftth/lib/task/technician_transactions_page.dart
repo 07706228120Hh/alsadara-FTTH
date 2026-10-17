@@ -34,8 +34,8 @@ class _TechnicianTransactionsPageState
   static const _bgCard = Colors.white;
   static const _bgToolbar = SdColors.ink;
   static const _textDark = Color(0xFF333333);
-  static const _textGray = Color(0xFF999999);
-  static const _textSubtle = Color(0xFF666666);
+  static const _textGray = SdColors.faint;
+  static const _textSubtle = SdColors.muted;
   static const _shadowColor = Color(0x14000000);
   static const _accentBlue = SdColors.info;
 

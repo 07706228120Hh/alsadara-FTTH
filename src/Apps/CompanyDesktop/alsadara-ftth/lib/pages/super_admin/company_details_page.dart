@@ -12,12 +12,12 @@ import '../../services/api/api_config.dart';
 import '../../services/departments_data_service.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'edit_company_page.dart';
-import '../../theme/energy_dashboard_theme.dart';
 import '../../frontend/frontend.dart';
 import '../home_page.dart';
 import '../../multi_tenant.dart';
 import 'permissions_management_v2_page.dart';
 import '../../permissions/permissions.dart';
+import '../../frontend/components/sd_dash_kit.dart';
 
 /// حالة الاشتراك
 enum CompanyStatus {
@@ -106,7 +106,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       case CompanyStatus.warning:
         return const Color(0xFFf7971e);
       case CompanyStatus.critical:
-        return const Color(0xFFeb3349);
+        return SdColors.danger;
       case CompanyStatus.expired:
         return SdColors.danger;
       case CompanyStatus.suspended:
@@ -218,9 +218,9 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           Container(
             padding: EdgeInsets.all(isCompact ? 8 : 10),
             decoration: BoxDecoration(
-              gradient: EnergyDashboardTheme.primaryGradient,
+              gradient: SdDashKit.primaryGradient,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: EnergyDashboardTheme.glowShadow(
+              boxShadow: SdDashKit.glowShadow(
                   SdColors.info.withOpacity(0.5)),
             ),
             child: Icon(
@@ -282,7 +282,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             vertical: isCompact ? 8 : 10,
           ),
           decoration: BoxDecoration(
-            gradient: EnergyDashboardTheme.accentGradient,
+            gradient: SdDashKit.accentGradient,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -403,7 +403,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Container(
                 padding: EdgeInsets.all(isCompact ? 8 : 10),
                 decoration: BoxDecoration(
-                  gradient: EnergyDashboardTheme.primaryGradient,
+                  gradient: SdDashKit.primaryGradient,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
@@ -432,7 +432,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                       horizontal: isCompact ? 10 : 14,
                       vertical: isCompact ? 5 : 7),
                   decoration: BoxDecoration(
-                    gradient: EnergyDashboardTheme.accentGradient,
+                    gradient: SdDashKit.accentGradient,
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
@@ -547,7 +547,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           Container(
             padding: EdgeInsets.all(isCompact ? 10 : 12),
             decoration: BoxDecoration(
-              gradient: EnergyDashboardTheme.primaryGradient,
+              gradient: SdDashKit.primaryGradient,
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
@@ -587,12 +587,12 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   /// بطاقة الاشتراك المضغوطة - تصميم جديد
   Widget _buildCompactSubscriptionCard(DateFormat dateFormat, bool isCompact) {
     // ألوان بطاقات الاشتراك - تباين قوي بين الخلفية والنص
-    const Color subscriptionBlue = Color(0xFFE0E7FF); // خلفية زرقاء فاتحة
-    const Color subscriptionGreen = Color(0xFFD1FAE5); // خلفية خضراء فاتحة
-    const Color blueText = Color(0xFF1E3A8A); // نص أزرق داكن جداً
+    const Color subscriptionBlue = SdColors.platformTint; // خلفية زرقاء فاتحة
+    const Color subscriptionGreen = SdColors.successTintEdge; // خلفية خضراء فاتحة
+    const Color blueText = SdColors.primaryLight; // نص أزرق داكن جداً
     const Color greenText = Color(0xFF064E3B); // نص أخضر داكن جداً
-    const Color orangeText = Color(0xFF9A3412); // برتقالي داكن جداً
-    const Color redText = Color(0xFF991B1B); // أحمر داكن جداً
+    const Color orangeText = SdColors.warningEdge; // برتقالي داكن جداً
+    const Color redText = SdColors.dangerEdge; // أحمر داكن جداً
 
     return Container(
       padding: EdgeInsets.all(isCompact ? 16 : 22),
@@ -624,7 +624,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Container(
                 padding: EdgeInsets.all(isCompact ? 8 : 10),
                 decoration: BoxDecoration(
-                  gradient: EnergyDashboardTheme.accentGradient,
+                  gradient: SdDashKit.accentGradient,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
@@ -839,18 +839,18 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     // ألوان التصميم الفخم - أغمق وأكثر تبايناً
     const Color primaryBlue = SdColors.info;
     const Color lightBlue = Color(0xFF2563EB); // أغمق من 3B82F6
-    const Color lightBlueBg = Color(0xFFA5D8FF); // أزرق أغمق
+    const Color lightBlueBg = SdColors.infoTintEdge; // أزرق أغمق
     const Color purple = Color(0xFF7C3AED);
-    const Color purpleBg = Color(0xFFC4B5FD); // بنفسجي أغمق
+    const Color purpleBg = SdColors.platformLight; // بنفسجي أغمق
     const Color green = Color(0xFF059669);
     const Color greenBg = Color(0xFF6EE7B7);
-    const Color orange = Color(0xFFC2410C);
+    const Color orange = SdColors.warningText;
     const Color orangeLightBg = Color(0xFFFCD34D);
     const Color orangeBg = Color(0xFFFBBF24);
     const Color teal = Color(0xFF0F766E);
-    const Color indigo = Color(0xFF4338CA);
+    const Color indigo = SdColors.platformBase;
     const Color indigoBg = Color(0xFF93C5FD); // نيلي أغمق
-    const Color dangerRed = Color(0xFFDC2626);
+    const Color dangerRed = SdColors.danger;
     const Color dangerBg = Color(0xFFFCA5A5);
     const Color dangerBorder = SdColors.danger;
 
@@ -884,7 +884,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Container(
                 padding: EdgeInsets.all(isCompact ? 8 : 10),
                 decoration: BoxDecoration(
-                  gradient: EnergyDashboardTheme.primaryGradient,
+                  gradient: SdDashKit.primaryGradient,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
@@ -986,7 +986,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                       : 'ربط بوابة المواطن',
                   backgroundColor: _isLinkedToCitizen
                       ? orangeLightBg
-                      : const Color(0xFFE0F2F1),
+                      : SdColors.accentTint,
                   foregroundColor: _isLinkedToCitizen ? orange : teal,
                   onPressed: _isLinkedToCitizen
                       ? _unlinkFromCitizenPortal
@@ -1053,7 +1053,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           ),
           decoration: BoxDecoration(
             color: isPrimary ? null : backgroundColor,
-            gradient: isPrimary ? EnergyDashboardTheme.primaryGradient : null,
+            gradient: isPrimary ? SdDashKit.primaryGradient : null,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isDanger
@@ -1142,7 +1142,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           ),
           decoration: BoxDecoration(
             color: isPrimary ? null : backgroundColor,
-            gradient: isPrimary ? EnergyDashboardTheme.primaryGradient : null,
+            gradient: isPrimary ? SdDashKit.primaryGradient : null,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isPrimary
@@ -2349,11 +2349,11 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3F51B5).withOpacity(0.2),
+                    color: SdColors.primaryLight.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.people_rounded,
-                      color: Color(0xFF3F51B5), size: 24),
+                      color: SdColors.primaryLight, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -2479,7 +2479,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               decoration: BoxDecoration(
                 color: user.isActive
                     ? SdColors.successTint
-                    : const Color(0xFFFFEBEE),
+                    : SdColors.dangerTint,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -2497,7 +2497,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE3F2FD),
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -3561,7 +3561,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   const Text('معلومات إضافية (اختياري)',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF9E9E9E),
+                        color: SdColors.faint,
                       )),
                   const SizedBox(height: 12),
                   Row(

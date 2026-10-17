@@ -2353,24 +2353,7 @@ class _AddAgentPageState extends State<AddAgentPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 50,
-        backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(size: 20, color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
-            ),
-          ),
-        ),
-        title: const Text(
-          'إضافة وكيل جديد',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-      ),
+      appBar: SdAppBar(title: 'إضافة وكيل جديد'),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(

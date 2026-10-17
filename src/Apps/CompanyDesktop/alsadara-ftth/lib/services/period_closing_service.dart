@@ -116,7 +116,7 @@ class PeriodClosingService {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1E1E2E),
+          backgroundColor: SdColors.primaryEdge,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: Row(

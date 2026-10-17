@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'frontend/components/sd_app_bar.dart';
 
 void main() => runApp(const MaterialApp(home: TestPop()));
 
@@ -18,7 +19,7 @@ class _TestPopState extends State<TestPop> {
         print('didPop: $didPop');
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Test Pop')),
+        appBar: SdAppBar(title: 'Test Pop'),
         body: Center(
           child: ElevatedButton(
             onPressed: () {

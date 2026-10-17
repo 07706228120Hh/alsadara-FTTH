@@ -95,13 +95,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
     return SdTheme.scope(
       child: Scaffold(
         backgroundColor: SdColors.ground,
-        appBar: AppBar(
-          title: const Text('نظام المواطن'),
-          backgroundColor: SdColors.primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          bottom: TabBar(
+        appBar: SdAppBar(title: 'نظام المواطن', bottom: TabBar(
             controller: _tabController,
             isScrollable: true,
             indicatorColor: Colors.white,
@@ -119,8 +113,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                       ),
                     ))
                 .toList(),
-          ),
-        ),
+          )),
         body: TabBarView(
           controller: _tabController,
           children: [

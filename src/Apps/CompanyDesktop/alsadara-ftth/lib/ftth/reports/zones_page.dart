@@ -1019,7 +1019,7 @@ class _ZonesPageState extends State<ZonesPage> {
                                 style: TextStyle(
                                   color: isWarnMessage
                                       ? SdColors.warningText
-                                      : const Color(0xFFB71C1C),
+                                      : SdColors.danger,
                                   fontSize: 14,
                                 ),
                               ),
@@ -1235,16 +1235,7 @@ class PartnersPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 50,
-        title: Text('الشركاء',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600)),
-        backgroundColor: SdColors.info,
-        iconTheme: const IconThemeData(color: Colors.white, size: 20),
-      ),
+      appBar: SdAppBar(title: 'الشركاء'),
       body: Center(
         child:
             Text('صفحة الشركاء قيد التطوير.', style: TextStyle(fontSize: 18)),
@@ -1261,16 +1252,7 @@ class FinancialTransactionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 50,
-        title: Text('المعاملات المالية',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600)),
-        backgroundColor: SdColors.info,
-        iconTheme: const IconThemeData(color: Colors.white, size: 20),
-      ),
+      appBar: SdAppBar(title: 'المعاملات المالية'),
       body: Center(
         child: Text('صفحة المعاملات المالية قيد التطوير.',
             style: TextStyle(fontSize: 18)),
@@ -1305,16 +1287,7 @@ class ZoneNotificationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 50,
-        title: Text('الإشعارات',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600)),
-        backgroundColor: SdColors.info,
-        iconTheme: const IconThemeData(color: Colors.white, size: 20),
-      ),
+      appBar: SdAppBar(title: 'الإشعارات'),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: fetchNotifications(),
         builder: (context, snapshot) {

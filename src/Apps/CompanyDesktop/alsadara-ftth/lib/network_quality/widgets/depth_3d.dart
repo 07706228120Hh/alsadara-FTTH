@@ -17,6 +17,7 @@ import '../models/device_models.dart';
 import '../models/quality_models.dart';
 import '../services/network_quality_controller.dart' show QualityStage, QualityStageX;
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 // ═══════════════════════════ الألوان ═══════════════════════════
 
@@ -26,43 +27,34 @@ class Nq3d {
   static const indigoDark = Color(0xFF0F1660);
   static const indigoLight = SdColors.primaryLight;
   static const indigoSoft = SdColors.primarySoft;
-  static const teal = Color(0xFF00838F);
-  static const tealDark = Color(0xFF005662);
-  static const fiber = Color(0xFF00ACC1);
-  static const ground = Color(0xFFF2F4F8);
-  static const groundAlt = Color(0xFFEEF1F6);
+  static const teal = SdColors.accent;
+  static const tealDark = SdColors.accentEdge;
+  static const fiber = SdColors.accentLight;
+  static const ground = SdColors.ground;
+  static const groundAlt = SdColors.ground;
   static const ink = Color(0xFF1B1E2B);
-  static const muted = Color(0xFF5B6070);
-  static const faint = Color(0xFF8A90A2);
-  static const edge = Color(0xFFDCE0EC);
-  static const cardEdge = Color(0xFFD6DBEA);
-  static const sideLeft = Color(0xFFE3E6F0);
-  static const sideRight = Color(0xFFC5CBE0);
-  static const outline = Color(0xFFD3D8E8);
-  static const gridLine = Color(0xFFE6E9F3);
+  static const muted = SdColors.muted;
+  static const faint = SdColors.faint;
+  static const edge = SdColors.edge;
+  static const cardEdge = SdColors.primaryTintEdge;
+  static const sideLeft = SdColors.divider;
+  static const sideRight = SdColors.sideShade;
+  static const outline = SdColors.primaryTintEdge;
+  static const gridLine = SdColors.divider;
   static const trace = Color(0xFF7E57C2);
   static const glow = Color(0x591A237E);
 }
 
 /// شريط تطبيق موحّد بحافّة سفلية بارزة.
 PreferredSizeWidget nq3dAppBar(String title, {List<Widget>? actions}) {
-  return AppBar(
-    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-    centerTitle: true,
-    backgroundColor: Nq3d.indigo,
-    foregroundColor: Colors.white,
-    elevation: 0,
-    scrolledUnderElevation: 0,
-    actions: actions,
-    bottom: const PreferredSize(
+  return SdAppBar(title: title, actions: actions, bottom: const PreferredSize(
       preferredSize: Size.fromHeight(6),
       child: SizedBox(
         height: 6,
         width: double.infinity,
         child: ColoredBox(color: Nq3d.indigoDark),
       ),
-    ),
-  );
+    ));
 }
 
 /// ظلّ «مادّي»: حافّة صلبة أسفل العنصر + توهّج ناعم.
@@ -135,7 +127,7 @@ class IsoShade {
   static const router =
       IsoShade(Nq3d.indigoLight, Nq3d.indigo, Nq3d.indigoDark);
   static const accessPoint =
-      IsoShade(Color(0xFF9575CD), Color(0xFF5E35B1), Color(0xFF4527A0));
+      IsoShade(Color(0xFF9575CD), SdColors.platformBase, SdColors.platformEdge);
   static const muted =
       IsoShade(Nq3d.groundAlt, Nq3d.edge, Nq3d.sideRight);
   static const teal =
@@ -155,13 +147,13 @@ IsoShade ratingShade(QualityRating r) {
           Color(0xFFC5E1A5), Color(0xFF9CCC65), Color(0xFF689F38));
     case QualityRating.fair:
       return const IsoShade(
-          Color(0xFFFFE082), Color(0xFFFBC02D), Color(0xFFF57F17));
+          Color(0xFFFFE082), Color(0xFFFBC02D), SdColors.warning);
     case QualityRating.poor:
       return const IsoShade(
-          Color(0xFFFFCC80), Color(0xFFFB8C00), SdColors.warningEdge);
+          Color(0xFFFFCC80), SdColors.warning, SdColors.warningEdge);
     case QualityRating.bad:
       return const IsoShade(
-          Color(0xFFEF9A9A), SdColors.danger, Color(0xFFB71C1C));
+          Color(0xFFEF9A9A), SdColors.danger, SdColors.danger);
     case QualityRating.unknown:
       return IsoShade.muted;
   }
@@ -206,7 +198,7 @@ void _dashed(Canvas canvas, Path path, Paint paint,
 void _label(Canvas canvas, String text, Offset center,
     {double size = 11,
     FontWeight weight = FontWeight.w800,
-    Color color = const Color(0xFF3D4356),
+    Color color = SdColors.muted,
     double opacity = 1,
     TextDirection dir = TextDirection.rtl}) {
   if (opacity <= 0.001) return;
@@ -408,7 +400,7 @@ class _HomeScenePainter extends _DesignPainter {
     const leds = [
       (Offset(171.9, 107.8), SdColors.accentTintEdge),
       (Offset(180.9, 113), SdColors.accentTintEdge),
-      (Offset(190, 118.3), Color(0xFFA5D6A7)),
+      (Offset(190, 118.3), SdColors.successTintEdge),
       (Offset(199.1, 123.5), Nq3d.indigoSoft),
     ];
     for (var i = 0; i < leds.length; i++) {
@@ -584,7 +576,7 @@ class _TopologyPainter extends _DesignPainter {
     canvas.drawCircle(
         const Offset(162, 112.6), 2.4, _fill(SdColors.accentTintEdge));
     canvas.drawCircle(
-        const Offset(170, 117.2), 2.4, _fill(const Color(0xFFA5D6A7)));
+        const Offset(170, 117.2), 2.4, _fill(SdColors.successTintEdge));
 
     // أسهم السرعة على سطح الراوتر.
     if (s.spd > .01) {
@@ -616,7 +608,7 @@ class _TopologyPainter extends _DesignPainter {
         canvas.drawCircle(p, 3.5, _fill(_a(Nq3d.trace, s.trc)));
       }
       canvas.drawCircle(const Offset(320, -6), 15,
-          _fill(_a(const Color(0xFFEDE7F6), s.trc)));
+          _fill(_a(SdColors.platformTint, s.trc)));
       canvas.drawCircle(
           const Offset(320, -6), 15, _stroke(_a(Nq3d.trace, s.trc), 2));
       final globe = Path()
@@ -828,11 +820,11 @@ class _ScoreDiscPainter extends _DesignPainter {
         _fill(const Color(0x47000000)));
     canvas.drawOval(
         Rect.fromCenter(center: const Offset(160, 166), width: 248, height: 92),
-        _fill(const Color(0xFF080C3A)));
+        _fill(SdColors.primaryEdge));
     canvas.drawRect(
-        const Rect.fromLTWH(36, 150, 248, 16), _fill(const Color(0xFF080C3A)));
+        const Rect.fromLTWH(36, 150, 248, 16), _fill(SdColors.primaryEdge));
     final face = Rect.fromCenter(center: c, width: 248, height: 92);
-    canvas.drawOval(face, _fill(const Color(0xFF23308F)));
+    canvas.drawOval(face, _fill(SdColors.primaryLight));
     canvas.drawOval(face, _stroke(const Color(0x1AFFFFFF), 1));
     final ring = Rect.fromCenter(center: c, width: 208, height: 77.2);
     canvas.drawOval(ring, _stroke(const Color(0x24FFFFFF), 11));
@@ -1110,7 +1102,7 @@ class OpticalBand3D extends StatelessWidget {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(9),
                         boxShadow: const [
-                          BoxShadow(color: Color(0xFFB9BFD3), offset: Offset(0, 6)),
+                          BoxShadow(color: SdColors.sideShade, offset: Offset(0, 6)),
                         ],
                       ),
                       child: ClipRRect(
@@ -1364,7 +1356,7 @@ class _TracePainter extends _DesignPainter {
     // الكرة الأرضية / الخادم في النهاية.
     final serverRevealed = visible >= n - 0.01 && n > 0;
     final globeOp = serverRevealed ? 1.0 : 0.35;
-    canvas.drawCircle(_server, 17, _fill(_a(const Color(0xFFEDE7F6), globeOp)));
+    canvas.drawCircle(_server, 17, _fill(_a(SdColors.platformTint, globeOp)));
     canvas.drawCircle(_server, 17, _stroke(_a(Nq3d.trace, globeOp), 2));
     final globe = Path()
       ..moveTo(_server.dx - 17, _server.dy)
@@ -1390,9 +1382,9 @@ class _TracePainter extends _DesignPainter {
       final pulsing = appear < 1.0;
       final r = (isLast ? 7.0 : 5.5) * (0.6 + 0.4 * appear);
       if (hop.timedOut) {
-        canvas.drawCircle(c, r, _fill(_a(const Color(0xFFBDBDBD), appear)));
+        canvas.drawCircle(c, r, _fill(_a(SdColors.sideShade, appear)));
         canvas.drawCircle(
-            c, r, _stroke(_a(const Color(0xFF9E9E9E), appear), 1.5));
+            c, r, _stroke(_a(SdColors.faint, appear), 1.5));
       } else {
         if (pulsing) {
           canvas.drawCircle(
@@ -1480,7 +1472,7 @@ class _IsoDevicePainter extends _DesignPainter {
       canvas.drawCircle(const Offset(-12, 19), 2, _fill(Nq3d.fiber));
     } else if (type == DeviceType.router || type == DeviceType.accessPoint) {
       canvas.drawCircle(const Offset(-12, 19), 2, _fill(SdColors.accentTintEdge));
-      canvas.drawCircle(const Offset(-6, 22.5), 2, _fill(const Color(0xFFA5D6A7)));
+      canvas.drawCircle(const Offset(-6, 22.5), 2, _fill(SdColors.successTintEdge));
     }
   }
 
@@ -1636,8 +1628,8 @@ class Toggle3D extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: value
-              ? const [Color(0xFF0B1150), Nq3d.indigo]
-              : const [Color(0xFFCDD2E4), Nq3d.sideLeft],
+              ? const [SdColors.primary, Nq3d.indigo]
+              : const [SdColors.sideShade, Nq3d.sideLeft],
         ),
       ),
       child: AnimatedAlign(
@@ -1654,7 +1646,7 @@ class Toggle3D extends StatelessWidget {
             color: value ? Colors.white : Nq3d.faint,
             boxShadow: [
               BoxShadow(
-                  color: value ? const Color(0xFFC5CAE9) : Nq3d.muted,
+                  color: value ? SdColors.infoTintEdge : Nq3d.muted,
                   offset: const Offset(0, 3)),
               const BoxShadow(
                   color: Color(0x40000000), offset: Offset(0, 4), blurRadius: 8),
@@ -1675,15 +1667,15 @@ class RatingChip3D extends StatelessWidget {
   static (Color fg, Color bg, Color edge) colorsFor(QualityRating r) {
     switch (r) {
       case QualityRating.excellent:
-        return (SdColors.successEdge, SdColors.successTint, const Color(0xFFC8E6C9));
+        return (SdColors.successEdge, SdColors.successTint, SdColors.successTintEdge);
       case QualityRating.good:
-        return (const Color(0xFF33691E), const Color(0xFFF1F8E9), const Color(0xFFDCEDC8));
+        return (SdColors.successEdge, SdColors.successTint, SdColors.successTintEdge);
       case QualityRating.fair:
-        return (const Color(0xFF7A5D00), const Color(0xFFFFF8E1), const Color(0xFFFFECB3));
+        return (const Color(0xFF7A5D00), SdColors.warningTint, SdColors.warningTintEdge);
       case QualityRating.poor:
-        return (const Color(0xFFBF360C), SdColors.warningTint, SdColors.warningTintEdge);
+        return (SdColors.warningText, SdColors.warningTint, SdColors.warningTintEdge);
       case QualityRating.bad:
-        return (const Color(0xFFB71C1C), const Color(0xFFFFEBEE), const Color(0xFFFFCDD2));
+        return (SdColors.danger, SdColors.dangerTint, SdColors.dangerTintEdge);
       case QualityRating.unknown:
         return (Nq3d.muted, Nq3d.groundAlt, Nq3d.edge);
     }
@@ -2046,7 +2038,7 @@ class _StagePainter extends _DesignPainter {
       final slab = IsoBox(_p(70, 22).translate(0, -10 - k * 12.0), 24, 24, 10);
       paintIsoBox(c, slab, IsoShade.router);
       c.drawCircle(Offset.lerp(slab.left, slab.front, .3)!.translate(0, 5), 2.2,
-          _fill(k == active ? const Color(0xFFA5D6A7) : const Color(0x4DA5D6A7)));
+          _fill(k == active ? SdColors.successTintEdge : const Color(0x4DA5D6A7)));
       topSlab = slab;
     }
     final top = topSlab!;
@@ -2124,7 +2116,7 @@ class _StagePainter extends _DesignPainter {
       final (u, w) = hops[i];
       final lit = reached >= i - .05;
       paintIsoBox(c, _on(u, w, 9, 9, lit ? 10 : 6),
-          lit ? const IsoShade(Color(0xFFB39DDB), Nq3d.trace, Color(0xFF5E35B1)) : IsoShade.muted);
+          lit ? const IsoShade(SdColors.platformLight, Nq3d.trace, SdColors.platformBase) : IsoShade.muted);
     }
     final m = path.computeMetrics().first;
     final pos = m.getTangentForOffset(m.length * v)!.position;
@@ -2349,7 +2341,7 @@ class StageTimelineRow3D extends StatelessWidget {
             curve: Curves.easeOut,
             padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
-              color: active ? const Color(0xFFEEF0FA) : Colors.transparent,
+              color: active ? SdColors.primaryTint : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(

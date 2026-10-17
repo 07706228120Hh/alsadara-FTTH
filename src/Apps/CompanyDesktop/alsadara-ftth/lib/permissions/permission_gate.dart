@@ -43,6 +43,7 @@ library;
 import 'package:flutter/material.dart';
 import 'permission_manager.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 /// حارس الصلاحيات الموحد
 class PermissionGate extends StatelessWidget {
@@ -181,11 +182,7 @@ class PermissionGate extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFF0a0a0a),
-        appBar: AppBar(
-          title: Text(pageName ?? 'غير مصرح'),
-          backgroundColor: SdColors.ink,
-          foregroundColor: Colors.white,
-        ),
+        appBar: SdAppBar(title: pageName ?? 'غير مصرح'),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

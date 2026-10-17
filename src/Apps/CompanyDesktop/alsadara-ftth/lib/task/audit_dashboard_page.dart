@@ -10,9 +10,9 @@ import '../frontend/tokens/sd_colors.dart' show SdColors;
 // ═══════════════════════════════════════════════════════════════
 //  Premium Dark Theme Constants
 // ═══════════════════════════════════════════════════════════════
-const _bgDark = Color(0xFF0B1121);
-const _bgCard = Color(0xFF111B2E);
-const _navy = Color(0xFF1B2A4A);
+const _bgDark = SdColors.primaryEdge;
+const _bgCard = SdColors.primaryEdge;
+const _navy = SdColors.primaryEdge;
 const _navyDark = Color(0xFF0A0F1A);
 const _blue = Color(0xFF4A9FFF);
 const _green = SdColors.success;
@@ -20,10 +20,10 @@ const _red = SdColors.danger;
 const _amber = Color(0xFFFFB74D);
 const _orange = Color(0xFFFF7043);
 const _purple = Color(0xFFAB47BC);
-const _cyan = Color(0xFF26C6DA);
+const _cyan = SdColors.accentGlow;
 const _teal = Color(0xFF26A69A);
-const _textPrimary = Color(0xFFE8EAF0);
-const _textSecondary = Color(0xFF8892A4);
+const _textPrimary = SdColors.divider;
+const _textSecondary = SdColors.faint;
 const _glassBorder = Color(0x20FFFFFF);
 const _glassCard = Color(0x12FFFFFF);
 
@@ -422,7 +422,7 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [_bgDark, Color(0xFF0E1726), _bgDark],
+          colors: [_bgDark, SdColors.primaryEdge, _bgDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -1789,7 +1789,7 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
     );
   }
 
-  static const _grayIcon = Color(0xFF6C757D);
+  static const _grayIcon = SdColors.muted;
 
   Color _getTechColor(int idx) {
     const colors = [

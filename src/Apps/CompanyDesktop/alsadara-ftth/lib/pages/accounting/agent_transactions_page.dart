@@ -171,7 +171,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
           const SizedBox(width: 4),
           Expanded(
             child: _buildMiniSummaryCard('المعاملات', _total.toString(),
-                Icons.receipt_long, const Color(0xFF34495E)),
+                Icons.receipt_long, SdColors.accentEdge),
           ),
         ],
       );
@@ -221,7 +221,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
             'عدد المعاملات',
             _total.toString(),
             Icons.receipt_long,
-            const Color(0xFF34495E),
+            SdColors.accentEdge,
           ),
         ),
       ],

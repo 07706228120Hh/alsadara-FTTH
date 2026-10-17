@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class NotificationsPage extends StatefulWidget {
   final String authToken;
@@ -520,18 +521,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
     return Scaffold(
       backgroundColor: SdColors.surfaceAlt,
-      appBar: AppBar(
-        title: const Text(
-          'الإشعارات',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: SdColors.primary,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
+      appBar: SdAppBar(title: 'الإشعارات', actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list, color: Colors.white),
             onSelected: (String value) {
@@ -580,8 +570,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             onPressed: () => _loadNotifications(isRefresh: true),
             tooltip: 'تحديث',
           ),
-        ],
-      ),
+        ]),
       body: Column(
         children: [
           Container(

@@ -563,7 +563,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
             width: double.infinity,
             padding: EdgeInsets.all(12.w),
             decoration: BoxDecoration(
-              color: const Color(0xFFE7FFDB),
+              color: SdColors.successTintEdge,
               borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
               border: Border.all(
                   color: SdColors.whatsapp.withValues(alpha: 0.30)),

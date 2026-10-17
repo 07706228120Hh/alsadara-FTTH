@@ -1,3 +1,5 @@
+// ⚠️ مهمل (17-10-2026): لم يعد مستخدماً في أي شاشة — البديل SdDashKit (lib/frontend/components/sd_dash_kit.dart).
+// يُحذف في المرحلة 7 من docs/ui-unification/THEME_CLEANUP_PLAN.md بعد موافقة المالك.
 /// 🎨 Energy Management Dashboard Theme
 /// مستوحى من تصاميم Energy/Solar Dashboard الحديثة
 /// خلفية داكنة + ألوان نيون متوهجة + Glassmorphism

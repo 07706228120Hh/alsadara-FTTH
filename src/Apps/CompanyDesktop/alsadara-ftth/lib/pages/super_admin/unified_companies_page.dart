@@ -18,11 +18,11 @@ import '../../citizen_portal/citizen_portal.dart';
 import 'add_company_page.dart';
 import 'edit_company_page.dart';
 import 'company_details_page.dart';
-import '../../theme/energy_dashboard_theme.dart';
 import '../home_page.dart';
 import '../../permissions/permissions.dart';
 import '../../multi_tenant.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_dash_kit.dart';
 
 /// حالة الاشتراك
 enum CompanyStatus {
@@ -164,7 +164,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       case CompanyStatus.warning:
         return const Color(0xFFf7971e);
       case CompanyStatus.critical:
-        return const Color(0xFFeb3349);
+        return SdColors.danger;
       case CompanyStatus.expired:
         return SdColors.danger;
       case CompanyStatus.suspended:
@@ -246,10 +246,10 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           // المحتوى
           Expanded(
             child: _isLoading
-                ? EnergyDashboardTheme.loadingIndicator(
+                ? SdDashKit.loadingIndicator(
                     message: 'جاري تحميل الشركات...')
                 : _errorMessage != null
-                    ? EnergyDashboardTheme.errorWidget(
+                    ? SdDashKit.errorWidget(
                         message: 'حدث خطأ',
                         details: _errorMessage,
                         onRetry: _loadCompanies,
@@ -288,9 +288,9 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  gradient: EnergyDashboardTheme.primaryGradient,
+                  gradient: SdDashKit.primaryGradient,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: EnergyDashboardTheme.glowShadow(
+                  boxShadow: SdDashKit.glowShadow(
                       SdColors.info.withOpacity(0.2)),
                 ),
                 child: const Icon(Icons.business_rounded,
@@ -439,7 +439,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   'منتهية',
                   stats['expired']!,
                   Icons.cancel_rounded,
-                  const Color(0xFFdc2626),
+                  SdColors.danger,
                   CompanyStatus.expired),
               const SizedBox(width: 8),
               _buildPremiumStatChip(
@@ -708,7 +708,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   SdColors.danger, CompanyStatus.critical),
               const SizedBox(width: 10),
               _buildStatChip('منتهية', stats['expired']!, Icons.cancel_rounded,
-                  const Color(0xFFdc2626), CompanyStatus.expired),
+                  SdColors.danger, CompanyStatus.expired),
               const SizedBox(width: 10),
               _buildStatChip(
                   'معلقة',
@@ -874,7 +874,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               title: 'حرج',
               value: stats['critical'].toString(),
               icon: Icons.warning_rounded,
-              gradient: const [Color(0xFFeb3349), Color(0xFFf45c43)],
+              gradient: const [SdColors.danger, Color(0xFFf45c43)],
               onTap: () =>
                   setState(() => _statusFilter = CompanyStatus.critical),
             ),
@@ -882,7 +882,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               title: 'منتهية',
               value: stats['expired'].toString(),
               icon: Icons.cancel_rounded,
-              gradient: const [Color(0xFFeb3349), Color(0xFFf45c43)],
+              gradient: const [SdColors.danger, Color(0xFFf45c43)],
               onTap: () =>
                   setState(() => _statusFilter = CompanyStatus.expired),
             ),
@@ -890,7 +890,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               title: 'معلقة',
               value: stats['suspended'].toString(),
               icon: Icons.pause_circle_rounded,
-              gradient: const [SdColors.muted, Color(0xFF94A3B8)],
+              gradient: const [SdColors.muted, SdColors.faint],
               onTap: () =>
                   setState(() => _statusFilter = CompanyStatus.suspended),
             ),
@@ -2212,7 +2212,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             end: Alignment.bottomRight,
             colors: [
               SdColors.ink,
-              const Color(0xFF16213e),
+              SdColors.primaryEdge,
             ],
           ),
           borderRadius: BorderRadius.circular(24),

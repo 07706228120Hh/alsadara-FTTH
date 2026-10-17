@@ -17,6 +17,7 @@ import '../../permissions/permissions.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 // تم تحديث الواجهة لتصبح أكثر عصرية وحداثة بدون إضافة حزم خارجية
 // ركزنا على: ألوان متدرجة، بطاقات تفاعلية، حركات انتقالية، وتحسين عرض التقدم والرسائل
@@ -748,26 +749,7 @@ class _ExportPageState extends State<ExportPage>
   Widget build(BuildContext context) {
     if (!isAuthenticated) {
       return Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 50,
-          backgroundColor: Colors.transparent,
-          iconTheme: const IconThemeData(size: 20, color: Colors.white),
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  SdColors.primaryMid,
-                  SdColors.info,
-                  SdColors.infoTintEdge
-                ],
-              ),
-            ),
-          ),
-          title: const Text('تصدير البيانات',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-        ),
+        appBar: SdAppBar(title: 'تصدير البيانات'),
         body: const Center(child: Text('أدخل كلمة المرور للوصول إلى الصفحة')),
       );
     }

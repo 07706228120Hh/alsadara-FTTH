@@ -1764,13 +1764,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SdColors.ground,
-      appBar: AppBar(
-        toolbarHeight: _isPhone ? 48 : 56,
-        title: Text('سجلات الحسابات',
-            style: TextStyle(fontSize: _fs(16), fontWeight: FontWeight.w600)),
-        backgroundColor: SdColors.primary,
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: 'سجلات الحسابات', actions: [
           // زر التصفية السريعة بالتاريخ
           PopupMenuButton<String>(
             icon: Container(
@@ -1983,8 +1977,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             tooltip: 'تحديث البيانات',
             onPressed: _loadRecords,
           ),
-        ],
-      ),
+        ]),
       body: Column(
         children: [
           _buildFilterBar(),
@@ -2522,7 +2515,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                             colors: selectedReprintFilter == 'مطبوع أكثر من مرة'
                                 ? [
                                     SdColors.danger,
-                                    const Color(0xFFEF5350)
+                                    SdColors.danger
                                   ]
                                 : [
                                     SdColors.accent,
@@ -3444,11 +3437,11 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       cardBgColor = SdColors.successTint; // أخضر فاتح
       cardBorderColor = SdColors.success; // أخضر
     } else if (isCreditPayment) {
-      cardBgColor = Color(0xFFFFEBEE); // أحمر فاتح
+      cardBgColor = SdColors.dangerTint; // أحمر فاتح
       cardBorderColor = SdColors.danger; // أحمر
     } else {
-      cardBgColor = Color(0xFFF5F5F5); // رمادي فاتح
-      cardBorderColor = Color(0xFF9E9E9E); // رمادي
+      cardBgColor = SdColors.groundAlt; // رمادي فاتح
+      cardBorderColor = SdColors.faint; // رمادي
     }
 
     return Card(

@@ -7,12 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../theme/accounting_theme.dart';
 import '../../frontend/frontend.dart';
 import '../../models/agent.dart';
 import '../../services/agent_api_service.dart';
 import '../accounting/agent_transactions_page.dart';
 import '../accounting/agent_commission_page.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 class AgentsManagementPage extends StatefulWidget {
   final String? initialAgentId;
@@ -174,7 +174,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          gradient: AccountingTheme.neonPurpleGradient,
+                          gradient: SdUiKit.neonPurpleGradient,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(Icons.support_agent_rounded,
@@ -451,7 +451,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 gradient: _sidebarIndex == 0
-                    ? AccountingTheme.neonPurpleGradient
+                    ? SdUiKit.neonPurpleGradient
                     : null,
                 color:
                     _sidebarIndex != 0 ? tabInfo.color.withOpacity(0.1) : null,
@@ -588,7 +588,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             gradient:
-                _sidebarIndex == 0 ? AccountingTheme.neonPurpleGradient : null,
+                _sidebarIndex == 0 ? SdUiKit.neonPurpleGradient : null,
             color: _sidebarIndex != 0 ? tabInfo.color.withOpacity(0.1) : null,
             borderRadius: BorderRadius.circular(8),
           ),

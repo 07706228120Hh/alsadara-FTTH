@@ -2402,7 +2402,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     Widget sessionSegment() {
       final items = [
         {'label': 'الكل', 'color': SdColors.faint},
-        {'label': 'نشطة', 'color': const Color(0xFF388E3C)},
+        {'label': 'نشطة', 'color': SdColors.success},
         {'label': 'غير نشطة', 'color': SdColors.danger},
       ];
       return Container(

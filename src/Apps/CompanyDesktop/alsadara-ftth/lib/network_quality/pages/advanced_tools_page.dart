@@ -40,7 +40,7 @@ class AdvancedToolsPage extends StatelessWidget {
                 title: 'اختبار ومقارنة DNS',
                 subtitle: 'قياس أسرع مزوّد DNS واختيار الموصى به',
                 icon: Icons.dns_rounded,
-                gradient: const [Color(0xFF3F51B5), Nq3d.indigo],
+                gradient: const [SdColors.primaryLight, Nq3d.indigo],
                 iconEdge: Nq3d.indigoDark,
                 glow: const Color(0x591A237E),
                 onTap: () => Navigator.push(
@@ -65,8 +65,8 @@ class AdvancedToolsPage extends StatelessWidget {
                 title: 'محلّل قنوات WiFi',
                 subtitle: 'عرض القنوات المزدحمة واقتراح الأفضل (2.4/5GHz)',
                 icon: Icons.wifi_find_rounded,
-                gradient: const [Color(0xFF9575CD), Color(0xFF5E35B1)],
-                iconEdge: const Color(0xFF4527A0),
+                gradient: const [Color(0xFF9575CD), SdColors.platformBase],
+                iconEdge: SdColors.platformEdge,
                 glow: const Color(0x595E35B1),
                 onTap: () => Navigator.push(
                   context,

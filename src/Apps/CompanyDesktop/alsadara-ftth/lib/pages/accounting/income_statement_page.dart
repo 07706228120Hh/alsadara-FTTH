@@ -4,10 +4,10 @@ import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
 import '../../services/accounting_export_service.dart';
 import '../../services/accounting_pdf_export_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة قائمة الدخل - Income Statement (الأرباح والخسائر)
 class IncomeStatementPage extends StatefulWidget {
@@ -181,7 +181,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
             child: _isLoading
                 ? const AccountingSkeleton(rows: 8, columns: 4)
                 : _errorMessage != null
-                    ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                    ? SdUiKit.errorView(_errorMessage!, _loadData)
                     : _buildContent(ar),
           ),
         ],
@@ -269,7 +269,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
             title: 'الإيرادات',
             icon: Icons.arrow_downward_rounded,
             iconColor: SdColors.success,
-            gradient: AccountingTheme.neonGreenGradient,
+            gradient: SdUiKit.neonGreenGradient,
             accounts: _revenueAccounts,
             total: _totalRevenue,
             totalLabel: 'إجمالي الإيرادات',
@@ -282,7 +282,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
             title: 'المصروفات',
             icon: Icons.arrow_upward_rounded,
             iconColor: SdColors.danger,
-            gradient: AccountingTheme.neonPinkGradient,
+            gradient: SdUiKit.neonPinkGradient,
             accounts: _expenseAccounts,
             total: _totalExpenses,
             totalLabel: 'إجمالي المصروفات',
@@ -301,7 +301,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
         gradient: LinearGradient(
           colors: _isProfit
               ? [SdColors.accent, SdColors.accent]
-              : [SdColors.danger, const Color(0xFFC0392B)],
+              : [SdColors.danger, SdColors.danger],
         ),
         borderRadius: BorderRadius.circular(ar.cardRadius + 4),
         boxShadow: [
@@ -408,7 +408,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
   }) {
     final isMob = ar.isMobile;
     return Container(
-      decoration: AccountingTheme.card,
+      decoration: SdUiKit.card,
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [

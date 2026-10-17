@@ -52,11 +52,11 @@ class _ModernHomePageState extends State<ModernHomePage>
   late AnimationController _animationController;
 
   // الألوان الفخمة
-  final Color _primaryColor = const Color(0xFF0F172A); // Slate 900
+  final Color _primaryColor = SdColors.primaryEdge; // Slate 900
   final Color _secondaryColor = SdColors.ink; // Slate 800
   final Color _accentColor = const Color(0xFF38BDF8); // Cyan 400
   final Color _goldColor = SdColors.warning; // Amber 500
-  final Color _surfaceColor = const Color(0xFFF8FAFC); // Slate 50
+  final Color _surfaceColor = SdColors.groundAlt; // Slate 50
 
   late Timer _timeTimer;
   String _currentTime = '';
@@ -492,7 +492,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF334155),
+                                color: SdColors.muted,
                               ),
                             ),
                             Text(

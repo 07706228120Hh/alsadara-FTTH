@@ -898,7 +898,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       case 'Employee':
         return SdColors.info;
       default:
-        return const Color(0xFF7F8C8D);
+        return SdColors.faint;
     }
   }
 

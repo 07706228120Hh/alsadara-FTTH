@@ -1,3 +1,5 @@
+// ⚠️ مهمل (17-10-2026): لم يعد مستخدماً في أي شاشة — البديل SdUiKit (lib/frontend/components/sd_ui_kit.dart).
+// يُحذف في المرحلة 7 من docs/ui-unification/THEME_CLEANUP_PLAN.md بعد موافقة المالك.
 /// 🎨 Accounting Light Theme (XONEPROO Style)
 /// ثيم فاتح لصفحات المحاسبة - خلفية رمادية فاتحة + بطاقات بيضاء + أيقونات ملونة
 /// يستخدم **نفس أسماء الخصائص** مثل EnergyDashboardTheme لسهولة التبديل

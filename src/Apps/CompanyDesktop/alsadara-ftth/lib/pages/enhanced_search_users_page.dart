@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import '../services/isp_subscribers_api_service.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class EnhancedSearchUsersPage extends StatefulWidget {
   const EnhancedSearchUsersPage({super.key});
@@ -595,18 +596,13 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('البحث المحسن عن المستخدمين'),
-        backgroundColor: SdColors.info,
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: 'البحث المحسن عن المستخدمين', actions: [
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: _showSettingsDialog,
             tooltip: 'إعدادات المطابقة',
           ),
-        ],
-      ),
+        ]),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(

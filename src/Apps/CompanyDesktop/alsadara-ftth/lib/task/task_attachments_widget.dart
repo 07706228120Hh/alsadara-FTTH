@@ -8,6 +8,7 @@ import 'package:http/io_client.dart';
 import 'dart:convert';
 import 'package:path/path.dart' as path;
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 /// ويدجت المرفقات — رفع صور/ملفات وعرضها
 class TaskAttachmentsWidget extends StatefulWidget {
@@ -339,13 +340,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppBar(
-              title: Text(fileName, style: const TextStyle(fontSize: 14)),
-              backgroundColor: SdColors.platformBase,
-              foregroundColor: Colors.white,
-              leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-              automaticallyImplyLeading: false,
-            ),
+            SdAppBar(title: fileName, leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)), automaticallyImplyLeading: false),
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.6),
               child: Image.network(

@@ -4,10 +4,10 @@ import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
 import '../../services/accounting_export_service.dart';
 import '../../services/accounting_pdf_export_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة ميزان المراجعة - Trial Balance
 class TrialBalancePage extends StatefulWidget {
@@ -219,7 +219,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
             child: _isLoading
                 ? const AccountingSkeleton(rows: 8, columns: 4)
                 : _errorMessage != null
-                    ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                    ? SdUiKit.errorView(_errorMessage!, _loadData)
                     : _buildTable(ar),
           ),
         ],
@@ -427,7 +427,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
   Widget _buildTable(AccountingResponsive ar) {
     final accounts = _filteredAccounts;
     if (accounts.isEmpty) {
-      return AccountingTheme.emptyState('لا توجد حسابات',
+      return SdUiKit.emptyState('لا توجد حسابات',
           icon: Icons.account_balance_wallet);
     }
 
@@ -435,13 +435,13 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
     return SingleChildScrollView(
       padding: EdgeInsets.all(isMob ? 8 : ar.spaceXL),
       child: Container(
-        decoration: AccountingTheme.card,
+        decoration: SdUiKit.card,
         clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
             // رأس الجدول
             Container(
-              decoration: AccountingTheme.tableHeader,
+              decoration: SdUiKit.tableHeader,
               padding: EdgeInsets.symmetric(
                   horizontal: ar.tableCellPadH, vertical: ar.tableCellPadV + 2),
               child: Row(

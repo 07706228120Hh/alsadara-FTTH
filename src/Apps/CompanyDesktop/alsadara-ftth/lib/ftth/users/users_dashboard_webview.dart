@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/auth_service.dart';
 import '../../services/ftth_cf_clearance.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class UsersDashboardWebView extends StatefulWidget {
   final String authToken;
@@ -216,11 +217,7 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
     // إذا لم يكن Windows، عرض رسالة
     if (!Platform.isWindows) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('بيانات المستخدمين'),
-          backgroundColor: SdColors.primary,
-          foregroundColor: Colors.white,
-        ),
+        appBar: SdAppBar(title: 'بيانات المستخدمين'),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

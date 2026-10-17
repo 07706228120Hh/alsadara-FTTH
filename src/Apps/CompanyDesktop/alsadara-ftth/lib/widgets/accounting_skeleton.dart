@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// ويدجت هيكل تحميل للصفحات المحاسبية
 class AccountingSkeleton extends StatefulWidget {
@@ -49,8 +50,8 @@ class _AccountingSkeletonState extends State<AccountingSkeleton>
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: Color.lerp(
-                    const Color(0xFFE8E8E8),
-                    const Color(0xFFF5F5F5),
+                    SdColors.ground,
+                    SdColors.groundAlt,
                     _animation.value,
                   ),
                   borderRadius: BorderRadius.circular(4),
@@ -66,8 +67,8 @@ class _AccountingSkeletonState extends State<AccountingSkeleton>
                       height: 14,
                       decoration: BoxDecoration(
                         color: Color.lerp(
-                          const Color(0xFFE8E8E8),
-                          const Color(0xFFF5F5F5),
+                          SdColors.ground,
+                          SdColors.groundAlt,
                           _animation.value,
                         ),
                         borderRadius: BorderRadius.circular(4),
@@ -131,8 +132,8 @@ class _AccountingCardSkeletonState extends State<AccountingCardSkeleton>
               height: 100,
               decoration: BoxDecoration(
                 color: Color.lerp(
-                  const Color(0xFFE8E8E8),
-                  const Color(0xFFF5F5F5),
+                  SdColors.ground,
+                  SdColors.groundAlt,
                   _animation.value,
                 ),
                 borderRadius: BorderRadius.circular(12),

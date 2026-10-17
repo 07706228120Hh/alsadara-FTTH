@@ -4,11 +4,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/api_client.dart';
 import 'widgets/super_admin_widgets.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_dash_kit.dart';
 class AuditLogPage extends StatefulWidget {
   const AuditLogPage({super.key});
 
@@ -181,7 +181,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
     final logs = _filteredLogs;
 
     if (logs.isEmpty) {
-      return EnergyDashboardTheme.emptyWidget(
+      return SdDashKit.emptyWidget(
         message: 'لا توجد سجلات مطابقة',
         icon: Icons.history_rounded,
       );

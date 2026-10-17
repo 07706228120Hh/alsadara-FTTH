@@ -1749,7 +1749,7 @@ class _PermissionsManagementV2PageState
       case 'print':
         return SdColors.muted;
       case 'send':
-        return const Color(0xFF00BCD4);
+        return SdColors.accentLight;
       default:
         return Colors.grey;
     }

@@ -186,10 +186,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
   static const _bgToolbar = SdColors.primary;
   static const _accent = SdColors.accent;
   static const _textDark = Color(0xFF333333);
-  static const _textGray = Color(0xFF999999);
-  static const _textSubtle = Color(0xFF666666);
+  static const _textGray = SdColors.faint;
+  static const _textSubtle = SdColors.muted;
   static const _shadowColor = Color(0x14000000);
-  static const _dividerColor = Color(0xFFE8E8E8);
+  static const _dividerColor = SdColors.ground;
 
   @override
   Widget build(BuildContext context) {
@@ -210,24 +210,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
       return Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            iconTheme: const IconThemeData(color: Colors.white),
-            flexibleSpace: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    SdColors.primaryMid,
-                    SdColors.info,
-                    SdColors.infoTintEdge
-                  ],
-                ),
-              ),
-            ),
-            title: const Text('إعدادات الشركة'),
-          ),
+          appBar: SdAppBar(title: 'إعدادات الشركة'),
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -2974,7 +2957,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isActive ? SdColors.surfaceAlt : const Color(0xFFFFF3F3),
+        color: isActive ? SdColors.surfaceAlt : SdColors.dangerTint,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isActive ? _dividerColor : SdColors.danger.withOpacity(0.3),
@@ -3683,7 +3666,7 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
 
   static const _accent = SdColors.info;
   static const _textDark = Color(0xFF333333);
-  static const _textGray = Color(0xFF999999);
+  static const _textGray = SdColors.faint;
   static const _bgCard = Colors.white;
 
   bool get _isEditing => widget.center != null;
@@ -3797,7 +3780,7 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0F7FF),
+                    color: SdColors.ground,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: _accent.withOpacity(0.2)),
                   ),

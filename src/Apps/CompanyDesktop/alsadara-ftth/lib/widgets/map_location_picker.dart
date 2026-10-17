@@ -60,7 +60,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
 
   static const _accent = SdColors.info;
   static const _textDark = Color(0xFF333333);
-  static const _textGray = Color(0xFF999999);
+  static const _textGray = SdColors.faint;
 
   @override
   void initState() {

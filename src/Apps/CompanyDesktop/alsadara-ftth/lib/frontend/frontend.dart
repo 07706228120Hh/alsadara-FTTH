@@ -20,5 +20,7 @@ export 'components/sd_login_3d.dart';
 export 'components/sd_app_bar.dart';
 export 'components/sd_menu_tile.dart';
 export 'components/sd_side_nav.dart';
+export 'components/sd_ui_kit.dart';
+export 'components/sd_dash_kit.dart';
 export 'components/sd_stat_pedestal.dart';
 export 'components/sd_page.dart';

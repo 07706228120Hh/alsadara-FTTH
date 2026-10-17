@@ -2595,11 +2595,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
     return SdTheme.scope(
       child: Scaffold(
       backgroundColor: SdColors.ground,
-      appBar: AppBar(
-        title: const Text('جلب بيانات الموقع'),
-        backgroundColor: SdColors.primary,
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: 'جلب بيانات الموقع', actions: [
           // 📊 زر جلب Superset مباشرة (يفتح الداشبورد في WebView)
           IconButton(
             icon: _isFetchingSupersetDirect
@@ -2699,8 +2695,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
             onPressed: _showApiTraffic,
             tooltip: 'API Traffic',
           ),
-        ],
-      ),
+        ]),
       body: Column(
         children: [
           // شريط الحالة

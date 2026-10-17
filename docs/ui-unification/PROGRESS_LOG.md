@@ -224,3 +224,11 @@ analyze: كل الملفات الأربعة عشر المُرحَّلة = No iss
 - النتيجة: ملتزمة 46→57، غير مرحّلة 57→3، Color(0x) 1,490→435، Colors.x 4,523→423، GoogleFonts 2,380→10، AccountingTheme 2,295→84، Energy 355→31.
 - مطلوب من المالك: flutter analyze (لا يتوفر Flutter في بيئة Claude).
 - إصلاح: حُذف import أُضيف آلياً داخل ملف part (subscription_details_page.renewal.dart) — كان الخطأ الوحيد في analyze. الأب يستورد SdColors. الأدوات صارت تتجاهل ملفات part of.
+
+## 2026-10-17 — المرحلة 2ب + 4 (آلياً)
+- نقل مساعدات الثيمين القديمين إلى frontend: SdUiKit (sd_ui_kit.dart) و SdDashKit (sd_dash_kit.dart، مع SdGlowButton/SdGlowCard)، وتحويل كل الاستدعاءات (147 في 28 ملفاً). الثيمان القديمان لم يعودا مستخدمين (مُعلَّمان «مهمل»، الحذف في المرحلة 7 بموافقة).
+- ألوان hex المتبقية → أقرب رمز SdColors بفرق ΔE<16: 307 استبدالاً في 66 ملفاً. بقي 188 لوناً مميّزاً للمراجعة.
+- AppBar البسيطة → SdAppBar: 63 في 53 ملفاً (تُركت 22 معقّدة: عنوان غير نصي/flexibleSpace).
+- تحقق: توازن الأقواس، ترتيب الـ imports، ملفات part، الآباء — كلها سليمة.
+- النتيجة: ملتزمة 57→76، غير مرحّلة 3→2، Color(0x) 435→222، AccountingTheme/Energy → 0، AppBar خام 82→21.
+- نسخة احتياطية قبل المرحلة: _backups/theme-cleanup-phase4-start/

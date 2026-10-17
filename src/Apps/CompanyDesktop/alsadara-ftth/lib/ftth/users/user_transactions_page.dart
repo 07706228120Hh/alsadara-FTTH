@@ -10,6 +10,7 @@ import '../../services/auth_service.dart';
 import '../../models/filter_criteria.dart';
 import 'dart:convert';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 /// صفحة عرض معاملات مستخدم محدد
 class UserTransactionsPage extends StatefulWidget {
@@ -191,21 +192,13 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'معاملات: ${widget.userName}',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: SdColors.platformBase,
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: 'معاملات: ${widget.userName}', actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadUserTransactions,
             tooltip: 'تحديث البيانات',
           ),
-        ],
-      ),
+        ]),
       body: isLoading
           ? const Center(
               child: Column(

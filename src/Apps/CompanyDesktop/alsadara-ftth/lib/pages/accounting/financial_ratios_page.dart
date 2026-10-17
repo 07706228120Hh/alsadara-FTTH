@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fl_chart/fl_chart.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة النسب المالية - تحليل 7 نسب مالية أساسية مع رسم بياني
 class FinancialRatiosPage extends StatefulWidget {
@@ -307,7 +307,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
                     child: CircularProgressIndicator(
                         color: SdColors.primary))
                 : _errorMessage != null
-                    ? AccountingTheme.errorView(_errorMessage!, _loadAllData)
+                    ? SdUiKit.errorView(_errorMessage!, _loadAllData)
                     : _buildContent(),
           ),
         ],
@@ -358,8 +358,8 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
       padding: EdgeInsets.all(context.accR.spaceL),
       decoration: BoxDecoration(
         color: SdColors.surface,
-        borderRadius: BorderRadius.circular(AccountingTheme.radiusMedium),
-        boxShadow: AccountingTheme.cardShadow,
+        borderRadius: BorderRadius.circular(SdUiKit.radiusMedium),
+        boxShadow: SdUiKit.cardShadow,
         border: Border(
           right: BorderSide(color: ratio.statusColor, width: 4),
         ),
@@ -478,8 +478,8 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
       padding: EdgeInsets.all(context.accR.spaceL),
       decoration: BoxDecoration(
         color: SdColors.surface,
-        borderRadius: BorderRadius.circular(AccountingTheme.radiusMedium),
-        boxShadow: AccountingTheme.cardShadow,
+        borderRadius: BorderRadius.circular(SdUiKit.radiusMedium),
+        boxShadow: SdUiKit.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

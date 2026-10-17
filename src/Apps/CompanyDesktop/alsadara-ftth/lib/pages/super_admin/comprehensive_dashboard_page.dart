@@ -4,11 +4,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/api_client.dart';
 import 'widgets/super_admin_widgets.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_dash_kit.dart';
 class ComprehensiveDashboardPage extends StatefulWidget {
   const ComprehensiveDashboardPage({super.key});
 
@@ -84,7 +84,7 @@ class _ComprehensiveDashboardPageState
     if (_error != null) {
       return Container(
         color: SdColors.ground,
-        child: EnergyDashboardTheme.errorWidget(
+        child: SdDashKit.errorWidget(
           message: _error!,
           onRetry: _loadData,
         ),

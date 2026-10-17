@@ -23,6 +23,7 @@ import 'ftth_operator_linking_page.dart';
 import 'ftth_operator_transactions_page.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 /// لوحة تحكم مشغلي FTTH — 3 تبويبات
 /// 1) خادمنا: بيانات SubscriptionLogs من سيرفرنا
 /// 2) خادم FTTH: معاملات من admin.ftth.iq/api/transactions
@@ -1706,24 +1707,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       return Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            iconTheme: const IconThemeData(color: Colors.white),
-            flexibleSpace: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    SdColors.primaryMid,
-                    SdColors.info,
-                    SdColors.infoTintEdge
-                  ],
-                ),
-              ),
-            ),
-            title: const Text('غير مصرح'),
-          ),
+          appBar: SdAppBar(title: 'غير مصرح'),
           body: const Center(child: Text('لا تملك صلاحية الوصول لهذه الصفحة')),
         ),
       );
@@ -10523,11 +10507,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('${row.operatorName} — مقارنة المعاملات', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 16)),
-          backgroundColor: SdColors.primary,
-          foregroundColor: Colors.white,
-          actions: [
+        appBar: SdAppBar(title: '${row.operatorName} — مقارنة المعاملات', actions: [
             _filterChip('مطابقة', liveMatched, Colors.green, 'matched'),
             _filterChip('خاطئة', liveWrong, Colors.orange, 'wrong'),
             _filterChip('ناقصة', liveMissing, Colors.red, 'missing'),
@@ -10543,8 +10523,7 @@ class _ComparisonDetailPageState extends State<_ComparisonDetailPage> {
               },
               tooltip: 'تحديث',
             ),
-          ],
-        ),
+          ]),
         body: Column(
           children: [
             // ملخص
@@ -11428,22 +11407,14 @@ class _FtthTeamPageState extends State<_FtthTeamPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('الفريق ($_totalCount عضو)',
-              style: TextStyle(
-                  fontSize: context.accR.headingSmall,
-                  fontWeight: FontWeight.bold)),
-          backgroundColor: SdColors.accent,
-          foregroundColor: Colors.white,
-          actions: [
+        appBar: SdAppBar(title: 'الفريق ($_totalCount عضو)', actions: [
             IconButton(
               icon: Icon(Icons.refresh, size: context.accR.iconM),
               onPressed: _loadTeam,
               tooltip: 'تحديث',
             ),
             SizedBox(width: context.accR.spaceS),
-          ],
-        ),
+          ]),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
@@ -13296,7 +13267,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       {'title': 'نقد', 'amount': cashAmount, 'count': cashCount,
        'icon': Icons.attach_money, 'colors': [SdColors.success, SdColors.success]},
       {'title': 'آجل', 'amount': creditAmount, 'count': creditCount,
-       'icon': Icons.schedule, 'colors': [SdColors.warning, const Color(0xFFD35400)]},
+       'icon': Icons.schedule, 'colors': [SdColors.warning, SdColors.warning]},
       {'title': 'ماستر', 'amount': masterAmount, 'count': masterCount,
        'icon': Icons.credit_card, 'colors': [SdColors.platformBase, const Color(0xFF7D3C98)]},
       {'title': 'وكيل', 'amount': agentAmount, 'count': agentCount,
@@ -13494,20 +13465,8 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: SdColors.ground,
-        appBar: AppBar(
-          backgroundColor: SdColors.primary,
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Text(
-            '${widget.filterOperatorName != null ? 'عمليات: ${widget.filterOperatorName}' : 'كل العمليات'} (${_filtered.length})'
-            '${_selectedIds.isNotEmpty ? ' — محدد: ${_selectedIds.length}' : ''}',
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              color: Colors.white,
-              fontSize: context.accR.headingSmall,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          actions: [
+        appBar: SdAppBar(title: '${widget.filterOperatorName != null ? 'عمليات: ${widget.filterOperatorName}' : 'كل العمليات'} (${_filtered.length})'
+            '${_selectedIds.isNotEmpty ? ' — محدد: ${_selectedIds.length}' : ''}', actions: [
             // حذف المحددة
             if (_selectedIds.isNotEmpty)
               _isDeletingSelected
@@ -13561,8 +13520,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
               onPressed: _load,
               tooltip: 'تحديث',
             ),
-          ],
-        ),
+          ]),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _error != null

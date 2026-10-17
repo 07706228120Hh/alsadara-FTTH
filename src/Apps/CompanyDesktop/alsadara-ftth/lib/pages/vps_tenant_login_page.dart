@@ -516,7 +516,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
         height: double.infinity,
         decoration: const BoxDecoration(
           // خلفية Navy داكنة من التصميم
-          color: Color(0xFF0D1B2A),
+          color: SdColors.primaryEdge,
         ),
         child: SafeArea(
           child: Center(
@@ -535,7 +535,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                       width: logoSize,
                       height: logoSize,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF152238),
+                        color: SdColors.primaryEdge,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: SdColors.primaryEdge,
@@ -557,7 +557,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                       constraints: BoxConstraints(maxWidth: maxCardWidth),
                       padding: EdgeInsets.all(cardPadding),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF152238).withOpacity(0.6),
+                        color: SdColors.primaryEdge.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
                           color: SdColors.primaryEdge,
@@ -690,7 +690,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1B2A),
+        color: SdColors.primaryEdge,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
@@ -826,7 +826,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                   )
                 : Icon(icon, color: SdColors.muted, size: 20),
             filled: true,
-            fillColor: const Color(0xFF0D1B2A),
+            fillColor: SdColors.primaryEdge,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: SdColors.primaryEdge),
@@ -866,7 +866,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
             colors: [
               Color(0xFFD4A574),
               SdColors.warning,
-              Color(0xFFD97706),
+              SdColors.warning,
             ],
           ),
           borderRadius: BorderRadius.circular(12),
@@ -918,7 +918,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: const Color(0xFF152238),
+            color: SdColors.primaryEdge,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: SdColors.primaryEdge,

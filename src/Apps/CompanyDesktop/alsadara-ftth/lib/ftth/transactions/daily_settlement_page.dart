@@ -688,13 +688,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
     return SdTheme.scope(
       child: Scaffold(
         backgroundColor: SdColors.ground,
-        appBar: AppBar(
-          title: const Text('التسديدات اليومية',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          backgroundColor: SdColors.primary,
-          foregroundColor: Colors.white,
-          toolbarHeight: 46,
-          actions: [
+        appBar: SdAppBar(title: 'التسديدات اليومية', actions: [
             _buildAppBarDateButton('اليوم', _isToday, () => _selectDate(DateTime.now())),
             _buildAppBarDateButton('الأمس', _isYesterday, () => _selectDate(DateTime.now().subtract(const Duration(days: 1)))),
             IconButton(
@@ -756,8 +750,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                 icon: const Icon(Icons.receipt_long, size: 20),
                 tooltip: 'كشف العمليات',
               ),
-          ],
-        ),
+          ]),
         body: GestureDetector(
           onTap: () {
             FocusScope.of(context).unfocus();

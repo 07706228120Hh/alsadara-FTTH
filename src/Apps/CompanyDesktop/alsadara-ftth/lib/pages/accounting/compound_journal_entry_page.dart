@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة إدخال قيد مركب - Compound Journal Entry
 class CompoundJournalEntryPage extends StatefulWidget {
@@ -341,7 +341,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
       margin: const EdgeInsets.fromLTRB(10, 8, 10, 0),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F4FA),
+        color: SdColors.ground,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
             color: const Color(0xFF3D5AFE).withValues(alpha: 0.18), width: 1.2),
@@ -400,7 +400,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: balanced
-                    ? [SdColors.successTint, const Color(0xFFC8E6C9)]
+                    ? [SdColors.successTint, SdColors.successTintEdge]
                     : [SdColors.warningTint, SdColors.warningTintEdge],
               ),
               borderRadius: BorderRadius.circular(10),
@@ -526,7 +526,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
+                border: Border.all(color: SdColors.divider),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -652,7 +652,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
             colors: balanced
                 ? [
                     SdColors.successTint,
-                    const Color(0xFFC8E6C9).withValues(alpha: 0.5)
+                    SdColors.successTintEdge.withValues(alpha: 0.5)
                   ]
                 : [
                     SdColors.warningTint,
@@ -753,7 +753,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
+                border: Border.all(color: SdColors.divider),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1109,7 +1109,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   width: 20,
                   height: 20,
                   decoration: BoxDecoration(
-                    gradient: AccountingTheme.neonPurpleGradient,
+                    gradient: SdUiKit.neonPurpleGradient,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Center(
@@ -1454,7 +1454,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                       Container(
                         padding: EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          gradient: AccountingTheme.neonPurpleGradient,
+                          gradient: SdUiKit.neonPurpleGradient,
                           borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(16)),
                         ),
@@ -1872,7 +1872,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              gradient: AccountingTheme.neonPurpleGradient,
+              gradient: SdUiKit.neonPurpleGradient,
               borderRadius: BorderRadius.vertical(
                   top: Radius.circular(ar.cardRadius)),
             ),
@@ -2603,7 +2603,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
         child: AlertDialog(
           backgroundColor: SdColors.surface,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AccountingTheme.radiusLarge)),
+              borderRadius: BorderRadius.circular(SdUiKit.radiusLarge)),
           title: Text('حفظ كقالب',
               style: TextStyle(
                   fontFamily: 'Cairo',
@@ -2617,15 +2617,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
               labelStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
               border: OutlineInputBorder(
                   borderRadius:
-                      BorderRadius.circular(AccountingTheme.radiusMedium)),
+                      BorderRadius.circular(SdUiKit.radiusMedium)),
               enabledBorder: OutlineInputBorder(
                   borderRadius:
-                      BorderRadius.circular(AccountingTheme.radiusMedium),
+                      BorderRadius.circular(SdUiKit.radiusMedium),
                   borderSide:
                       const BorderSide(color: SdColors.divider)),
               focusedBorder: OutlineInputBorder(
                   borderRadius:
-                      BorderRadius.circular(AccountingTheme.radiusMedium),
+                      BorderRadius.circular(SdUiKit.radiusMedium),
                   borderSide:
                       const BorderSide(color: SdColors.primary, width: 2)),
             ),
@@ -2639,7 +2639,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                         color: SdColors.faint))),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
-              style: AccountingTheme.primaryButton,
+              style: SdUiKit.primaryButton,
               child: Text('حفظ', style: TextStyle(fontFamily: 'Cairo')),
             ),
           ],
@@ -2695,7 +2695,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
         child: AlertDialog(
           backgroundColor: SdColors.surface,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AccountingTheme.radiusLarge)),
+              borderRadius: BorderRadius.circular(SdUiKit.radiusLarge)),
           title: Text('تحميل قالب',
               style: TextStyle(
                   fontFamily: 'Cairo',

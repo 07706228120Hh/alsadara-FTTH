@@ -229,7 +229,7 @@ class _NotificationBannerState extends State<_NotificationBanner>
           icon: Icons.task_alt_rounded,
           bgColor: SdColors.primary,
           borderColor: SdColors.primaryLight,
-          iconBgColor: const Color(0xFF3F51B5),
+          iconBgColor: SdColors.primaryLight,
           textColor: Colors.white,
         );
       case InAppNotificationType.chat:
@@ -244,7 +244,7 @@ class _NotificationBannerState extends State<_NotificationBanner>
         return _BannerTypeConfig(
           icon: Icons.storefront_rounded,
           bgColor: SdColors.warningEdge,
-          borderColor: const Color(0xFFFB8C00),
+          borderColor: SdColors.warning,
           iconBgColor: SdColors.warning,
           textColor: Colors.white,
         );
@@ -260,7 +260,7 @@ class _NotificationBannerState extends State<_NotificationBanner>
         return _BannerTypeConfig(
           icon: Icons.notifications_rounded,
           bgColor: const Color(0xFF263238),
-          borderColor: const Color(0xFF546E7A),
+          borderColor: SdColors.muted,
           iconBgColor: SdColors.muted,
           textColor: Colors.white,
         );

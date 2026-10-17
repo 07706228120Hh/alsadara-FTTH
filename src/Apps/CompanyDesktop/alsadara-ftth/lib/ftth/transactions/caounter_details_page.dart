@@ -964,11 +964,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
         NumberFormat("#,###").format(_totalAmount.toInt());
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('تفاصيل البيانات - ${widget.username}'),
-        backgroundColor: SdColors.primary,
-        centerTitle: true,
-        actions: [
+      appBar: SdAppBar(title: 'تفاصيل البيانات - ${widget.username}', actions: [
           IconButton(
             tooltip: _showRaw ? 'إخفاء الخام' : 'عرض الخام',
             icon: Icon(_showRaw ? Icons.code_off : Icons.code),
@@ -1184,8 +1180,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               ),
             ],
           ),
-        ],
-      ),
+        ]),
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: SdColors.primary))
           : SingleChildScrollView(

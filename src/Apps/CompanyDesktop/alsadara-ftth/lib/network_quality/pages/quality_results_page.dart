@@ -455,12 +455,12 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       radius: 14,
       depth: 5,
       padding: EdgeInsets.zero,
-      edgeColor: const Color(0xFF4527A0),
+      edgeColor: SdColors.platformEdge,
       glowColor: const Color(0x807E57C2),
       gradient: const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF7E57C2), Color(0xFF5E35B1)],
+        colors: [Color(0xFF7E57C2), SdColors.platformBase],
       ),
       semanticLabel: label,
       child: SizedBox(
@@ -487,7 +487,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FA),
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: SdColors.faint.withValues(alpha: 0.12)),
       ),
@@ -695,7 +695,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
   }
 
   /// شريحة حالة محايدة (مثل «غير متاح»).
-  Widget _statusChip(String text, [Color color = const Color(0xFF9E9E9E)]) {
+  Widget _statusChip(String text, [Color color = SdColors.faint]) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
@@ -1006,7 +1006,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F7FB),
+          color: SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: color.withValues(alpha: 0.14)),
           boxShadow: const [
@@ -1109,7 +1109,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FA),
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: SdColors.faint.withValues(alpha: 0.12)),
       ),
@@ -1300,7 +1300,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
             margin: const EdgeInsets.symmetric(vertical: 4),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F7FB),
+              color: SdColors.surfaceAlt,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(

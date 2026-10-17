@@ -10,6 +10,7 @@ import '../widgets/auth_status_monitor.dart';
 import 'login/premium_login_page.dart';
 import '../permissions/permissions.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 /// صفحة رئيسية محسنة مع نظام المصادقة الموحد
 class EnhancedHomePage extends StatefulWidget {
@@ -40,11 +41,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
       onSessionExpired: _handleSessionExpired,
       showNotifications: true,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('الصفحة الرئيسية المحسنة'),
-          backgroundColor: SdColors.info,
-          foregroundColor: Colors.white,
-          actions: [
+        appBar: SdAppBar(title: 'الصفحة الرئيسية المحسنة', actions: [
             // زر عرض معلومات التوكن (للتطوير)
             if (_showTokenInfo)
               IconButton(
@@ -85,8 +82,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
                 ),
               ],
             ),
-          ],
-        ),
+          ]),
         body: Column(
           children: [
             // معلومات التوكن (قابلة للإخفاء)

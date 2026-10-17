@@ -6,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'package:window_manager/window_manager.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 /// نافذة واتساب العائمة المستقلة
 class WhatsAppFloatingWindow extends StatefulWidget {
@@ -320,13 +321,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('واتساب ويب', style: TextStyle(fontSize: 16)),
-        backgroundColor: SdColors.whatsapp,
-        foregroundColor: Colors.white,
-        elevation: 1,
-        toolbarHeight: 40,
-        actions: [
+      appBar: SdAppBar(title: 'واتساب ويب', actions: [
           // زر تصغير النافذة
           IconButton(
             icon: const Icon(Icons.minimize, size: 16),
@@ -339,8 +334,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
             onPressed: () => windowManager.close(),
             tooltip: 'إغلاق',
           ),
-        ],
-      ),
+        ]),
       body: _buildBody(),
     );
   }

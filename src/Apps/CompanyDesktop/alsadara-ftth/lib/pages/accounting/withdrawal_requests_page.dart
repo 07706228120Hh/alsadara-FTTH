@@ -713,7 +713,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 Container(
                   padding: EdgeInsets.all(context.accR.spaceS),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE3F2FD),
+                    color: SdColors.infoTint,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(

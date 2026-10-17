@@ -17,12 +17,12 @@ import 'tenant_features_page.dart';
 import 'vps_data_manager_page.dart';
 import '../login/premium_login_page.dart'; // ✨ صفحة تسجيل الدخول الفخمة
 import '../home_page.dart';
-import '../../theme/energy_dashboard_theme.dart'; // 🔋 ثيم Energy Dashboard الموحد
 import '../../frontend/tokens/sd_colors.dart'; // 🎨 ألوان نظام تصميم الصدارة (sd)
 import '../../frontend/tokens/sd_responsive.dart';
 import '../../frontend/components/sd_side_nav.dart'; // القائمة الجانبية الموحّدة
 import '../diagnostics/system_diagnostics_page.dart'; // 🔧 صفحة التشخيص
 import '../../permissions/permissions.dart';
+import '../../frontend/components/sd_dash_kit.dart';
 import '../account/account_info_page.dart'; // ✅ صفحة معلومات الحساب
 import '../admin/database_admin_page.dart'; // ✅ صفحة إدارة قاعدة البيانات
 import 'energy_dashboard_home.dart'; // 🔋 الشاشة الرئيسية بتصميم Energy Dashboard
@@ -36,6 +36,7 @@ import 'financial_oversight_page.dart'; // 💰 المراقبة المالية
 import 'unified_subscriptions_page.dart'; // 📋 مراقبة الاشتراكات
 import 'audit_log_page.dart'; // 📝 سجل العمليات
 import 'system_health_page.dart'; // 🏥 صحة النظام
+import '../../frontend/components/sd_app_bar.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -114,7 +115,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               decoration: BoxDecoration(
                 color: SdColors.danger.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: EnergyDashboardTheme.glowCustom(
+                boxShadow: SdDashKit.glowCustom(
                   SdColors.danger,
                   intensity: 0.2,
                 ),
@@ -203,7 +204,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       body: Container(
         decoration: const BoxDecoration(
           // 🔋 خلفية Energy Dashboard - أسود مزرق عميق
-          gradient: EnergyDashboardTheme.backgroundGradient,
+          gradient: SdDashKit.backgroundGradient,
         ),
         child: SafeArea(
           child: Row(
@@ -247,7 +248,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         border: const Border(
           bottom: BorderSide(color: SdColors.divider, width: 1),
         ),
-        boxShadow: EnergyDashboardTheme.softShadow,
+        boxShadow: SdDashKit.softShadow,
       ),
       child: Row(
         children: [
@@ -270,9 +271,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 width: r.isMobile ? 36 : 42,
                 height: r.isMobile ? 36 : 42,
                 decoration: BoxDecoration(
-                  gradient: EnergyDashboardTheme.neonGreenGradient,
+                  gradient: SdDashKit.neonGreenGradient,
                   borderRadius: BorderRadius.circular(10),
-                  boxShadow: EnergyDashboardTheme.glowCustom(
+                  boxShadow: SdDashKit.glowCustom(
                     SdColors.success,
                     intensity: 0.3,
                   ),
@@ -349,7 +350,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               decoration: BoxDecoration(
                 color: SdColors.danger,
                 shape: BoxShape.circle,
-                boxShadow: EnergyDashboardTheme.glowCustom(
+                boxShadow: SdDashKit.glowCustom(
                   SdColors.danger,
                   intensity: 0.4,
                 ),
@@ -392,7 +393,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 decoration: BoxDecoration(
                   color: SdColors.success,
                   shape: BoxShape.circle,
-                  boxShadow: EnergyDashboardTheme.glowCustom(
+                  boxShadow: SdDashKit.glowCustom(
                     SdColors.success,
                     intensity: 0.5,
                   ),
@@ -633,11 +634,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   Widget _buildDashboardContent() {
     // ✅ استخدام VPS API بدلاً من Firebase
     if (_isLoadingVpsTenants) {
-      return EnergyDashboardTheme.buildLoadingIndicator();
+      return SdDashKit.buildLoadingIndicator();
     }
 
     if (_vpsTenantsError != null) {
-      return EnergyDashboardTheme.buildErrorWidget(
+      return SdDashKit.buildErrorWidget(
         message: 'خطأ: $_vpsTenantsError',
         onRetry: _loadVpsTenants,
       );
@@ -760,7 +761,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               title: 'تحتاج تجديد',
               value: warningTenants.toString(),
               icon: Icons.schedule_rounded,
-              gradient: const [Color(0xFF4facfe), Color(0xFF00f2fe)],
+              gradient: const [Color(0xFF4facfe), SdColors.accentGlow],
               onTap: () => _showFilteredCompanies(context, tenants,
                   'تحتاج تجديد (30 يوم)', (t) => t.needsWarning),
             ),
@@ -1229,7 +1230,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.85,
         decoration: const BoxDecoration(
-          color: Color(0xFF1B263B),
+          color: SdColors.primaryEdge,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
@@ -1418,12 +1419,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         children: [
           Row(
             children: [
-              Icon(icon, color: const Color(0xFF00E5FF), size: 20),
+              Icon(icon, color: SdColors.accentGlow, size: 20),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: const TextStyle(
-                  color: Color(0xFF00E5FF),
+                  color: SdColors.accentGlow,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1505,7 +1506,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               child: _buildActionButton(
                 icon: Icons.edit_rounded,
                 label: 'تعديل',
-                gradient: const [Color(0xFF4facfe), Color(0xFF00f2fe)],
+                gradient: const [Color(0xFF4facfe), SdColors.accentGlow],
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -1720,7 +1721,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1B263B),
+        backgroundColor: SdColors.primaryEdge,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -1869,12 +1870,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       context: context,
       barrierDismissible: false,
       builder: (loadingContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1B263B),
+        backgroundColor: SdColors.primaryEdge,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: Color(0xFF00E5FF)),
+            const CircularProgressIndicator(color: SdColors.accentGlow),
             const SizedBox(height: 20),
             const Text(
               'جاري حذف الشركة...',
@@ -1903,7 +1904,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     showDialog(
       context: context,
       builder: (resultContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1B263B),
+        backgroundColor: SdColors.primaryEdge,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1953,7 +1954,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           TextButton(
             onPressed: () => Navigator.pop(resultContext),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF00E5FF),
+              foregroundColor: SdColors.accentGlow,
             ),
             child: const Text('حسناً'),
           ),
@@ -1970,12 +1971,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         children: [
           Icon(icon,
               size: 16,
-              color: isTotal ? const Color(0xFF00E5FF) : Colors.white54),
+              color: isTotal ? SdColors.accentGlow : Colors.white54),
           const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
-              color: isTotal ? const Color(0xFF00E5FF) : Colors.white70,
+              color: isTotal ? SdColors.accentGlow : Colors.white70,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -1984,14 +1985,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: isTotal
-                  ? const Color(0xFF00E5FF).withOpacity(0.2)
+                  ? SdColors.accentGlow.withOpacity(0.2)
                   : Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               count,
               style: TextStyle(
-                color: isTotal ? const Color(0xFF00E5FF) : Colors.white,
+                color: isTotal ? SdColors.accentGlow : Colors.white,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -2117,7 +2118,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: EnergyDashboardTheme.neonPurpleGradient,
+        gradient: SdDashKit.neonPurpleGradient,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -2652,20 +2653,14 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
       drawer: context.sd.isPhone
           ? SdSideNav.drawer(context, _buildPortalNav(inDrawer: true))
           : null,
-      appBar: AppBar(
-        title: Text(_getTabTitle(_currentTab)),
-        backgroundColor: SdColors.info,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
+      appBar: SdAppBar(title: _getTabTitle(_currentTab), actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
               // تحديث البيانات
             },
           ),
-        ],
-      ),
+        ]),
       body: Row(
         children: [
           // القائمة الجانبية الموحّدة (درج على الهاتف)

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fl_chart/fl_chart.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
 import '../../services/accounting_service.dart';
 import '../../services/budget_service.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة إدارة الميزانية التقديرية
 class BudgetPage extends StatefulWidget {
@@ -235,7 +235,7 @@ class _BudgetPageState extends State<BudgetPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_errorMessage != null) {
-      return AccountingTheme.errorView(_errorMessage!, _loadData);
+      return SdUiKit.errorView(_errorMessage!, _loadData);
     }
     if (_showVariance) {
       return _buildVarianceView(r);
@@ -249,7 +249,7 @@ class _BudgetPageState extends State<BudgetPage> {
 
   Widget _buildBudgetList(AccountingResponsive r) {
     if (_budgets.isEmpty) {
-      return AccountingTheme.emptyState(
+      return SdUiKit.emptyState(
         'لا توجد ميزانيات لهذا الشهر',
         icon: Icons.calculate_outlined,
       );
@@ -258,7 +258,7 @@ class _BudgetPageState extends State<BudgetPage> {
     return SingleChildScrollView(
       padding: r.contentPadding,
       child: Container(
-        decoration: AccountingTheme.card,
+        decoration: SdUiKit.card,
         clipBehavior: Clip.antiAlias,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -270,7 +270,7 @@ class _BudgetPageState extends State<BudgetPage> {
               children: [
                 // رأس الجدول
                 Container(
-                  decoration: AccountingTheme.tableHeader,
+                  decoration: SdUiKit.tableHeader,
                   padding: EdgeInsets.symmetric(
                       horizontal: r.tableCellPadH, vertical: r.tableCellPadV + 4),
                   child: Row(
@@ -401,7 +401,7 @@ class _BudgetPageState extends State<BudgetPage> {
 
   Widget _buildVarianceView(AccountingResponsive r) {
     if (_varianceData.isEmpty) {
-      return AccountingTheme.emptyState(
+      return SdUiKit.emptyState(
         'لا توجد بيانات انحراف لهذا الشهر',
         icon: Icons.compare,
       );
@@ -412,7 +412,7 @@ class _BudgetPageState extends State<BudgetPage> {
         children: [
           // جدول الانحراف
           Container(
-            decoration: AccountingTheme.card,
+            decoration: SdUiKit.card,
             clipBehavior: Clip.antiAlias,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -423,7 +423,7 @@ class _BudgetPageState extends State<BudgetPage> {
                 child: Column(
                   children: [
                     Container(
-                      decoration: AccountingTheme.tableHeader,
+                      decoration: SdUiKit.tableHeader,
                       padding: EdgeInsets.symmetric(
                           horizontal: r.tableCellPadH,
                           vertical: r.tableCellPadV + 4),
@@ -499,7 +499,7 @@ class _BudgetPageState extends State<BudgetPage> {
     });
 
     return Container(
-      decoration: AccountingTheme.card,
+      decoration: SdUiKit.card,
       padding: r.cardPadding,
       height: 300,
       child: Column(
@@ -674,7 +674,7 @@ class _BudgetPageState extends State<BudgetPage> {
               backgroundColor: SdColors.surface,
               shape: RoundedRectangleBorder(
                   borderRadius:
-                      BorderRadius.circular(AccountingTheme.radiusLarge)),
+                      BorderRadius.circular(SdUiKit.radiusLarge)),
               title: Text(
                 'إضافة ميزانية تقديرية',
                 style: TextStyle(
@@ -708,7 +708,7 @@ class _BudgetPageState extends State<BudgetPage> {
                           fillColor: SdColors.groundAlt,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(
-                                AccountingTheme.radiusMedium),
+                                SdUiKit.radiusMedium),
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -752,7 +752,7 @@ class _BudgetPageState extends State<BudgetPage> {
                           fillColor: SdColors.groundAlt,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(
-                                AccountingTheme.radiusMedium),
+                                SdUiKit.radiusMedium),
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -781,7 +781,7 @@ class _BudgetPageState extends State<BudgetPage> {
                           fillColor: SdColors.groundAlt,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(
-                                AccountingTheme.radiusMedium),
+                                SdUiKit.radiusMedium),
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -804,18 +804,18 @@ class _BudgetPageState extends State<BudgetPage> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(
-                            AccountingTheme.radiusMedium)),
+                            SdUiKit.radiusMedium)),
                   ),
                   onPressed: () async {
                     if (selectedAccount == null) {
-                      AccountingTheme.showSnack(
+                      SdUiKit.showSnack(
                           context, 'يرجى اختيار الحساب', SdColors.warning);
                       return;
                     }
                     final amount =
                         double.tryParse(amountController.text.trim());
                     if (amount == null || amount <= 0) {
-                      AccountingTheme.showSnack(
+                      SdUiKit.showSnack(
                           context, 'يرجى إدخال مبلغ صحيح', SdColors.warning);
                       return;
                     }
@@ -841,7 +841,7 @@ class _BudgetPageState extends State<BudgetPage> {
                           : null,
                     );
                     if (ctx.mounted) Navigator.pop(ctx);
-                    AccountingTheme.showSnack(
+                    SdUiKit.showSnack(
                         context, 'تم حفظ الميزانية بنجاح', SdColors.success);
                     _loadData();
                   },
@@ -874,7 +874,7 @@ class _BudgetPageState extends State<BudgetPage> {
           backgroundColor: SdColors.surface,
           shape: RoundedRectangleBorder(
               borderRadius:
-                  BorderRadius.circular(AccountingTheme.radiusLarge)),
+                  BorderRadius.circular(SdUiKit.radiusLarge)),
           title: Text(
             'تعديل ميزانية: ${budget['accountName']}',
             style: TextStyle(
@@ -909,7 +909,7 @@ class _BudgetPageState extends State<BudgetPage> {
                     fillColor: SdColors.groundAlt,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(
-                          AccountingTheme.radiusMedium),
+                          SdUiKit.radiusMedium),
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
@@ -935,7 +935,7 @@ class _BudgetPageState extends State<BudgetPage> {
                     fillColor: SdColors.groundAlt,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(
-                          AccountingTheme.radiusMedium),
+                          SdUiKit.radiusMedium),
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
@@ -957,13 +957,13 @@ class _BudgetPageState extends State<BudgetPage> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(
-                        AccountingTheme.radiusMedium)),
+                        SdUiKit.radiusMedium)),
               ),
               onPressed: () async {
                 final amount =
                     double.tryParse(amountController.text.trim());
                 if (amount == null || amount <= 0) {
-                  AccountingTheme.showSnack(
+                  SdUiKit.showSnack(
                       context, 'يرجى إدخال مبلغ صحيح', SdColors.warning);
                   return;
                 }
@@ -980,7 +980,7 @@ class _BudgetPageState extends State<BudgetPage> {
                       : null,
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
-                AccountingTheme.showSnack(
+                SdUiKit.showSnack(
                     context, 'تم تحديث الميزانية بنجاح', SdColors.success);
                 _loadData();
               },
@@ -998,7 +998,7 @@ class _BudgetPageState extends State<BudgetPage> {
   // ═══════════════════════════════════════════════════════════════
 
   Future<void> _confirmDelete(Map<String, dynamic> budget) async {
-    final confirmed = await AccountingTheme.confirmDialog(
+    final confirmed = await SdUiKit.confirmDialog(
       context,
       title: 'حذف ميزانية',
       message:
@@ -1014,7 +1014,7 @@ class _BudgetPageState extends State<BudgetPage> {
         _selectedMonth,
       );
       if (mounted) {
-        AccountingTheme.showSnack(
+        SdUiKit.showSnack(
             context, 'تم حذف الميزانية', SdColors.success);
       }
       _loadData();

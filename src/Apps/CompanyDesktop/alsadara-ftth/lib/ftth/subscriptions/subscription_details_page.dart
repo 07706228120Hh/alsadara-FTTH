@@ -9776,7 +9776,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           }
 
           return AlertDialog(
-            backgroundColor: const Color(0xFFFFF5F5),
+            backgroundColor: SdColors.surface,
             insetPadding:
                 const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
             shape: RoundedRectangleBorder(

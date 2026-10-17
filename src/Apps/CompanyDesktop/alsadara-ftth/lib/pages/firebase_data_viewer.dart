@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firebase_availability.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class FirebaseDataViewer extends StatefulWidget {
   const FirebaseDataViewer({super.key});
@@ -76,18 +77,13 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('عرض بيانات Firebase', style: TextStyle(fontFamily: 'Cairo')),
-        backgroundColor: const Color(0xFF1E3A8A),
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: 'عرض بيانات Firebase', actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
             tooltip: 'تحديث',
           ),
-        ],
-      ),
+        ]),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -228,7 +224,7 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
       child: ExpansionTile(
         leading: Icon(
           isNested ? Icons.person : Icons.account_circle,
-          color: isNested ? SdColors.muted : const Color(0xFF1E3A8A),
+          color: isNested ? SdColors.muted : SdColors.primaryLight,
         ),
         title: Text(
           title,

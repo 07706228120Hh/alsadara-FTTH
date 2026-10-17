@@ -16,6 +16,7 @@ import '../../services/property_api_service.dart';
 import '../../frontend/tokens/sd_colors.dart';
 import 'property_sticker.dart';
 import 'property_ui.dart';
+import '../../frontend/components/sd_app_bar.dart';
 
 class PropertyQrBatchesPage extends StatefulWidget {
   const PropertyQrBatchesPage({super.key});
@@ -821,14 +822,7 @@ class _PdfPreviewScreen extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: SdColors.primary,
-          foregroundColor: Colors.white,
-          title: Text('معاينة $title',
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.w800, color: Colors.white)),
-        ),
+        appBar: SdAppBar(title: 'معاينة $title'),
         body: PdfPreview(
           build: (format) => doc.save(),
           canChangePageFormat: false,
@@ -935,14 +929,7 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: SdColors.primary,
-          foregroundColor: Colors.white,
-          title: Text('حالات رموز الدفعة',
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.w800, color: Colors.white)),
-        ),
+        appBar: SdAppBar(title: 'حالات رموز الدفعة'),
         body: Column(
           children: [
             Padding(

@@ -4,11 +4,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/auth/super_admin_api.dart';
 import '../../services/api/api_response.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_dash_kit.dart';
 class EnergyDashboardHome extends StatefulWidget {
   const EnergyDashboardHome({super.key});
 
@@ -292,7 +292,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                     decoration: BoxDecoration(
                       color: SdColors.success,
                       shape: BoxShape.circle,
-                      boxShadow: EnergyDashboardTheme.glowCustom(
+                      boxShadow: SdDashKit.glowCustom(
                         SdColors.success,
                         intensity: 0.5,
                       ),
@@ -1348,7 +1348,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                     ),
                     borderRadius: BorderRadius.circular(4),
                     boxShadow: isHighlighted
-                        ? EnergyDashboardTheme.glowCustom(
+                        ? SdDashKit.glowCustom(
                             SdColors.success,
                             intensity: 0.3,
                           )

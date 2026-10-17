@@ -888,16 +888,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
     return SdTheme.scope(
       child: Scaffold(
         backgroundColor: SdColors.ground,
-        appBar: AppBar(
-          title: Text(
-            _step == 1 ? 'واجهة الراوتر' : 'إعداد الراوتر',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: _isMobile ? 14 : 16),
-          ),
-          backgroundColor: _indigo,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          toolbarHeight: _isMobile ? 44 : 56,
-          actions: [
+        appBar: SdAppBar(title: _step == 1 ? 'واجهة الراوتر' : 'إعداد الراوتر', actions: [
             _buildSubsDropdown(),
             _buildAcsDropdown(),
             if (!_isMobile) IconButton(icon: const Icon(Icons.menu_book, size: 22), tooltip: 'دليل الراوترات', onPressed: _showRouterGuide),
@@ -922,8 +913,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
               IconButton(icon: const Icon(Icons.arrow_back), tooltip: 'رجوع', onPressed: () => _webCtrl.goBack()),
             ],
             if (_scanning) const Padding(padding: EdgeInsets.all(14), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))),
-          ],
-        ),
+          ]),
         body: Column(
           children: [
             // ═══ شريط الخطوات العصري ═══

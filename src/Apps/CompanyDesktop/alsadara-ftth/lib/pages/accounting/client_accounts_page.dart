@@ -699,7 +699,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   hintStyle: TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: isMob ? 13 : 14,
-                      color: const Color(0xFFADB5BD)),
+                      color: SdColors.faint),
                   prefixIcon: Padding(
                     padding: const EdgeInsets.only(right: 12, left: 8),
                     child: Icon(Icons.search_rounded,
@@ -855,7 +855,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: selected ? chipColor.withAlpha(100) : const Color(0xFFDDE2E8),
+              color: selected ? chipColor.withAlpha(100) : SdColors.divider,
               width: selected ? 1.5 : 1.0,
             ),
           ),
@@ -870,7 +870,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : 11,
                 fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-                color: selected ? chipColor : const Color(0xFF5D6D7E),
+                color: selected ? chipColor : SdColors.muted,
               )),
             ],
           ),
@@ -1410,12 +1410,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 15, color: active ? Colors.white : const Color(0xFF5D6D7E)),
+            Icon(icon, size: 15, color: active ? Colors.white : SdColors.muted),
             const SizedBox(width: 5),
             Text(label, style: TextStyle(
               fontFamily: 'Cairo',
               fontSize: 12, fontWeight: FontWeight.bold,
-              color: active ? Colors.white : const Color(0xFF5D6D7E),
+              color: active ? Colors.white : SdColors.muted,
             )),
           ],
         ),
@@ -1663,8 +1663,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     final accName = (l['AccountName'] ?? l['Account']?['Name'] ?? '').toString();
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: const Color(0xFFF0F2F8), borderRadius: BorderRadius.circular(4)),
-                      child: Text(accName, style: TextStyle(fontFamily: 'Cairo', fontSize: 9, color: const Color(0xFF5D6D7E)), overflow: TextOverflow.ellipsis),
+                      decoration: BoxDecoration(color: SdColors.ground, borderRadius: BorderRadius.circular(4)),
+                      child: Text(accName, style: TextStyle(fontFamily: 'Cairo', fontSize: 9, color: SdColors.muted), overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                 ),
@@ -1777,7 +1777,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [SdColors.ink, Color(0xFF34495E)],
+          colors: [SdColors.ink, SdColors.accentEdge],
           begin: Alignment.centerRight,
           end: Alignment.centerLeft,
         ),
@@ -1817,17 +1817,17 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     final creditTotal = ((a['TotalCredit'] ?? (balance < 0 ? balance.abs() : 0)) as num).toDouble();
     final isActive = a['IsActive'] ?? true;
     final bgColor = index.isEven ? Colors.white : SdColors.surfaceAlt;
-    const divColor = Color(0xFFE8ECF0);
+    const divColor = SdColors.divider;
 
     return Material(
       color: bgColor,
       child: InkWell(
         onTap: () => _loadStatement(a),
-        hoverColor: const Color(0xFFEBF5FF),
+        hoverColor: SdColors.infoTint,
         splashColor: SdColors.info.withAlpha(20),
         child: Container(
           decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFEEF0F4))),
+            border: Border(bottom: BorderSide(color: SdColors.ground)),
           ),
           child: IntrinsicHeight(
             child: Row(
@@ -2562,10 +2562,10 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
-          hoverColor: const Color(0xFFEBF5FF),
+          hoverColor: SdColors.infoTint,
           child: Padding(
             padding: const EdgeInsets.all(8),
-            child: Icon(icon, size: 18, color: const Color(0xFF5D6D7E)),
+            child: Icon(icon, size: 18, color: SdColors.muted),
           ),
         ),
       ),
@@ -2603,7 +2603,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               onChanged: (v) => setState(() => _stmtSearchQuery = v),
               decoration: InputDecoration(
                 hintText: 'ابحث في القيود...',
-                hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: const Color(0xFFADB5BD)),
+                hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: SdColors.faint),
                 prefixIcon: Icon(Icons.search_rounded, size: isMob ? 16 : 18, color: SdColors.info),
                 prefixIconConstraints: BoxConstraints(minWidth: isMob ? 30 : 36),
                 suffixIcon: _stmtSearchQuery.isNotEmpty
@@ -2697,7 +2697,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [SdColors.ink, Color(0xFF34495E)],
+          colors: [SdColors.ink, SdColors.accentEdge],
           begin: Alignment.centerRight,
           end: Alignment.centerLeft,
         ),
@@ -2737,7 +2737,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     Color(0xFF795548), // بني
     SdColors.muted, // رمادي أزرق
     Color(0xFFFF5722), // أحمر برتقالي
-    Color(0xFF00BCD4), // سماوي
+    SdColors.accentLight, // سماوي
   ];
 
   Color _dayColor(String dateStr) {
@@ -2776,7 +2776,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     }
 
     final bgColor = index.isEven ? Colors.white : SdColors.surfaceAlt;
-    const divColor = Color(0xFFE8ECF0);
+    const divColor = SdColors.divider;
 
     // خط أسود فاصل بين الأيام المختلفة
     final isDayChange = prevLine != null &&
@@ -2786,13 +2786,13 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       color: bgColor,
       child: InkWell(
         onTap: () => _showTransactionDetail(line, index),
-        hoverColor: const Color(0xFFEBF5FF),
+        hoverColor: SdColors.infoTint,
         splashColor: SdColors.info.withAlpha(20),
         child: Container(
           decoration: BoxDecoration(
             border: Border(
               top: isDayChange ? const BorderSide(color: SdColors.ink, width: 2) : BorderSide.none,
-              bottom: const BorderSide(color: Color(0xFFEEF0F4)),
+              bottom: const BorderSide(color: SdColors.ground),
             ),
           ),
           child: IntrinsicHeight(

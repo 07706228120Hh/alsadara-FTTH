@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class TKTATRawPage extends StatelessWidget {
   final Map<String, dynamic> ticket;
@@ -26,21 +27,7 @@ class TKTATRawPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final keys = ticket.keys.toList()..sort();
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
-            ),
-          ),
-        ),
-        title:
-            const Text('الحقول الخام للتذكرة', style: TextStyle(fontSize: 14)),
-        actions: [
+      appBar: SdAppBar(title: 'الحقول الخام للتذكرة', actions: [
           IconButton(
             tooltip: 'نسخ JSON',
             icon: const Icon(Icons.copy, size: 18),
@@ -51,8 +38,7 @@ class TKTATRawPage extends StatelessWidget {
               );
             },
           ),
-        ],
-      ),
+        ]),
       body: DefaultTabController(
         length: 2,
         child: Column(

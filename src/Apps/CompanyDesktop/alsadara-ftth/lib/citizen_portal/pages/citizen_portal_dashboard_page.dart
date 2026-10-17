@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/company_model.dart';
 import '../services/company_api_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 /// شاشة بوابة المواطن - تظهر فقط للشركة المرتبطة بنظام المواطن
 class CitizenPortalDashboardPage extends StatefulWidget {
@@ -64,10 +65,7 @@ class _CitizenPortalDashboardPageState
 
     if (errorMessage != null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('بوابة المواطن'),
-          backgroundColor: SdColors.accent,
-        ),
+        appBar: SdAppBar(title: 'بوابة المواطن'),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -88,10 +86,7 @@ class _CitizenPortalDashboardPageState
 
     if (!isLinkedCompany) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('بوابة المواطن'),
-          backgroundColor: SdColors.accent,
-        ),
+        appBar: SdAppBar(title: 'بوابة المواطن'),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -121,17 +116,13 @@ class _CitizenPortalDashboardPageState
 
     // الشركة مرتبطة - عرض لوحة التحكم
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('بوابة المواطن'),
-        backgroundColor: SdColors.accent,
-        actions: [
+      appBar: SdAppBar(title: 'بوابة المواطن', actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _checkIfLinkedCompany,
             tooltip: 'تحديث',
           ),
-        ],
-      ),
+        ]),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isPhone ? 12 : 24),
         child: Column(

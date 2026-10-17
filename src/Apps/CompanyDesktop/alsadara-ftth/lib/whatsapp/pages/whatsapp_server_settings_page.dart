@@ -11,6 +11,7 @@ import 'package:intl/intl.dart' as intl;
 import '../services/whatsapp_server_service.dart';
 import '../services/whatsapp_message_log_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class WhatsAppServerSettingsPage extends StatefulWidget {
   final String tenantId;
@@ -791,21 +792,13 @@ class _WhatsAppServerSettingsPageState
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'إعدادات WhatsApp Server',
-            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: SdColors.whatsapp,
-          foregroundColor: Colors.white,
-          actions: [
+        appBar: SdAppBar(title: 'إعدادات WhatsApp Server', actions: [
             IconButton(
               onPressed: _checkServerAndStatus,
               icon: const Icon(Icons.refresh),
               tooltip: 'تحديث',
             ),
-          ],
-        ),
+          ]),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(

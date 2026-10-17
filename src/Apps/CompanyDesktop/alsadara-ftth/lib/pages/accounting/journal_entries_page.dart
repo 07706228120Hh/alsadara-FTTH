@@ -565,7 +565,7 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                       const SizedBox(width: 6),
                       _quickRefBtn('OperatorCashDelivery', 'تسليم كاش', Icons.local_shipping, SdColors.accent),
                       const SizedBox(width: 6),
-                      _quickRefBtn('OperatorCreditCollection', 'تحصيل ذمم', Icons.receipt_long, const Color(0xFF673AB7)),
+                      _quickRefBtn('OperatorCreditCollection', 'تحصيل ذمم', Icons.receipt_long, SdColors.platformBase),
                       const SizedBox(width: 6),
                       _quickRefBtn('Manual', 'يدوي', Icons.edit_note, SdColors.faint),
                     ],

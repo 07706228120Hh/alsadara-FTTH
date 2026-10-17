@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/task.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class ExportService {
   // تصدير لـ Excel مع تنسيق متقدم
@@ -302,15 +303,15 @@ class ExportService {
   static Color _getStatusColor(String status) {
     switch (status) {
       case 'مكتملة':
-        return Color(0xFFE8F5E8);
+        return SdColors.successTint;
       case 'قيد التنفيذ':
-        return Color(0xFFFFF3CD);
+        return SdColors.warningTint;
       case 'مفتوحة':
-        return Color(0xFFE3F2FD);
+        return SdColors.infoTint;
       case 'ملغية':
-        return Color(0xFFFDEDED);
+        return SdColors.dangerTint;
       default:
-        return Color(0xFFF5F5F5);
+        return SdColors.groundAlt;
     }
   }
 

@@ -167,7 +167,7 @@ class _UpdateDialogState extends State<UpdateDialog>
     switch (_phase) {
       case _UpdatePhase.preparing:
       case _UpdatePhase.downloading:
-        return const Color(0xFF00E5FF);
+        return SdColors.accentGlow;
       case _UpdatePhase.installing:
         return const Color(0xFF00E676);
       case _UpdatePhase.error:
@@ -194,7 +194,7 @@ class _UpdateDialogState extends State<UpdateDialog>
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0D1B2A), Color(0xFF1B263B)],
+            colors: [SdColors.primaryEdge, SdColors.primaryEdge],
           ),
         ),
         child: Column(
@@ -260,13 +260,13 @@ class _UpdateDialogState extends State<UpdateDialog>
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
                     child: Icon(Icons.arrow_forward_rounded,
-                        color: Color(0xFF00E5FF), size: 16),
+                        color: SdColors.accentGlow, size: 16),
                   ),
                   Text(
                     'v${widget.updateInfo.version}',
                     style: TextStyle(
                       fontFamily: 'Cairo',
-                      color: const Color(0xFF00E5FF),
+                      color: SdColors.accentGlow,
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
@@ -284,7 +284,7 @@ class _UpdateDialogState extends State<UpdateDialog>
                 child: LinearProgressIndicator(
                   value: _downloadProgress,
                   backgroundColor: Colors.white.withValues(alpha: 0.1),
-                  valueColor: const AlwaysStoppedAnimation(Color(0xFF00E5FF)),
+                  valueColor: const AlwaysStoppedAnimation(SdColors.accentGlow),
                   minHeight: 8,
                 ),
               ),
@@ -296,7 +296,7 @@ class _UpdateDialogState extends State<UpdateDialog>
                     '${(_downloadProgress * 100).toStringAsFixed(0)}%',
                     style: TextStyle(
                         fontFamily: 'Cairo',
-                        color: const Color(0xFF00E5FF),
+                        color: SdColors.accentGlow,
                         fontSize: 13,
                         fontWeight: FontWeight.bold),
                   ),
@@ -330,7 +330,7 @@ class _UpdateDialogState extends State<UpdateDialog>
                 height: 32,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation(Color(0xFF00E5FF)),
+                  valueColor: AlwaysStoppedAnimation(SdColors.accentGlow),
                 ),
               ),
               const SizedBox(height: 12),
@@ -408,8 +408,8 @@ class _UpdateDialogState extends State<UpdateDialog>
                           style:
                               TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00E5FF),
-                        foregroundColor: const Color(0xFF0D1B2A),
+                        backgroundColor: SdColors.accentGlow,
+                        foregroundColor: SdColors.primaryEdge,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),

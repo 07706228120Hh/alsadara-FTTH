@@ -43,7 +43,7 @@ class _EmployeeTrackingReportPageState
 
   final MapController _mapController = MapController();
 
-  static const _primaryColor = Color(0xFF0F172A);
+  static const _primaryColor = SdColors.primaryEdge;
   static const _accentColor = Color(0xFF38BDF8);
 
   // ═══ ألوان السرعة ═══

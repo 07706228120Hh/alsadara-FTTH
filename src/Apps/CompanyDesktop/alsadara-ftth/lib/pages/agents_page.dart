@@ -10,6 +10,7 @@ import '../utils/smart_text_color.dart';
 import '../services/task_api_service.dart';
 import '../utils/responsive_helper.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class AgentsPage extends StatefulWidget {
   final String fbg;
@@ -201,37 +202,13 @@ class _AgentsPageState extends State<AgentsPage> {
     final smartIconColor = smartTextColor;
 
     return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: gradientColors,
-            ),
-          ),
-        ),
-        title: Text(
-          'وكلاء ${widget.fbg}',
-          style: SmartTextColor.getSmartTextStyle(
-            context: context,
-            fontSize: r.appBarTitleSize,
-            fontWeight: FontWeight.bold,
-            gradientColors: gradientColors,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: smartIconColor, size: r.appBarIconSize),
-        centerTitle: true,
-        elevation: 2,
-        leading: selectedGroup != null
+      appBar: SdAppBar(title: 'وكلاء ${widget.fbg}', leading: selectedGroup != null
             ? IconButton(
                 icon: Icon(Icons.arrow_back,
                     color: smartIconColor, size: r.appBarIconSize),
                 onPressed: _resetView,
               )
-            : null,
-        actions: [
+            : null, actions: [
           if (agents.isNotEmpty)
             IconButton(
               icon: Icon(Icons.refresh,
@@ -239,8 +216,7 @@ class _AgentsPageState extends State<AgentsPage> {
               onPressed: _fetchAgentsData,
               tooltip: 'تحديث البيانات',
             ),
-        ],
-      ),
+        ]),
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.all(r.contentPaddingH),

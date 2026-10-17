@@ -573,7 +573,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   Widget build(BuildContext context) {
     return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: const Color(0xFF0B1033),
+        backgroundColor: SdColors.primaryEdge,
         body: Stack(
           children: [
             _buildBackground(),
@@ -782,10 +782,10 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           gradient: const LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
-            colors: [Colors.white, Color(0xFFE3E7F5)],
+            colors: [Colors.white, SdColors.infoTint],
           ),
           boxShadow: const [
-            BoxShadow(color: Color(0xFF9FA8DA), offset: Offset(-2, 2)),
+            BoxShadow(color: SdColors.platformLight, offset: Offset(-2, 2)),
             BoxShadow(color: Color(0xFF7986CB), offset: Offset(-4, 4)),
             BoxShadow(
                 color: Color(0x73000000), offset: Offset(-8, 12), blurRadius: 18),
@@ -827,7 +827,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         ),
         ShaderMask(
           shaderCallback: (rect) => const LinearGradient(
-            colors: [Color(0xFF4DD0E1), SdColors.gold],
+            colors: [SdColors.accentGlow, SdColors.gold],
           ).createShader(rect),
           child: const Text(
             'من البرج إلى المشترك',
@@ -958,7 +958,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
               decoration: const BoxDecoration(
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(6)),
                 gradient: LinearGradient(
-                  colors: [Color(0xFF00ACC1), SdColors.primary, SdColors.gold],
+                  colors: [SdColors.accentLight, SdColors.primary, SdColors.gold],
                 ),
               ),
             ),
@@ -1090,7 +1090,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8E1),
+        color: SdColors.warningTint,
         borderRadius: BorderRadius.circular(14),
         border: SdOutline.all,
         boxShadow: const [BoxShadow(color: Color(0xFFFFE082), offset: Offset(0, 3))],
@@ -1189,7 +1189,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                   gradient: const LinearGradient(
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
-                    colors: [Color(0xFF26C6DA), SdColors.accent],
+                    colors: [SdColors.accentGlow, SdColors.accent],
                   ),
                   boxShadow: const [
                     BoxShadow(color: SdColors.accentEdge, offset: Offset(0, 3)),
@@ -1572,7 +1572,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           gradient: RadialGradient(
             center: Alignment(0, -0.4),
             radius: 1.1,
-            colors: [Color(0xFF23308F), Color(0xFF121A5C), Color(0xFF0B1033)],
+            colors: [SdColors.primaryLight, SdColors.primary, SdColors.primaryEdge],
           ),
         ),
         child: Center(
@@ -1586,7 +1586,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                 height: 7,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
-                  color: const Color(0xFF4DD0E1).withValues(alpha: 0.3),
+                  color: SdColors.accentGlow.withValues(alpha: 0.3),
                 ),
               ),
               const SizedBox(height: 22),
@@ -1627,7 +1627,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     final Color dotColor = done
         ? const Color(0xFF69F0AE)
         : active
-            ? const Color(0xFF4DD0E1)
+            ? SdColors.accentGlow
             : Colors.white.withValues(alpha: 0.18);
     return Row(
       children: [
@@ -1642,7 +1642,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                 : active
                     ? [
                         BoxShadow(
-                          color: const Color(0xFF4DD0E1).withValues(alpha: 0.25),
+                          color: SdColors.accentGlow.withValues(alpha: 0.25),
                           blurRadius: 0,
                           spreadRadius: 5,
                         )
@@ -1650,7 +1650,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                     : null,
           ),
           child: done
-              ? const Icon(Icons.check_rounded, size: 10, color: Color(0xFF0B1033))
+              ? const Icon(Icons.check_rounded, size: 10, color: SdColors.primaryEdge)
               : null,
         ),
         const SizedBox(width: 10),
@@ -1722,13 +1722,13 @@ class _LiveStatusBadgeState extends State<_LiveStatusBadge>
     late final Color bg, fg, dot;
     late final String label;
     if (widget.loading) {
-      bg = const Color(0xFFECEFF1);
-      fg = const Color(0xFF546E7A);
-      dot = const Color(0xFF78909C);
+      bg = SdColors.ground;
+      fg = SdColors.muted;
+      dot = SdColors.faint;
       label = 'جارٍ الفحص';
     } else if (widget.offline) {
       bg = SdColors.dangerTint;
-      fg = const Color(0xFFB71C1C);
+      fg = SdColors.danger;
       dot = SdColors.danger;
       label = 'غير متصل';
     } else {
@@ -1848,7 +1848,7 @@ class _SpinShieldCubeState extends State<_SpinShieldCube>
           gradient: const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.white, Color(0xFFE3E7F5)],
+            colors: [Colors.white, SdColors.infoTint],
           ),
           border: Border.all(color: const Color(0x261A237E)),
         ),

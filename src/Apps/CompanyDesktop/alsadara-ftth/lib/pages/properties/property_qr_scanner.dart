@@ -15,6 +15,7 @@ import 'package:image/image.dart' as img;
 import 'package:zxing2/qrcode.dart';
 
 import '../../frontend/tokens/sd_colors.dart';
+import '../../frontend/components/sd_app_bar.dart';
 
 /// يفكّ تشفير رمز QR من بايتات صورة — يُشغَّل في isolate عبر [compute].
 /// يُعيد نصّ الرمز أو null إن لم يُعثر على رمز صالح.
@@ -136,14 +137,7 @@ class _PropertyQrScannerScreenState extends State<PropertyQrScannerScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
-          title: Text('مسح رمز QR بالكاميرا',
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.w800, color: Colors.white)),
-        ),
+        appBar: SdAppBar(title: 'مسح رمز QR بالكاميرا'),
         body: _error != null
             ? _buildError()
             : _controller == null

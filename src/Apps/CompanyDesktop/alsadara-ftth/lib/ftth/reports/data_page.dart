@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'agents_details_page.dart';
 import '../users/users_data_page.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class DataPage extends StatefulWidget {
   final String authToken;
@@ -36,31 +37,7 @@ class _DataPageState extends State<DataPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                SdColors.primary,
-                SdColors.primaryLight,
-                SdColors.primarySoft,
-              ],
-            ),
-          ),
-        ),
-        title: const Text(
-          'بيانات',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-        bottom: TabBar(
+      appBar: SdAppBar(title: 'بيانات', bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
           indicatorWeight: 3,
@@ -84,8 +61,7 @@ class _DataPageState extends State<DataPage>
               text: 'بيانات المستخدمين',
             ),
           ],
-        ),
-      ),
+        )),
       body: TabBarView(
         controller: _tabController,
         children: [

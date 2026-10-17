@@ -7,6 +7,7 @@ import 'package:webview_windows/webview_windows.dart' as windows_webview;
 import 'package:url_launcher/url_launcher.dart';
 import '../services/ftth_cf_clearance.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class PlatformWebView extends StatefulWidget {
   final String url;
@@ -156,11 +157,7 @@ class _PlatformWebViewState extends State<PlatformWebView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        backgroundColor: SdColors.info,
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: widget.title, actions: [
           IconButton(
             icon: const Icon(Icons.open_in_browser),
             tooltip: 'فتح في متصفح خارجي',
@@ -177,8 +174,7 @@ class _PlatformWebViewState extends State<PlatformWebView> {
               }
             },
           ),
-        ],
-      ),
+        ]),
       body: Column(
         children: [
           if (_isLoading) const LinearProgressIndicator(),

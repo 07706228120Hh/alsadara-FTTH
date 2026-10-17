@@ -215,7 +215,7 @@ class SasExpiryChips extends StatelessWidget {
         key: 'soon3',
         label: '٣ أيام',
         count: counts.soon3,
-        color: const Color(0xFFF57C00),
+        color: SdColors.warning,
         icon: Icons.hourglass_bottom_rounded,
       ),
       SasExpiryChipDef(

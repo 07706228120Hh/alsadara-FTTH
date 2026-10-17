@@ -3,6 +3,7 @@ import '../services/whatsapp_system_settings_service.dart';
 import '../services/whatsapp_permissions_service.dart' as perms;
 import '../../services/ftth_whatsapp_settings_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 /// صفحة إعدادات نظام الواتساب المستخدم
 class WhatsAppSystemSettingsPage extends StatefulWidget {
@@ -133,15 +134,7 @@ class _WhatsAppSystemSettingsPageState
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: SdColors.groundAlt,
-        appBar: AppBar(
-          title: Text(
-            'نظام الواتساب',
-            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: const Color(0xFF7C3AED),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
+        appBar: SdAppBar(title: 'نظام الواتساب'),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : SingleChildScrollView(

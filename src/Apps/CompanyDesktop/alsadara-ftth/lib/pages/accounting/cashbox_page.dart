@@ -2,11 +2,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_ui_kit.dart';
 /// صفحة إدارة الصناديق النقدية
 class CashBoxPage extends StatefulWidget {
   final String? companyId;
@@ -163,7 +163,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
           Container(
             padding: EdgeInsets.all(isMobile ? 4 : ar.spaceS),
             decoration: BoxDecoration(
-              gradient: AccountingTheme.neonGreenGradient,
+              gradient: SdUiKit.neonGreenGradient,
               borderRadius: BorderRadius.circular(ar.btnRadius),
             ),
             child: Icon(Icons.account_balance_wallet_rounded,

@@ -1011,7 +1011,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
   }
 
   Color _markerColor(FatPoint p) =>
-      p.isActive ? SdColors.success : const Color(0xFFF97316);
+      p.isActive ? SdColors.success : SdColors.warning;
 
   // ══════════════════════════════════════════════════════════════
   // Build
@@ -1375,7 +1375,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               (ctx as Element).markNeedsBuild();
             }),
             _layerToggle('المفعّلة فقط', Icons.check_circle_outline,
-                _showOnlyActive, const Color(0xFFF97316), (v) {
+                _showOnlyActive, SdColors.warning, (v) {
               setState(() => _showOnlyActive = v);
               (ctx as Element).markNeedsBuild();
             }),
@@ -1399,7 +1399,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             _statRow(
                 'غير مفعّل',
                 _visiblePoints.where((p) => !p.isActive).length.toString(),
-                const Color(0xFFF97316)),
+                SdColors.warning),
             _statRow('مناطق FDT', _visibleRegions.length.toString(), _accent),
             const SizedBox(height: 8),
           ],
@@ -2063,7 +2063,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
         children: [
           _legendRow(SdColors.success, 'FAT مفعّل'),
           const SizedBox(height: 4),
-          _legendRow(const Color(0xFFF97316), 'FAT غير مفعّل'),
+          _legendRow(SdColors.warning, 'FAT غير مفعّل'),
           const SizedBox(height: 4),
           _legendRow(
               HSLColor.fromAHSL(0.5, 200, 0.65, 0.55).toColor(), 'منطقة FDT'),

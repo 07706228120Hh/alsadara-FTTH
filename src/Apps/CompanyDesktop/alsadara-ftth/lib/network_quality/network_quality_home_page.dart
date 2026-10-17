@@ -61,7 +61,7 @@ class NetworkToolsHomePage extends StatelessWidget {
             icon: Icons.network_check_rounded,
             gradient: const [Color(0xFF26A69A), Nq3d.teal],
             iconEdge: Nq3d.tealDark,
-            cardEdge: const Color(0xFFCFE7EA),
+            cardEdge: SdColors.accentTint,
             glow: const Color(0x7300838F),
             badge: 'جديد',
             onTap: () => Navigator.push(

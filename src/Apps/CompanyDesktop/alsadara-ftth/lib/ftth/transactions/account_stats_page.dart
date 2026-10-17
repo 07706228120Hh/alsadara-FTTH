@@ -10,6 +10,7 @@ import '../subscriptions/connections_list_page.dart';
 import '../users/user_records_page.dart'; // الصفحة الجديدة لسجلات المستخدم
 import '../../models/filter_criteria.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 // صفحة إحصائيات السجلات (نسخة نظيفة وبسيطة)
 class AccountStatsPage extends StatelessWidget {
@@ -114,12 +115,7 @@ class AccountStatsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('إحصائيات السجلات',
-            style: TextStyle(fontSize: _fs(context, 18), fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: 'إحصائيات السجلات', actions: [
           // زر لعرض جميع الوصولات (مع التصفية المطبقة)
           IconButton(
             icon: const Icon(Icons.list_alt),
@@ -143,8 +139,7 @@ class AccountStatsPage extends StatelessWidget {
                 ? 'عرض الوصولات المفلترة'
                 : 'عرض جميع الوصولات',
           ),
-        ],
-      ),
+        ]),
       body: ListView(
         padding: EdgeInsets.fromLTRB(_isPhone(context) ? 10 : 16, 12, _isPhone(context) ? 10 : 16, 24),
         children: [

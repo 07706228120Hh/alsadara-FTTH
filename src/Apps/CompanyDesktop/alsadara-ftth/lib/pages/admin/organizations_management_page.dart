@@ -16,6 +16,7 @@ import '../../services/firestore_permissions_service.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import '../login/premium_login_page.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class OrganizationsManagementPage extends StatefulWidget {
   const OrganizationsManagementPage({super.key});
@@ -806,35 +807,13 @@ class _OrganizationsManagementPageState
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          iconTheme: const IconThemeData(color: Colors.white),
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  SdColors.primaryMid,
-                  SdColors.info,
-                  SdColors.infoTintEdge
-                ],
-              ),
-            ),
-          ),
-          title: Text('إدارة الشركات',
-              style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-        ),
+        appBar: SdAppBar(title: 'إدارة الشركات'),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('إدارة الشركات والمؤسسات',
-            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
-        backgroundColor: SdColors.info,
-        actions: [
+      appBar: SdAppBar(title: 'إدارة الشركات والمؤسسات', actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadOrganizations,
@@ -852,15 +831,13 @@ class _OrganizationsManagementPageState
             },
             tooltip: 'تسجيل الخروج',
           ),
-        ],
-        bottom: TabBar(
+        ], bottom: TabBar(
           controller: _tabController,
           tabs: [
             Tab(child: Text('الشركات', style: TextStyle(fontFamily: 'Cairo'))),
             Tab(child: Text('المستخدمين', style: TextStyle(fontFamily: 'Cairo'))),
           ],
-        ),
-      ),
+        )),
       body: TabBarView(
         controller: _tabController,
         children: [

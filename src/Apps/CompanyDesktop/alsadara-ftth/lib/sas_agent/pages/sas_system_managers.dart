@@ -142,7 +142,7 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
                     icon: Icons.badge_rounded,
                     colors: enabled
                         ? const [SdColors.primaryLight, SdColors.primary]
-                        : const [Color(0xFF9E9E9E), Color(0xFF757575)],
+                        : const [SdColors.faint, SdColors.muted],
                     size: 40,
                     iconSize: 20,
                   ),

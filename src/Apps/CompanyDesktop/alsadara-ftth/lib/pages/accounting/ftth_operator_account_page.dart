@@ -11,6 +11,7 @@ import '../../services/api/api_config.dart';
 import '../../theme/accounting_responsive.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 /// صفحة كشف حساب مشغل FTTH
 /// تعرض ملخص العمليات المالية لمشغل محدد (نقد/آجل/ماستر/وكيل)
 class FtthOperatorAccountPage extends StatefulWidget {
@@ -384,19 +385,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: SdColors.ground,
-        appBar: AppBar(
-          backgroundColor: SdColors.primary,
-          iconTheme: IconThemeData(color: Colors.white),
-          title: Text(
-            'كشف حساب: ${widget.operatorName}',
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              color: Colors.white,
-              fontSize: context.accR.headingSmall,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          actions: [
+        appBar: SdAppBar(title: 'كشف حساب: ${widget.operatorName}', actions: [
             if (!_isLoading && _data != null)
               _appBarButton(Icons.list_alt, 'العمليات (${_getProcessedTransactions().length}${_getProcessedTransactions().length != _transactions.length ? '/${_transactions.length}' : ''})', () {}),
             _appBarButton(Icons.view_column, 'الأعمدة', _showColumnSelectorDialog),
@@ -461,8 +450,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               onPressed: _loadData,
               tooltip: 'تحديث',
             ),
-          ],
-        ),
+          ]),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
@@ -521,14 +509,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       {'title': 'نقد', 'amount': cash, 'count': _data?['cashCount'] ?? 0,
        'icon': Icons.attach_money, 'colors': [SdColors.success, SdColors.success]},
       {'title': 'آجل', 'amount': credit, 'count': _data?['creditCount'] ?? 0,
-       'icon': Icons.schedule, 'colors': [SdColors.warning, const Color(0xFFD35400)]},
+       'icon': Icons.schedule, 'colors': [SdColors.warning, SdColors.warning]},
       {'title': 'ماستر', 'amount': master, 'count': _data?['masterCount'] ?? 0,
        'icon': Icons.credit_card, 'colors': [SdColors.platformBase, const Color(0xFF7D3C98)]},
       {'title': 'وكيل', 'amount': agent, 'count': _data?['agentCount'] ?? 0,
        'icon': Icons.store, 'colors': [SdColors.ink, const Color(0xFF1A252F)]},
       if (unclassified > 0)
         {'title': 'غير مصنف', 'amount': unclassified, 'count': _data?['unclassifiedCount'] ?? 0,
-         'icon': Icons.help_outline, 'colors': [SdColors.faint, const Color(0xFF7F8C8D)]},
+         'icon': Icons.help_outline, 'colors': [SdColors.faint, SdColors.faint]},
     ];
 
     return Column(
@@ -645,7 +633,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             (label: 'مُسجّل', amount: creditAmount, bold: false),
             (label: 'مُحصّل', amount: collectedCredit, bold: false),
             (label: 'الباقي', amount: remainingCredit, bold: true),
-          ], [SdColors.warning, const Color(0xFFD35400)]),
+          ], [SdColors.warning, SdColors.warning]),
           SizedBox(width: ar.spaceXS),
           Expanded(
             child: Container(
@@ -653,8 +641,8 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: hasDebt
-                      ? [SdColors.danger, const Color(0xFFC0392B)]
-                      : [SdColors.success, const Color(0xFF1E8449)],
+                      ? [SdColors.danger, SdColors.danger]
+                      : [SdColors.success, SdColors.success],
                 ),
                 borderRadius: BorderRadius.circular(ar.cardRadius),
                 boxShadow: [BoxShadow(

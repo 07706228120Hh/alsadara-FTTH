@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import '../../permissions/permissions.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class PermissionsPage extends StatefulWidget {
   final Map<String, bool> userPermissions;
@@ -80,22 +81,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 50,
-        iconTheme: const IconThemeData(size: 20, color: Colors.white),
-        title: const Text(
-          'إدارة الصلاحيات',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            fontSize: 16,
-          ),
-        ),
-        backgroundColor: SdColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-      ),
+      appBar: SdAppBar(title: 'إدارة الصلاحيات'),
       body: Column(
         children: [
           // حقل كلمة المرور الافتراضية أعلى الصفحة

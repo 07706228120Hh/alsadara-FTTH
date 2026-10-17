@@ -3,9 +3,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../../../theme/energy_dashboard_theme.dart';
 
 import '../../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../../frontend/components/sd_dash_kit.dart';
 // ═══════════════════════════════════════════════════════════════
 // 1. SAPageHeader — رأس الصفحة الموحد
 // ═══════════════════════════════════════════════════════════════
@@ -59,7 +59,7 @@ class SAPageHeader extends StatelessWidget {
                 colors: [color, color.withOpacity(0.8)],
               ),
               borderRadius: BorderRadius.circular(10),
-              boxShadow: EnergyDashboardTheme.glowCustom(color, intensity: 0.15),
+              boxShadow: SdDashKit.glowCustom(color, intensity: 0.15),
             ),
             child: Icon(icon, color: Colors.white, size: 24),
           ),
@@ -375,7 +375,7 @@ class SAStatCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: color,
                       shape: BoxShape.circle,
-                      boxShadow: EnergyDashboardTheme.glowCustom(color,
+                      boxShadow: SdDashKit.glowCustom(color,
                           intensity: 0.5),
                     ),
                   ),

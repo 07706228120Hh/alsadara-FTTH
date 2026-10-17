@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
-import '../../theme/accounting_theme.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// 📡 صفحة «نظام الساس — الحسابات»
 /// تعرض ملخّص محاسبة عمليات الساس فقط (SubscriptionLog.Source == Sas) من الدفتر المحاسبي الموحّد.
@@ -352,7 +352,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
   Widget _summaryCard(_SummaryCardData c) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: AccountingTheme.card,
+      decoration: SdUiKit.card,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -395,7 +395,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
   Widget _buildCollectionTypeSection() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: AccountingTheme.card,
+      decoration: SdUiKit.card,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -452,7 +452,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
   Widget _buildRecentSection() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: AccountingTheme.card,
+      decoration: SdUiKit.card,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

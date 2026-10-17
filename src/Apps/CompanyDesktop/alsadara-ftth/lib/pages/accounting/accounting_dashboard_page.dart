@@ -322,7 +322,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
   // ── ألوان الثيم الفاتح (XONEPROO Style) ──
   static const _bgCard = Colors.white;
   static const _textDark = Color(0xFF333333);
-  static const _textGray = Color(0xFF999999);
+  static const _textGray = SdColors.faint;
   static const _shadowColor = Color(0x14000000);
 
   @override
@@ -534,7 +534,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
               gradient: LinearGradient(
                 colors: [
                   Color(0x00CBD5E1),
-                  Color(0xFFCBD5E1),
+                  SdColors.sideShade,
                 ],
               ),
             ),
@@ -589,7 +589,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFFCBD5E1),
+                  SdColors.sideShade,
                   Color(0x00CBD5E1),
                 ],
               ),
@@ -656,7 +656,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'رصيد المحفظة FTTH',
           value: _ftthWalletBalance != null ? _formatCurrency(_ftthWalletBalance) : 'جاري التحميل...',
           icon: Icons.wallet,
-          color: const Color(0xFF00ACC1),
+          color: SdColors.accentLight,
         ),
       _SummaryItem(
         title: 'المصاريف',
@@ -675,7 +675,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         value: _formatCurrency(unpaidSalaries),
         subtitle: '$pendingCount معلق من $totalEmployees موظف',
         icon: Icons.payments_outlined,
-        color: const Color(0xFFD32F2F),
+        color: SdColors.danger,
       ),
       _SummaryItem(
         title: 'مستحقات المشغلين',
@@ -1046,7 +1046,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'إدارة الوكلاء',
           subtitle: 'إضافة وإدارة الوكلاء والمحاسبة',
           icon: Icons.support_agent,
-          color: const Color(0xFF3F51B5),
+          color: SdColors.primaryLight,
           onTap: () =>
               _navigateTo(AgentsManagementPage(companyId: widget.companyId)),
         ),
@@ -1355,8 +1355,8 @@ class _BgGradientPainter extends CustomPainter {
         end: Alignment.bottomRight,
         colors: const [
           SdColors.surfaceAlt,
-          Color(0xFFEEF1F8),
-          Color(0xFFF0F4FF),
+          SdColors.ground,
+          SdColors.infoTint,
           SdColors.surfaceAlt,
         ],
         stops: [

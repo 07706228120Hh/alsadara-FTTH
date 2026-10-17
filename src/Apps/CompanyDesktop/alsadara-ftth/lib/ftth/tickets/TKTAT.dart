@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class TKTAT extends StatefulWidget {
   final String authToken;
@@ -55,19 +56,12 @@ class _TKTATState extends State<TKTAT> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: _isPhone ? 44 : 50,
-        iconTheme: IconThemeData(size: _ic(20)),
-        title: Text('TKTATs', style: TextStyle(fontSize: _fs(16), fontWeight: FontWeight.w600)),
-        backgroundColor: SdColors.info,
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: 'TKTATs', actions: [
           IconButton(
             icon: Icon(Icons.refresh, size: _ic(20)),
             onPressed: fetchTKTATs,
           ),
-        ],
-      ),
+        ]),
       body: Container(
         padding: EdgeInsets.all(_isPhone ? 10.0 : 16.0),
         child: _buildContent(),

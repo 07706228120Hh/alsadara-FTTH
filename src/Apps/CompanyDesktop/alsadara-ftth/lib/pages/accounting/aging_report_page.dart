@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../services/accounting_export_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة تقرير أعمار الديون - Aging Report
 /// تعرض تحصيلات الفنيين غير المسلّمة مصنّفة حسب العمر الزمني
@@ -287,7 +287,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
           decoration: BoxDecoration(
             color: SdColors.surface,
             borderRadius: BorderRadius.circular(ar.cardRadius),
-            boxShadow: AccountingTheme.cardShadow,
+            boxShadow: SdUiKit.cardShadow,
             border: Border(
               right: BorderSide(color: color, width: 4),
             ),
@@ -372,7 +372,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
       ),
       child: Row(
         children: [
@@ -483,7 +483,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
@@ -507,7 +507,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
   Widget _buildTableHeader() {
     final ar = context.accR;
     return Container(
-      decoration: AccountingTheme.tableHeader,
+      decoration: SdUiKit.tableHeader,
       padding: EdgeInsets.symmetric(
         horizontal: ar.tableCellPadH,
         vertical: ar.tableCellPadV + 2,
@@ -744,14 +744,14 @@ class _AgingReportPageState extends State<AgingReportPage> {
         categoryTotals: _categoryTotals,
       );
       if (!mounted) return;
-      AccountingTheme.showSnack(
+      SdUiKit.showSnack(
         context,
         'تم التصدير: $path',
         SdColors.success,
       );
     } catch (e) {
       if (!mounted) return;
-      AccountingTheme.showSnack(
+      SdUiKit.showSnack(
         context,
         'خطأ في التصدير',
         SdColors.danger,

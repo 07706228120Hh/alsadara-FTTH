@@ -4,11 +4,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/auth/super_admin_api.dart';
 import 'widgets/super_admin_widgets.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_dash_kit.dart';
 class UnifiedSubscriptionsPage extends StatefulWidget {
   const UnifiedSubscriptionsPage({super.key});
 
@@ -226,7 +226,7 @@ class _UnifiedSubscriptionsPageState extends State<UnifiedSubscriptionsPage> {
     final filtered = _filteredCompanies;
 
     if (filtered.isEmpty) {
-      return EnergyDashboardTheme.emptyWidget(
+      return SdDashKit.emptyWidget(
         message: 'لا توجد اشتراكات مطابقة للفلتر',
         icon: Icons.search_off_rounded,
       );

@@ -242,11 +242,11 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
       case WhatsAppTemplateType.renewal:
         return [SdColors.success, SdColors.successEdge];
       case WhatsAppTemplateType.expiringSoon:
-        return [SdColors.warning, const Color(0xFFA84300)];
+        return [SdColors.warning, SdColors.warningEdge];
       case WhatsAppTemplateType.expired:
-        return [SdColors.danger, const Color(0xFF7F0000)];
+        return [SdColors.danger, SdColors.dangerEdge];
       case WhatsAppTemplateType.notification:
-        return [SdColors.info, const Color(0xFF0D47A1)];
+        return [SdColors.info, SdColors.primaryLight];
     }
   }
 
@@ -1079,7 +1079,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
     return Container(
-      color: const Color(0xFFECE5DD),
+      color: SdColors.warningTint,
       child: Column(
         children: [
           // شريط واتساب العلوي
@@ -1172,7 +1172,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                             bottom: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFDCF8C6),
+                            color: SdColors.successTintEdge,
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(16),
                               topRight: Radius.circular(4),
@@ -1232,7 +1232,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
           // شريط الإدخال السفلي (للمظهر فقط)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            color: const Color(0xFFF0F0F0),
+            color: SdColors.ground,
             child: Row(
               children: [
                 Container(

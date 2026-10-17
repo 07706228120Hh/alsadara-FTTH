@@ -651,7 +651,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
           ),
           // طبقة 2: ظل رمادي ناعم أعمق قليلاً للعمق الاحترافي.
           BoxShadow(
-            color: const Color(0xFF0B1B3A).withValues(alpha: 0.08),
+            color: SdColors.primaryEdge.withValues(alpha: 0.08),
             blurRadius: 14,
             spreadRadius: -8,
             offset: const Offset(0, 6),
@@ -689,7 +689,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
             offset: const Offset(0, 6),
           ),
           BoxShadow(
-            color: const Color(0xFF0B1B3A).withValues(alpha: 0.05),
+            color: SdColors.primaryEdge.withValues(alpha: 0.05),
             blurRadius: 10,
             spreadRadius: -6,
             offset: const Offset(0, 3),
@@ -1050,7 +1050,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
             border: Border.all(color: _kAccent.withValues(alpha: 0.08)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0B1B3A).withValues(alpha: 0.05),
+                color: SdColors.primaryEdge.withValues(alpha: 0.05),
                 blurRadius: 10,
                 spreadRadius: -6,
                 offset: const Offset(0, 4),

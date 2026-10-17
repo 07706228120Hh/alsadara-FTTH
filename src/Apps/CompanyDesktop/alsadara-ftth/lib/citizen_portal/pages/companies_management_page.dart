@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/company_model.dart';
 import '../services/company_api_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 /// شاشة إدارة الشركات - لمدير النظام فقط
 class CompaniesManagementPage extends StatefulWidget {
@@ -147,10 +148,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
     final isPhone = MediaQuery.of(context).size.width < 500;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('إدارة الشركات'),
-        backgroundColor: SdColors.primary,
-        actions: [
+      appBar: SdAppBar(title: 'إدارة الشركات', actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadCompanies,
@@ -161,8 +159,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
             onPressed: _showAddCompanyDialog,
             tooltip: 'إضافة شركة',
           ),
-        ],
-      ),
+        ]),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : errorMessage != null

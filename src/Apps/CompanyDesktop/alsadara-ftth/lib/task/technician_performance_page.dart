@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../models/task.dart';
 import 'task_status_colors.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 /// لوحة أداء الفنيين — إحصائيات ورسوم بيانية
 class TechnicianPerformancePage extends StatefulWidget {
@@ -104,12 +105,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: SdColors.surfaceAlt,
-        appBar: AppBar(
-          title: const Text('أداء الفنيين',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: SdColors.primary,
-          foregroundColor: Colors.white,
-          actions: [
+        appBar: SdAppBar(title: 'أداء الفنيين', actions: [
             PopupMenuButton<String>(
               icon: const Icon(Icons.sort),
               tooltip: 'ترتيب حسب',
@@ -121,8 +117,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                 PopupMenuItem(value: 'avgTime', child: Text('أسرع إنجاز')),
               ],
             ),
-          ],
-        ),
+          ]),
         body: stats.isEmpty && _filteredTasks.isEmpty
             ? Center(
                 child: Column(
@@ -226,7 +221,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 borderRadius: BorderRadius.circular(10),
-                style: TextStyle(fontSize: isMobile ? 11 : 13, color: const Color(0xFF2D3250)),
+                style: TextStyle(fontSize: isMobile ? 11 : 13, color: SdColors.primaryEdge),
                 onTap: _selectedTechnician != null
                     ? () {
                         setState(() => _selectedTechnician = null);
@@ -558,7 +553,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                 color: color, borderRadius: BorderRadius.circular(3))),
         const SizedBox(width: 4),
         Text(label,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+            style: const TextStyle(fontSize: 11, color: SdColors.muted)),
       ],
     );
   }
@@ -705,11 +700,11 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
       case 1:
         return const Color(0xFFFFD700); // ذهبي
       case 2:
-        return const Color(0xFFC0C0C0); // فضي
+        return SdColors.sideShade; // فضي
       case 3:
         return const Color(0xFFCD7F32); // برونزي
       default:
-        return const Color(0xFF9CA3AF);
+        return SdColors.faint;
     }
   }
 }

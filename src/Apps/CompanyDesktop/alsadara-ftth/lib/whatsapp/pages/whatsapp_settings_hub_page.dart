@@ -585,7 +585,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Colors.white, Color(0xFFF0FDF4)],
+              colors: [Colors.white, SdColors.successTint],
             ),
           ),
           child: Column(

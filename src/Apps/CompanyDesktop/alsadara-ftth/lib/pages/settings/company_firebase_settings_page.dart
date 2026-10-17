@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import '../../services/company_settings_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class CompanyFirebaseSettingsPage extends StatefulWidget {
   const CompanyFirebaseSettingsPage({super.key});
@@ -117,22 +118,14 @@ class _CompanyFirebaseSettingsPageState
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('إعدادات الشركة',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          centerTitle: true,
-          backgroundColor: const Color(0xFF455A64),
-          foregroundColor: Colors.white,
-          elevation: 2,
-          actions: [
+        appBar: SdAppBar(title: 'إعدادات الشركة', actions: [
             if (!_isLoading)
               IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: _loadSettings,
                 tooltip: 'تحديث',
               ),
-          ],
-        ),
+          ]),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : ListView(
@@ -169,7 +162,7 @@ class _CompanyFirebaseSettingsPageState
           children: [
             Row(
               children: [
-                const Icon(Icons.person, color: Color(0xFF455A64)),
+                const Icon(Icons.person, color: SdColors.muted),
                 const SizedBox(width: 8),
                 const Text('معلومات المدير',
                     style:
@@ -276,7 +269,7 @@ class _CompanyFirebaseSettingsPageState
             : const Icon(Icons.save),
         label: Text(_isSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF455A64),
+          backgroundColor: SdColors.muted,
           foregroundColor: Colors.white,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

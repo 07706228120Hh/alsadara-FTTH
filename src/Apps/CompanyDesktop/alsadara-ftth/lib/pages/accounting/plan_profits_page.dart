@@ -4,6 +4,7 @@ import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_responsive.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 /// صفحة أرباح الباقات - Plan Profits Page
 /// تحديد الربح الصافي لكل باقة إنترنت
 class PlanProfitsPage extends StatefulWidget {
@@ -114,23 +115,10 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: SdColors.ground,
-        appBar: AppBar(
-          backgroundColor: SdColors.primary,
-          iconTheme: const IconThemeData(color: Colors.white),
-          leading: IconButton(
+        appBar: SdAppBar(title: '💰 أرباح الباقات', leading: IconButton(
             icon: const Icon(Icons.arrow_forward_rounded),
             onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: Text(
-            '💰 أرباح الباقات',
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              color: Colors.white,
-              fontSize: isMob ? 16 : context.accR.headingSmall,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          actions: [
+          ), actions: [
             IconButton(
               icon: const Icon(Icons.save_rounded,
                   color: SdColors.success),
@@ -142,8 +130,7 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
               onPressed: _loadData,
               tooltip: 'تحديث',
             ),
-          ],
-        ),
+          ]),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null

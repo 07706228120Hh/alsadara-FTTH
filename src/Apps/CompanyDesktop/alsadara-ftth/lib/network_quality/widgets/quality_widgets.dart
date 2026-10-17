@@ -23,7 +23,7 @@ Color ratingColor(QualityRating r) {
     case QualityRating.bad:
       return SdColors.danger;
     case QualityRating.unknown:
-      return const Color(0xFF9E9E9E);
+      return SdColors.faint;
   }
 }
 
@@ -41,7 +41,7 @@ Color ratingColorOnDark(QualityRating r) {
     case QualityRating.bad:
       return const Color(0xFFE57373); // أحمر فاتح
     case QualityRating.unknown:
-      return const Color(0xFFB0BEC5); // رمادي فاتح
+      return SdColors.sideShade; // رمادي فاتح
   }
 }
 
@@ -198,7 +198,7 @@ class SectionCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
-          BoxShadow(color: Color(0xFFD6DBEA), offset: Offset(0, 5)),
+          BoxShadow(color: SdColors.primaryTintEdge, offset: Offset(0, 5)),
           BoxShadow(
               color: Color(0x661A237E),
               offset: Offset(0, 17),
@@ -1276,7 +1276,7 @@ class QualityRadarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final titleColor =
-        onDark ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF37474F);
+        onDark ? Colors.white.withValues(alpha: 0.85) : SdColors.muted;
     final gridColor = onDark
         ? Colors.white.withValues(alpha: 0.18)
         : SdColors.faint.withValues(alpha: 0.35);

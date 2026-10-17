@@ -3,10 +3,10 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fl_chart/fl_chart.dart';
 import '../../services/accounting_service.dart';
 import '../../services/accounting_export_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة تقرير المقارنة الشهرية - مقارنة الإيرادات والمصروفات وصافي الربح عبر الأشهر
 class MonthlyComparisonPage extends StatefulWidget {
@@ -424,7 +424,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -701,7 +701,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
         border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
@@ -761,7 +761,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(

@@ -3,7 +3,7 @@ import '../../frontend/frontend.dart'; // نظام تصميم الصدارة ا�
 import '../../services/period_closing_service.dart';
 import '../../services/audit_trail_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/accounting_theme.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة إقفال الفترات المحاسبية
 /// فقط CompanyAdmin يمكنه الوصول لهذه الصفحة
@@ -84,7 +84,7 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
         : 'هل تريد إقفال فترة $monthName $_selectedYear؟ لن يتمكن الموظفون من التعديل أو الحذف في هذه الفترة.';
     final confirmColor = closed ? SdColors.warning : SdColors.danger;
 
-    final confirmed = await AccountingTheme.confirmDialog(
+    final confirmed = await SdUiKit.confirmDialog(
       context,
       title: title,
       message: message,
@@ -123,7 +123,7 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
       _closedPeriods =
           PeriodClosingService.instance.getClosedPeriods(_companyId);
       if (mounted) {
-        AccountingTheme.showSnack(
+        SdUiKit.showSnack(
           context,
           closed
               ? 'تم إعادة فتح فترة $monthName $_selectedYear'
@@ -133,7 +133,7 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
       }
     } catch (e) {
       if (mounted) {
-        AccountingTheme.showSnack(context, 'خطأ', SdColors.danger);
+        SdUiKit.showSnack(context, 'خطأ', SdColors.danger);
       }
     }
 

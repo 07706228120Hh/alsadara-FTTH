@@ -4,9 +4,9 @@ import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/period_closing_service.dart';
 import '../../services/audit_trail_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة تحصيلات الفنيين - عرض موحّد للمستحقات مع إمكانية إضافة تحصيل وتسديد
 class CollectionsPage extends StatefulWidget {
@@ -1276,7 +1276,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   Container(
                     padding: EdgeInsets.all(context.accR.spaceS),
                     decoration: BoxDecoration(
-                      gradient: AccountingTheme.neonBlueGradient,
+                      gradient: SdUiKit.neonBlueGradient,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(Icons.add_card,
@@ -1432,7 +1432,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                         dense: true,
                                         leading: CircleAvatar(
                                           radius: 14,
-                                          backgroundColor: AccountingTheme
+                                          backgroundColor: SdUiKit
                                               .neonBlue
                                               .withValues(alpha: 0.15),
                                           child: Text(
@@ -1952,7 +1952,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                 Container(
                   padding: EdgeInsets.all(context.accR.spaceS),
                   decoration: BoxDecoration(
-                    gradient: AccountingTheme.neonBlueGradient,
+                    gradient: SdUiKit.neonBlueGradient,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.edit,
@@ -2400,7 +2400,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                             children: [
                                               Text(desc,
                                                   style: TextStyle(
-                                                      color: AccountingTheme
+                                                      color: SdUiKit
                                                           .textPrimary,
                                                       fontWeight:
                                                           FontWeight.w600,
@@ -2409,14 +2409,14 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                               if (customerName.isNotEmpty)
                                                 Text('العميل: $customerName',
                                                     style: TextStyle(
-                                                        color: AccountingTheme
+                                                        color: SdUiKit
                                                             .textMuted,
                                                         fontSize: context
                                                             .accR.small)),
                                               if (taskType.isNotEmpty)
                                                 Text('النوع: $taskType',
                                                     style: TextStyle(
-                                                        color: AccountingTheme
+                                                        color: SdUiKit
                                                             .textMuted,
                                                         fontSize: context
                                                             .accR.small)),

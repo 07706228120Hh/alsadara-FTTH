@@ -3,9 +3,9 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../services/accounting_export_service.dart';
 import '../../services/accounting_pdf_export_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة التدفقات النقدية - Cash Flow Statement
 class CashFlowPage extends StatefulWidget {
@@ -226,7 +226,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
                     child: CircularProgressIndicator(
                         color: SdColors.success))
                 : _errorMessage != null
-                    ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                    ? SdUiKit.errorView(_errorMessage!, _loadData)
                     : _buildContent(ar),
           ),
         ],
@@ -386,7 +386,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
             icon: Icons.account_balance_rounded,
             color: _financingColor,
             gradient: const LinearGradient(
-              colors: [SdColors.warning, Color(0xFFD35400)],
+              colors: [SdColors.warning, SdColors.warning],
             ),
             items: _financingItems,
             total: _totalFinancing,
@@ -409,8 +409,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: _isPositive
-              ? [SdColors.success, const Color(0xFF1E8449)]
-              : [SdColors.danger, const Color(0xFFC0392B)],
+              ? [SdColors.success, SdColors.success]
+              : [SdColors.danger, SdColors.danger],
         ),
         borderRadius: BorderRadius.circular(ar.cardRadius + 4),
         boxShadow: [
@@ -516,7 +516,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
   }) {
     final isMob = ar.isMobile;
     return Container(
-      decoration: AccountingTheme.card,
+      decoration: SdUiKit.card,
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [

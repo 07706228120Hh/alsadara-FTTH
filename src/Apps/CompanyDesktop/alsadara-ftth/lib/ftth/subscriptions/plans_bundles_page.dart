@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import '../auth/auth_error_handler.dart';
 import '../../services/auth_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 // يمكن لاحقاً استخدام نظام الألوان الذكي إن لزم
 
 /// صفحة عرض نتائج واجهة الباقات والعروض
@@ -89,20 +90,13 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: SdColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 1,
-        title: const Text('الباقات و العروض',
-            style: TextStyle(color: Colors.white)),
-        actions: [
+      appBar: SdAppBar(title: 'الباقات و العروض', actions: [
           IconButton(
             tooltip: 'تحديث',
             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
             onPressed: _loading ? null : _fetch,
           ),
-        ],
-      ),
+        ]),
       body: _buildBody(),
     );
   }

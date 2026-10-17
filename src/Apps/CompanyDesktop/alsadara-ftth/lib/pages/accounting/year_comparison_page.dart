@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fl_chart/fl_chart.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة المقارنة السنوية - مقارنة الإيرادات والمصروفات بين سنتين
 class YearComparisonPage extends StatefulWidget {
@@ -567,7 +567,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
         border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
@@ -669,7 +669,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -858,7 +858,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(

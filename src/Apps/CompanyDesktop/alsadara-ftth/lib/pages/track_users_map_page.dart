@@ -86,9 +86,9 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
   static const LatLng _defaultCenter = LatLng(33.3573338, 44.4414648);
 
   // الألوان
-  final Color _primaryColor = const Color(0xFF0F172A);
+  final Color _primaryColor = SdColors.primaryEdge;
   final Color _accentColor = const Color(0xFF38BDF8);
-  final Color _surfaceColor = const Color(0xFFF8FAFC);
+  final Color _surfaceColor = SdColors.groundAlt;
   final Color _cardColor = Colors.white;
 
   @override
@@ -507,20 +507,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
       PermissionManager.instance.canView('accounting');
 
   PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      elevation: 0,
-      backgroundColor: _primaryColor,
-      toolbarHeight: _isMobile ? 46 : kToolbarHeight,
-      title: Text(
-        _isMobile ? "تتبع الفنيين" : "تتبع الفنيين - نظام الذكاء المكاني",
-        style: TextStyle(
-          fontFamily: 'Cairo',
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-          fontSize: _isMobile ? 15 : 20,
-        ),
-      ),
-      actions: [
+    return SdAppBar(title: _isMobile ? "تتبع الفنيين" : "تتبع الفنيين - نظام الذكاء المكاني", actions: [
         // ═══ اختيار المحافظة ═══
         SizedBox(
           width: _isMobile ? 95 : 130,
@@ -590,9 +577,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
           tooltip: "تحديث البيانات",
         ),
         SizedBox(width: _isMobile ? 2 : 8),
-      ],
-      iconTheme: const IconThemeData(color: Colors.white),
-    );
+      ]);
   }
 
   void _showPurgeDialog() {

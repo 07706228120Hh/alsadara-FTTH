@@ -153,7 +153,7 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
       case 'RequestAssigned': return SdColors.accent;
       case 'AgentRequest': return SdColors.warning;
       case 'ChatMessage': return SdColors.success;
-      default: return const Color(0xFF546E7A);
+      default: return SdColors.muted;
     }
   }
 

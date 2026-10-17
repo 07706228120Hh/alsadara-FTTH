@@ -484,7 +484,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         ]),
         SizedBox(height: 12.h),
         _infoGrid('التواريخ والملاحظات', Icons.history_rounded,
-            const [Color(0xFF455A64), SdColors.muted], [
+            const [SdColors.muted, SdColors.muted], [
           _fv('آخر اتصال', d['last_online'], mono: true),
           _fv('تاريخ الإنشاء', d['created_at'], mono: true),
           _fv('تاريخ التحديث', d['updated_at'], mono: true),
@@ -545,7 +545,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 9.h),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FC),
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
         border: Border.all(color: SdColors.faint.withValues(alpha: 0.14)),
       ),

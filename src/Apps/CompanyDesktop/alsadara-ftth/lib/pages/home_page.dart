@@ -126,7 +126,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   String _resolvedDepartments = '';
 
   // Unified fiber optic color
-  final Color _fiberColor = const Color(0xFF00E5FF);
+  final Color _fiberColor = SdColors.accentGlow;
 
 
   @override
@@ -949,7 +949,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           child: Text(
                             subtitle,
                             style: TextStyle(
-                              color: const Color(0xFF6B7280),
+                              color: SdColors.muted,
                               fontSize: r.menuItemSubtitleSize,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1755,7 +1755,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 border: Border.all(
                   color: isHovered
                       ? color.withValues(alpha: 0.35)
-                      : const Color(0xFFE0E0E0),
+                      : SdColors.divider,
                   width: isHovered ? 2.5 : 2.0,
                 ),
                 boxShadow: [
@@ -2088,7 +2088,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       gradient: LinearGradient(
                         colors: isUrgent
                             ? [SdColors.danger, SdColors.danger]
-                            : [SdColors.warningEdge, const Color(0xFFFF6D00)],
+                            : [SdColors.warningEdge, SdColors.warning],
                       ),
                     ),
                     child: Row(
@@ -3353,7 +3353,7 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
       case 'RequestAssigned': return SdColors.accent;
       case 'AgentRequest': return SdColors.warning;
       case 'ChatMessage': return SdColors.success;
-      default: return const Color(0xFF546E7A);
+      default: return SdColors.muted;
     }
   }
 

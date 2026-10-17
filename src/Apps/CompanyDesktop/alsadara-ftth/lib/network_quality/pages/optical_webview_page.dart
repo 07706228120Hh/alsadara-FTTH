@@ -17,6 +17,7 @@ import '../models/device_models.dart';
 import '../models/quality_models.dart';
 import '../services/optical_signal_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class OpticalWebViewPage extends StatefulWidget {
   final String ip;
@@ -374,13 +375,8 @@ class _OpticalWebViewPageState extends State<OpticalWebViewPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF2F4F8),
-        appBar: AppBar(
-          title: const Text('قراءة البصريات عبر المتصفح',
-              style: TextStyle(fontWeight: FontWeight.w800)),
-          backgroundColor: _indigo,
-          foregroundColor: Colors.white,
-          actions: [
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(title: 'قراءة البصريات عبر المتصفح', actions: [
             if (_rawBody != null)
               IconButton(
                 tooltip: 'عرض المصدر الخام',
@@ -393,8 +389,7 @@ class _OpticalWebViewPageState extends State<OpticalWebViewPage> {
                 label: const Text('تم', style: TextStyle(color: Colors.white)),
                 onPressed: _finish,
               ),
-          ],
-        ),
+          ]),
         body: Column(
           children: [
             Container(
@@ -477,7 +472,7 @@ class _OpticalWebViewPageState extends State<OpticalWebViewPage> {
                   label: Text(t,
                       style: const TextStyle(
                           fontWeight: FontWeight.w800, fontSize: 12)),
-                  backgroundColor: const Color(0xFF00838F).withValues(alpha: 0.12),
+                  backgroundColor: SdColors.accent.withValues(alpha: 0.12),
                 ))
             .toList(),
       ),

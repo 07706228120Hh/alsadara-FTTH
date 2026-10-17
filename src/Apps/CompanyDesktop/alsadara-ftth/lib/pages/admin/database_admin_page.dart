@@ -9,12 +9,12 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
-import '../../theme/energy_dashboard_theme.dart';
 import '../../utils/responsive_helper.dart';
 import '../super_admin/widgets/super_admin_widgets.dart';
 import '../../services/api/api_config.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_dash_kit.dart';
 class DatabaseAdminPage extends StatefulWidget {
   const DatabaseAdminPage({super.key});
 
@@ -178,7 +178,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   Future<void> _deleteRecord(String id) async {
     if (_selectedTableName == null) return;
 
-    final confirm = await EnergyDashboardTheme.confirmDialog(
+    final confirm = await SdDashKit.confirmDialog(
       context,
       title: 'حذف السجل',
       message: 'هل أنت متأكد من حذف هذا السجل؟ هذا الإجراء لا يمكن التراجع عنه.',
@@ -192,11 +192,11 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         await _apiDelete('/databaseadmin/generic/$_selectedTableName/$id');
     if (mounted) {
       if (result?['success'] == true) {
-        EnergyDashboardTheme.showSnack(
+        SdDashKit.showSnack(
             context, 'تم الحذف بنجاح', SdColors.success);
         _loadTableData(_selectedTableName!, page: _currentPage);
       } else {
-        EnergyDashboardTheme.showSnack(
+        SdDashKit.showSnack(
             context,
             result?['message'] ?? 'فشل الحذف',
             SdColors.danger);
@@ -212,12 +212,12 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         await _apiPut('/databaseadmin/generic/$_selectedTableName/$id', data);
     if (mounted) {
       if (result?['success'] == true) {
-        EnergyDashboardTheme.showSnack(
+        SdDashKit.showSnack(
             context, 'تم التحديث بنجاح', SdColors.success);
         Navigator.pop(context);
         _loadTableData(_selectedTableName!, page: _currentPage);
       } else {
-        EnergyDashboardTheme.showSnack(
+        SdDashKit.showSnack(
             context,
             result?['message'] ?? 'فشل التحديث',
             SdColors.danger);
@@ -263,7 +263,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
         if (mounted) {
           setState(() => _isArchiving = false);
-          EnergyDashboardTheme.showSnack(
+          SdDashKit.showSnack(
             context,
             'تم حفظ الأرشيف: ${categoryLabels[category]}',
             SdColors.success,
@@ -276,7 +276,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         if (mounted) {
           setState(() => _isArchiving = false);
           final parsed = json.decode(body);
-          EnergyDashboardTheme.showSnack(
+          SdDashKit.showSnack(
             context,
             parsed['message'] ?? 'فشل التصدير',
             SdColors.danger,
@@ -286,7 +286,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _isArchiving = false);
-        EnergyDashboardTheme.showSnack(
+        SdDashKit.showSnack(
           context,
           'خطأ في التصدير: $e',
           SdColors.danger,
@@ -320,7 +320,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       'all': 'جميع العمليات (محاسبة + حضور + مخزون)',
     };
 
-    final confirm = await EnergyDashboardTheme.confirmDialog(
+    final confirm = await SdDashKit.confirmDialog(
       context,
       title: 'تصفير ${categoryLabels[category]}',
       message:
@@ -333,7 +333,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
     // تأكيد مزدوج للتصفير الشامل
     if (category == 'all') {
-      final doubleConfirm = await EnergyDashboardTheme.confirmDialog(
+      final doubleConfirm = await SdDashKit.confirmDialog(
         context,
         title: 'تأكيد نهائي — تصفير شامل',
         message:
@@ -357,7 +357,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
       if (result?['success'] == true) {
         setState(() => _lastCleanupReport = result);
-        EnergyDashboardTheme.showSnack(
+        SdDashKit.showSnack(
           context,
           result?['message'] ?? 'تم التصفير بنجاح',
           SdColors.success,
@@ -365,7 +365,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         _loadCleanupStats(); // refresh stats
         _showCleanupReport(result!);
       } else {
-        EnergyDashboardTheme.showSnack(
+        SdDashKit.showSnack(
           context,
           result?['message'] ?? 'فشل التصفير',
           SdColors.danger,
@@ -2001,7 +2001,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                                 onTap: () {
                                   Clipboard.setData(ClipboardData(
                                       text: e.value?.toString() ?? ''));
-                                  EnergyDashboardTheme.showSnack(ctx,
+                                  SdDashKit.showSnack(ctx,
                                       'تم النسخ', SdColors.success);
                                 },
                                 child: Icon(Icons.copy_rounded,
@@ -2051,7 +2051,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                             onPressed: () {
                               Clipboard.setData(ClipboardData(
                                   text: e.value?.toString() ?? ''));
-                              EnergyDashboardTheme.showSnack(ctx,
+                              SdDashKit.showSnack(ctx,
                                   'تم النسخ', SdColors.success);
                             },
                             icon: Icon(Icons.copy_rounded,

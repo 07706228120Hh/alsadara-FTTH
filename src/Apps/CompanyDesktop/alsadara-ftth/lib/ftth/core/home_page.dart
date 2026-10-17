@@ -3939,7 +3939,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white,
-            border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
+            border: Border.all(color: SdColors.edge, width: 2.0),
             boxShadow: [
               BoxShadow(
                 color: SdColors.info.withValues(alpha: 0.06),
@@ -4033,7 +4033,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           decoration: BoxDecoration(
             color: SdColors.info.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE8E8E8), width: 1),
+            border: Border.all(color: SdColors.ground, width: 1),
           ),
           child: Text(
             label,
@@ -4661,7 +4661,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
+        border: Border.all(color: SdColors.edge, width: 2.0),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -5547,11 +5547,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('تسجيل الدخول - WhatsApp Web'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        actions: [
+      appBar: SdAppBar(title: 'تسجيل الدخول - WhatsApp Web', actions: [
           IconButton(
             tooltip: 'تحديث',
             icon: Icon(IconsaxPlusLinear.refresh),
@@ -5569,8 +5565,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
             icon: Icon(IconsaxPlusLinear.logout),
             onPressed: _logout,
           ),
-        ],
-      ),
+        ]),
       body: Stack(
         children: [
           content,

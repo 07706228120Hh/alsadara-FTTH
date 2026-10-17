@@ -12,6 +12,7 @@ import '../../services/whatsapp_template_storage.dart';
 import '../../services/template_password_storage.dart';
 import '../auth/auth_error_handler.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class DiagnosticPage extends StatefulWidget {
   final String authToken;
@@ -793,12 +794,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: SdColors.ink,
-        appBar: AppBar(
-          title: const Text('🔧 تشخيص التطبيق',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: const Color(0xFF16213e),
-          foregroundColor: Colors.white,
-          actions: [
+        appBar: SdAppBar(title: '🔧 تشخيص التطبيق', actions: [
             // زر نسخ السجلات
             if (_logs.isNotEmpty)
               IconButton(
@@ -825,8 +821,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                   _isDone = false;
                 }),
               ),
-          ],
-        ),
+          ]),
         body: Column(
           children: [
             // شريط الحالة
@@ -942,7 +937,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
               width: double.infinity,
               padding: EdgeInsets.all(_isPhone ? 10 : 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF16213e),
+                color: SdColors.primaryEdge,
                 border: Border(top: BorderSide(color: SdColors.ink)),
               ),
               child: ElevatedButton.icon(

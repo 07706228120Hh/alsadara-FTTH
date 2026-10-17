@@ -404,7 +404,7 @@ class _PermissionsTabState extends State<PermissionsTab> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: const BoxDecoration(
                   border:
-                      Border(bottom: BorderSide(color: Color(0xFFF0F0F0))),
+                      Border(bottom: BorderSide(color: SdColors.ground)),
                 ),
                 child: Row(
                   children: [

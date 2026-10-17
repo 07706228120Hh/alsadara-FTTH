@@ -4,11 +4,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/api_client.dart';
 import 'widgets/super_admin_widgets.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_dash_kit.dart';
 class SystemHealthPage extends StatefulWidget {
   const SystemHealthPage({super.key});
 
@@ -316,7 +316,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
                 color: color,
                 shape: BoxShape.circle,
                 boxShadow: isRunning
-                    ? EnergyDashboardTheme.glowCustom(color, intensity: 0.4)
+                    ? SdDashKit.glowCustom(color, intensity: 0.4)
                     : null,
               ),
             ),
@@ -368,7 +368,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          EnergyDashboardTheme.energyGauge(
+          SdDashKit.energyGauge(
             value: cpuUsage,
             maxValue: 100,
             color: cpuUsage > 80
@@ -379,7 +379,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             label: 'CPU',
             size: 100,
           ),
-          EnergyDashboardTheme.energyGauge(
+          SdDashKit.energyGauge(
             value: memUsage,
             maxValue: 100,
             color: memUsage > 80
@@ -390,7 +390,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             label: 'RAM',
             size: 100,
           ),
-          EnergyDashboardTheme.energyGauge(
+          SdDashKit.energyGauge(
             value: diskUsage,
             maxValue: 100,
             color: diskUsage > 80

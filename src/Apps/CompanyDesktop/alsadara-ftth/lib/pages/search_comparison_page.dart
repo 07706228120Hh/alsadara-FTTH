@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'search_users_page.dart';
 import 'enhanced_search_users_page.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../frontend/components/sd_app_bar.dart';
 
 class SearchComparisonPage extends StatelessWidget {
   const SearchComparisonPage({super.key});
@@ -15,11 +16,7 @@ class SearchComparisonPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('مقارنة أنظمة البحث'),
-        backgroundColor: SdColors.primary,
-        foregroundColor: Colors.white,
-      ),
+      appBar: SdAppBar(title: 'مقارنة أنظمة البحث'),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

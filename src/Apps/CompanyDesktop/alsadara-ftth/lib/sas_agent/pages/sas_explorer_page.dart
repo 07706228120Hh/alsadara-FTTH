@@ -1376,7 +1376,7 @@ class _RequestCardState extends State<_RequestCard> {
           width: double.infinity,
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF7F8FC),
+            color: SdColors.surfaceAlt,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: SdColors.faint.withValues(alpha: 0.18)),
           ),
@@ -1526,7 +1526,7 @@ class _EndpointCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
-            color: const Color(0xFFF7F8FC),
+            color: SdColors.surfaceAlt,
             borderRadius: BorderRadius.circular(7),
             border: Border.all(color: SdColors.faint.withValues(alpha: 0.16)),
           ),

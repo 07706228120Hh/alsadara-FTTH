@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/device_registration_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../frontend/components/sd_app_bar.dart';
 
 class DevicePermissionsPage extends StatefulWidget {
   const DevicePermissionsPage({super.key});
@@ -441,23 +442,13 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'صلاحيات الأجهزة',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          centerTitle: true,
-          backgroundColor: SdColors.primaryEdge,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          actions: [
+        appBar: SdAppBar(title: 'صلاحيات الأجهزة', actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: _loadDevices,
               tooltip: 'تحديث',
             ),
-          ],
-        ),
+          ]),
         body: Column(
           children: [
             // الإجراءات السريعة

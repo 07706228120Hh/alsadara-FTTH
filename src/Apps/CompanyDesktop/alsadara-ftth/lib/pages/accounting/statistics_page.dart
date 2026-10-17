@@ -1,12 +1,12 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../theme/accounting_responsive.dart';
-import '../../theme/accounting_theme.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
 import '../../frontend/frontend.dart';
 import 'chart_of_accounts_page.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة الإحصائيات - داشبورد محاسبي بمخططات بيانية (شاشة واحدة بدون تمرير)
 class StatisticsPage extends StatefulWidget {
@@ -374,7 +374,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       _kpi('القاصة', balances['CashRegisterBalance'],
           SdColors.primary, Icons.point_of_sale_rounded),
       _kpi('الصندوق الرئيسي', balances['MainCashBoxBalance'],
-          const Color(0xFF34495E), Icons.account_balance_rounded),
+          SdColors.accentEdge, Icons.account_balance_rounded),
       _kpi('رصيد الصفحة', balances['PageBalance'], SdColors.info,
           Icons.account_balance_wallet_rounded),
       _kpi('الصندوق النقدي', balances['CashAccountBalance'],
@@ -396,7 +396,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           color: SdColors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color.withOpacity(0.15)),
-          boxShadow: AccountingTheme.cardShadow,
+          boxShadow: SdUiKit.cardShadow,
         ),
         child: Row(
           children: [
@@ -516,7 +516,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: SdColors.divider),
-        boxShadow: AccountingTheme.cardShadow,
+        boxShadow: SdUiKit.cardShadow,
       ),
       child: Column(
         children: [

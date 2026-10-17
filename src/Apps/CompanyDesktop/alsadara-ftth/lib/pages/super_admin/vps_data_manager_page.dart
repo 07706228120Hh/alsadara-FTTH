@@ -8,10 +8,10 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../theme/energy_dashboard_theme.dart';
 import '../../config/app_secrets.dart';
 import '../../services/api/api_config.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_dash_kit.dart';
 
 class VpsDataManagerPage extends StatefulWidget {
   const VpsDataManagerPage({super.key});
@@ -279,7 +279,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                   colors: [SdColors.info, Color(0xFF1D4ED8)],
                 ),
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: EnergyDashboardTheme.glowShadow(
+                boxShadow: SdDashKit.glowShadow(
                     SdColors.info.withOpacity(0.3)),
               ),
               child:
@@ -469,7 +469,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                 // شريط البحث
                 Container(
                   padding: const EdgeInsets.all(20),
-                  child: EnergyDashboardTheme.buildSearchBar(
+                  child: SdDashKit.buildSearchBar(
                     hint:
                         'البحث في ${_tables[_selectedTableIndex].displayName}...',
                     onChanged: (value) =>
@@ -482,7 +482,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                   child: Row(
                     children: [
                       Expanded(
-                        child: EnergyDashboardTheme.buildStatCard(
+                        child: SdDashKit.buildStatCard(
                           title: 'إجمالي السجلات',
                           value: _currentData.length.toString(),
                           icon: Icons.storage,
@@ -491,7 +491,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: EnergyDashboardTheme.buildStatCard(
+                        child: SdDashKit.buildStatCard(
                           title: 'الجدول الحالي',
                           value: _tables[_selectedTableIndex].displayName,
                           icon: Icons.table_chart,
@@ -536,12 +536,12 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
 
   Widget _buildDataList() {
     if (_isLoading) {
-      return EnergyDashboardTheme.buildLoadingIndicator(
+      return SdDashKit.buildLoadingIndicator(
           message: 'جاري تحميل البيانات...');
     }
 
     if (_errorMessage != null) {
-      return EnergyDashboardTheme.buildErrorWidget(
+      return SdDashKit.buildErrorWidget(
         message: _errorMessage!,
         details: _errorDetails,
         onRetry: () => _fetchData(_tables[_selectedTableIndex].endpoint),
@@ -607,7 +607,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             ? SdColors.info.withOpacity(0.15)
             : SdColors.surface,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: EnergyDashboardTheme.cardShadow,
+        boxShadow: SdDashKit.cardShadow,
         border: Border.all(
           color: isSelected
               ? SdColors.info
@@ -787,7 +787,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: SdColors.divider),
       ),
@@ -938,7 +938,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           fontWeight: FontWeight.bold,
         ),
         filled: true,
-        fillColor: readOnly ? const Color(0xFFF1F5F9) : Colors.white,
+        fillColor: readOnly ? SdColors.ground : Colors.white,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),

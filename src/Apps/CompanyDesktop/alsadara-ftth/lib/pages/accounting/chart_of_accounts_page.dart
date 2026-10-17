@@ -1,8 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import '../../services/accounting_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
+import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة شجرة الحسابات
 class ChartOfAccountsPage extends StatefulWidget {
@@ -1169,7 +1169,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                       Container(
                         padding: EdgeInsets.all(context.accR.spaceXS),
                         decoration: BoxDecoration(
-                          gradient: AccountingTheme.neonBlueGradient,
+                          gradient: SdUiKit.neonBlueGradient,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Icon(Icons.receipt_long,
@@ -1419,7 +1419,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                                   '',
                                               style: TextStyle(
                                                   fontFamily: 'Cairo',
-                                                  color: AccountingTheme
+                                                  color: SdUiKit
                                                       .textPrimary,
                                                   fontSize: context.accR.small),
                                               overflow: TextOverflow.ellipsis)),
@@ -1433,7 +1433,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                                   fontFamily: 'Cairo',
                                                   color: debit > 0
                                                       ? SdColors.success
-                                                      : AccountingTheme
+                                                      : SdUiKit
                                                           .textMuted,
                                                   fontSize: context.accR.small),
                                               textAlign: TextAlign.center)),
@@ -1447,7 +1447,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                                   fontFamily: 'Cairo',
                                                   color: credit > 0
                                                       ? SdColors.danger
-                                                      : AccountingTheme
+                                                      : SdUiKit
                                                           .textMuted,
                                                   fontSize: context.accR.small),
                                               textAlign: TextAlign.center)),
