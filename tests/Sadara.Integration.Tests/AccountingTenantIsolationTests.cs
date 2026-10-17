@@ -688,6 +688,80 @@ public class AccountingTenantIsolationTests
         Assert.Contains(method.GetCustomAttributes<RequirePermissionAttribute>(), _ => true);
     }
 
+    // ═══════════════════════ salary edit/delete gate (salaries:add AND accounting:edit|delete) ═══════════════════════
+
+    public static IEnumerable<object[]> SalaryEditActions() => new[]
+    {
+        new object[] { nameof(AccountingController.UpdateSalary) },
+        new object[] { nameof(AccountingController.UpdateSalaryPolicy) },
+        new object[] { nameof(AccountingController.UpdateEmployeeAdjustment) },
+        new object[] { nameof(AccountingController.RepairSalaryJournalEntries) },
+    };
+
+    public static IEnumerable<object[]> SalaryDeleteActions() => new[]
+    {
+        new object[] { nameof(AccountingController.DeleteSalary) },
+        new object[] { nameof(AccountingController.DeletePayroll) },
+        new object[] { nameof(AccountingController.DeleteSalaryPolicy) },
+        new object[] { nameof(AccountingController.DeleteEmployeeAdjustment) },
+    };
+
+    /// <summary>
+    /// Stored shape seen on the mirror: accounting.salaries carries all 8 actions with edit/delete=false
+    /// (the app cannot grant them). salaries:add + accounting:edit must be enough to edit.
+    /// </summary>
+    private const string MirrorShapeSalariesAddAccountingEdit =
+        """{"accounting":{"view":true,"add":true,"edit":true,"delete":false,"export":false,"import":false,"print":false,"send":false},"accounting.salaries":{"view":true,"add":true,"edit":false,"delete":false,"export":false,"import":false,"print":false,"send":false}}""";
+
+    private const string MirrorShapeSalariesAddAccountingDelete =
+        """{"accounting":{"view":true,"add":true,"edit":false,"delete":true,"export":false,"import":false,"print":false,"send":false},"accounting.salaries":{"view":true,"add":true,"edit":false,"delete":false,"export":false,"import":false,"print":false,"send":false}}""";
+
+    /// <summary>salaries:add but the parent accounting key has neither edit nor delete.</summary>
+    private const string SalariesAddOnly =
+        """{"accounting":{"view":true,"add":false,"edit":false,"delete":false},"accounting.salaries":{"view":true,"add":true,"edit":false,"delete":false}}""";
+
+    [SkippableTheory]
+    [MemberData(nameof(SalaryEditActions))]
+    public async Task SalaryEdit_SalariesAddPlusAccountingEdit_Allowed_OthersDenied(string action)
+    {
+        _fx.SkipIfUnavailable();
+        var editor = SeedPermUser(MirrorShapeSalariesAddAccountingEdit);
+        var addOnly = SeedPermUser(SalariesAddOnly);
+        var viewer = SeedPermUser(ViewOnlyPerms);
+        var deleterOnly = SeedPermUser(MirrorShapeSalariesAddAccountingDelete);
+
+        Assert.Null(await RunPermissionFilters(typeof(AccountingController), action, editor));
+        Assert.NotNull(await RunPermissionFilters(typeof(AccountingController), action, addOnly));
+        Assert.NotNull(await RunPermissionFilters(typeof(AccountingController), action, viewer));
+        Assert.NotNull(await RunPermissionFilters(typeof(AccountingController), action, deleterOnly));
+    }
+
+    [SkippableTheory]
+    [MemberData(nameof(SalaryDeleteActions))]
+    public async Task SalaryDelete_SalariesAddPlusAccountingDelete_Allowed_OthersDenied(string action)
+    {
+        _fx.SkipIfUnavailable();
+        var deleter = SeedPermUser(MirrorShapeSalariesAddAccountingDelete);
+        var addOnly = SeedPermUser(SalariesAddOnly);
+        var viewer = SeedPermUser(ViewOnlyPerms);
+        var editorOnly = SeedPermUser(MirrorShapeSalariesAddAccountingEdit);
+
+        Assert.Null(await RunPermissionFilters(typeof(AccountingController), action, deleter));
+        Assert.NotNull(await RunPermissionFilters(typeof(AccountingController), action, addOnly));
+        Assert.NotNull(await RunPermissionFilters(typeof(AccountingController), action, viewer));
+        Assert.NotNull(await RunPermissionFilters(typeof(AccountingController), action, editorOnly));
+    }
+
+    [SkippableFact]
+    public async Task SalaryAdd_SalariesAddOnly_StillAllowed()
+    {
+        _fx.SkipIfUnavailable();
+        var addOnly = SeedPermUser(SalariesAddOnly);
+
+        Assert.Null(await RunPermissionFilters(typeof(AccountingController), nameof(AccountingController.PaySalary), addOnly));
+        Assert.Null(await RunPermissionFilters(typeof(AccountingController), nameof(AccountingController.GenerateMonthlySalaries), addOnly));
+    }
+
     /// <summary>Regression guard: every non-GET payroll action carries a non-"view" RequirePermission.</summary>
     [Fact]
     public void AllPayrollWriteActions_RequireWriteLevelPermission()

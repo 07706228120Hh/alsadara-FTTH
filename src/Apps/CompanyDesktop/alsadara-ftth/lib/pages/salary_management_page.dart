@@ -574,10 +574,11 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     final r = context.responsive;
     final hasSalaries = _salaries.isNotEmpty;
     final hasPending = _salaries.any((s) => s['Status'] == 'Pending');
-    // نفس مفاتيح الخادم: التوليد/الصرف = accounting.salaries/add، حذف المسيّر = delete.
+    // نفس بوابات الخادم: التوليد/الصرف = accounting.salaries:add،
+    // حذف المسيّر = accounting.salaries:add + accounting:delete.
     final pm = PermissionManager.instance;
     final canAdd = pm.canAdd('accounting.salaries');
-    final canDelete = pm.canDelete('accounting.salaries');
+    final canDelete = canAdd && pm.canDelete('accounting');
 
     return Container(
       margin: EdgeInsets.all(r.isMobile ? 10 : 16),
@@ -1062,13 +1063,15 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                   ),
                 ],
                 const Spacer(),
-                if (PermissionManager.instance.canEdit('accounting.salaries'))
+                if (PermissionManager.instance.canAdd('accounting.salaries') &&
+                    PermissionManager.instance.canEdit('accounting'))
                 IconButton(
                   icon: const Icon(Icons.edit, size: 20),
                   onPressed: () => _showEditPolicyDialog(policy),
                   tooltip: 'تعديل',
                 ),
-                if (PermissionManager.instance.canDelete('accounting.salaries'))
+                if (PermissionManager.instance.canAdd('accounting.salaries') &&
+                    PermissionManager.instance.canDelete('accounting'))
                 IconButton(
                   icon: const Icon(Icons.delete, size: 20, color: SdColors.danger),
                   onPressed: () => _deletePolicy(policy['Id']),

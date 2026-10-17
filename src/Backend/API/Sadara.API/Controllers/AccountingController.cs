@@ -31,6 +31,15 @@ public class AccountingController : ControllerBase
         _tenant = tenant;
     }
 
+    // ==================== Payroll write gates ====================
+    // add    = [RequirePermission("accounting.salaries","add")]
+    // edit   = salaries:add AND accounting:edit   (two stacked RequirePermission filters, both must pass)
+    // delete = salaries:add AND accounting:delete
+    // Why not accounting.salaries:edit/delete? The app's permission registry only lets admins grant
+    // view/add/export/print on accounting.salaries, and stored V2 JSON carries edit/delete=false explicitly,
+    // so those actions are ungrantable today. The parent `accounting` key exposes all actions in the
+    // permissions UI, so this combination is grantable now and still excludes view-only users.
+
     // ==================== Tenant isolation helpers ====================
     // Tenancy:EnforceIsolation is OFF, so isolation is enforced here per action.
     // Rule: a non-SuperAdmin caller is always confined to the company in its token (company_id claim);
@@ -1784,7 +1793,8 @@ public class AccountingController : ControllerBase
     /// تعديل سطر راتب (بدلات، خصومات، مكافآت)
     /// </summary>
     [HttpPut("salaries/{id}")]
-    [RequirePermission("accounting.salaries", "edit")]
+    [RequirePermission("accounting.salaries", "add")] // salary edit gate = salaries:add AND accounting:edit
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> UpdateSalary(long id, [FromBody] UpdateSalaryDto dto)
     {
         try
@@ -2242,7 +2252,8 @@ public class AccountingController : ControllerBase
     /// تحديث سياسة رواتب
     /// </summary>
     [HttpPut("salary-policies/{id}")]
-    [RequirePermission("accounting.salaries", "edit")]
+    [RequirePermission("accounting.salaries", "add")] // salary edit gate = salaries:add AND accounting:edit
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> UpdateSalaryPolicy(int id, [FromBody] SalaryPolicyDto dto)
     {
         try
@@ -2291,7 +2302,8 @@ public class AccountingController : ControllerBase
     /// حذف سياسة رواتب (حذف ناعم)
     /// </summary>
     [HttpDelete("salary-policies/{id}")]
-    [RequirePermission("accounting.salaries", "delete")]
+    [RequirePermission("accounting.salaries", "add")] // salary delete gate = salaries:add AND accounting:delete
+    [RequirePermission("accounting", "delete")]
     public async Task<IActionResult> DeleteSalaryPolicy(int id)
     {
         try
@@ -2363,7 +2375,8 @@ public class AccountingController : ControllerBase
     /// حذف مسيّر رواتب شهر (فقط إذا كانت جميعها Pending) - مع عكس قيد الاستحقاق
     /// </summary>
     [HttpDelete("salaries/payroll")]
-    [RequirePermission("accounting.salaries", "delete")]
+    [RequirePermission("accounting.salaries", "add")] // salary delete gate = salaries:add AND accounting:delete
+    [RequirePermission("accounting", "delete")]
     public async Task<IActionResult> DeletePayroll([FromQuery] Guid companyId, [FromQuery] int month, [FromQuery] int year)
     {
         if (ScopeWriteCompany(ref companyId) is { } denied) return denied;
@@ -2439,7 +2452,8 @@ public class AccountingController : ControllerBase
     /// </summary>
     [HttpPost("salaries/repair-journal-entries")]
     [Authorize(Policy = "Admin")]
-    [RequirePermission("accounting.salaries", "edit")]
+    [RequirePermission("accounting.salaries", "add")] // salary edit gate = salaries:add AND accounting:edit
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> RepairSalaryJournalEntries([FromQuery] Guid companyId)
     {
         if (ScopeWriteCompany(ref companyId) is { } denied) return denied;
@@ -2642,7 +2656,8 @@ public class AccountingController : ControllerBase
     /// تعديل خصم أو مكافأة
     /// </summary>
     [HttpPut("employee-adjustments/{id}")]
-    [RequirePermission("accounting.salaries", "edit")]
+    [RequirePermission("accounting.salaries", "add")] // salary edit gate = salaries:add AND accounting:edit
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> UpdateEmployeeAdjustment(long id, [FromBody] UpdateAdjustmentDto dto)
     {
         try
@@ -2678,7 +2693,8 @@ public class AccountingController : ControllerBase
     /// حذف خصم أو مكافأة
     /// </summary>
     [HttpDelete("employee-adjustments/{id}")]
-    [RequirePermission("accounting.salaries", "delete")]
+    [RequirePermission("accounting.salaries", "add")] // salary delete gate = salaries:add AND accounting:delete
+    [RequirePermission("accounting", "delete")]
     public async Task<IActionResult> DeleteEmployeeAdjustment(long id)
     {
         try
@@ -3988,7 +4004,8 @@ public class AccountingController : ControllerBase
     /// حذف راتب (ناعم) - فقط إذا لم يُصرف
     /// </summary>
     [HttpDelete("salaries/{id}")]
-    [RequirePermission("accounting.salaries", "delete")]
+    [RequirePermission("accounting.salaries", "add")] // salary delete gate = salaries:add AND accounting:delete
+    [RequirePermission("accounting", "delete")]
     public async Task<IActionResult> DeleteSalary(long id)
     {
         try

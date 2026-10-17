@@ -364,11 +364,16 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
                 style: SdText.caption.copyWith(fontSize: 11.5)),
           ],
         ),
-        // تعديل/حذف بحسب accounting.salaries (edit/delete) — نفس فحص الخادم.
-        onTap: isApplied || !PermissionManager.instance.canEdit('accounting.salaries')
+        // نفس بوابات الخادم: تعديل = accounting.salaries:add + accounting:edit،
+        // حذف = accounting.salaries:add + accounting:delete.
+        onTap: isApplied ||
+                !(PermissionManager.instance.canAdd('accounting.salaries') &&
+                    PermissionManager.instance.canEdit('accounting'))
             ? null
             : () => _showEditDialog(context, adj),
-        onLongPress: isApplied || !PermissionManager.instance.canDelete('accounting.salaries')
+        onLongPress: isApplied ||
+                !(PermissionManager.instance.canAdd('accounting.salaries') &&
+                    PermissionManager.instance.canDelete('accounting'))
             ? null
             : () => _showDeleteDialog(context, adj),
       ),
