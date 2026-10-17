@@ -21,18 +21,173 @@ namespace Sadara.API.Controllers;
 [Tags("Citizen Auth")]
 public class CitizenAuthController : ControllerBase
 {
+    // ==================== OTP policy ====================
+    // The OTP is a 6-digit secret that proves ownership of the phone number. It must never
+    // leave the server except through the (future) SMS channel: not in API responses, not in logs.
+
+    /// <summary>OTP lifetime.</summary>
+    public static readonly TimeSpan OtpLifetime = TimeSpan.FromMinutes(10);
+
+    /// <summary>Wrong guesses allowed per issued code before the code is burned and the account is locked.</summary>
+    public const int MaxOtpAttempts = 5;
+
+    /// <summary>Lockout applied after <see cref="MaxOtpAttempts"/> wrong guesses (blocks verify/reset/resend).</summary>
+    public static readonly TimeSpan OtpLockout = TimeSpan.FromMinutes(15);
+
+    /// <summary>Minimum delay between two issued codes for the same citizen (anti resend-and-guess cycling).</summary>
+    public static readonly TimeSpan OtpResendCooldown = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// Development-only switch that echoes the OTP back as <c>debugOtp</c>. Honoured ONLY when the host
+    /// environment is Development AND this flag is explicitly true. Default false; ignored in production.
+    /// </summary>
+    public const string ExposeDebugOtpConfigKey = "CitizenAuth:ExposeDebugOtpInDevelopment";
+
     private readonly SadaraDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly ILogger<CitizenAuthController> _logger;
+    private readonly IHostEnvironment _environment;
 
     public CitizenAuthController(
         SadaraDbContext context,
         IConfiguration configuration,
-        ILogger<CitizenAuthController> logger)
+        ILogger<CitizenAuthController> logger,
+        IHostEnvironment environment)
     {
         _context = context;
         _configuration = configuration;
         _logger = logger;
+        _environment = environment;
+    }
+
+    /// <summary>True only in Development with the explicit opt-in flag; never in production.</summary>
+    private bool ExposeDebugOtp =>
+        _environment.IsDevelopment() && _configuration.GetValue<bool>(ExposeDebugOtpConfigKey);
+
+    /// <summary>Adds <c>debugOtp</c> to a response body only under <see cref="ExposeDebugOtp"/>.</summary>
+    private Dictionary<string, object?> WithDebugOtp(Dictionary<string, object?> body, string otp)
+    {
+        if (ExposeDebugOtp)
+            body["debugOtp"] = otp;
+        return body;
+    }
+
+    private static bool IsLockedOut(Citizen citizen) =>
+        citizen.LockoutEnd.HasValue && citizen.LockoutEnd.Value > DateTime.UtcNow;
+
+    private static bool IsInResendCooldown(Citizen citizen) =>
+        citizen.VerificationCodeExpiresAt.HasValue &&
+        citizen.VerificationCodeExpiresAt.Value - OtpLifetime + OtpResendCooldown > DateTime.UtcNow;
+
+    private ObjectResult LockedOutResult() => StatusCode(StatusCodes.Status429TooManyRequests, new
+    {
+        success = false,
+        messageAr = "تم تجاوز عدد المحاولات المسموح. حاول لاحقاً",
+        message = "Too many attempts. Try again later"
+    });
+
+    private ObjectResult CooldownResult() => StatusCode(StatusCodes.Status429TooManyRequests, new
+    {
+        success = false,
+        messageAr = "يرجى الانتظار قليلاً قبل طلب كود جديد",
+        message = "Please wait before requesting a new code"
+    });
+
+    private enum OtpCheckResult { Ok, LockedOut, NoActiveCode, Expired, Invalid, InvalidAndLocked }
+
+    /// <summary>
+    /// Verifies and consumes the citizen's OTP with brute-force protection:
+    ///   - lockout check, expiry check;
+    ///   - an attempt is reserved atomically in SQL BEFORE comparing, so parallel guesses cannot
+    ///     exceed <see cref="MaxOtpAttempts"/> per code (no read-modify-write race);
+    ///   - constant-time comparison;
+    ///   - on success the code is consumed atomically (single use) and counters are reset.
+    /// Uses the existing Citizen.FailedLoginAttempts/LockoutEnd columns (no schema change).
+    /// On <see cref="OtpCheckResult.Ok"/> the tracked entity is refreshed and the caller must SaveChanges.
+    /// </summary>
+    private async Task<OtpCheckResult> CheckAndConsumeOtpAsync(Citizen citizen, string? code)
+    {
+        var now = DateTime.UtcNow;
+
+        if (IsLockedOut(citizen))
+            return OtpCheckResult.LockedOut;
+
+        if (string.IsNullOrEmpty(citizen.VerificationCode) || !citizen.VerificationCodeExpiresAt.HasValue)
+            return OtpCheckResult.NoActiveCode;
+
+        if (citizen.VerificationCodeExpiresAt.Value <= now)
+            return OtpCheckResult.Expired;
+
+        // Reserve one attempt atomically; 0 rows => attempts exhausted / locked / code gone.
+        var reserved = await _context.Citizens
+            .Where(c => c.Id == citizen.Id
+                        && c.VerificationCode != null
+                        && c.FailedLoginAttempts < MaxOtpAttempts
+                        && (c.LockoutEnd == null || c.LockoutEnd <= now))
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.FailedLoginAttempts, c => c.FailedLoginAttempts + 1));
+
+        // Refresh tracked state so later SaveChanges diffs against the real row.
+        await _context.Entry(citizen).ReloadAsync();
+
+        if (reserved == 0)
+            return IsLockedOut(citizen) || citizen.FailedLoginAttempts >= MaxOtpAttempts
+                ? OtpCheckResult.LockedOut
+                : OtpCheckResult.NoActiveCode;
+
+        var storedCode = citizen.VerificationCode;
+        if (string.IsNullOrEmpty(storedCode))
+            return OtpCheckResult.NoActiveCode;
+
+        if (!OtpEquals(storedCode, code))
+        {
+            if (citizen.FailedLoginAttempts >= MaxOtpAttempts)
+            {
+                // Burn the code and lock; counter restarts after the lockout.
+                var lockUntil = now.Add(OtpLockout);
+                await _context.Citizens
+                    .Where(c => c.Id == citizen.Id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(c => c.VerificationCode, (string?)null)
+                        .SetProperty(c => c.VerificationCodeExpiresAt, (DateTime?)null)
+                        .SetProperty(c => c.FailedLoginAttempts, 0)
+                        .SetProperty(c => c.LockoutEnd, lockUntil));
+                await _context.Entry(citizen).ReloadAsync();
+
+                _logger.LogWarning("Citizen {CitizenId} locked after {Max} wrong OTP attempts", citizen.Id, MaxOtpAttempts);
+                return OtpCheckResult.InvalidAndLocked;
+            }
+
+            return OtpCheckResult.Invalid;
+        }
+
+        // Consume atomically: only one concurrent request can win the code.
+        var consumed = await _context.Citizens
+            .Where(c => c.Id == citizen.Id && c.VerificationCode == storedCode)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.VerificationCode, (string?)null)
+                .SetProperty(c => c.VerificationCodeExpiresAt, (DateTime?)null)
+                .SetProperty(c => c.FailedLoginAttempts, 0)
+                .SetProperty(c => c.LockoutEnd, (DateTime?)null));
+        await _context.Entry(citizen).ReloadAsync();
+
+        return consumed == 1 ? OtpCheckResult.Ok : OtpCheckResult.NoActiveCode;
+    }
+
+    /// <summary>Maps a failed OTP check to the HTTP response (same messages as before for invalid/expired).</summary>
+    private IActionResult OtpFailureResult(OtpCheckResult result) => result switch
+    {
+        OtpCheckResult.LockedOut or OtpCheckResult.InvalidAndLocked => LockedOutResult(),
+        OtpCheckResult.Expired => BadRequest(new { success = false, messageAr = "انتهت صلاحية الكود", message = "Code expired" }),
+        _ => BadRequest(new { success = false, messageAr = "الكود غير صحيح", message = "Invalid code" }),
+    };
+
+    private static bool OtpEquals(string expected, string? provided)
+    {
+        if (provided is null)
+            return false;
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(expected),
+            Encoding.UTF8.GetBytes(provided.Trim()));
     }
 
     // ==================== دوال مساعدة للتحقق من رقم الهاتف ====================
@@ -130,6 +285,8 @@ public class CitizenAuthController : ControllerBase
 
             // التحقق من عدم وجود الرقم
             var existingCitizen = await _context.Citizens.FirstOrDefaultAsync(c => c.PhoneNumber == fullPhone);
+            var carriedFailedAttempts = 0;
+            DateTime? carriedLockoutEnd = null;
             if (existingCitizen != null)
             {
                 if (existingCitizen.IsBanned)
@@ -137,6 +294,16 @@ public class CitizenAuthController : ControllerBase
 
                 if (existingCitizen.IsPhoneVerified)
                     return BadRequest(new { success = false, messageAr = "رقم الهاتف مسجل مسبقاً", message = "Phone number already registered" });
+
+                // Re-registering must not reset the OTP brute-force counters (otherwise register→guess×5→register
+                // would give unlimited guesses for someone else's phone).
+                if (IsLockedOut(existingCitizen))
+                    return LockedOutResult();
+                if (IsInResendCooldown(existingCitizen))
+                    return CooldownResult();
+
+                carriedFailedAttempts = existingCitizen.FailedLoginAttempts;
+                carriedLockoutEnd = existingCitizen.LockoutEnd;
 
                 // إذا كان غير مفعل، نحذفه ونسجل من جديد
                 _context.Citizens.Remove(existingCitizen);
@@ -166,29 +333,29 @@ public class CitizenAuthController : ControllerBase
                 AssignedToCompanyAt = linkedCompany != null ? DateTime.UtcNow : null,
                 IsActive = false, // غير نشط حتى يتم التفعيل
                 IsPhoneVerified = false,
-                LanguagePreference = request.Language ?? "ar"
+                LanguagePreference = request.Language ?? "ar",
+                FailedLoginAttempts = carriedFailedAttempts,
+                LockoutEnd = carriedLockoutEnd
             };
+
+            // TODO: إرسال كود OTP للهاتف عبر مزوّد SMS حقيقي (غير متوفّر حالياً).
+            // OTP must never be returned in the response nor written to logs.
+            var otp = GenerateOTP();
+            citizen.VerificationCode = otp;
+            citizen.VerificationCodeExpiresAt = DateTime.UtcNow.Add(OtpLifetime);
 
             _context.Citizens.Add(citizen);
             await _context.SaveChangesAsync();
 
-            // TODO: إرسال كود OTP للهاتف
-            var otp = GenerateOTP();
-            citizen.VerificationCode = otp;
-            citizen.VerificationCodeExpiresAt = DateTime.UtcNow.AddMinutes(10);
-            await _context.SaveChangesAsync();
+            _logger.LogInformation("New citizen registered: {CitizenId}", citizen.Id);
 
-            _logger.LogInformation("New citizen registered: {Phone}, OTP: {OTP}", fullPhone, otp);
-
-            return Ok(new
+            return Ok(WithDebugOtp(new Dictionary<string, object?>
             {
-                success = true,
-                messageAr = "تم التسجيل بنجاح. تم إرسال كود التفعيل",
-                message = "Registration successful. Verification code sent",
-                citizenId = citizen.Id,
-                // في الإنتاج، لا ترسل OTP في الرد
-                debugOtp = otp // للتطوير فقط
-            });
+                ["success"] = true,
+                ["messageAr"] = "تم التسجيل بنجاح. تم إرسال كود التفعيل",
+                ["message"] = "Registration successful. Verification code sent",
+                ["citizenId"] = citizen.Id,
+            }, otp));
         }
         catch (Exception ex)
         {
@@ -212,16 +379,12 @@ public class CitizenAuthController : ControllerBase
             if (citizen.IsPhoneVerified)
                 return BadRequest(new { success = false, messageAr = "الهاتف مفعل مسبقاً", message = "Phone already verified" });
 
-            if (citizen.VerificationCode != request.Code)
-                return BadRequest(new { success = false, messageAr = "الكود غير صحيح", message = "Invalid code" });
-
-            if (citizen.VerificationCodeExpiresAt < DateTime.UtcNow)
-                return BadRequest(new { success = false, messageAr = "انتهت صلاحية الكود", message = "Code expired" });
+            var otpResult = await CheckAndConsumeOtpAsync(citizen, request.Code);
+            if (otpResult != OtpCheckResult.Ok)
+                return OtpFailureResult(otpResult);
 
             citizen.IsPhoneVerified = true;
             citizen.IsActive = true;
-            citizen.VerificationCode = null;
-            citizen.VerificationCodeExpiresAt = null;
             citizen.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -270,20 +433,25 @@ public class CitizenAuthController : ControllerBase
             if (citizen.IsPhoneVerified)
                 return BadRequest(new { success = false, messageAr = "الهاتف مفعل مسبقاً", message = "Phone already verified" });
 
+            if (IsLockedOut(citizen))
+                return LockedOutResult();
+            if (IsInResendCooldown(citizen))
+                return CooldownResult();
+
+            // New code; the attempt counter is intentionally NOT reset (resend must not grant fresh guesses).
             var otp = GenerateOTP();
             citizen.VerificationCode = otp;
-            citizen.VerificationCodeExpiresAt = DateTime.UtcNow.AddMinutes(10);
+            citizen.VerificationCodeExpiresAt = DateTime.UtcNow.Add(OtpLifetime);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("OTP resent to: {Phone}, OTP: {OTP}", citizen.PhoneNumber, otp);
+            _logger.LogInformation("OTP resent for citizen {CitizenId}", citizen.Id);
 
-            return Ok(new
+            return Ok(WithDebugOtp(new Dictionary<string, object?>
             {
-                success = true,
-                messageAr = "تم إرسال كود جديد",
-                message = "New code sent",
-                debugOtp = otp // للتطوير فقط
-            });
+                ["success"] = true,
+                ["messageAr"] = "تم إرسال كود جديد",
+                ["message"] = "New code sent",
+            }, otp));
         }
         catch (Exception ex)
         {
@@ -391,21 +559,25 @@ public class CitizenAuthController : ControllerBase
                 return Ok(new { success = true, messageAr = "إذا كان الرقم مسجلاً، سيتم إرسال كود التفعيل", message = "If registered, OTP will be sent" });
             }
 
+            if (IsLockedOut(citizen))
+                return LockedOutResult();
+            if (IsInResendCooldown(citizen))
+                return CooldownResult();
+
             var otp = GenerateOTP();
             citizen.VerificationCode = otp;
-            citizen.VerificationCodeExpiresAt = DateTime.UtcNow.AddMinutes(10);
+            citizen.VerificationCodeExpiresAt = DateTime.UtcNow.Add(OtpLifetime);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Password reset OTP for: {Phone}, OTP: {OTP}", fullPhone, otp);
+            _logger.LogInformation("Password reset OTP issued for citizen {CitizenId}", citizen.Id);
 
-            return Ok(new
+            return Ok(WithDebugOtp(new Dictionary<string, object?>
             {
-                success = true,
-                messageAr = "تم إرسال كود التفعيل",
-                message = "OTP sent",
-                citizenId = citizen.Id,
-                debugOtp = otp // للتطوير فقط
-            });
+                ["success"] = true,
+                ["messageAr"] = "تم إرسال كود التفعيل",
+                ["message"] = "OTP sent",
+                ["citizenId"] = citizen.Id,
+            }, otp));
         }
         catch (Exception ex)
         {
@@ -426,15 +598,11 @@ public class CitizenAuthController : ControllerBase
             if (citizen == null)
                 return NotFound(new { success = false, messageAr = "المستخدم غير موجود", message = "User not found" });
 
-            if (citizen.VerificationCode != request.Code)
-                return BadRequest(new { success = false, messageAr = "الكود غير صحيح", message = "Invalid code" });
-
-            if (citizen.VerificationCodeExpiresAt < DateTime.UtcNow)
-                return BadRequest(new { success = false, messageAr = "انتهت صلاحية الكود", message = "Code expired" });
+            var otpResult = await CheckAndConsumeOtpAsync(citizen, request.Code);
+            if (otpResult != OtpCheckResult.Ok)
+                return OtpFailureResult(otpResult);
 
             citizen.PasswordHash = HashPassword(request.NewPassword);
-            citizen.VerificationCode = null;
-            citizen.VerificationCodeExpiresAt = null;
             citizen.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -748,11 +916,9 @@ public class CitizenAuthController : ControllerBase
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private string GenerateOTP()
-    {
-        var random = new Random();
-        return random.Next(100000, 999999).ToString();
-    }
+    /// <summary>Cryptographically secure 6-digit OTP (was System.Random, predictable and excluding 999999).</summary>
+    private static string GenerateOTP() =>
+        RandomNumberGenerator.GetInt32(100000, 1000000).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private string HashPassword(string password)
     {
