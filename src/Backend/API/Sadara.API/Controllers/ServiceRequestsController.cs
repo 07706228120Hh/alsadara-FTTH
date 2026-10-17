@@ -21,7 +21,10 @@ namespace Sadara.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Phase 0-D remediation (C1): company employees only — agent tokens (role "Agent") and citizen tokens
+// (no role) carry a company claim and used to pass a bare [Authorize]. The DB filter re-checks the row.
+[Authorize(Policy = "CompanyEmployee")]
+[RequireEmployeeUser]
 public class ServiceRequestsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -277,13 +280,23 @@ public class ServiceRequestsController : ControllerBase
         string? normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
         string? normalizedAssignee = string.IsNullOrWhiteSpace(assignee) ? null : assignee.Trim();
 
-        // Technician-role caller: the assignee is forced to the caller's own name (from the DB, not the
-        // client) so a technician cannot aggregate other people's tasks. Unknown name ⇒ matches nothing.
+        // Technician-role caller (remediation S3): the same own-tasks scope as the list (ApplyTechnicianScope)
+        // is applied in SQL — TechnicianId / AssignedToId (when TechnicianId is null) / Technician.FullName /
+        // TechnicianName / Details technician|createdByName (all name variants) / Details createdById — so the
+        // home counters match the list. The client assignee is ignored for a technician (cannot widen/narrow).
         var technicianScope = await GetTechnicianScopeAsync();
+        Guid? scopeUser = null;
+        string? scopeUserText = null;
+        string[]? scopeNames = null;
+        string[]? scopeDetailNames = null;
         if (technicianScope != null)
-            normalizedAssignee = technicianScope.Names.Count > 0
-                ? technicianScope.Names[^1]
-                : $"__no_technician_name__{technicianScope.UserId:N}";
+        {
+            normalizedAssignee = null;
+            scopeUser = technicianScope.UserId;
+            scopeUserText = technicianScope.UserId.ToString();
+            scopeNames = technicianScope.Names.Distinct().ToArray();
+            scopeDetailNames = scopeNames.Concat(scopeNames.Select(n => n + " ")).Distinct().ToArray();
+        }
 
         // تطبيع التواريخ إلى UTC (Npgsql timestamptz يتطلب UTC).
         var fromUtc = NormalizeToUtc(from);
@@ -306,6 +319,7 @@ WHERE ""IsDeleted"" = false
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
   AND (@department IS NULL OR ""Department"" = ANY(string_to_array(@department, ',')) OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = ANY(string_to_array(@department, ','))))
   AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
+" + TechnicianScopeSql + @"
 GROUP BY ""Status"";";
 
         var statusRows = await _db.Database
@@ -315,7 +329,11 @@ GROUP BY ""Status"";";
                 P("@to", toUtc, NpgsqlDbType.TimestampTz),
                 P("@source", normalizedSource, NpgsqlDbType.Text),
                 P("@department", normalizedDepartment, NpgsqlDbType.Text),
-                P("@assignee", normalizedAssignee, NpgsqlDbType.Text))
+                P("@assignee", normalizedAssignee, NpgsqlDbType.Text),
+                P("@scopeUser", scopeUser, NpgsqlDbType.Uuid),
+                P("@scopeUserText", scopeUserText, NpgsqlDbType.Text),
+                P("@scopeNames", scopeNames, NpgsqlDbType.Array | NpgsqlDbType.Text),
+                P("@scopeDetailNames", scopeDetailNames, NpgsqlDbType.Array | NpgsqlDbType.Text))
             .ToListAsync();
 
         // بناء byStatus: كل التسع دائماً، صفر افتراضي.
@@ -372,6 +390,7 @@ WHERE ""IsDeleted"" = false
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
   AND (@department IS NULL OR ""Department"" = ANY(string_to_array(@department, ',')) OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = ANY(string_to_array(@department, ','))))
   AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND ((""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)))
+" + TechnicianScopeSql + @"
 GROUP BY 1, 2
 ORDER BY ""Total"" DESC;";
 
@@ -382,7 +401,11 @@ ORDER BY ""Total"" DESC;";
                 P("@to", toUtc, NpgsqlDbType.TimestampTz),
                 P("@source", normalizedSource, NpgsqlDbType.Text),
                 P("@department", normalizedDepartment, NpgsqlDbType.Text),
-                P("@assignee", normalizedAssignee, NpgsqlDbType.Text))
+                P("@assignee", normalizedAssignee, NpgsqlDbType.Text),
+                P("@scopeUser", scopeUser, NpgsqlDbType.Uuid),
+                P("@scopeUserText", scopeUserText, NpgsqlDbType.Text),
+                P("@scopeNames", scopeNames, NpgsqlDbType.Array | NpgsqlDbType.Text),
+                P("@scopeDetailNames", scopeDetailNames, NpgsqlDbType.Array | NpgsqlDbType.Text))
             .ToListAsync();
 
         var byTechnician = techRows.Select(r => new SummaryTechnician
@@ -448,6 +471,7 @@ WHERE ""IsDeleted"" = false
   AND (@source IS NULL OR (@source='agent' AND ""AgentId"" IS NOT NULL) OR (@source='company' AND ""AgentId"" IS NULL))
   AND (@department IS NULL OR ""Department"" = ANY(string_to_array(@department, ',')) OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (""Details""::json->>'department') = ANY(string_to_array(@department, ','))))
   AND (@assignee IS NULL OR ""TechnicianName"" = @assignee OR (""Details""::json->>'technician') = @assignee OR (""Details""::json->>'createdByName') = @assignee)
+" + TechnicianScopeSql + @"
 GROUP BY 1
 ORDER BY ""TotalCollected"" DESC;";
 
@@ -458,7 +482,11 @@ ORDER BY ""TotalCollected"" DESC;";
                     P("@to", toUtc, NpgsqlDbType.TimestampTz),
                     P("@source", normalizedSource, NpgsqlDbType.Text),
                     P("@department", normalizedDepartment, NpgsqlDbType.Text),
-                    P("@assignee", normalizedAssignee, NpgsqlDbType.Text))
+                    P("@assignee", normalizedAssignee, NpgsqlDbType.Text),
+                    P("@scopeUser", scopeUser, NpgsqlDbType.Uuid),
+                    P("@scopeUserText", scopeUserText, NpgsqlDbType.Text),
+                    P("@scopeNames", scopeNames, NpgsqlDbType.Array | NpgsqlDbType.Text),
+                    P("@scopeDetailNames", scopeDetailNames, NpgsqlDbType.Array | NpgsqlDbType.Text))
                 .ToListAsync();
 
             var collectionsByTechnician = collectionRows.Select(r => new SummaryCollectionTechnician
@@ -1939,6 +1967,9 @@ ORDER BY ""TotalCollected"" DESC;";
             {
                 _logger.LogWarning("Assign task {Id}: technician '{Technician}' not resolved inside company {CompanyId}",
                     id, dto.Technician, request.CompanyId);
+                if (!string.IsNullOrEmpty(dto.Technician))
+                    await DetachUnresolvedTechnicianAsync(request, dto.Technician,
+                        keepAssignedTo: dto.EmployeeId.HasValue && request.AssignedToId == dto.EmployeeId);
             }
         }
 
@@ -2053,6 +2084,8 @@ ORDER BY ""TotalCollected"" DESC;";
             {
                 _logger.LogWarning("Update task {Id}: technician '{Technician}' not resolved inside company {CompanyId}",
                     id, dto.Technician, request.CompanyId);
+                if (!string.IsNullOrEmpty(dto.Technician))
+                    await DetachUnresolvedTechnicianAsync(request, dto.Technician, keepAssignedTo: false);
             }
         }
 
@@ -2671,6 +2704,21 @@ ORDER BY ""TotalCollected"" DESC;";
         yield return "\"" + key + "\": " + serialized;
     }
 
+    /// <summary>
+    /// SQL twin of <see cref="ApplyTechnicianScope"/> for the raw /summary queries (remediation S3).
+    /// No-op when @scopeUser is NULL (non-technician caller). Braces are doubled because EF passes the
+    /// SQL through String.Format; every parameter is explicitly typed by the caller.
+    /// </summary>
+    private const string TechnicianScopeSql = @"  AND (@scopeUser IS NULL
+       OR ""TechnicianId"" = @scopeUser
+       OR (""TechnicianId"" IS NULL AND ""AssignedToId"" = @scopeUser)
+       OR ""TechnicianName"" = ANY(@scopeNames)
+       OR EXISTS (SELECT 1 FROM ""Users"" su WHERE su.""Id"" = ""TechnicianId"" AND su.""FullName"" = ANY(@scopeNames))
+       OR (""Details"" IS NOT NULL AND (""Details"" ~ '^\s*[{{[]') AND (
+              (""Details""::json->>'technician') = ANY(@scopeDetailNames)
+           OR (""Details""::json->>'createdByName') = ANY(@scopeDetailNames)
+           OR (""Details""::json->>'createdById') = @scopeUserText)))";
+
     /// <summary>Holder so each token becomes a SQL parameter (not an inlined literal) in the built predicate.</summary>
     private sealed class TokenHolder
     {
@@ -2784,8 +2832,11 @@ ORDER BY ""TotalCollected"" DESC;";
     }
 
     /// <summary>
-    /// Target of the technician fee at completion: request.TechnicianId first when it is in the task company
-    /// and consistent with Details.technician; otherwise the Details name resolved inside the task company.
+    /// Target of the technician fee at completion (remediation S5):
+    ///  - request.TechnicianId is trusted whenever it belongs to the task company (a name mismatch with
+    ///    Details.technician is only logged — it no longer drops the fee);
+    ///  - a TechnicianId outside the task company ⇒ no fee (never charge another tenant's user);
+    ///  - only when TechnicianId is null: the Details name resolved uniquely inside the task company.
     /// Returns null (no fee) rather than guessing.
     /// </summary>
     private async Task<Guid?> ResolveFeeTargetAsync(ServiceRequest request, string? detailsTechnicianName)
@@ -2796,11 +2847,17 @@ ORDER BY ""TotalCollected"" DESC;";
         {
             var assigned = await _unitOfWork.Users.GetByIdAsync(request.TechnicianId.Value);
             if (assigned != null && !assigned.IsDeleted
-                && (!request.CompanyId.HasValue || assigned.CompanyId == request.CompanyId)
-                && (techName == null || NormalizeName(assigned.FullName) == techName))
+                && (!request.CompanyId.HasValue || assigned.CompanyId == request.CompanyId))
             {
+                if (techName != null && NormalizeName(assigned.FullName) != techName)
+                    _logger.LogWarning("Fee for request {RequestNumber}: TechnicianId {TechnicianId} ('{AssignedName}') differs from Details technician '{Technician}' — charging TechnicianId",
+                        request.RequestNumber, assigned.Id, assigned.FullName, techName);
                 return assigned.Id;
             }
+
+            _logger.LogWarning("Fee for request {RequestNumber}: TechnicianId {TechnicianId} missing or outside company {CompanyId} — no fee",
+                request.RequestNumber, request.TechnicianId, request.CompanyId);
+            return null;
         }
 
         if (techName != null)
@@ -2814,6 +2871,37 @@ ORDER BY ""TotalCollected"" DESC;";
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Remediation S5: the technician name of a task was changed but the new name cannot be resolved inside the
+    /// task company (unknown / ambiguous / other company). Keep the current TechnicianId only if it is the
+    /// same person (same company and same normalized name); otherwise clear TechnicianId — and AssignedToId
+    /// when it pointed at that old technician — so the previous technician is neither charged at completion
+    /// nor keeps the task in their scope.
+    /// </summary>
+    private async Task DetachUnresolvedTechnicianAsync(ServiceRequest request, string newTechnicianName, bool keepAssignedTo)
+    {
+        var newName = NormalizeName(newTechnicianName);
+        var oldTechnicianId = request.TechnicianId;
+
+        if (oldTechnicianId.HasValue)
+        {
+            var current = await _unitOfWork.Users.GetByIdAsync(oldTechnicianId.Value);
+            if (current != null && !current.IsDeleted
+                && (!request.CompanyId.HasValue || current.CompanyId == request.CompanyId)
+                && NormalizeName(current.FullName) == newName)
+            {
+                return; // same technician — nothing to detach
+            }
+        }
+
+        request.TechnicianId = null;
+        if (!keepAssignedTo && oldTechnicianId.HasValue && request.AssignedToId == oldTechnicianId)
+            request.AssignedToId = null;
+
+        _logger.LogWarning("Task {RequestNumber}: technician changed to unresolved '{Technician}' — previous technician {OldTechnicianId} detached",
+            request.RequestNumber, newName, oldTechnicianId);
     }
 
     private static string GenerateRequestNumber()
@@ -3519,6 +3607,61 @@ public static class ServiceRequestAccountingHelper
 
         return entryId;
     }
+}
+
+#endregion
+
+#region Employee gate (Phase 0-D remediation C1)
+
+/// <summary>
+/// Defense in depth for the task/finance controllers that carry <c>[Authorize(Policy = "CompanyEmployee")]</c>:
+/// the token user must be an existing, active, non-deleted Users row with Role &gt;= Employee
+/// (same rule as FtthAccessGate). Rejects agent tokens (NameIdentifier = Agents.Id, no Users row),
+/// citizen tokens (NameIdentifier = Citizens.Id) and Users rows with Citizen/Merchant/Driver roles.
+/// SuperAdmin bypasses (same as RequirePermissionAttribute). Unauthenticated requests are left to
+/// [Authorize] (401); [AllowAnonymous] actions are skipped.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public sealed class RequireEmployeeUserAttribute : Attribute, Microsoft.AspNetCore.Mvc.Filters.IAsyncAuthorizationFilter
+{
+    public async Task OnAuthorizationAsync(Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext context)
+    {
+        if (context.ActionDescriptor.EndpointMetadata.Any(m => m is AllowAnonymousAttribute))
+            return;
+
+        var user = context.HttpContext.User;
+        if (user.Identity?.IsAuthenticated != true)
+            return;
+
+        var role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? user.FindFirst("role")?.Value;
+        if (role == "SuperAdmin")
+            return;
+
+        var raw = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+               ?? user.FindFirst("sub")?.Value;
+        if (!Guid.TryParse(raw, out var userId))
+        {
+            context.Result = Denied();
+            return;
+        }
+
+        if (context.HttpContext.RequestServices.GetService(typeof(IUnitOfWork)) is not IUnitOfWork unitOfWork)
+        {
+            context.Result = new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            return;
+        }
+
+        var isEmployee = await unitOfWork.Users.AsQueryable()
+            .AnyAsync(u => u.Id == userId && !u.IsDeleted && u.IsActive && u.Role >= UserRole.Employee);
+        if (!isEmployee)
+            context.Result = Denied();
+    }
+
+    private static ObjectResult Denied() =>
+        new(new { success = false, message = "هذه الخدمة متاحة لموظفي الشركة فقط" })
+        {
+            StatusCode = StatusCodes.Status403Forbidden
+        };
 }
 
 #endregion

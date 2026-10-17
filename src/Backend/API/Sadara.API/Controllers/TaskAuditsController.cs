@@ -15,7 +15,9 @@ namespace Sadara.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Phase 0-D remediation (C1): company employees only (agent/citizen tokens rejected) + DB employee check.
+[Authorize(Policy = "CompanyEmployee")]
+[RequireEmployeeUser]
 public class TaskAuditsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
