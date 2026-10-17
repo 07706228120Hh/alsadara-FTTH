@@ -8,6 +8,7 @@ import '../../services/vps_upload_service.dart';
 import '../../services/local_database_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/sync_service.dart';
+import '../../frontend/frontend.dart';
 
 class FtthSyncSettingsPage extends StatefulWidget {
   const FtthSyncSettingsPage({super.key});
@@ -435,27 +436,16 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
-        appBar: AppBar(
-          title: const Text('مزامنة FTTH',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          elevation: 0.5,
-          toolbarHeight: 42,
-          bottom: TabBar(
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'مزامنة FTTH',
+          bottom: SdTabBar(
             controller: _tabCtrl,
-            labelColor: Colors.deepPurple,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.deepPurple,
-            labelStyle:
-                const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             tabs: const [
-              Tab(text: 'الإعدادات', height: 36),
-              Tab(text: 'سجل المزامنات', height: 36),
+              Tab(text: 'الإعدادات'),
+              Tab(text: 'سجل المزامنات'),
             ],
           ),
         ),

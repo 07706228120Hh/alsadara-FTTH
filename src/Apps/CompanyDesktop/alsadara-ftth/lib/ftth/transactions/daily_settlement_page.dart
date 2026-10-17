@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/api/api_config.dart';
 
 class DailySettlementPage extends StatefulWidget {
@@ -658,7 +659,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         content: const Text('هل أنت متأكد من حذف هذا التقرير؟', textDirection: TextDirection.rtl),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف', style: TextStyle(color: SdColors.danger))),
         ],
       ),
     );
@@ -676,7 +677,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, textDirection: TextDirection.rtl),
-      backgroundColor: isError ? Colors.red : Colors.green,
+      backgroundColor: isError ? SdColors.danger : SdColors.success,
       duration: const Duration(seconds: 2),
     ));
   }
@@ -684,14 +685,13 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
   // ========== UI ==========
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: Colors.grey.shade100,
+        backgroundColor: SdColors.ground,
         appBar: AppBar(
           title: const Text('التسديدات اليومية',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
           toolbarHeight: 46,
           actions: [
@@ -702,7 +702,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
               icon: Icon(
                 Icons.date_range,
                 size: 20,
-                color: (!_isToday && !_isYesterday) ? Colors.amber : Colors.white70,
+                color: (!_isToday && !_isYesterday) ? SdColors.warning : Colors.white70,
               ),
               tooltip: (!_isToday && !_isYesterday)
                   ? DateFormat('yyyy/MM/dd').format(_selectedDate)
@@ -730,7 +730,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.deepPurple,
+                                color: SdColors.primary,
                                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                               ),
                               child: Row(
@@ -801,7 +801,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                       // صف العناوين
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.deepPurple.shade50,
+                          color: SdColors.primaryTint,
                           border: Border(bottom: BorderSide(color: Colors.black87, width: 1.5)),
                         ),
                         padding: EdgeInsets.symmetric(
@@ -814,28 +814,28 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                               SizedBox(
                                 width: (Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600) ? 22 : 28,
                                 child: Center(
-                                  child: Text('ت', style: TextStyle(color: Colors.deepPurple.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  child: Text('ت', style: TextStyle(color: SdColors.primaryEdge, fontSize: 11, fontWeight: FontWeight.bold)),
                                 ),
                               ),
                               VerticalDivider(width: 6, thickness: 1.5, color: Colors.black87),
                               Expanded(
                                 flex: 2,
                                 child: Center(
-                                  child: Text('المبلغ', style: TextStyle(color: Colors.deepPurple.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  child: Text('المبلغ', style: TextStyle(color: SdColors.primaryEdge, fontSize: 11, fontWeight: FontWeight.bold)),
                                 ),
                               ),
                               VerticalDivider(width: 6, thickness: 1.5, color: Colors.black87),
                               Expanded(
                                 flex: 2,
                                 child: Center(
-                                  child: Text('الصنف', style: TextStyle(color: Colors.deepPurple.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  child: Text('الصنف', style: TextStyle(color: SdColors.primaryEdge, fontSize: 11, fontWeight: FontWeight.bold)),
                                 ),
                               ),
                               VerticalDivider(width: 6, thickness: 1.5, color: Colors.black87),
                               Expanded(
                                 flex: 3,
                                 child: Center(
-                                  child: Text('التفاصيل', style: TextStyle(color: Colors.deepPurple.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  child: Text('التفاصيل', style: TextStyle(color: SdColors.primaryEdge, fontSize: 11, fontWeight: FontWeight.bold)),
                                 ),
                               ),
                             ],
@@ -845,14 +845,14 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                       // صفوف البنود
                       ...List.generate(_items.length, (i) => Container(
                         decoration: BoxDecoration(
-                          border: Border(top: BorderSide(color: Colors.grey.shade400, width: 1.2)),
+                          border: Border(top: BorderSide(color: SdColors.faint, width: 1.2)),
                         ),
                         child: _buildItemRow(i),
                       )),
                       // ملاحظات عامة
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: SdColors.surfaceAlt,
                           border: Border(top: BorderSide(color: Colors.black87, width: 1.5)),
                         ),
                         child: TextField(
@@ -860,8 +860,8 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                           maxLines: 1,
                           decoration: InputDecoration(
                             hintText: 'ملاحظات عامة...',
-                            hintStyle: TextStyle(color: Colors.grey.shade400),
-                            prefixIcon: Icon(Icons.notes, color: Colors.grey.shade400, size: 20),
+                            hintStyle: TextStyle(color: SdColors.faint),
+                            prefixIcon: Icon(Icons.notes, color: SdColors.faint, size: 20),
                             filled: true,
                             fillColor: Colors.transparent,
                             isDense: true,
@@ -903,11 +903,11 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                             },
                             decoration: InputDecoration(
                               hintText: 'تم التسليم إلى...',
-                              hintStyle: TextStyle(color: Colors.grey.shade400),
-                              prefixIcon: Icon(Icons.person_pin, color: Colors.deepPurple.shade400, size: 20),
+                              hintStyle: TextStyle(color: SdColors.faint),
+                              prefixIcon: Icon(Icons.person_pin, color: SdColors.primaryLight, size: 20),
                               suffixIcon: _deliveredToController.text.isNotEmpty
                                   ? IconButton(
-                                      icon: Icon(Icons.clear, color: Colors.grey.shade500, size: 18),
+                                      icon: Icon(Icons.clear, color: SdColors.faint, size: 18),
                                       onPressed: () {
                                         _deliveredToController.clear();
                                         _selectedDeliveredToId = null;
@@ -917,20 +917,20 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                                         });
                                       },
                                     )
-                                  : Icon(Icons.arrow_drop_down, color: Colors.grey.shade500),
+                                  : Icon(Icons.arrow_drop_down, color: SdColors.faint),
                               filled: true,
                               fillColor: Colors.white,
                               isDense: true,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                               border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: Colors.red.shade200)),
+                                  borderSide: BorderSide(color: SdColors.dangerTintEdge)),
                               enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: Colors.red.shade200)),
+                                  borderSide: BorderSide(color: SdColors.dangerTintEdge)),
                               focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: Colors.deepPurple, width: 1.5)),
+                                  borderSide: const BorderSide(color: SdColors.primary, width: 1.5)),
                             ),
                           ),
                           if (_showEmployeeDropdown && _filteredEmployees.isNotEmpty)
@@ -940,7 +940,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.deepPurple.shade200),
+                                border: Border.all(color: SdColors.primaryTintEdge),
                                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 3))],
                               ),
                               child: ListView.builder(
@@ -954,9 +954,9 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                                     dense: true,
                                     leading: CircleAvatar(
                                       radius: 14,
-                                      backgroundColor: Colors.deepPurple.shade50,
+                                      backgroundColor: SdColors.primaryTint,
                                       child: Text(name.isNotEmpty ? name[0] : '?',
-                                          style: TextStyle(color: Colors.deepPurple.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          style: TextStyle(color: SdColors.primaryEdge, fontSize: 12, fontWeight: FontWeight.bold)),
                                     ),
                                     title: Text(name, style: const TextStyle(fontSize: 13)),
                                     onTap: () {
@@ -987,7 +987,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _reportSubmitted ? Colors.orange : Colors.deepPurple,
+                            backgroundColor: _reportSubmitted ? SdColors.warning : SdColors.primary,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
@@ -1038,17 +1038,17 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          border: Border(bottom: BorderSide(color: Colors.green.shade200)),
+          color: SdColors.successTint,
+          border: Border(bottom: BorderSide(color: SdColors.successTintEdge)),
         ),
         child: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.green.shade700),
+            Icon(Icons.check_circle, color: SdColors.success),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'تم إرسال التقرير  (الإجمالي: ${NumberFormat('#,###').format(_totalAmount)} د.ع)',
-                style: TextStyle(color: Colors.green.shade800, fontWeight: FontWeight.bold),
+                style: TextStyle(color: SdColors.successEdge, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -1060,13 +1060,13 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: _isToday ? Colors.red.shade50 : Colors.orange.shade50,
-        border: Border(bottom: BorderSide(color: _isToday ? Colors.red.shade200 : Colors.orange.shade200)),
+        color: _isToday ? SdColors.dangerTint : SdColors.warningTint,
+        border: Border(bottom: BorderSide(color: _isToday ? SdColors.dangerTintEdge : SdColors.warningTintEdge)),
       ),
       child: Row(
         children: [
           Icon(Icons.warning_amber_rounded,
-              color: _isToday ? Colors.red.shade700 : Colors.orange.shade700),
+              color: _isToday ? SdColors.danger : SdColors.warningText),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1074,7 +1074,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                   ? 'لم تُرسل تقرير التسديدات لهذا اليوم بعد'
                   : 'لا يوجد تقرير لتاريخ ${DateFormat('yyyy/MM/dd').format(_selectedDate)}',
               style: TextStyle(
-                  color: _isToday ? Colors.red.shade800 : Colors.orange.shade800,
+                  color: _isToday ? SdColors.danger : SdColors.warningEdge,
                   fontWeight: FontWeight.bold),
             ),
           ),
@@ -1222,7 +1222,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: _missingDays.isNotEmpty ? Colors.red.withOpacity(0.3) : Colors.white.withOpacity(0.15),
+            color: _missingDays.isNotEmpty ? SdColors.danger.withOpacity(0.3) : Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1234,7 +1234,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.red,
+                    color: SdColors.danger,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -1258,17 +1258,17 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
         child: AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.event_busy, color: Colors.red.shade700, size: 22),
+              Icon(Icons.event_busy, color: SdColors.danger, size: 22),
               const SizedBox(width: 8),
               Text('بدون تقرير (${_missingDays.length})',
-                  style: TextStyle(color: Colors.red.shade800, fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: TextStyle(color: SdColors.danger, fontSize: 16, fontWeight: FontWeight.bold)),
               const Spacer(),
               InkWell(
                 onTap: () {
                   Navigator.pop(ctx);
                   _loadMissingDays();
                 },
-                child: Icon(Icons.refresh, color: Colors.grey.shade600, size: 20),
+                child: Icon(Icons.refresh, color: SdColors.muted, size: 20),
               ),
             ],
           ),
@@ -1276,7 +1276,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
               ? const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
                   child: Text('لا توجد أيام ناقصة - أحسنت!',
-                      textAlign: TextAlign.center, style: TextStyle(color: Colors.green, fontSize: 14)),
+                      textAlign: TextAlign.center, style: TextStyle(color: SdColors.success, fontSize: 14)),
                 )
               : SizedBox(
                   width: min(400, MediaQuery.of(context).size.width * 0.85),
@@ -1295,14 +1295,14 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: isRecent ? Colors.red.shade50 : Colors.grey.shade50,
+                              color: isRecent ? SdColors.dangerTint : SdColors.surfaceAlt,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: isRecent ? Colors.red.shade300 : Colors.grey.shade300),
+                              border: Border.all(color: isRecent ? SdColors.dangerTintEdge : SdColors.divider),
                             ),
                             child: Text(
                               DateFormat('MM/dd (E)', 'ar').format(day),
                               style: TextStyle(
-                                color: isRecent ? Colors.red.shade900 : Colors.grey.shade800,
+                                color: isRecent ? SdColors.dangerEdge : SdColors.ink,
                                 fontSize: 13,
                                 fontWeight: isRecent ? FontWeight.bold : FontWeight.normal,
                               ),
@@ -1332,10 +1332,10 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
     final hasExpenses = _totalExpenses > 0;
     final hasIncome = _totalExtraIncome > 0;
 
-    final borderColor = isNeg ? Colors.red.shade300 : Colors.green.shade400;
+    final borderColor = isNeg ? SdColors.dangerTintEdge : SdColors.successTintEdge;
     return Container(
       decoration: BoxDecoration(
-        color: isNeg ? Colors.red.shade50 : Colors.green.shade50,
+        color: isNeg ? SdColors.dangerTint : SdColors.successTint,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: borderColor, width: 1.5),
       ),
@@ -1349,27 +1349,27 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.account_balance_wallet, color: isNeg ? Colors.red.shade700 : Colors.green.shade700, size: 22),
+              Icon(Icons.account_balance_wallet, color: isNeg ? SdColors.danger : SdColors.success, size: 22),
               const SizedBox(width: 8),
               Text('النقد الصافي',
-                  style: TextStyle(color: isNeg ? Colors.red.shade800 : Colors.green.shade800, fontSize: 14, fontWeight: FontWeight.bold)),
+                  style: TextStyle(color: isNeg ? SdColors.danger : SdColors.successEdge, fontSize: 14, fontWeight: FontWeight.bold)),
             ],
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (hasExpenses) ...[
-                Text('مصاريف: ', style: TextStyle(color: Colors.orange.shade700, fontSize: 11)),
-                Text('−${fmt.format(_totalExpenses)}', style: TextStyle(color: Colors.orange.shade900, fontSize: 13, fontWeight: FontWeight.bold)),
+                Text('مصاريف: ', style: TextStyle(color: SdColors.warningText, fontSize: 11)),
+                Text('−${fmt.format(_totalExpenses)}', style: TextStyle(color: SdColors.warningEdge, fontSize: 13, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 12),
               ],
               if (hasIncome) ...[
-                Text('إضافة: ', style: TextStyle(color: Colors.blue.shade700, fontSize: 11)),
-                Text('+${fmt.format(_totalExtraIncome)}', style: TextStyle(color: Colors.blue.shade900, fontSize: 13, fontWeight: FontWeight.bold)),
+                Text('إضافة: ', style: TextStyle(color: SdColors.info, fontSize: 11)),
+                Text('+${fmt.format(_totalExtraIncome)}', style: TextStyle(color: SdColors.infoEdge, fontSize: 13, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 12),
               ],
               Text('${fmt.format(netCash)} د.ع',
-                  style: TextStyle(color: isNeg ? Colors.red.shade900 : Colors.green.shade900, fontSize: 16, fontWeight: FontWeight.w900)),
+                  style: TextStyle(color: isNeg ? SdColors.dangerEdge : SdColors.successEdge, fontSize: 16, fontWeight: FontWeight.w900)),
             ],
           ),
         ],
@@ -1387,15 +1387,15 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
 
     final bool isMobile = Platform.isAndroid || Platform.isIOS || MediaQuery.of(context).size.width < 600;
     return Container(
-      color: isIncome ? Colors.blue.shade50 : null,
+      color: isIncome ? SdColors.infoTint : null,
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10, vertical: isMobile ? 4 : 6),
       child: Row(
         children: [
           CircleAvatar(
             radius: isMobile ? 10 : 14,
-            backgroundColor: isIncome ? Colors.blue.shade100 : Colors.deepPurple.shade50,
+            backgroundColor: isIncome ? SdColors.infoTint : SdColors.primaryTint,
             child: Text('${index + 1}',
-                style: TextStyle(color: isIncome ? Colors.blue.shade700 : Colors.deepPurple.shade700, fontSize: isMobile ? 9 : 12, fontWeight: FontWeight.bold)),
+                style: TextStyle(color: isIncome ? SdColors.info : SdColors.primaryEdge, fontSize: isMobile ? 9 : 12, fontWeight: FontWeight.bold)),
           ),
           SizedBox(width: isMobile ? 4 : 8),
           // المبلغ
@@ -1415,14 +1415,14 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
               },
               decoration: InputDecoration(
                 hintText: 'المبلغ',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: isMobile ? 11 : 13),
+                hintStyle: TextStyle(color: SdColors.faint, fontSize: isMobile ? 11 : 13),
                 suffixText: 'د.ع',
-                suffixStyle: TextStyle(color: Colors.grey.shade500, fontSize: 9),
+                suffixStyle: TextStyle(color: SdColors.faint, fontSize: 9),
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(horizontal: isMobile ? 4 : 10, vertical: isMobile ? 6 : 10),
                 border: const OutlineInputBorder(borderSide: BorderSide(color: Colors.black54)),
                 enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.black54)),
-                focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.deepPurple, width: 1.5)),
+                focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: SdColors.primary, width: 1.5)),
               ),
             ),
           ),
@@ -1441,7 +1441,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                   value: category.isEmpty ? null : category,
                   isExpanded: true,
                   isDense: true,
-                  hint: Center(child: Text('الصنف', style: TextStyle(fontSize: isMobile ? 11 : 13, color: Colors.grey.shade400))),
+                  hint: Center(child: Text('الصنف', style: TextStyle(fontSize: isMobile ? 11 : 13, color: SdColors.faint))),
                   style: TextStyle(fontSize: isMobile ? 11 : 13, color: Colors.black87),
                   items: _itemCategories.map((c) => DropdownMenuItem(value: c, child: Center(child: Text(c)))).toList(),
                   onChanged: (val) {
@@ -1465,12 +1465,12 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
               },
               decoration: InputDecoration(
                 hintText: 'التفاصيل',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: isMobile ? 11 : 13),
+                hintStyle: TextStyle(color: SdColors.faint, fontSize: isMobile ? 11 : 13),
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(horizontal: isMobile ? 4 : 10, vertical: isMobile ? 6 : 10),
                 border: const OutlineInputBorder(borderSide: BorderSide(color: Colors.black54)),
                 enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.black54)),
-                focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.deepPurple, width: 1.5)),
+                focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: SdColors.primary, width: 1.5)),
               ),
             ),
           ),
@@ -1488,7 +1488,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+            border: Border(bottom: BorderSide(color: SdColors.divider)),
           ),
           child: Row(
             children: [
@@ -1498,11 +1498,11 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                   style: const TextStyle(color: Colors.black87, fontSize: 13),
                   decoration: InputDecoration(
                     labelText: 'المشغل',
-                    labelStyle: TextStyle(color: Colors.grey.shade600),
+                    labelStyle: TextStyle(color: SdColors.muted),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    border: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)),
+                    border: OutlineInputBorder(borderSide: BorderSide(color: SdColors.divider)),
+                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: SdColors.divider)),
                   ),
                   items: _operatorNames.map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
                   onChanged: (v) {
@@ -1524,7 +1524,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
               const SizedBox(width: 4),
               IconButton(
                 onPressed: _loadAllReports,
-                icon: const Icon(Icons.refresh, color: Colors.deepPurple),
+                icon: const Icon(Icons.refresh, color: SdColors.primary),
                 tooltip: 'تحديث',
               ),
             ],
@@ -1539,7 +1539,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
           child: _allLoading
               ? const Center(child: CircularProgressIndicator())
               : _allReports.isEmpty
-                  ? Center(child: Text('لا توجد تقارير', style: TextStyle(color: Colors.grey.shade500)))
+                  ? Center(child: Text('لا توجد تقارير', style: TextStyle(color: SdColors.faint)))
                   : ListView.builder(
                       padding: const EdgeInsets.all(8),
                       itemCount: _allReports.length,
@@ -1565,13 +1565,13 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: value != null ? Colors.deepPurple.shade50 : Colors.grey.shade100,
+          color: value != null ? SdColors.primaryTint : SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: value != null ? Colors.deepPurple : Colors.grey.shade400),
+          border: Border.all(color: value != null ? SdColors.primary : SdColors.faint),
         ),
         child: Text(
           value != null ? '$label: ${DateFormat('MM/dd').format(value)}' : label,
-          style: TextStyle(color: value != null ? Colors.deepPurple : Colors.grey.shade600, fontSize: 12),
+          style: TextStyle(color: value != null ? SdColors.primary : SdColors.muted, fontSize: 12),
         ),
       ),
     );
@@ -1592,17 +1592,17 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              _statChip('التقارير', '$reportCount', Colors.blue),
+              _statChip('التقارير', '$reportCount', SdColors.info),
               const SizedBox(width: 8),
-              _statChip('الإجمالي الكلي', '${NumberFormat('#,###').format(totalAll)} د.ع', Colors.deepPurple),
+              _statChip('الإجمالي الكلي', '${NumberFormat('#,###').format(totalAll)} د.ع', SdColors.primary),
               const SizedBox(width: 8),
-              _statChip('المشغلين', '${operatorTotals.length}', Colors.orange),
+              _statChip('المشغلين', '${operatorTotals.length}', SdColors.warning),
             ],
           ),
           if (operatorTotals.length > 1) ...[
@@ -1616,14 +1616,14 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                   visualDensity: VisualDensity.compact,
                   avatar: CircleAvatar(
                     radius: 10,
-                    backgroundColor: Colors.deepPurple.shade100,
+                    backgroundColor: SdColors.primaryTint,
                     child: Text(e.key.isNotEmpty ? e.key[0] : '?',
-                        style: TextStyle(fontSize: 10, color: Colors.deepPurple.shade700)),
+                        style: TextStyle(fontSize: 10, color: SdColors.primaryEdge)),
                   ),
                   label: Text('${e.key}: ${NumberFormat('#,###').format(e.value)} د.ع',
                       style: const TextStyle(fontSize: 11)),
-                  backgroundColor: Colors.grey.shade50,
-                  side: BorderSide(color: Colors.grey.shade300),
+                  backgroundColor: SdColors.surfaceAlt,
+                  side: BorderSide(color: SdColors.divider),
                 );
               }).toList(),
             ),
@@ -1680,15 +1680,15 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        iconColor: Colors.deepPurple,
-        collapsedIconColor: Colors.grey,
+        iconColor: SdColors.primary,
+        collapsedIconColor: SdColors.muted,
         title: Row(
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.deepPurple.shade50,
+              backgroundColor: SdColors.primaryTint,
               child: Text(operatorName.isNotEmpty ? operatorName[0] : '?',
-                  style: TextStyle(color: Colors.deepPurple.shade700, fontWeight: FontWeight.bold)),
+                  style: TextStyle(color: SdColors.primaryEdge, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -1697,7 +1697,7 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                 children: [
                   Text(operatorName,
                       style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
-                  Text(formattedDate, style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                  Text(formattedDate, style: TextStyle(color: SdColors.muted, fontSize: 11)),
                 ],
               ),
             ),
@@ -1705,8 +1705,8 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text('${NumberFormat('#,###').format(totalAmount)} د.ع',
-                    style: TextStyle(color: Colors.deepPurple.shade700, fontSize: 15, fontWeight: FontWeight.w900)),
-                Text('${items.length} بند', style: TextStyle(color: Colors.grey.shade500, fontSize: 10)),
+                    style: TextStyle(color: SdColors.primaryEdge, fontSize: 15, fontWeight: FontWeight.w900)),
+                Text('${items.length} بند', style: TextStyle(color: SdColors.faint, fontSize: 10)),
               ],
             ),
           ],
@@ -1717,13 +1717,13 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
-                  Icon(Icons.notes, color: Colors.grey.shade400, size: 16),
+                  Icon(Icons.notes, color: SdColors.faint, size: 16),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(notes, style: TextStyle(color: Colors.grey.shade600, fontSize: 12))),
+                  Expanded(child: Text(notes, style: TextStyle(color: SdColors.muted, fontSize: 12))),
                 ],
               ),
             ),
-          Divider(color: Colors.grey.shade200, height: 8),
+          Divider(color: SdColors.divider, height: 8),
           ...items.map((item) {
             final note = item['note']?.toString() ?? '';
             final amt = (item['amount'] as num?)?.toDouble() ?? 0;
@@ -1731,11 +1731,11 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
               child: Row(
                 children: [
-                  Icon(Icons.circle, color: Colors.deepPurple.shade300, size: 8),
+                  Icon(Icons.circle, color: SdColors.primarySoft, size: 8),
                   const SizedBox(width: 8),
                   Expanded(child: Text(note, style: const TextStyle(color: Colors.black87, fontSize: 13))),
                   Text('${NumberFormat('#,###').format(amt)} د.ع',
-                      style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontWeight: FontWeight.w500)),
+                      style: TextStyle(color: SdColors.ink, fontSize: 13, fontWeight: FontWeight.w500)),
                 ],
               ),
             );
@@ -1747,8 +1747,8 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
                   onPressed: () => _deleteReport(id),
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 18),
-                  label: const Text('حذف', style: TextStyle(color: Colors.red, fontSize: 12)),
+                  icon: const Icon(Icons.delete, color: SdColors.danger, size: 18),
+                  label: const Text('حذف', style: TextStyle(color: SdColors.danger, fontSize: 12)),
                 ),
               ),
             ),

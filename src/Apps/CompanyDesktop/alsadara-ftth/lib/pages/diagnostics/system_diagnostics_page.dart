@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import 'models/diagnostic_test.dart';
 import 'models/diagnostic_result.dart';
 import 'services/diagnostic_service.dart';
@@ -203,7 +204,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
           children: [
             Icon(
               report.failedTests == 0 ? Icons.check_circle : Icons.warning,
-              color: report.failedTests == 0 ? Colors.green : Colors.orange,
+              color: report.failedTests == 0 ? SdColors.success : SdColors.warning,
               size: 28,
             ),
             const SizedBox(width: 12),
@@ -224,17 +225,17 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
                 _buildResultChip(
                   'نجح',
                   report.passedTests.toString(),
-                  Colors.green,
+                  SdColors.success,
                 ),
                 _buildResultChip(
                   'فشل',
                   report.failedTests.toString(),
-                  Colors.red,
+                  SdColors.danger,
                 ),
                 _buildResultChip(
                   'النسبة',
                   '${report.successRate.toStringAsFixed(0)}%',
-                  report.successRate >= 80 ? Colors.green : Colors.orange,
+                  report.successRate >= 80 ? SdColors.success : SdColors.warning,
                 ),
               ],
             ),
@@ -262,7 +263,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -334,7 +335,9 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
       body: Column(
         children: [
           // Header
@@ -345,11 +348,11 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
 
           // Tab bar
           Container(
-            color: Colors.white,
+            color: SdColors.surface,
             child: TabBar(
               controller: _tabController,
               labelColor: Theme.of(context).primaryColor,
-              unselectedLabelColor: Colors.grey,
+              unselectedLabelColor: SdColors.faint,
               indicatorColor: Theme.of(context).primaryColor,
               tabs: const [
                 Tab(icon: Icon(Icons.dashboard), text: 'نظرة عامة'),
@@ -372,6 +375,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -382,7 +386,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
         gradient: LinearGradient(
           colors: [
             Theme.of(context).primaryColor,
-            Theme.of(context).primaryColor.withOpacity(0.8),
+            Theme.of(context).primaryColor.withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -465,7 +469,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
 
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.blue.withOpacity(0.1),
+      color: SdColors.info.withValues(alpha: 0.1),
       child: Column(
         children: [
           Row(
@@ -487,7 +491,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: SdColors.divider,
             ),
           ),
         ],
@@ -526,7 +530,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
             _buildSectionHeader(
               '⚠️ الاختبارات الفاشلة',
               'تحتاج إلى اهتمام',
-              Colors.red,
+              SdColors.danger,
             ),
             const SizedBox(height: 16),
             ...(_results.where((r) => !r.success).take(5).map((result) {
@@ -562,7 +566,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
           Icon(
             Icons.science_outlined,
             size: 100,
-            color: Colors.grey[300],
+            color: SdColors.divider,
           ),
           const SizedBox(height: 24),
           Text(
@@ -570,13 +574,13 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.grey[600],
+              color: SdColors.muted,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'اضغط على "بدء الفحص الشامل" لبدء تشخيص النظام',
-            style: TextStyle(color: Colors.grey[500]),
+            style: TextStyle(color: SdColors.faint),
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
@@ -606,7 +610,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
             title: 'الفئات',
             value: '$passedCategories / $totalCategories',
             subtitle: 'فئات ناجحة',
-            color: Colors.purple,
+            color: SdColors.platformBase,
           ),
         ),
         const SizedBox(width: 16),
@@ -618,7 +622,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
                 ? '${_lastReport!.totalDuration.inSeconds}s'
                 : '-',
             subtitle: 'إجمالي وقت الفحص',
-            color: Colors.orange,
+            color: SdColors.warning,
           ),
         ),
         const SizedBox(width: 16),
@@ -632,7 +636,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
                     : 'يحتاج مراجعة'
                 : '-',
             subtitle: 'حالة النظام',
-            color: _lastReport?.failedTests == 0 ? Colors.green : Colors.red,
+            color: _lastReport?.failedTests == 0 ? SdColors.success : SdColors.danger,
           ),
         ),
       ],
@@ -657,7 +661,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 24),
@@ -667,7 +671,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
               title,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[600],
+                color: SdColors.muted,
               ),
             ),
             const SizedBox(height: 4),
@@ -683,7 +687,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
               subtitle,
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.grey[500],
+                color: SdColors.faint,
               ),
             ),
           ],
@@ -718,7 +722,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
               subtitle,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[600],
+                color: SdColors.muted,
               ),
             ),
           ],
@@ -762,7 +766,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
         // Filter bar
         Container(
           padding: const EdgeInsets.all(16),
-          color: Colors.grey[50],
+          color: SdColors.groundAlt,
           child: Row(
             children: [
               const Text(
@@ -793,7 +797,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
               ? Center(
                   child: Text(
                     'لا توجد نتائج',
-                    style: TextStyle(color: Colors.grey[500]),
+                    style: TextStyle(color: SdColors.faint),
                   ),
                 )
               : ListView.builder(
@@ -838,7 +842,7 @@ class _SystemDiagnosticsPageState extends State<SystemDiagnosticsPage>
             _selectedCategoryFilter = selected ? id : 'all';
           });
         },
-        selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+        selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
         checkmarkColor: Theme.of(context).primaryColor,
       ),
     );

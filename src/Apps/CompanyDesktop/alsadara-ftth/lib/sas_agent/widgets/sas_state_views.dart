@@ -1,45 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
-import 'sas_metrics.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 
-/// نظام تصميم موحّد لوحدة «وكيل الساس» بثيم منصّة الصدارة.
+/// نظام تصميم موحّد لوحدة «وكيل الساس» بثيم منصّة الصدارة الموحّد (sd).
 ///
 /// ملف ودجات عرض فقط (حالات/بطاقات/رؤوس) — لا منطق أعمال ولا استدعاءات API.
-/// يعتمد ألوان [AppTheme] وخط Cairo وحواف مستديرة وظلال ناعمة كما في بقية
-/// شاشات المنصّة الفخمة (الرئيسية/الدخول/المخازن/المحاسبة).
+/// يعتمد رموز نظام تصميم الصدارة (SdColors/SdText/SdRadius/SdDepth) وخط Cairo
+/// وحواف مستديرة وبروز ثلاثي الأبعاد كما في بقية شاشات المنصّة المرحَّلة.
+///
+/// الأسماء والتواقيع العامة مُبقاة كما كانت (لئلا تنكسر مستهلكاتها)، وأُعيد
+/// تنفيذها بصرياً برموز sd بدل AppTheme/GoogleFonts/screenutil.
 
-/// أدوات تنسيق مشتركة للوحدة (ثوابت بصرية + مولّدات ديكور).
+/// أدوات تنسيق مشتركة للوحدة (ثوابت بصرية + مولّدات ديكور) بنبرة sd.
 class SasUi {
   SasUi._();
 
-  /// خلفية الوحدة (رمادي فاتح مريح كبقية الشاشات).
-  static const Color pageBg = Color(0xFFF4F6FB);
+  /// خلفية الوحدة — خلفية صفحات الصدارة.
+  static const Color pageBg = SdColors.ground;
 
-  static const double radius = 16;
-  static const double radiusSm = 12;
-  static const double radiusPill = 40;
+  static const double radius = SdRadius.lg;
+  static const double radiusSm = SdRadius.sm;
+  static const double radiusPill = SdRadius.pill;
 
-  /// ظل بطاقة ناعم (طبقتان) — نفس نبرة `_buildEnhancedMenuItem` في الرئيسية.
+  /// ظل بطاقة بارزة (حافّة صلبة + توهّج ناعم) بنبرة sd.
   static List<BoxShadow> cardShadow([Color? tint]) {
-    final base = tint ?? AppTheme.primaryColor;
-    return [
-      BoxShadow(
-        color: base.withValues(alpha: 0.07),
-        blurRadius: 14,
-        spreadRadius: -3,
-        offset: const Offset(0, 6),
-      ),
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.03),
-        blurRadius: 4,
-        offset: const Offset(0, 1),
-      ),
-    ];
+    return SdDepth.raised(
+      edge: SdColors.cardEdge,
+      glow: (tint ?? SdColors.primary).withValues(alpha: 0.18),
+    );
   }
 
-  /// ديكور بطاقة بيضاء أنيقة (حدّ خفيف + ظل ناعم).
+  /// ديكور بطاقة بيضاء بارزة بنمط sd.
   static BoxDecoration card({
     Color? borderColor,
     double borderWidth = 1.2,
@@ -47,54 +38,38 @@ class SasUi {
     double? radius,
   }) {
     return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular((radius ?? SasUi.radius).r),
-      border: Border.all(
-        color: borderColor ?? Colors.grey.withValues(alpha: 0.16),
-        width: borderWidth,
-      ),
+      color: SdColors.surface,
+      borderRadius: BorderRadius.circular(radius ?? SasUi.radius),
+      border: borderColor != null
+          ? Border.all(color: borderColor, width: borderWidth)
+          : null,
       boxShadow: shadow ?? cardShadow(),
     );
   }
 
-  /// أيقونة دائرية بتدرّج (شارة أنيقة للبطاقات/الرؤوس).
+  /// أيقونة مربّعة بارزة (شارة للبطاقات/الرؤوس) بنمط مكعّب sd.
   static Widget gradientBadge({
     required IconData icon,
     required List<Color> colors,
     double size = 44,
     double iconSize = 22,
   }) {
+    final base = colors.isNotEmpty ? colors.first : SdColors.primary;
+    final edge = colors.length > 1 ? colors.last : SdColors.primaryEdge;
     return Container(
-      width: size.w,
-      height: size.w,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: colors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.first.withValues(alpha: 0.35),
-            blurRadius: 10,
-            spreadRadius: -2,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: base,
+        borderRadius: BorderRadius.circular(size * 0.28),
+        boxShadow: [BoxShadow(color: edge, offset: const Offset(0, 3))],
       ),
-      child: Icon(icon, color: Colors.white, size: iconSize.sp),
+      child: Icon(icon, color: Colors.white, size: iconSize),
     );
   }
 }
 
-/// يحدّ عرض المحتوى الرئيسي على الشاشات العريضة (سطح المكتب) ويوسّطه، فلا
-/// تمتدّ البطاقات/الحقول المفردة لكامل العرض فتبدو فارغة. على الشاشات الضيّقة
-/// يملأ العرض المتاح طبيعياً.
-///
-/// استخدمه كجذر لمحتوى أي تبويب/صفحة قابلة للتمرير (حول الـ`ListView`/`Column`).
-/// القيمة الافتراضية 1100 تناسب تخطيطات العمود الواحد والنماذج؛ مرّر قيمة أكبر
-/// (1400/1600) للشاشات ذات الشبكات متعدّدة الأعمدة.
+/// يحدّ عرض المحتوى الرئيسي على الشاشات العريضة (سطح المكتب) ويوسّطه.
 class SasContentWrap extends StatelessWidget {
   final Widget child;
   final double maxWidth;
@@ -111,7 +86,7 @@ class SasContentWrap extends StatelessWidget {
   }
 }
 
-/// رأس قسم أنيق (شارة أيقونة متدرّجة + عنوان + عدّاد/زر اختياري).
+/// رأس قسم (شارة أيقونة بارزة + عنوان + عدّاد/زر اختياري) بنبرة sd.
 class SasSectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -123,44 +98,39 @@ class SasSectionHeader extends StatelessWidget {
     super.key,
     required this.title,
     required this.icon,
-    this.gradient = AppTheme.blueGradient,
+    this.gradient = const [SdColors.primaryLight, SdColors.primary],
     this.trailingText,
     this.action,
   });
 
   @override
   Widget build(BuildContext context) {
+    final base = gradient.isNotEmpty ? gradient.first : SdColors.primary;
     return Row(
       children: [
         SasUi.gradientBadge(
           icon: icon,
           colors: gradient,
           size: 34,
-          iconSize: 17,
+          iconSize: 18,
         ),
-        SizedBox(width: 10.w),
-        Text(
-          title,
-          style: GoogleFonts.cairo(
-            fontSize: 15.sp,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF1A1A2E),
-          ),
-        ),
+        const SizedBox(width: 10),
+        Flexible(child: Text(title, style: SdText.titleSm)),
         if (trailingText != null) ...[
-          SizedBox(width: 8.w),
+          const SizedBox(width: 8),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: gradient.first.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(20.r),
+              color: base.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(SdRadius.pill),
             ),
             child: Text(
               trailingText!,
-              style: GoogleFonts.cairo(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w700,
-                color: gradient.first,
+              style: TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: base,
               ),
             ),
           ),
@@ -188,23 +158,24 @@ class SasStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(SasUi.radiusPill.r),
+        borderRadius: BorderRadius.circular(SdRadius.pill),
         border: Border.all(color: color.withValues(alpha: 0.30)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12.sp, color: color),
-            SizedBox(width: 4.w),
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 4),
           ],
           Text(
             label,
-            style: GoogleFonts.cairo(
-              fontSize: 10.5.sp,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 11.5,
               fontWeight: FontWeight.w800,
               color: color,
             ),
@@ -217,9 +188,8 @@ class SasStatusBadge extends StatelessWidget {
 
 /// حالة تحميل موحّدة لوحدة وكيل الساس.
 ///
-/// ملفوفة بتمرير آمن (`_ScrollSafeCenter`) بمقاسات ثابتة معقولة — لا تعتمد على
-/// `.w/.h/.sp` المتضخّمة على سطح المكتب، فلا يحدث تجاوز عمودي مهما ضاق ارتفاع
-/// النافذة/حاوية التبويب.
+/// ملفوفة بتمرير آمن (`_ScrollSafeCenter`) بمقاسات ثابتة معقولة فلا يحدث تجاوز
+/// عمودي مهما ضاق ارتفاع النافذة/حاوية التبويب.
 class SasLoadingView extends StatelessWidget {
   final String? message;
   const SasLoadingView({super.key, this.message});
@@ -230,15 +200,13 @@ class SasLoadingView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
+          const SizedBox(
             width: 44,
             height: 44,
             child: CircularProgressIndicator(
               strokeWidth: 3.2,
-              valueColor:
-                  const AlwaysStoppedAnimation(AppTheme.primaryColor),
-              backgroundColor:
-                  AppTheme.primaryColor.withValues(alpha: 0.10),
+              valueColor: AlwaysStoppedAnimation(SdColors.primary),
+              backgroundColor: SdColors.primaryTint,
             ),
           ),
           if (message != null) ...[
@@ -246,11 +214,7 @@ class SasLoadingView extends StatelessWidget {
             Text(
               message!,
               textAlign: TextAlign.center,
-              style: GoogleFonts.cairo(
-                fontSize: 13,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w600,
-              ),
+              style: SdText.bodySm,
             ),
           ],
         ],
@@ -268,45 +232,19 @@ class SasErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _ScrollSafeCenter(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(
-              color: AppTheme.errorColor.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.error_outline_rounded,
-                size: 42, color: AppTheme.errorColor),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.cairo(
-              fontSize: 14,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w600,
-              height: 1.5,
-            ),
-          ),
-          if (onRetry != null) ...[
-            const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: onRetry,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+      child: SdEmptyState(
+        title: 'تعذّر تحميل البيانات',
+        message: message,
+        icon: Icons.error_outline_rounded,
+        status: SdStatus.danger,
+        action: onRetry == null
+            ? null
+            : SdButton(
+                label: 'إعادة المحاولة',
+                icon: Icons.refresh_rounded,
+                kind: SdButtonKind.primary,
+                onPressed: onRetry,
               ),
-              icon: const Icon(Icons.refresh_rounded),
-              label: Text('إعادة المحاولة',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
-            ),
-          ],
-        ],
       ),
     );
   }
@@ -327,36 +265,11 @@ class SasEmptyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _ScrollSafeCenter(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 92,
-            height: 92,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.05),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon,
-                size: 46,
-                color: AppTheme.primaryColor.withValues(alpha: 0.55)),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.cairo(
-              fontSize: 14,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w600,
-              height: 1.5,
-            ),
-          ),
-          if (action != null) ...[
-            const SizedBox(height: 18),
-            action!,
-          ],
-        ],
+      child: SdEmptyState(
+        title: message,
+        icon: icon,
+        status: SdStatus.neutral,
+        action: action,
       ),
     );
   }
@@ -364,9 +277,6 @@ class SasEmptyView extends StatelessWidget {
 
 /// يوسّط محتوى الحالة عمودياً وأفقياً مع تمرير آمن يمنع أي تجاوز عمودي
 /// (`BOTTOM OVERFLOWED`) عندما يقلّ ارتفاع الحاوية عن ارتفاع المحتوى.
-///
-/// يستخدم `LayoutBuilder + ConstrainedBox(minHeight)` مع `IntrinsicHeight`
-/// ليبقى المحتوى موسّطاً عند وفرة الارتفاع، ويتحوّل لتمرير عند شحّه.
 class _ScrollSafeCenter extends StatelessWidget {
   final Widget child;
   const _ScrollSafeCenter({required this.child});
@@ -391,7 +301,7 @@ class _ScrollSafeCenter extends StatelessWidget {
   }
 }
 
-/// بطاقة إحصائية (رقم كبير + عنوان + أيقونة) بثيم الصدارة — تدرّج خفيف وظل ناعم.
+/// بطاقة إحصائية (رقم كبير + عنوان + أيقونة) بثيم الصدارة — بروز sd ثلاثي الأبعاد.
 class SasStatCard extends StatelessWidget {
   final String label;
   final String value;
@@ -409,67 +319,44 @@ class SasStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withValues(alpha: 0.10),
-            color.withValues(alpha: 0.03),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        border: Border.all(color: color.withValues(alpha: 0.25), width: 1.3),
-        boxShadow: SasUi.cardShadow(color),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: SdDepth.raised(glow: color.withValues(alpha: 0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 42.w,
-            height: 42.w,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color, color.withValues(alpha: 0.75)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(13),
               boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.30),
-                  blurRadius: 8,
-                  spreadRadius: -1,
-                  offset: const Offset(0, 3),
-                ),
+                BoxShadow(color: color.withValues(alpha: 0.28), offset: const Offset(0, 3)),
               ],
             ),
-            child: Icon(icon, color: Colors.white, size: 21.sp),
+            child: Icon(icon, color: color, size: 21),
           ),
-          SizedBox(width: 12.w),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 value,
-                style: GoogleFonts.cairo(
-                  fontSize: 19.sp,
+                style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 19,
                   fontWeight: FontWeight.w900,
                   color: color,
                   height: 1.1,
                 ),
               ),
-              SizedBox(height: 1.h),
-              Text(
-                label,
-                style: GoogleFonts.cairo(
-                  fontSize: 11.sp,
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+              const SizedBox(height: 1),
+              Text(label, style: SdText.caption),
             ],
           ),
         ],

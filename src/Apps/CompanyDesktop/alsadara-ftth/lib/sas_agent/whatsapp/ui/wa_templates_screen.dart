@@ -5,9 +5,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../../theme/app_theme.dart';
+import '../../../frontend/frontend.dart';
 import '../../widgets/sas_metrics.dart';
 import '../../widgets/sas_state_views.dart';
 import '../models/wa_template.dart';
@@ -15,7 +14,7 @@ import '../templates/default_templates.dart';
 import '../templates/template_store.dart';
 
 /// لون واتساب المعتمد في الوحدة (شارات/تمييزات خفيفة).
-const Color _kWaGreen = Color(0xFF25D366);
+const Color _kWaGreen = SdColors.whatsapp;
 
 class WaTemplatesScreen extends StatefulWidget {
   const WaTemplatesScreen({super.key});
@@ -136,7 +135,7 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
                         children: [
                           Text(
                             t.title,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w800,
                               color: const Color(0xFF1A1A2E),
@@ -145,12 +144,12 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
                           if (t.builtin)
                             const SasStatusBadge(
                                 label: 'مدمج',
-                                color: AppTheme.infoColor,
+                                color: SdColors.info,
                                 icon: Icons.verified_rounded),
                           if (modified)
                             const SasStatusBadge(
                                 label: 'معدّل',
-                                color: AppTheme.warningColor,
+                                color: SdColors.warning,
                                 icon: Icons.edit_rounded),
                         ],
                       ),
@@ -159,7 +158,7 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
                         t.body,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 11.5.sp,
                           color: Colors.grey[600],
                           height: 1.5,
@@ -183,9 +182,9 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
                       value: 'edit',
                       child: Row(children: [
                         Icon(Icons.edit_rounded,
-                            size: 18, color: AppTheme.primaryColor),
+                            size: 18, color: SdColors.primary),
                         SizedBox(width: 8.w),
-                        Text('تعديل', style: GoogleFonts.cairo()),
+                        Text('تعديل', style: TextStyle(fontFamily: 'Cairo', )),
                       ]),
                     ),
                     if (t.builtin && modified)
@@ -193,9 +192,9 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
                         value: 'reset',
                         child: Row(children: [
                           Icon(Icons.restart_alt_rounded,
-                              size: 18, color: AppTheme.warningColor),
+                              size: 18, color: SdColors.warning),
                           SizedBox(width: 8.w),
-                          Text('إعادة للأصل', style: GoogleFonts.cairo()),
+                          Text('إعادة للأصل', style: TextStyle(fontFamily: 'Cairo', )),
                         ]),
                       ),
                     if (!t.builtin)
@@ -203,11 +202,11 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
                         value: 'delete',
                         child: Row(children: [
                           Icon(Icons.delete_rounded,
-                              size: 18, color: AppTheme.errorColor),
+                              size: 18, color: SdColors.danger),
                           SizedBox(width: 8.w),
                           Text('حذف',
-                              style: GoogleFonts.cairo(
-                                  color: AppTheme.errorColor)),
+                              style: TextStyle(fontFamily: 'Cairo', 
+                                  color: SdColors.danger)),
                         ]),
                       ),
                   ],
@@ -297,7 +296,7 @@ class _TemplateEditorState extends State<_TemplateEditor> {
               onPressed: _save,
               icon: const Icon(Icons.check_rounded, color: Colors.white),
               label: Text('حفظ',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       color: Colors.white, fontWeight: FontWeight.w700)),
             ),
           ],
@@ -314,23 +313,23 @@ class _TemplateEditorState extends State<_TemplateEditor> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('العنوان',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 12.sp, fontWeight: FontWeight.w800)),
                   SizedBox(height: 8.h),
                   TextField(
                     controller: _title,
-                    style: GoogleFonts.cairo(fontSize: 13.sp),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13.sp),
                     decoration: const InputDecoration(isDense: true),
                   ),
                   SizedBox(height: 16.h),
                   Text('نصّ الرسالة',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 12.sp, fontWeight: FontWeight.w800)),
                   SizedBox(height: 8.h),
                   TextField(
                     controller: _body,
                     maxLines: 8,
-                    style: GoogleFonts.cairo(fontSize: 13.sp, height: 1.5),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13.sp, height: 1.5),
                     decoration: const InputDecoration(
                       alignLabelWithHint: true,
                     ),
@@ -346,7 +345,7 @@ class _TemplateEditorState extends State<_TemplateEditor> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('أدرج متغيّراً:',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 12.sp, fontWeight: FontWeight.w800)),
                   SizedBox(height: 10.h),
                   Wrap(
@@ -356,14 +355,14 @@ class _TemplateEditorState extends State<_TemplateEditor> {
                       for (final v in _vars)
                         ActionChip(
                           label: Text('${_varLabels[v]}  {$v}',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(fontFamily: 'Cairo', 
                                   fontSize: 11.5.sp,
                                   fontWeight: FontWeight.w700)),
                           backgroundColor:
-                              AppTheme.primaryColor.withValues(alpha: 0.06),
+                              SdColors.primary.withValues(alpha: 0.06),
                           side: BorderSide(
                               color:
-                                  AppTheme.primaryColor.withValues(alpha: 0.25)),
+                                  SdColors.primary.withValues(alpha: 0.25)),
                           onPressed: () => _insertVar(v),
                         ),
                     ],
@@ -371,7 +370,7 @@ class _TemplateEditorState extends State<_TemplateEditor> {
                   SizedBox(height: 12.h),
                   Text(
                     'المتغيّرات تُستبدل تلقائياً لكل مستلِم عند الإرسال. أي متغيّر بلا قيمة يُحذف سطره.',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 11.sp, color: Colors.grey[600], height: 1.5),
                   ),
                 ],
@@ -391,24 +390,5 @@ PreferredSizeWidget _waAppBar(
   required String title,
   List<Widget>? actions,
 }) {
-  return AppBar(
-    elevation: 0,
-    backgroundColor: AppTheme.primaryColor,
-    flexibleSpace: const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: AppTheme.blueGradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-    ),
-    iconTheme: const IconThemeData(color: Colors.white),
-    title: Text(
-      title,
-      style: GoogleFonts.cairo(
-          fontWeight: FontWeight.w800, fontSize: 17, color: Colors.white),
-    ),
-    actions: actions,
-  );
+  return SdAppBar(title: title, actions: actions);
 }

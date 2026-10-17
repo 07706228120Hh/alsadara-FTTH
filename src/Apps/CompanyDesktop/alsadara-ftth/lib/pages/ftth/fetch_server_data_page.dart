@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/ftth_data_service.dart';
 import '../../services/agents_auth_service.dart';
 import '../server_data_page.dart'; // للوصول لـ FtthServerDataService.dashboardPath
@@ -1133,7 +1134,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                         } else if (status >= 400) {
                           statusColor = Colors.red;
                         } else if (status == 0) {
-                          statusColor = Colors.grey;
+                          statusColor = SdColors.faint;
                         } else {
                           statusColor = Colors.orange;
                         }
@@ -1176,8 +1177,8 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                             break;
                           case 'system':
                             typeIcon = Icons.settings;
-                            methodColor = Colors.grey;
-                            bgColor = Colors.grey.shade100;
+                            methodColor = SdColors.faint;
+                            bgColor = SdColors.surfaceAlt;
                             break;
                           default: // fetch, xhr
                             typeIcon = type == 'xhr' ? Icons.swap_horiz : Icons.cloud_download;
@@ -1186,7 +1187,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                               case 'POST': methodColor = Colors.green.shade700; break;
                               case 'PUT': methodColor = Colors.orange; break;
                               case 'DELETE': methodColor = Colors.red; break;
-                              default: methodColor = Colors.grey;
+                              default: methodColor = SdColors.faint;
                             }
                         }
 
@@ -1274,7 +1275,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                                       '${time}ms',
                                       style: TextStyle(
                                         fontSize: 9,
-                                        color: time > 1000 ? Colors.red : Colors.grey.shade600,
+                                        color: time > 1000 ? Colors.red : SdColors.muted,
                                         fontWeight: time > 1000 ? FontWeight.bold : FontWeight.normal,
                                       ),
                                     ),
@@ -1354,7 +1355,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                 )),
             const SizedBox(width: 8),
             Text('${time}ms',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                style: TextStyle(fontSize: 12, color: SdColors.muted)),
             const Spacer(),
             IconButton(
               icon: const Icon(Icons.copy, size: 18),
@@ -1383,7 +1384,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: SdColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: SelectableText(
@@ -1393,7 +1394,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(timestamp,
-                    style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                    style: TextStyle(fontSize: 10, color: SdColors.faint)),
                 const SizedBox(height: 8),
                 const TabBar(
                   labelColor: Colors.deepPurple,
@@ -2591,10 +2592,12 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
       appBar: AppBar(
         title: const Text('جلب بيانات الموقع'),
-        backgroundColor: Colors.teal,
+        backgroundColor: SdColors.primary,
         foregroundColor: Colors.white,
         actions: [
           // 📊 زر جلب Superset مباشرة (يفتح الداشبورد في WebView)
@@ -2765,15 +2768,15 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
           // شريط العنوان
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            color: Colors.grey.shade100,
+            color: SdColors.surfaceAlt,
             child: Row(
               children: [
-                const Icon(Icons.link, size: 14, color: Colors.grey),
+                const Icon(Icons.link, size: 14, color: SdColors.faint),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     _currentUrl.isEmpty ? _loginUrl : _currentUrl,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    style: const TextStyle(fontSize: 11, color: SdColors.faint),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -2810,7 +2813,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
             Container(
               height: 80,
               padding: const EdgeInsets.all(8),
-              color: Colors.grey.shade200,
+              color: SdColors.divider,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2850,7 +2853,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                                     Text('$rowCount صف',
                                         style: TextStyle(
                                             fontSize: 9,
-                                            color: Colors.grey.shade600)),
+                                            color: SdColors.muted)),
                                   ],
                                 ),
                               ],
@@ -2869,9 +2872,10 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
       // زر التعليمات
       floatingActionButton: FloatingActionButton(
         onPressed: _showInstructions,
-        backgroundColor: Colors.teal,
+        backgroundColor: SdColors.primary,
         mini: true,
         child: const Icon(Icons.help_outline, color: Colors.white),
+      ),
       ),
     );
   }
@@ -2932,7 +2936,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                 '💡 إذا لم تظهر بيانات، جرب الانتقال لصفحة أخرى ثم العودة',
                 style: TextStyle(
                     fontStyle: FontStyle.italic,
-                    color: Colors.grey,
+                    color: SdColors.faint,
                     fontSize: 12),
               ),
             ],

@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 
 class InventoryReportsPage extends StatefulWidget {
@@ -97,26 +98,32 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
-          title: const Text('تقارير المخزون'),
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'تقييم المخزون'),
-              Tab(text: 'عُهد الفنيين'),
-            ],
-          ),
-        ),
-        body: TabBarView(
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'تقارير المخزون',
+        bottom: SdTabBar(
           controller: _tabController,
-          children: [
-            _buildValuationTab(),
-            _buildHoldingsTab(),
+          tabs: const [
+            Tab(text: 'تقييم المخزون'),
+            Tab(text: 'عُهد الفنيين'),
           ],
         ),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: SdSpace.sm),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildValuationTab(),
+                _buildHoldingsTab(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -125,82 +132,137 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
 
   Widget _buildValuationTab() {
     if (_valuationLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (_valuationError != null) {
       return _errorWidget(_valuationError!, _loadValuation);
     }
     if (_valuationData.isEmpty) {
       return const Center(
-        child: Text('لا توجد بيانات',
-            style: TextStyle(fontSize: 16, color: Colors.grey)),
+        child: SdEmptyState(title: 'لا توجد بيانات', icon: Icons.assessment_outlined),
       );
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          color: Colors.blue.shade50,
-          child: Row(
+        _buildTotalBanner(),
+        const SizedBox(height: SdSpace.sm),
+        Expanded(child: _buildValuationListOrTable()),
+      ],
+    );
+  }
+
+  Widget _buildTotalBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(SdSpace.md),
+      decoration: BoxDecoration(
+        color: SdColors.infoTint,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(edge: SdColors.infoTintEdge, depth: SdDepth.small),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.assessment, color: SdColors.info),
+          const SizedBox(width: 8),
+          const Text('إجمالي قيمة المخزون: ',
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 14,
+                  color: SdColors.infoEdge,
+                  fontWeight: FontWeight.w700)),
+          Expanded(
+            child: Text(
+              fmtN(_totalValue),
+              style: const TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 20,
+                  color: SdColors.infoEdge,
+                  fontWeight: FontWeight.w900),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValuationListOrTable() {
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: _valuationData.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _valuationCard(_valuationData[i]),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Table(
+            defaultColumnWidth: const IntrinsicColumnWidth(),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
             children: [
-              Icon(Icons.assessment, color: Colors.blue.shade700),
-              const SizedBox(width: 8),
-              Text(
-                'إجمالي قيمة المخزون: ',
-                style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.blue.shade700,
-                    fontWeight: FontWeight.w600),
+              const TableRow(
+                decoration: BoxDecoration(color: SdColors.primary),
+                children: [
+                  _HeaderCell('المادة'),
+                  _HeaderCell('الكمية الكلية'),
+                  _HeaderCell('متوسط التكلفة'),
+                  _HeaderCell('القيمة الإجمالية'),
+                ],
               ),
-              Text(
-                fmtN(_totalValue),
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.blue.shade900,
-                    fontWeight: FontWeight.bold),
-              ),
+              for (var i = 0; i < _valuationData.length; i++)
+                _valuationRow(i, _valuationData[i]),
             ],
           ),
         ),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SingleChildScrollView(
-              child: DataTable(
-                headingRowColor:
-                    WidgetStateProperty.all(Colors.grey.shade100),
-                columnSpacing: 24,
-                columns: const [
-                  DataColumn(label: Text('المادة')),
-                  DataColumn(label: Text('الكمية الكلية'), numeric: true),
-                  DataColumn(
-                      label: Text('متوسط التكلفة'), numeric: true),
-                  DataColumn(
-                      label: Text('القيمة الإجمالية'), numeric: true),
-                ],
-                rows: _valuationData.map((item) {
-                  final name = item['itemName'] as String? ?? '-';
-                  final qty =
-                      (item['totalQuantity'] as num?)?.toInt() ?? 0;
-                  final avgCost =
-                      (item['averageCost'] as num?)?.toDouble() ?? 0.0;
-                  final totalVal =
-                      (item['totalValue'] as num?)?.toDouble() ?? 0.0;
-                  return DataRow(cells: [
-                    DataCell(Text(name)),
-                    DataCell(Text('$qty')),
-                    DataCell(Text(fmtN(avgCost))),
-                    DataCell(Text(fmtN(totalVal),
-                        style: const TextStyle(fontWeight: FontWeight.w600))),
-                  ]);
-                }).toList(),
-              ),
-            ),
-          ),
-        ),
+      ),
+    );
+  }
+
+  TableRow _valuationRow(int i, Map<String, dynamic> item) {
+    final name = item['itemName'] as String? ?? '-';
+    final qty = (item['totalQuantity'] as num?)?.toInt() ?? 0;
+    final avgCost = (item['averageCost'] as num?)?.toDouble() ?? 0.0;
+    final totalVal = (item['totalValue'] as num?)?.toDouble() ?? 0.0;
+    return TableRow(
+      decoration: BoxDecoration(
+        color: i.isEven ? SdColors.surface : SdColors.surfaceAlt,
+      ),
+      children: [
+        _DataCell(name),
+        _DataCell('$qty'),
+        _DataCell(fmtN(avgCost)),
+        _DataCell(fmtN(totalVal), bold: true),
       ],
+    );
+  }
+
+  Widget _valuationCard(Map<String, dynamic> item) {
+    final name = item['itemName'] as String? ?? '-';
+    final qty = (item['totalQuantity'] as num?)?.toInt() ?? 0;
+    final avgCost = (item['averageCost'] as num?)?.toDouble() ?? 0.0;
+    final totalVal = (item['totalValue'] as num?)?.toDouble() ?? 0.0;
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(name, style: SdText.label),
+          const SizedBox(height: 4),
+          SdInfoRow(label: 'الكمية الكلية', value: '$qty'),
+          SdInfoRow(label: 'متوسط التكلفة', value: fmtN(avgCost)),
+          SdInfoRow(label: 'القيمة الإجمالية', value: fmtN(totalVal)),
+        ],
+      ),
     );
   }
 
@@ -208,21 +270,21 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
 
   Widget _buildHoldingsTab() {
     if (_holdingsLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (_holdingsError != null) {
       return _errorWidget(_holdingsError!, _loadHoldings);
     }
     if (_holdingsData.isEmpty) {
       return const Center(
-        child: Text('لا توجد عُهد حالية',
-            style: TextStyle(fontSize: 16, color: Colors.grey)),
+        child: SdEmptyState(title: 'لا توجد عُهد حالية', icon: Icons.engineering_outlined),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
+    return ListView.separated(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
       itemCount: _holdingsData.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final techData = _holdingsData[index];
         final techName =
@@ -235,119 +297,199 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
               return sum + (((m['Quantity'] ?? m['quantity']) as num?)?.toInt() ?? 0);
             });
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ExpansionTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.teal.shade100,
-              child: Icon(Icons.engineering, color: Colors.teal.shade700),
-            ),
-            title: Text(techName,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('$totalHeld قطعة في ${items.length} مادة'),
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Table(
-                  border: TableBorder.all(color: Colors.grey.shade300),
-                  columnWidths: const {
-                    0: FlexColumnWidth(3),
-                    1: FlexColumnWidth(1.2),
-                    2: FlexColumnWidth(1.2),
-                    3: FlexColumnWidth(1.2),
-                  },
-                  children: [
-                    TableRow(
-                      decoration:
-                          BoxDecoration(color: Colors.grey.shade100),
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Text('المادة',
-                              style:
-                                  TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Text('المصروف',
-                              style:
-                                  TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Text('المُرجع',
-                              style:
-                                  TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Text('المتبقي',
-                              style:
-                                  TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                    ...items.map((item) {
-                      final m = item as Map<String, dynamic>;
-                      final qty =
-                          ((m['Quantity'] ?? m['quantity']) as num?)?.toInt() ?? 0;
-                      final returned =
-                          ((m['ReturnedQuantity'] ?? m['returnedQuantity']) as num?)?.toInt() ??
-                              0;
-                      final remaining = qty - returned;
-                      return TableRow(children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Text(
-                              (m['ItemName'] ?? m['itemName']) as String? ?? '-'),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Text('$qty'),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Text('$returned'),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Text('$remaining',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: remaining > 0
-                                    ? Colors.orange.shade800
-                                    : Colors.green.shade700,
-                              )),
-                        ),
-                      ]);
-                    }),
-                  ],
+        return Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: SdColors.accentTint,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [BoxShadow(color: SdColors.accentTintEdge, offset: Offset(0, 3))],
                 ),
+                child: const Icon(Icons.engineering, color: SdColors.accent, size: 20),
               ),
-              const SizedBox(height: 8),
-            ],
+              title: Text(techName, style: SdText.titleSm),
+              subtitle: Text('$totalHeld قطعة في ${items.length} مادة', style: SdText.bodySm),
+              childrenPadding: const EdgeInsets.fromLTRB(SdSpace.md, 0, SdSpace.md, SdSpace.sm),
+              children: [
+                if (context.sd.isPhone)
+                  for (final item in items) _holdingItemCardPhone(item as Map<String, dynamic>)
+                else
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: _holdingsTable(items),
+                  ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _errorWidget(String error, VoidCallback onRetry) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+  Widget _holdingsTable(List<dynamic> items) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Table(
+        defaultColumnWidth: const IntrinsicColumnWidth(),
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
         children: [
-          Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-          const SizedBox(height: 12),
-          Text(error, style: TextStyle(color: Colors.red.shade700)),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
-            label: const Text('إعادة المحاولة'),
+          const TableRow(
+            decoration: BoxDecoration(color: SdColors.primary),
+            children: [
+              _HeaderCell('المادة'),
+              _HeaderCell('المصروف'),
+              _HeaderCell('المُرجع'),
+              _HeaderCell('المتبقي'),
+            ],
+          ),
+          for (var i = 0; i < items.length; i++)
+            _holdingRow(i, items[i] as Map<String, dynamic>),
+        ],
+      ),
+    );
+  }
+
+  TableRow _holdingRow(int i, Map<String, dynamic> m) {
+    final qty = ((m['Quantity'] ?? m['quantity']) as num?)?.toInt() ?? 0;
+    final returned =
+        ((m['ReturnedQuantity'] ?? m['returnedQuantity']) as num?)?.toInt() ?? 0;
+    final remaining = qty - returned;
+    return TableRow(
+      decoration: BoxDecoration(
+        color: i.isEven ? SdColors.surface : SdColors.surfaceAlt,
+      ),
+      children: [
+        _DataCell((m['ItemName'] ?? m['itemName']) as String? ?? '-'),
+        _DataCell('$qty'),
+        _DataCell('$returned'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            '$remaining',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: remaining > 0 ? SdColors.warningText : SdColors.success,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _holdingItemCardPhone(Map<String, dynamic> m) {
+    final qty = ((m['Quantity'] ?? m['quantity']) as num?)?.toInt() ?? 0;
+    final returned =
+        ((m['ReturnedQuantity'] ?? m['returnedQuantity']) as num?)?.toInt() ?? 0;
+    final remaining = qty - returned;
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(SdSpace.sm),
+      decoration: BoxDecoration(
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        border: Border.all(color: SdColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text((m['ItemName'] ?? m['itemName']) as String? ?? '-', style: SdText.label),
+          const SizedBox(height: 4),
+          SdInfoRow(label: 'المصروف', value: '$qty'),
+          SdInfoRow(label: 'المُرجع', value: '$returned'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Text('المتبقي', style: SdText.bodySm),
+                const Spacer(),
+                Text('$remaining',
+                    style: TextStyle(
+                      fontFamily: SdText.family,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: remaining > 0 ? SdColors.warningText : SdColors.success,
+                    )),
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _errorWidget(String error, VoidCallback onRetry) {
+    return Center(
+      child: SdEmptyState(
+        title: 'تعذّر تحميل التقرير',
+        message: error,
+        icon: Icons.error_outline_rounded,
+        status: SdStatus.danger,
+        action: SdButton(
+          label: 'إعادة المحاولة',
+          icon: Icons.refresh_rounded,
+          kind: SdButtonKind.secondary,
+          onPressed: onRetry,
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderCell extends StatelessWidget {
+  final String text;
+  const _HeaderCell(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontWeight: FontWeight.w800,
+            fontSize: 12.5,
+            color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _DataCell extends StatelessWidget {
+  final String text;
+  final bool bold;
+  const _DataCell(this.text, {this.bold = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+            fontFamily: SdText.family,
+            fontSize: 12.5,
+            fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
+            color: SdColors.ink),
       ),
     );
   }

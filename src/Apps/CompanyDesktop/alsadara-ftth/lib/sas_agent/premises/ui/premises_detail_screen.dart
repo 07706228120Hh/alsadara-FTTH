@@ -7,13 +7,12 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../permissions/permission_manager.dart';
-import '../../../theme/app_theme.dart';
+import '../../../frontend/frontend.dart';
 import '../../services/sas_agent_api_service.dart';
 import '../../widgets/sas_state_views.dart';
 import '../models/premises.dart';
@@ -85,8 +84,8 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor,
+        content: Text(m, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+        backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -106,23 +105,23 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('حذف العقار؟',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           content: Text(
             'سيُحذف العقار وصورته ويُفكّ ربط اشتراكاته (لا تُحذف الاشتراكات).',
-            style: GoogleFonts.cairo(),
+            style: TextStyle(fontFamily: 'Cairo', ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text('إلغاء',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
               style:
-                  FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+                  FilledButton.styleFrom(backgroundColor: SdColors.danger),
               child: Text('حذف',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ),
           ],
         ),
@@ -146,14 +145,14 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
           child: Wrap(children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_rounded,
-                  color: AppTheme.primaryColor),
-              title: Text('كاميرا', style: GoogleFonts.cairo()),
+                  color: SdColors.primary),
+              title: Text('كاميرا', style: TextStyle(fontFamily: 'Cairo', )),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_rounded,
-                  color: AppTheme.primaryColor),
-              title: Text('من الملفات', style: GoogleFonts.cairo()),
+                  color: SdColors.primary),
+              title: Text('من الملفات', style: TextStyle(fontFamily: 'Cairo', )),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
           ]),
@@ -236,35 +235,22 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
   }
 
   PreferredSizeWidget _appBar() {
-    return AppBar(
-      elevation: 0,
-      backgroundColor: AppTheme.primaryColor,
-      flexibleSpace: const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: AppTheme.blueGradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-      ),
-      title: Text('تفاصيل العقار',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 17)),
+    return SdAppBar(
+      title: 'تفاصيل العقار',
       actions: [
         if (_canManage) ...[
-          IconButton(
-            tooltip: 'تعديل',
+          SdAppBarAction(
+            icon: Icons.edit_rounded,
+            label: 'تعديل',
             onPressed: _edit,
-            icon: const Icon(Icons.edit_rounded, color: Colors.white),
           ),
-          IconButton(
-            tooltip: 'حذف',
+          SdAppBarAction(
+            icon: Icons.delete_outline_rounded,
+            label: 'حذف',
             onPressed: _delete,
-            icon:
-                const Icon(Icons.delete_outline_rounded, color: Colors.white),
+            danger: true,
           ),
         ],
-        const SizedBox(width: 4),
       ],
     );
   }
@@ -295,7 +281,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
       child: Column(
         children: [
           Text('العنوان الوطني',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontWeight: FontWeight.w800,
                   fontSize: 14,
                   color: Colors.grey[700])),
@@ -307,7 +293,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    color: SdColors.primary.withValues(alpha: 0.15),
                     width: 1.5),
                 boxShadow: SasUi.cardShadow(),
               ),
@@ -317,7 +303,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                 version: QrVersions.auto,
                 eyeStyle: const QrEyeStyle(
                     eyeShape: QrEyeShape.square,
-                    color: AppTheme.primaryColor),
+                    color: SdColors.primary),
                 dataModuleStyle: const QrDataModuleStyle(
                     dataModuleShape: QrDataModuleShape.square,
                     color: Color(0xFF1A1A2E)),
@@ -326,7 +312,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
           const SizedBox(height: 14),
           SelectableText(
             p.npnDisplay.isEmpty ? 'عقار #${p.id}' : p.npnDisplay,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontWeight: FontWeight.w900,
                 fontSize: 20,
                 letterSpacing: 1,
@@ -336,20 +322,20 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text('IQ-Pin: ${p.iqpinDisplay}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       color: Colors.grey[700], fontWeight: FontWeight.w700)),
             ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: () => printPremisesLabel(p),
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
+              foregroundColor: SdColors.primary,
               side: BorderSide(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.4)),
+                  color: SdColors.primary.withValues(alpha: 0.4)),
             ),
             icon: const Icon(Icons.print_rounded),
             label: Text('طباعة اللصاقة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -371,7 +357,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: AppTheme.blueGradient),
+                    gradient: LinearGradient(colors: SdColors.blueGradient),
                   ),
                   child: Icon(Icons.home_outlined,
                       color: Colors.white, size: 18),
@@ -380,7 +366,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text('صورة الدار',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontWeight: FontWeight.w800,
                         fontSize: 15,
                         color: const Color(0xFF1A1A2E))),
@@ -390,7 +376,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                   onPressed: _pickPhoto,
                   icon: const Icon(Icons.add_a_photo_rounded, size: 18),
                   label: Text(p.hasPhoto ? 'تغيير' : 'إضافة',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                 ),
             ],
           ),
@@ -438,7 +424,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                 size: 40, color: Colors.grey.withValues(alpha: 0.6)),
             const SizedBox(height: 6),
             Text('لا توجد صورة',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     color: Colors.grey[500], fontWeight: FontWeight.w600)),
           ],
         ),
@@ -461,18 +447,18 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
               SasStatusBadge(
                   label: propertyLabel(p.propertyType),
                   color: commercial
-                      ? AppTheme.warningColor
-                      : AppTheme.primaryColor,
+                      ? SdColors.warning
+                      : SdColors.primary,
                   icon: commercial
                       ? Icons.storefront_rounded
                       : Icons.home_rounded),
               SasStatusBadge(
                   label: ownershipLabel(p.ownership),
-                  color: AppTheme.successColor,
+                  color: SdColors.success,
                   icon: Icons.vpn_key_rounded),
               SasStatusBadge(
                   label: '${p.subscriberCount} اشتراك',
-                  color: AppTheme.secondaryColor,
+                  color: SdColors.primaryLight,
                   icon: Icons.people_rounded),
             ],
           ),
@@ -489,14 +475,14 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
             OutlinedButton.icon(
               onPressed: _openMap,
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.successColor,
+                foregroundColor: SdColors.success,
                 side:
-                    BorderSide(color: AppTheme.successColor.withValues(alpha: 0.4)),
+                    BorderSide(color: SdColors.success.withValues(alpha: 0.4)),
               ),
               icon: const Icon(Icons.map_rounded),
               label: Text(
                   'الموقع: ${p.lat!.toStringAsFixed(5)}, ${p.lon!.toStringAsFixed(5)}',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
           ],
         ],
@@ -521,7 +507,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                     icon: const Icon(Icons.add_link_rounded, size: 18),
                     label: Text('ربط اشتراك',
                         style:
-                            GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                            TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                   )
                 : null,
           ),
@@ -531,7 +517,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Text(
                 'لا اشتراكات مرتبطة بعد — اربط اشتراكاً واحداً أو أكثر بهذا العقار.',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     color: Colors.grey[600], fontWeight: FontWeight.w600),
               ),
             )
@@ -553,7 +539,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
           height: 8,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: s.online ? AppTheme.successColor : Colors.grey,
+            color: s.online ? SdColors.success : Colors.grey,
           ),
         ),
         const SizedBox(width: 10),
@@ -563,7 +549,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(s.username,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w800,
                       color: const Color(0xFF1A1A2E))),
               if ([s.name, s.profile].any((x) => x.trim().isNotEmpty))
@@ -573,7 +559,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                       .join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12, color: Colors.grey[600]),
                 ),
             ],
@@ -584,7 +570,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
             tooltip: 'فكّ الربط',
             onPressed: () => _unlink(s),
             icon: const Icon(Icons.link_off_rounded,
-                size: 20, color: AppTheme.errorColor),
+                size: 20, color: SdColors.danger),
           ),
       ],
     );
@@ -600,12 +586,12 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
           SizedBox(
             width: 110,
             child: Text(k,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     color: Colors.grey[600], fontWeight: FontWeight.w600)),
           ),
           Expanded(
             child: Text(v,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF1A1A2E))),
           ),
@@ -674,16 +660,16 @@ class _LinkSheetState extends State<_LinkSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content:
-                  Text('تمّ الربط', style: GoogleFonts.cairo()),
-              backgroundColor: AppTheme.successColor),
+                  Text('تمّ الربط', style: TextStyle(fontFamily: 'Cairo', )),
+              backgroundColor: SdColors.success),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('تعذّر الربط: $e', style: GoogleFonts.cairo()),
-              backgroundColor: AppTheme.errorColor),
+              content: Text('تعذّر الربط: $e', style: TextStyle(fontFamily: 'Cairo', )),
+              backgroundColor: SdColors.danger),
         );
       }
     }
@@ -713,7 +699,7 @@ class _LinkSheetState extends State<_LinkSheet> {
               children: [
                 Expanded(
                   child: Text('ربط اشتراك بالعقار',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w800, fontSize: 16)),
                 ),
                 IconButton(
@@ -728,15 +714,15 @@ class _LinkSheetState extends State<_LinkSheet> {
             child: TextField(
               controller: _q,
               onSubmitted: (_) => _search(),
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
               decoration: InputDecoration(
                 hintText: 'ابحث باسم المستخدم / الاسم / الهاتف',
-                hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
+                hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[500]),
                 prefixIcon: const Icon(Icons.search_rounded,
-                    color: AppTheme.primaryColor),
+                    color: SdColors.primary),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.arrow_back_rounded,
-                      color: AppTheme.primaryColor),
+                      color: SdColors.primary),
                   onPressed: _search,
                 ),
                 isDense: true,
@@ -782,7 +768,7 @@ class _LinkSheetState extends State<_LinkSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('${r['username'] ?? _refOf(r)}',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF1A1A2E))),
                 if ([r['name'], r['phone']]
@@ -791,7 +777,7 @@ class _LinkSheetState extends State<_LinkSheet> {
                     [r['name'], r['phone']]
                         .where((x) => (x ?? '').toString().trim().isNotEmpty)
                         .join(' · '),
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12, color: Colors.grey[600]),
                   ),
               ],
@@ -801,19 +787,19 @@ class _LinkSheetState extends State<_LinkSheet> {
           if (linkedHere)
             const SasStatusBadge(
                 label: 'مربوط هنا',
-                color: AppTheme.successColor,
+                color: SdColors.success,
                 icon: Icons.check_rounded)
           else
             FilledButton(
               onPressed: () => _link(r),
               style: FilledButton.styleFrom(
                 backgroundColor: linkedElse
-                    ? AppTheme.warningColor
-                    : AppTheme.primaryColor,
+                    ? SdColors.warning
+                    : SdColors.primary,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
               child: Text(linkedElse ? 'نقل هنا' : 'ربط',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ),
         ],
       ),

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../permissions/permission_manager.dart';
-import '../../theme/app_theme.dart';
 import '../models/sas_ticket.dart';
 import '../services/sas_agent_api_service.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_ticket_detail_page.dart';
 
@@ -127,8 +125,8 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo()),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: const TextStyle(fontFamily: SdText.family)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
     ));
   }
 
@@ -185,7 +183,7 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
 
   Widget _statsRow() {
     return Padding(
-      padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 4.h),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -193,35 +191,35 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
             SasStatCard(
               label: 'الإجمالي',
               value: '${_stats.total}',
-              color: AppTheme.primaryColor,
+              color: SdColors.primary,
               icon: Icons.confirmation_number_rounded,
             ),
-            SizedBox(width: 10.w),
+            const SizedBox(width: 10),
             SasStatCard(
               label: 'مفتوحة',
               value: '${_stats.open}',
-              color: const Color(0xFF3949AB),
+              color: SdColors.info,
               icon: Icons.mark_email_unread_rounded,
             ),
-            SizedBox(width: 10.w),
+            const SizedBox(width: 10),
             SasStatCard(
               label: 'قيد المعالجة',
               value: '${_stats.inProgress}',
-              color: AppTheme.warningColor,
+              color: SdColors.warning,
               icon: Icons.autorenew_rounded,
             ),
-            SizedBox(width: 10.w),
+            const SizedBox(width: 10),
             SasStatCard(
               label: 'محلولة',
               value: '${_stats.resolved}',
-              color: AppTheme.successColor,
+              color: SdColors.success,
               icon: Icons.check_circle_rounded,
             ),
-            SizedBox(width: 10.w),
+            const SizedBox(width: 10),
             SasStatCard(
               label: 'مغلقة',
               value: '${_stats.closed}',
-              color: Colors.blueGrey,
+              color: SdGroup.neutral.tone.base,
               icon: Icons.lock_rounded,
             ),
           ],
@@ -232,21 +230,25 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
 
   Widget _controls() {
     return Container(
-      margin: EdgeInsets.fromLTRB(14.w, 8.h, 14.w, 4.h),
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-      decoration: SasUi.card(),
+      margin: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: SdDepth.raised(),
+      ),
       child: Column(
         children: [
           Row(
             children: [
               Expanded(child: _searchField()),
-              SizedBox(width: 10.w),
+              const SizedBox(width: 10),
               _newTicketButton(),
             ],
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: 10),
           _statusChips(),
-          SizedBox(height: 8.h),
+          const SizedBox(height: 8),
           _categoryChips(),
         ],
       ),
@@ -258,26 +260,30 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
       controller: _searchCtl,
       textInputAction: TextInputAction.search,
       onSubmitted: _applySearch,
-      style: GoogleFonts.cairo(fontSize: 13.sp),
+      style: const TextStyle(
+          fontFamily: SdText.family, fontSize: 13, color: SdColors.ink),
       decoration: InputDecoration(
         isDense: true,
         hintText: 'بحث بالموضوع أو المشترك…',
-        hintStyle: GoogleFonts.cairo(fontSize: 12.5.sp, color: Colors.grey[500]),
-        prefixIcon: Icon(Icons.search_rounded, size: 20.sp),
+        hintStyle: const TextStyle(
+            fontFamily: SdText.family, fontSize: 12.5, color: SdColors.faint),
+        prefixIcon: const Icon(Icons.search_rounded,
+            size: 20, color: SdColors.primary),
         suffixIcon: _search.isEmpty
             ? null
             : IconButton(
-                icon: Icon(Icons.close_rounded, size: 18.sp),
+                icon: const Icon(Icons.close_rounded, size: 18),
                 onPressed: () {
                   _searchCtl.clear();
                   _applySearch('');
                 },
               ),
         filled: true,
-        fillColor: SasUi.pageBg,
-        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+        fillColor: SdColors.ground,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+          borderRadius: BorderRadius.circular(SdRadius.sm),
           borderSide: BorderSide.none,
         ),
       ),
@@ -285,97 +291,35 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
   }
 
   Widget _newTicketButton() {
-    return FilledButton.icon(
+    return SdButton(
+      label: _canManage ? 'تذكرة جديدة' : 'لا صلاحية',
+      icon: Icons.add_rounded,
+      height: 46,
       onPressed: _canManage ? _newTicket : null,
-      style: FilledButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor,
-        disabledBackgroundColor: Colors.grey.withValues(alpha: 0.30),
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
-      ),
-      icon: Icon(Icons.add_rounded, size: 18.sp),
-      label: Text(_canManage ? 'تذكرة جديدة' : 'لا صلاحية',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 12.5.sp)),
     );
   }
 
   Widget _statusChips() {
-    return _chipRow<String?>(
-      options: {
-        null: 'الكل',
-        for (final e in sasTicketStatuses.entries) e.key: e.value,
-      },
-      value: _status,
-      onChanged: _applyStatus,
+    return SdFilterChips<String?>(
+      options: [
+        const SdFilterOption<String?>(null, 'الكل'),
+        for (final e in sasTicketStatuses.entries)
+          SdFilterOption<String?>(e.key, e.value),
+      ],
+      selected: _status,
+      onSelected: _applyStatus,
     );
   }
 
   Widget _categoryChips() {
-    return _chipRow<String?>(
-      options: {
-        null: 'كل التصنيفات',
-        for (final e in sasTicketCategories.entries) e.key: e.value,
-      },
-      value: _category,
-      onChanged: _applyCategory,
-    );
-  }
-
-  Widget _chipRow<T>({
-    required Map<T, String> options,
-    required T value,
-    required ValueChanged<T> onChanged,
-  }) {
-    return SizedBox(
-      height: 34.h,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          for (final e in options.entries) ...[
-            _filterChip(
-              label: e.value,
-              selected: e.key == value,
-              onTap: () => onChanged(e.key),
-            ),
-            SizedBox(width: 6.w),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _filterChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(SasUi.radiusPill.r),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected
-              ? AppTheme.primaryColor
-              : AppTheme.primaryColor.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(SasUi.radiusPill.r),
-          border: Border.all(
-            color: selected
-                ? AppTheme.primaryColor
-                : AppTheme.primaryColor.withValues(alpha: 0.18),
-          ),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.cairo(
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : AppTheme.primaryColor,
-          ),
-        ),
-      ),
+    return SdFilterChips<String?>(
+      options: [
+        const SdFilterOption<String?>(null, 'كل التصنيفات'),
+        for (final e in sasTicketCategories.entries)
+          SdFilterOption<String?>(e.key, e.value),
+      ],
+      selected: _category,
+      onSelected: _applyCategory,
     );
   }
 
@@ -385,17 +329,14 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
     }
     if (_error != null) return SasErrorView(message: _error!, onRetry: _load);
     if (_rows.isEmpty) {
-      return SasEmptyView(
-        message: 'لا تذاكر تطابق التصفية الحالية',
+      return SdEmptyState(
+        title: 'لا تذاكر تطابق التصفية الحالية',
         icon: Icons.confirmation_number_outlined,
         action: _canManage
-            ? FilledButton.icon(
+            ? SdButton(
+                label: 'تذكرة جديدة',
+                icon: Icons.add_rounded,
                 onPressed: _newTicket,
-                style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor),
-                icon: const Icon(Icons.add_rounded),
-                label: Text('تذكرة جديدة',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
               )
             : null,
       );
@@ -412,9 +353,9 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
           return false;
         },
         child: ListView.separated(
-          padding: EdgeInsets.fromLTRB(14.w, 6.h, 14.w, 16.h),
+          padding: const EdgeInsets.fromLTRB(14, 6, 14, 16),
           itemCount: _rows.length + (_hasMore ? 1 : 0),
-          separatorBuilder: (_, __) => SizedBox(height: 8.h),
+          separatorBuilder: (_, __) => const SizedBox(height: SdSpace.xs),
           itemBuilder: (_, i) {
             if (i >= _rows.length) return _pagingFooter();
             return _ticketCard(_rows[i]);
@@ -426,90 +367,76 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
 
   Widget _pagingFooter() {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 14.h),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       child: Center(
         child: _paging
-            ? SizedBox(
-                width: 22.w,
-                height: 22.w,
-                child: const CircularProgressIndicator(strokeWidth: 2.4),
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2.4, color: SdColors.primary),
               )
             : Text('عرض ${_rows.length} من $_total',
-                style: GoogleFonts.cairo(
-                    fontSize: 11.5.sp, color: Colors.grey[500])),
+                style: SdText.caption.copyWith(color: SdColors.faint)),
       ),
     );
   }
 
   Widget _ticketCard(SasTicket t) {
-    return InkWell(
+    return SdRaised(
       onTap: () => _openTicket(t),
-      borderRadius: BorderRadius.circular(SasUi.radius.r),
-      child: Container(
-        padding: EdgeInsets.all(13.w),
-        decoration: SasUi.card(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    t.subject.isEmpty ? '(بلا موضوع)' : t.subject,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF1A1A2E)),
-                  ),
+      radius: SdRadius.lg,
+      padding: const EdgeInsets.all(13),
+      semanticLabel: t.subject.isEmpty ? '(بلا موضوع)' : t.subject,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  t.subject.isEmpty ? '(بلا موضوع)' : t.subject,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: SdText.label,
                 ),
-                SizedBox(width: 8.w),
-                Icon(Icons.chevron_left_rounded,
-                    size: 20.sp, color: Colors.grey[400]),
-              ],
-            ),
-            if (t.body.isNotEmpty) ...[
-              SizedBox(height: 4.h),
-              Text(
-                t.body,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
-                    fontSize: 12.sp, color: Colors.grey[600], height: 1.4),
               ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_left_rounded,
+                  size: 20, color: SdColors.faint),
             ],
-            SizedBox(height: 10.h),
-            Wrap(
-              spacing: 6.w,
-              runSpacing: 6.h,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SasStatusBadge(
-                  label: sasStatusAr(t.status),
-                  color: _statusColor(t.status),
-                  icon: _statusIcon(t.status),
-                ),
-                SasStatusBadge(
-                  label: sasPriorityAr(t.priority),
-                  color: _priorityColor(t.priority),
-                  icon: Icons.flag_rounded,
-                ),
-                SasStatusBadge(
-                  label: sasCategoryAr(t.category),
-                  color: Colors.blueGrey,
-                  icon: Icons.label_rounded,
-                ),
-                if (t.repliesCount > 0)
-                  _metaChip(Icons.forum_rounded, '${t.repliesCount}'),
-                if (t.subscriberRef.isNotEmpty)
-                  _metaChip(Icons.person_rounded, t.subscriberRef),
-                if (t.updatedAt != null)
-                  _metaChip(Icons.schedule_rounded, _fmtShort(t.updatedAt!)),
-              ],
+          ),
+          if (t.body.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              t.body,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: SdText.bodySm,
             ),
           ],
-        ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SdStatusChip(sasStatusAr(t.status),
+                  status: _statusStatus(t.status), icon: _statusIcon(t.status)),
+              SdStatusChip(sasPriorityAr(t.priority),
+                  status: _priorityStatus(t.priority),
+                  icon: Icons.flag_rounded),
+              SdStatusChip(sasCategoryAr(t.category),
+                  status: SdStatus.neutral, icon: Icons.label_rounded),
+              if (t.repliesCount > 0)
+                _metaChip(Icons.forum_rounded, '${t.repliesCount}'),
+              if (t.subscriberRef.isNotEmpty)
+                _metaChip(Icons.person_rounded, t.subscriberRef),
+              if (t.updatedAt != null)
+                _metaChip(Icons.schedule_rounded, _fmtShort(t.updatedAt!)),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -518,13 +445,9 @@ class _SasTicketsTabState extends State<SasTicketsTab> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13.sp, color: Colors.grey[500]),
-        SizedBox(width: 3.w),
-        Text(text,
-            style: GoogleFonts.cairo(
-                fontSize: 11.sp,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w600)),
+        Icon(icon, size: 13, color: SdColors.faint),
+        const SizedBox(width: 3),
+        Text(text, style: SdText.caption),
       ],
     );
   }
@@ -575,8 +498,8 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
             e.toString().replaceFirst('Exception: ', '').trim(),
-            style: GoogleFonts.cairo()),
-        backgroundColor: AppTheme.errorColor,
+            style: const TextStyle(fontFamily: SdText.family)),
+        backgroundColor: SdColors.danger,
       ));
     }
   }
@@ -588,19 +511,28 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       child: AlertDialog(
         title: Row(
           children: [
-            SasUi.gradientBadge(
-              icon: Icons.add_comment_rounded,
-              colors: AppTheme.blueGradient,
-              size: 34,
-              iconSize: 17,
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: SdColors.primaryTint,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: const [
+                  BoxShadow(
+                      color: SdColors.primaryTintEdge, offset: Offset(0, 3))
+                ],
+              ),
+              child: const Icon(Icons.add_comment_rounded,
+                  color: SdColors.primary, size: 17),
             ),
-            SizedBox(width: 10.w),
-            Text('تذكرة جديدة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+            const SizedBox(width: 10),
+            const Text('تذكرة جديدة',
+                style: TextStyle(
+                    fontFamily: SdText.family, fontWeight: FontWeight.w800)),
           ],
         ),
         content: SizedBox(
-          width: 440.w,
+          width: 440,
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
@@ -612,19 +544,21 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
                     controller: _subjectCtl,
                     label: 'الموضوع',
                     icon: Icons.title_rounded,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'الموضوع مطلوب' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'الموضوع مطلوب'
+                        : null,
                   ),
-                  SizedBox(height: 12.h),
+                  const SizedBox(height: 12),
                   _field(
                     controller: _bodyCtl,
                     label: 'التفاصيل',
                     icon: Icons.notes_rounded,
                     maxLines: 4,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'التفاصيل مطلوبة' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'التفاصيل مطلوبة'
+                        : null,
                   ),
-                  SizedBox(height: 12.h),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -635,7 +569,7 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
                           onChanged: (v) => setState(() => _category = v!),
                         ),
                       ),
-                      SizedBox(width: 10.w),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: _dropdown(
                           label: 'الأولوية',
@@ -646,7 +580,7 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 12.h),
+                  const SizedBox(height: 12),
                   _field(
                     controller: _subscriberCtl,
                     label: 'مرجع المشترك (اختياري)',
@@ -661,21 +595,23 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
         actions: [
           TextButton(
             onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child:
+                const Text('إلغاء', style: TextStyle(fontFamily: SdText.family)),
           ),
           FilledButton.icon(
             onPressed: _busy ? null : _submit,
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
             icon: _busy
-                ? SizedBox(
-                    width: 16.w,
-                    height: 16.w,
-                    child: const CircularProgressIndicator(
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white),
                   )
                 : const Icon(Icons.check_rounded),
-            label: Text('إنشاء',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+            label: const Text('إنشاء',
+                style: TextStyle(
+                    fontFamily: SdText.family, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -694,14 +630,16 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       controller: controller,
       maxLines: maxLines,
       validator: validator,
-      style: GoogleFonts.cairo(fontSize: 13.sp),
+      style: const TextStyle(
+          fontFamily: SdText.family, fontSize: 13, color: SdColors.ink),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.cairo(fontSize: 12.5.sp),
-        prefixIcon: Icon(icon, size: 19.sp),
+        labelStyle: const TextStyle(
+            fontFamily: SdText.family, fontSize: 12.5, color: SdColors.muted),
+        prefixIcon: Icon(icon, size: 19, color: SdColors.primary),
         alignLabelWithHint: true,
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+            borderRadius: BorderRadius.circular(SdRadius.sm)),
       ),
     );
   }
@@ -715,19 +653,24 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
     return DropdownButtonFormField<String>(
       initialValue: value,
       isExpanded: true,
-      style: GoogleFonts.cairo(fontSize: 13.sp, color: Colors.black87),
+      style: const TextStyle(
+          fontFamily: SdText.family, fontSize: 13, color: SdColors.ink),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.cairo(fontSize: 12.5.sp),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+        labelStyle: const TextStyle(
+            fontFamily: SdText.family, fontSize: 12.5, color: SdColors.muted),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+            borderRadius: BorderRadius.circular(SdRadius.sm)),
       ),
       items: [
         for (final e in items.entries)
           DropdownMenuItem(
               value: e.key,
-              child: Text(e.value, style: GoogleFonts.cairo(fontSize: 13.sp))),
+              child: Text(e.value,
+                  style: const TextStyle(
+                      fontFamily: SdText.family, fontSize: 13))),
       ],
       onChanged: onChanged,
     );
@@ -736,18 +679,18 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
 
 // ─────────────────────────── مساعدات مشتركة ───────────────────────────
 
-Color _statusColor(String s) {
+SdStatus _statusStatus(String s) {
   switch (s) {
     case 'open':
-      return AppTheme.primaryColor;
+      return SdStatus.info;
     case 'in_progress':
-      return AppTheme.warningColor;
+      return SdStatus.warning;
     case 'resolved':
-      return AppTheme.successColor;
+      return SdStatus.success;
     case 'closed':
-      return Colors.blueGrey;
+      return SdStatus.neutral;
     default:
-      return Colors.grey;
+      return SdStatus.neutral;
   }
 }
 
@@ -766,18 +709,18 @@ IconData _statusIcon(String s) {
   }
 }
 
-Color _priorityColor(String p) {
+SdStatus _priorityStatus(String p) {
   switch (p) {
     case 'urgent':
-      return AppTheme.errorColor;
+      return SdStatus.danger;
     case 'high':
-      return const Color(0xFFF4511E);
+      return SdStatus.warning;
     case 'normal':
-      return Colors.blueGrey;
+      return SdStatus.neutral;
     case 'low':
-      return Colors.grey;
+      return SdStatus.neutral;
     default:
-      return Colors.blueGrey;
+      return SdStatus.neutral;
   }
 }
 

@@ -1,11 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../permissions/permission_gate.dart';
-import '../theme/app_theme.dart';
-import '../utils/responsive_helper.dart';
 import 'models/sas_account.dart';
 import 'pages/sas_dashboard_tab.dart';
 import 'pages/sas_messaging_tab.dart';
@@ -104,9 +102,6 @@ class _SasAgentShellState extends State<_SasAgentShell>
 
   // مجموعة أيقونات موحّدة (Material rounded بوزن بصري واحد) بترتيب:
   // لوحة · مشتركون · نظام · تقارير · الرسائل · تصريح · تذاكر · إعدادات.
-  // (تبويب «الحسابات» نُقل لتبويب «الإعدادات»، والتبديل بين الحسابات من
-  // مُبدّل الترويسة.) لون المؤشّر للمحدّد متدرّج، ولون موحّد (Slate) لغيره —
-  // يُضبطان مركزياً في [_TabBarSurface].
   static const _tabs = <_TabDef>[
     _TabDef('لوحة', Icons.dashboard_rounded),
     _TabDef('مشتركون', Icons.people_rounded),
@@ -260,8 +255,10 @@ class _SasAgentShellState extends State<_SasAgentShell>
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg,
+          style: const TextStyle(
+              fontFamily: SdText.family, fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -278,150 +275,156 @@ class _SasAgentShellState extends State<_SasAgentShell>
   @override
   Widget build(BuildContext context) {
     // أحجام ثابتة/مقيّدة لسطح المكتب — لا نعتمد على `.h/.w/.sp` المتضخّمة على
-    // النوافذ العريضة (designSize=375). الرأس أعلى من ارتفاع محتواه بهامش كافٍ
-    // فلا يتصادم مع شريط التبويبات أسفله، والتبويبات قابلة للتمرير فلا تُقطع.
+    // النوافذ العريضة. الرأس أعلى من ارتفاع محتواه بهامش كافٍ فلا يتصادم مع
+    // شريط التبويبات أسفله، والتبويبات قابلة للتمرير فلا تُقطع.
     const double toolbarH = 64;
     const double tabBarH = 60;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          toolbarHeight: toolbarH,
-          // خلفية صلبة داكنة أسفل التدرّج + مقدّمة بيضاء صريحة (زر العودة/الأيقونات/العنوان)
-          // لضمان ظهورها دائماً حتى لو تعذّر رسم التدرّج (كانت بيضاء على خلفية فاتحة فتختفي).
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          iconTheme: const IconThemeData(color: Colors.white),
-          actionsIconTheme: const IconThemeData(color: Colors.white),
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    return SdTheme.scope(
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          backgroundColor: SdColors.ground,
+          appBar: AppBar(
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            toolbarHeight: toolbarH,
+            backgroundColor: SdColors.primary,
+            foregroundColor: Colors.white,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actionsIconTheme: const IconThemeData(color: Colors.white),
+            // حافّة سفلية بارزة موحّدة مع [SdAppBar].
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(tabBarH + 6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    height: 6,
+                    width: double.infinity,
+                    child: ColoredBox(color: SdColors.primaryEdge),
+                  ),
+                  SizedBox(
+                    height: tabBarH,
+                    child: _TabBarSurface(controller: _tab, tabs: _tabs),
+                  ),
+                ],
               ),
             ),
-          ),
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(11),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.30)),
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(11),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.30)),
+                  ),
+                  child: const Icon(Icons.hub_rounded,
+                      size: 20, color: Colors.white),
                 ),
-                child: const Icon(Icons.hub_rounded,
-                    size: 20, color: Colors.white),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('وكيل الساس',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontFamily: SdText.family,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 17,
+                              color: Colors.white)),
+                      const SizedBox(height: 2),
+                      _accountSwitcher(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              _syncAction(),
+              const SizedBox(width: 6),
+              _headerAction(
+                tooltip: 'العقارات (العنوان الوطني)',
+                icon: Icons.maps_home_work_rounded,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PremisesListScreen()),
+                ),
+              ),
+              const SizedBox(width: 6),
+              _headerAction(
+                tooltip: 'إعدادات وقوالب الواتساب',
+                icon: Icons.chat_rounded,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WaSettingsScreen()),
+                ),
               ),
               const SizedBox(width: 10),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('وكيل الساس',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
-                            fontWeight: FontWeight.w800, fontSize: 17)),
-                    const SizedBox(height: 2),
-                    _accountSwitcher(),
-                  ],
-                ),
-              ),
             ],
           ),
-          actions: [
-            _syncAction(),
-            const SizedBox(width: 6),
-            _headerAction(
-              tooltip: 'العقارات (العنوان الوطني)',
-              icon: Icons.maps_home_work_rounded,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PremisesListScreen()),
-              ),
-            ),
-            const SizedBox(width: 6),
-            _headerAction(
-              tooltip: 'إعدادات وقوالب الواتساب',
-              icon: Icons.chat_rounded,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WaSettingsScreen()),
-              ),
-            ),
-            const SizedBox(width: 10),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(tabBarH),
-            child: _TabBarSurface(controller: _tab, tabs: _tabs),
+          body: TabBarView(
+            controller: _tab,
+            children: [
+              // 1) لوحة
+              _framed(_needsAccount(
+                (acc) => SasDashboardTab(
+                  account: acc,
+                  key: ValueKey('dash-${acc.id}'),
+                  onOpenExpiring: _openSubscribersExpiring,
+                ),
+              )),
+              // 2) مشتركون
+              _framed(_needsAccount(
+                (acc) => SasSubscribersTab(
+                  account: acc,
+                  initialExpiring: _pendingExpiring,
+                  // مفتاح يتضمّن رمز الطلب: يعيد بناء التبويب عند كل انتقال من
+                  // اللوحة ليطبّق الفلتر الجديد بثبات حتى لو لم يتغيّر الحساب.
+                  key: ValueKey('subs-${acc.id}-$_expiryNavToken'),
+                ),
+              )),
+              // 3) نظام الساس (باقات + مالية + صحّة)
+              _framed(_needsAccount(
+                (acc) =>
+                    SasSystemTab(account: acc, key: ValueKey('sys-${acc.id}')),
+              )),
+              // 4) تقارير (تبويب مستقل — التقارير المجمّعة + العشرة التفصيلية + الترخيص)
+              _framed(_needsAccount(
+                (acc) => SasReportsTab(
+                    account: acc, key: ValueKey('reports-${acc.id}')),
+              )),
+              // 5) الرسائل والواتساب (تذكير · إرسال جماعي · إعدادات · قوالب)
+              _framed(_needsAccount(
+                (acc) => SasMessagingTab(
+                    account: acc, key: ValueKey('messaging-${acc.id}')),
+              )),
+              // 6) تصريح/بلنك (تقرير الوكيل)
+              _framed(_needsAccount(
+                (acc) =>
+                    SasReportTab(account: acc, key: ValueKey('report-${acc.id}')),
+              )),
+              // 7) تذاكر (إعادة استخدام نظام الدعم القائم)
+              _framed(const SasTicketsTab()),
+              // 8) إعدادات (الحسابات · الخادم · الواتساب · أدوات · ميزات محفوظة)
+              _framed(SasSettingsTab(
+                selected: _selected,
+                onSelectAccount: _onSelect,
+              )),
+            ],
           ),
-        ),
-        body: TabBarView(
-          controller: _tab,
-          children: [
-            // 1) لوحة
-            _framed(_needsAccount(
-              (acc) => SasDashboardTab(
-                account: acc,
-                key: ValueKey('dash-${acc.id}'),
-                onOpenExpiring: _openSubscribersExpiring,
-              ),
-            )),
-            // 2) مشتركون
-            _framed(_needsAccount(
-              (acc) => SasSubscribersTab(
-                account: acc,
-                initialExpiring: _pendingExpiring,
-                // مفتاح يتضمّن رمز الطلب: يعيد بناء التبويب عند كل انتقال من
-                // اللوحة ليطبّق الفلتر الجديد بثبات حتى لو لم يتغيّر الحساب.
-                key: ValueKey('subs-${acc.id}-$_expiryNavToken'),
-              ),
-            )),
-            // 3) نظام الساس (باقات + مالية + صحّة)
-            _framed(_needsAccount(
-              (acc) =>
-                  SasSystemTab(account: acc, key: ValueKey('sys-${acc.id}')),
-            )),
-            // 4) تقارير (تبويب مستقل — التقارير المجمّعة + العشرة التفصيلية + الترخيص)
-            _framed(_needsAccount(
-              (acc) => SasReportsTab(
-                  account: acc, key: ValueKey('reports-${acc.id}')),
-            )),
-            // 5) الرسائل والواتساب (تذكير · إرسال جماعي · إعدادات · قوالب)
-            _framed(_needsAccount(
-              (acc) => SasMessagingTab(
-                  account: acc, key: ValueKey('messaging-${acc.id}')),
-            )),
-            // 6) تصريح/بلنك (تقرير الوكيل)
-            _framed(_needsAccount(
-              (acc) =>
-                  SasReportTab(account: acc, key: ValueKey('report-${acc.id}')),
-            )),
-            // 7) تذاكر (إعادة استخدام نظام الدعم القائم)
-            _framed(const SasTicketsTab()),
-            // 8) إعدادات (الحسابات · الخادم · الواتساب · أدوات · ميزات محفوظة)
-            _framed(SasSettingsTab(
-              selected: _selected,
-              onSelectAccount: _onSelect,
-            )),
-          ],
         ),
       ),
     );
   }
 
   /// زر «تحديث/مزامنة» في الشريط العلوي — بنفس نسق [_headerAction] (أيقونة
-  /// بيضاء داخل مربّع شفّاف). ينفّذ مزامنة يدوية للحساب المحدّد عبر [_manualSync]
-  /// (ثم بثّ عبر الناقل فتعيد التبويبات المفتوحة التحميل). أثناء المزامنة يُظهر
-  /// مؤشّر دوران أبيض صغير مكان الأيقونة. يُعطَّل (بلا نقر، مع تعتيم) إن لم يوجد
-  /// حساب محدّد أو أثناء تحميل الحسابات/المزامنة.
+  /// بيضاء داخل مربّع شفّاف). ينفّذ مزامنة يدوية للحساب المحدّد عبر [_manualSync].
   Widget _syncAction() {
     final disabled = _selected == null || _accountsLoading || _manualSyncing;
     final box = Material(
@@ -485,15 +488,13 @@ class _SasAgentShellState extends State<_SasAgentShell>
     );
   }
 
-  /// يحصر عرض محتوى التبويب على الشاشات العريضة (سطح المكتب) ويوسّطه — بنفس
-  /// نمط `home_page.dart` (`ConstrainedBox(maxWidth: maxContentWidth)`) — فلا
+  /// يحصر عرض محتوى التبويب على الشاشات العريضة (سطح المكتب) ويوسّطه — فلا
   /// يتمدّد المحتوى عبر ~1900px. على الهاتف/التابلت يبقى بعرض كامل.
   Widget _framed(Widget child) {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints:
-            BoxConstraints(maxWidth: context.responsive.maxContentWidth),
+        constraints: const BoxConstraints(maxWidth: SdSpace.contentMax),
         child: child,
       ),
     );
@@ -508,19 +509,15 @@ class _SasAgentShellState extends State<_SasAgentShell>
       if (_accountsLoading) {
         return const SasLoadingView(message: 'جاري تحميل الحسابات…');
       }
-      return SasEmptyView(
-        message: 'لا يوجد حساب ساس محدَّد — اربط/حدِّد حساباً من «الإعدادات»',
+      return SdEmptyState(
+        title: 'لا يوجد حساب ساس محدَّد',
+        message: 'اربط/حدِّد حساباً من «الإعدادات»',
         icon: Icons.touch_app_rounded,
-        action: FilledButton.icon(
+        status: SdStatus.info,
+        action: SdButton(
+          label: 'الذهاب للإعدادات',
+          icon: Icons.settings_rounded,
           onPressed: () => _tab.animateTo(_settingsTabIndex),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-          ),
-          icon: const Icon(Icons.settings_rounded),
-          label: Text('الذهاب للإعدادات',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
         ),
       );
     }
@@ -539,7 +536,8 @@ class _SasAgentShellState extends State<_SasAgentShell>
       return Text('جاري التحميل…',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+              fontFamily: SdText.family,
               fontSize: 11,
               fontWeight: FontWeight.w500,
               color: Colors.white.withValues(alpha: 0.75)));
@@ -556,7 +554,8 @@ class _SasAgentShellState extends State<_SasAgentShell>
                 size: 13, color: Colors.white.withValues(alpha: 0.85)),
             const SizedBox(width: 4),
             Text('اربط حساب ساس',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: Colors.white.withValues(alpha: 0.85))),
@@ -573,7 +572,8 @@ class _SasAgentShellState extends State<_SasAgentShell>
       return Text(label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+              fontFamily: SdText.family,
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: Colors.white.withValues(alpha: 0.80)));
@@ -601,27 +601,30 @@ class _SasAgentShellState extends State<_SasAgentShell>
                       : Icons.radio_button_unchecked_rounded,
                   size: 18,
                   color: a.id == current?.id
-                      ? AppTheme.primaryColor
-                      : Colors.grey,
+                      ? SdColors.primary
+                      : SdColors.faint,
                 ),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
                     a.displayName,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: SdText.family,
                       fontWeight: a.id == current?.id
                           ? FontWeight.w800
                           : FontWeight.w600,
-                      color: a.isActive ? null : Colors.grey,
+                      color: a.isActive ? SdColors.ink : SdColors.faint,
                     ),
                   ),
                 ),
                 if (!a.isActive) ...[
                   const SizedBox(width: 6),
-                  Text('(غير مفعّل)',
-                      style: GoogleFonts.cairo(
-                          fontSize: 10, color: Colors.grey)),
+                  const Text('(غير مفعّل)',
+                      style: TextStyle(
+                          fontFamily: SdText.family,
+                          fontSize: 10,
+                          color: SdColors.faint)),
                 ],
               ],
             ),
@@ -642,7 +645,8 @@ class _SasAgentShellState extends State<_SasAgentShell>
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
+                style: const TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: Colors.white),
@@ -665,7 +669,7 @@ class _TabDef {
 }
 
 /// سطح شريط تبويبات أنيق يجلس أسفل رأس التطبيق:
-/// شريط أبيض بحواف مستديرة علوية وظل خفيف، مؤشّر متدرّج مدمج (pill) —
+/// شريط أبيض بحواف مستديرة علوية وظل خفيف، مؤشّر نيلي مدمج (pill) —
 /// يفصل التبويبات بصرياً عن رأس التطبيق فلا يتداخلان.
 class _TabBarSurface extends StatelessWidget {
   final TabController controller;
@@ -675,14 +679,14 @@ class _TabBarSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // مقاسات ثابتة معقولة لسطح المكتب — لا تعتمد على `.sp/.h/.w/.r` المتضخّمة
-    // على النوافذ العريضة. `isScrollable: true` يمنع قطع نصوص التبويبات الثمانية.
-    // لون موحّد للأيقونة والنص (أبيض للمحدّد فوق مؤشّر متدرّج، Slate لغيره).
+    // مقاسات ثابتة معقولة لسطح المكتب. `isScrollable: true` يمنع قطع نصوص
+    // التبويبات الثمانية. لون موحّد للأيقونة والنص (أبيض للمحدّد فوق مؤشّر نيلي،
+    // Slate لغيره).
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -702,14 +706,14 @@ class _TabBarSurface extends StatelessWidget {
         splashBorderRadius: BorderRadius.circular(12),
         indicator: BoxDecoration(
           gradient: const LinearGradient(
-            colors: AppTheme.blueGradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            colors: [SdColors.primaryMid, SdColors.primary],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primaryColor.withValues(alpha: 0.30),
+              color: SdColors.primary.withValues(alpha: 0.30),
               blurRadius: 8,
               spreadRadius: -2,
               offset: const Offset(0, 3),
@@ -717,12 +721,12 @@ class _TabBarSurface extends StatelessWidget {
           ],
         ),
         labelColor: Colors.white,
-        unselectedLabelColor: const Color(0xFF64748B),
+        unselectedLabelColor: SdColors.muted,
         labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-        labelStyle:
-            GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 13),
-        unselectedLabelStyle:
-            GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 13),
+        labelStyle: const TextStyle(
+            fontFamily: SdText.family, fontWeight: FontWeight.w800, fontSize: 13),
+        unselectedLabelStyle: const TextStyle(
+            fontFamily: SdText.family, fontWeight: FontWeight.w600, fontSize: 13),
         tabs: [
           for (final t in tabs)
             Tab(

@@ -7,6 +7,7 @@ import '../../services/accounting_export_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة تقرير المقارنة الشهرية - مقارنة الإيرادات والمصروفات وصافي الربح عبر الأشهر
 class MonthlyComparisonPage extends StatefulWidget {
@@ -41,9 +42,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
     'ديسمبر',
   ];
 
-  static const _clrRevenue = Color(0xFF27AE60);
-  static const _clrExpenses = Color(0xFFE74C3C);
-  static const _clrProfit = Color(0xFF2980B9);
+  // ألوان دلالية موحّدة من نظام التصميم (إيراد=نجاح، مصروف=خطر، ربح=معلومة)
+  static const _clrRevenue = SdColors.success;
+  static const _clrExpenses = SdColors.danger;
+  static const _clrProfit = SdColors.info;
 
   @override
   void initState() {
@@ -239,18 +241,45 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'المقارنة الشهرية',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.file_download_outlined,
+              label: 'تصدير Excel',
+              onPressed: _handleExport,
+            ),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _isLoading ? null : _loadData,
+            ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildToolbar(),
+              _buildFilterBar(),
               Expanded(
                 child: _isLoading
                     ? const Center(
                         child: CircularProgressIndicator(
                             color: AccountingTheme.neonGreen))
                     : _errorMessage != null
-                        ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                        ? Center(
+                            child: SdEmptyState(
+                              title: _errorMessage!,
+                              icon: Icons.error_outline,
+                              status: SdStatus.danger,
+                              action: SdButton(
+                                label: 'إعادة المحاولة',
+                                icon: Icons.refresh,
+                                onPressed: _loadData,
+                              ),
+                            ),
+                          )
                         : _buildContent(),
               ),
             ],
@@ -261,83 +290,24 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // شريط الأدوات
+  // شريط فلتر عدد الأشهر
   // ═══════════════════════════════════════════════════════════════
 
-  Widget _buildToolbar() {
+  Widget _buildFilterBar() {
     final ar = context.accR;
-    final isMob = ar.isMobile;
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.symmetric(
-        horizontal: isMob ? 8 : ar.spaceXL,
-        vertical: isMob ? 6 : ar.spaceL,
+        horizontal: ar.isMobile ? 10 : ar.spaceXL,
+        vertical: 10,
       ),
       decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: Icon(Icons.arrow_forward_rounded,
-                    size: isMob ? 20 : 24),
-                tooltip: 'رجوع',
-                style: IconButton.styleFrom(
-                    foregroundColor: AccountingTheme.textSecondary),
-              ),
-              SizedBox(width: isMob ? 4 : ar.spaceS),
-              Container(
-                padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF607D8B), Color(0xFF455A64)],
-                  ),
-                  borderRadius: BorderRadius.circular(isMob ? 6 : 8),
-                ),
-                child: Icon(Icons.compare_arrows_rounded,
-                    color: Colors.white, size: isMob ? 16 : ar.iconM),
-              ),
-              SizedBox(width: isMob ? 6 : ar.spaceM),
-              Expanded(
-                child: Text(
-                  'المقارنة الشهرية',
-                  style: GoogleFonts.cairo(
-                    fontSize: isMob ? 14 : ar.headingMedium,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (!isMob) ...[
-                _buildMonthChips(ar),
-                SizedBox(width: ar.spaceM),
-              ],
-              IconButton(
-                onPressed: _handleExport,
-                icon: Icon(Icons.file_download_outlined,
-                    size: isMob ? 18 : ar.iconM),
-                tooltip: 'تصدير Excel',
-                style: IconButton.styleFrom(
-                    foregroundColor: AccountingTheme.textSecondary),
-              ),
-              IconButton(
-                onPressed: _loadData,
-                icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
-                tooltip: 'تحديث',
-                style: IconButton.styleFrom(
-                    foregroundColor: AccountingTheme.textSecondary),
-              ),
-            ],
-          ),
-          if (isMob) ...[
-            const SizedBox(height: 6),
-            _buildMonthChips(ar),
-          ],
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: _buildMonthChips(ar),
       ),
     );
   }
@@ -374,12 +344,12 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
         ),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF607D8B)
+              ? SdColors.primary
               : AccountingTheme.bgSecondary,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF607D8B)
+                ? SdColors.primary
                 : AccountingTheme.borderColor,
           ),
         ),
@@ -401,21 +371,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
 
   Widget _buildContent() {
     if (_monthlyData.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.bar_chart_rounded,
-                size: 64, color: AccountingTheme.textMuted.withOpacity(0.4)),
-            const SizedBox(height: 16),
-            Text(
-              'لا توجد بيانات للفترة المحددة',
-              style: GoogleFonts.cairo(
-                fontSize: 14,
-                color: AccountingTheme.textMuted,
-              ),
-            ),
-          ],
+      return const Center(
+        child: SdEmptyState(
+          title: 'لا توجد بيانات للفترة المحددة',
+          icon: Icons.bar_chart_rounded,
         ),
       );
     }

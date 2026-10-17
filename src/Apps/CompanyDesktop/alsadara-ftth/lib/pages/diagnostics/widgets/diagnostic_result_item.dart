@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/diagnostic_test.dart';
 
 /// عنصر نتيجة التشخيص
@@ -19,7 +20,7 @@ class DiagnosticResultItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = result.success ? Colors.green : Colors.red;
+    final statusColor = result.success ? SdColors.success : SdColors.danger;
     final statusIcon = result.success ? Icons.check_circle : Icons.cancel;
 
     return Card(
@@ -28,7 +29,7 @@ class DiagnosticResultItem extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: statusColor.withOpacity(0.3),
+          color: statusColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -59,9 +60,9 @@ class DiagnosticResultItem extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           result.message,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[600],
+                            color: SdColors.muted,
                           ),
                         ),
                       ],
@@ -73,7 +74,7 @@ class DiagnosticResultItem extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -88,7 +89,7 @@ class DiagnosticResultItem extends StatelessWidget {
                   const SizedBox(width: 8),
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.grey,
+                    color: SdColors.faint,
                   ),
                 ],
               ),
@@ -100,7 +101,7 @@ class DiagnosticResultItem extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: SdColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -164,9 +165,9 @@ class DiagnosticResultItem extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         'وقت التنفيذ: ${result.timestamp}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 10,
-                          color: Colors.grey[500],
+                          color: SdColors.faint,
                         ),
                       ),
                     ],
@@ -204,26 +205,25 @@ class DiagnosticSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final successRate = totalTests > 0 ? (passedTests / totalTests) * 100 : 0.0;
     final statusColor = failedTests == 0
-        ? Colors.green
+        ? SdColors.success
         : failedTests < totalTests / 2
-            ? Colors.orange
-            : Colors.red;
+            ? SdColors.warning
+            : SdColors.danger;
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            colors: [
-              statusColor.withOpacity(0.1),
-              statusColor.withOpacity(0.05),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        gradient: LinearGradient(
+          colors: [
+            statusColor.withValues(alpha: 0.1),
+            statusColor.withValues(alpha: 0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        boxShadow: SdDepth.raised(),
+      ),
+      child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
@@ -258,7 +258,7 @@ class DiagnosticSummaryCard extends StatelessWidget {
                       child: CircularProgressIndicator(
                         value: successRate / 100,
                         strokeWidth: 12,
-                        backgroundColor: Colors.grey[200],
+                        backgroundColor: SdColors.divider,
                         valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                       ),
                     ),
@@ -277,9 +277,9 @@ class DiagnosticSummaryCard extends StatelessWidget {
                         ),
                         Text(
                           'نسبة النجاح',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 10,
-                            color: Colors.grey[600],
+                            color: SdColors.muted,
                           ),
                         ),
                       ],
@@ -299,25 +299,25 @@ class DiagnosticSummaryCard extends StatelessWidget {
                   icon: Icons.format_list_numbered,
                   value: totalTests.toString(),
                   label: 'إجمالي الاختبارات',
-                  color: Colors.blue,
+                  color: SdColors.info,
                 ),
                 _buildStatColumn(
                   icon: Icons.check_circle,
                   value: passedTests.toString(),
                   label: 'اختبار ناجح',
-                  color: Colors.green,
+                  color: SdColors.success,
                 ),
                 _buildStatColumn(
                   icon: Icons.cancel,
                   value: failedTests.toString(),
                   label: 'اختبار فاشل',
-                  color: Colors.red,
+                  color: SdColors.danger,
                 ),
                 _buildStatColumn(
                   icon: Icons.timer,
                   value: '${totalDuration.inSeconds}s',
                   label: 'المدة الإجمالية',
-                  color: Colors.purple,
+                  color: SdColors.platformBase,
                 ),
               ],
             ),
@@ -328,28 +328,17 @@ class DiagnosticSummaryCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton.icon(
+                SdButton(
+                  label: 'نسخ التقرير',
+                  icon: Icons.copy,
                   onPressed: onCopyReport,
-                  icon: const Icon(Icons.copy, size: 18),
-                  label: const Text('نسخ التقرير'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                  ),
                 ),
                 const SizedBox(width: 16),
-                OutlinedButton.icon(
+                SdButton(
+                  label: 'تصدير JSON',
+                  icon: Icons.download,
+                  kind: SdButtonKind.secondary,
                   onPressed: onExportReport,
-                  icon: const Icon(Icons.download, size: 18),
-                  label: const Text('تصدير JSON'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -371,7 +360,7 @@ class DiagnosticSummaryCard extends StatelessWidget {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 24),
@@ -387,9 +376,9 @@ class DiagnosticSummaryCard extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 10,
-            color: Colors.grey[600],
+            color: SdColors.muted,
           ),
         ),
       ],

@@ -1,14 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_account.dart';
 import '../models/sas_report.dart';
 import '../models/sas_subscriber.dart';
 import '../services/sas_agent_api_service.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_report_widgets.dart';
 import '../widgets/sas_state_views.dart';
@@ -55,6 +53,7 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
 
   bool _loading = true;
   bool _syncing = false;
+
   /// تحديث خلفي جارٍ (مزامنة صامتة لا تحجب العرض).
   bool _refreshing = false;
   String? _error;
@@ -205,8 +204,8 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
       await _load();
       // أبلغ بقية التبويبات المفتوحة لتتحدّث (نبثّ و_syncing لا يزال true فيتخطّى
       // مستمعنا الذاتي إعادةً مكرّرة؛ قائمتنا مُحمَّلة أصلاً أعلاه).
-      SasRefreshBus.instance
-          .notify(accountId: widget.account.id, reason: 'subscribers-sync-button');
+      SasRefreshBus.instance.notify(
+          accountId: widget.account.id, reason: 'subscribers-sync-button');
     } catch (e) {
       _snack(_clean(e), error: true);
     } finally {
@@ -217,8 +216,10 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg,
+          style: const TextStyle(
+              fontFamily: SdText.family, fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -265,139 +266,125 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
     return SasContentWrap(
       maxWidth: 1100,
       child: Column(
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 4.h),
-          child: Row(
-            children: [
-              Expanded(child: _searchBox()),
-              SizedBox(width: 10.w),
-              _quickSyncButton(),
-              SizedBox(width: 8.w),
-              SizedBox(
-                height: 50.h,
-                child: OutlinedButton.icon(
-                  onPressed: _openBulkImport,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primaryColor,
-                    side: BorderSide(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.45)),
-                    padding: EdgeInsets.symmetric(horizontal: 12.w),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(SasUi.radius.r)),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
+            child: Row(
+              children: [
+                Expanded(child: _searchBox()),
+                const SizedBox(width: 10),
+                _quickSyncButton(),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 50,
+                  child: SdButton(
+                    label: 'رفع مجموعة',
+                    icon: Icons.upload_file_rounded,
+                    kind: SdButtonKind.secondary,
+                    height: 50,
+                    onPressed: _openBulkImport,
                   ),
-                  icon: Icon(Icons.upload_file_rounded, size: 18.sp),
-                  label: Text('رفع مجموعة',
-                      style: GoogleFonts.cairo(
-                          fontWeight: FontWeight.w800, fontSize: 12.5)),
                 ),
-              ),
-              SizedBox(width: 8.w),
-              SizedBox(
-                height: 50.h,
-                child: FilledButton.icon(
-                  onPressed: _openCreate,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    padding: EdgeInsets.symmetric(horizontal: 14.w),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(SasUi.radius.r)),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 50,
+                  child: SdButton(
+                    label: 'إنشاء',
+                    icon: Icons.person_add_rounded,
+                    height: 50,
+                    onPressed: _openCreate,
                   ),
-                  icon: const Icon(Icons.person_add_rounded, size: 19),
-                  label: Text('إنشاء',
-                      style: GoogleFonts.cairo(
-                          fontWeight: FontWeight.w800, fontSize: 13)),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        // قائمة موحّدة (محلي أولاً + تحديث خلفي) — بلا مُبدّل مصدر.
-        // شرائح فلتر الانتهاء تبقى (كلها على المصدر المحلي).
-        Padding(
-          padding: EdgeInsets.fromLTRB(14.w, 2.h, 14.w, 6.h),
-          child: SasExpiryChips(
-            counts: _expiryCounts,
-            selected: _expiring,
-            onSelect: _onExpiringSelected,
+          // قائمة موحّدة (محلي أولاً + تحديث خلفي) — بلا مُبدّل مصدر.
+          // شرائح فلتر الانتهاء تبقى (كلها على المصدر المحلي).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
+            child: SasExpiryChips(
+              counts: _expiryCounts,
+              selected: _expiring,
+              onSelect: _onExpiringSelected,
+            ),
           ),
-        ),
-        Expanded(child: _body()),
-      ],
+          Expanded(child: _body()),
+        ],
       ),
     );
   }
 
   Widget _searchBox() {
+    OutlineInputBorder border(Color color, [double width = 1.2]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.md),
+          borderSide: BorderSide(color: color, width: width),
+        );
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        boxShadow: SasUi.cardShadow(),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
       ),
       child: TextField(
         controller: _searchCtrl,
         onChanged: _onSearchChanged,
         onSubmitted: (_) => _load(),
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontWeight: FontWeight.w600,
+            color: SdColors.ink),
         decoration: InputDecoration(
           hintText: 'بحث عن مشترك…',
-          hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
+          hintStyle: const TextStyle(
+              fontFamily: SdText.family, color: SdColors.faint),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: SdColors.surface,
           prefixIcon:
-              Icon(Icons.search_rounded, color: AppTheme.primaryColor),
+              const Icon(Icons.search_rounded, color: SdColors.primary),
           suffixIcon: _searchCtrl.text.isEmpty
               ? null
               : IconButton(
-                  icon: Icon(Icons.clear_rounded, color: Colors.grey[500]),
+                  icon: const Icon(Icons.clear_rounded, color: SdColors.faint),
                   onPressed: () {
                     _searchCtrl.clear();
                     _load();
                   },
                 ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radius.r),
+            borderRadius: BorderRadius.circular(SdRadius.md),
             borderSide: BorderSide.none,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radius.r),
-            borderSide:
-                BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radius.r),
-            borderSide:
-                const BorderSide(color: AppTheme.primaryColor, width: 1.6),
-          ),
+          enabledBorder: border(SdColors.edge),
+          focusedBorder: border(SdColors.primary, 1.6),
         ),
       ),
     );
   }
 
   Widget _quickSyncButton() {
-    return SizedBox(
-      height: 50.h,
-      child: OutlinedButton.icon(
-        onPressed: _syncing ? null : _quickSync,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppTheme.infoColor,
-          side: BorderSide(color: AppTheme.infoColor.withValues(alpha: 0.45)),
-          padding: EdgeInsets.symmetric(horizontal: 12.w),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(SasUi.radius.r)),
+    if (_syncing) {
+      return const SizedBox(
+        height: 50,
+        width: 50,
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+                strokeWidth: 2.4, color: SdColors.info),
+          ),
         ),
-        icon: _syncing
-            ? SizedBox(
-                width: 16.w,
-                height: 16.w,
-                child: const CircularProgressIndicator(
-                    strokeWidth: 2, color: AppTheme.infoColor),
-              )
-            : Icon(Icons.sync_rounded, size: 18.sp),
-        label: Text('مزامنة',
-            style: GoogleFonts.cairo(
-                fontWeight: FontWeight.w800, fontSize: 12.5)),
+      );
+    }
+    return SizedBox(
+      height: 50,
+      child: SdButton(
+        label: 'مزامنة',
+        icon: Icons.sync_rounded,
+        kind: SdButtonKind.accent,
+        height: 50,
+        onPressed: _quickSync,
       ),
     );
   }
@@ -406,13 +393,15 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
     if (_loading) return const SasLoadingView(message: 'جاري جلب المشتركين…');
     if (_error != null) return SasErrorView(message: _error!, onRetry: _load);
     if (_rows.isEmpty) {
-      return SasEmptyView(
-        message: 'لا مشتركون بعد — اضغط «تحديث» لجلبهم من الساس',
+      return SdEmptyState(
+        title: 'لا مشتركون بعد',
+        message: 'اضغط «تحديث» لجلبهم من الساس',
         icon: Icons.people_outline_rounded,
-        action: OutlinedButton.icon(
+        action: SdButton(
+          label: 'تحديث الآن',
+          icon: Icons.sync_rounded,
+          kind: SdButtonKind.secondary,
           onPressed: _syncing ? null : _quickSync,
-          icon: const Icon(Icons.sync_rounded),
-          label: Text('تحديث الآن', style: GoogleFonts.cairo()),
         ),
       );
     }
@@ -422,7 +411,7 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
         children: [
           if (_source == _Source.local)
             Padding(
-              padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 0),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
               child: Row(
                 children: [
                   Expanded(
@@ -430,28 +419,23 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
                       _expiring == null
                           ? 'إجمالي محلي: $_localTotal · معروض: ${_rows.length}'
                           : 'مُفلتَر (${_rows.length}) من إجمالي محلي $_localTotal',
-                      style: GoogleFonts.cairo(
-                          fontSize: 11.sp,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w600),
+                      style: SdText.caption,
                     ),
                   ),
                   if (_refreshing)
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(
-                          width: 11.w,
-                          height: 11.w,
-                          child: const CircularProgressIndicator(
-                              strokeWidth: 2, color: AppTheme.infoColor),
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: SdColors.info),
                         ),
-                        SizedBox(width: 6.w),
+                        const SizedBox(width: 6),
                         Text('يُحدّث من الساس…',
-                            style: GoogleFonts.cairo(
-                                fontSize: 10.5.sp,
-                                color: AppTheme.infoColor,
-                                fontWeight: FontWeight.w700)),
+                            style: SdText.caption
+                                .copyWith(color: SdColors.info)),
                       ],
                     ),
                 ],
@@ -459,9 +443,9 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
             ),
           Expanded(
             child: ListView.separated(
-              padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 12.h),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
               itemCount: _rows.length,
-              separatorBuilder: (_, __) => SizedBox(height: 8.h),
+              separatorBuilder: (_, __) => const SizedBox(height: SdSpace.xs),
               itemBuilder: (_, i) => _subscriberCard(_rows[i]),
             ),
           ),
@@ -471,62 +455,48 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
   }
 
   Widget _subscriberCard(SasSubscriber s) {
-    final statusColor =
-        s.isActive ? AppTheme.successColor : AppTheme.errorColor;
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(SasUi.radius.r),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        onTap: () => _openDetail(s),
-        child: Container(
-          padding: EdgeInsets.all(12.w),
-          decoration: SasUi.card(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final tone = s.isActive ? SdStatus.success.tone : SdStatus.danger.tone;
+    return SdRaised(
+      onTap: () => _openDetail(s),
+      radius: SdRadius.lg,
+      padding: const EdgeInsets.all(12),
+      semanticLabel: s.username.isEmpty ? '-' : s.username,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
               Stack(
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 44.w,
-                    height: 44.w,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          statusColor.withValues(alpha: 0.18),
-                          statusColor.withValues(alpha: 0.08),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: tone.tint,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                          color: statusColor.withValues(alpha: 0.22)),
+                      border: Border.all(color: tone.tintEdge),
                     ),
                     child: Icon(Icons.person_rounded,
-                        color: statusColor, size: 21.sp),
+                        color: tone.base, size: 21),
                   ),
                   if (s.online)
                     Positioned(
                       right: -1,
                       bottom: -1,
                       child: Container(
-                        width: 13.w,
-                        height: 13.w,
+                        width: 13,
+                        height: 13,
                         decoration: BoxDecoration(
-                          color: AppTheme.successColor,
+                          color: SdColors.success,
                           shape: BoxShape.circle,
-                          border:
-                              Border.all(color: Colors.white, width: 2.2),
+                          border: Border.all(color: Colors.white, width: 2.2),
                         ),
                       ),
                     ),
                 ],
               ),
-              SizedBox(width: 12.w),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -535,19 +505,19 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
                     Text(
                       s.username.isEmpty ? '-' : s.username,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.robotoMono(
-                          fontSize: 13.sp,
+                      style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 13,
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF1A1A2E)),
+                          color: SdColors.ink),
                     ),
                     if (s.fullName.isNotEmpty) ...[
-                      SizedBox(height: 2.h),
+                      const SizedBox(height: 2),
                       Text(
                         s.fullName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
-                            fontSize: 12.sp,
+                        style: SdText.bodySm.copyWith(
                             color: const Color(0xFF475569),
                             fontWeight: FontWeight.w700),
                       ),
@@ -555,35 +525,32 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
                   ],
                 ),
               ),
-              SizedBox(width: 8.w),
-              SasStatusBadge(
-                label: s.isActive ? 'نشط' : 'موقوف',
-                color: statusColor,
+              const SizedBox(width: 8),
+              SdStatusChip(
+                s.isActive ? 'نشط' : 'موقوف',
+                status: s.isActive ? SdStatus.success : SdStatus.danger,
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: 10),
           // حقول المشترك كشرائح واضحة (باقة · انتهاء · هاتف · اتصال).
           Wrap(
-            spacing: 7.w,
-            runSpacing: 6.h,
+            spacing: 7,
+            runSpacing: 6,
             children: [
               _infoChip(
-                  Icons.inventory_2_rounded, s.profileLabel, AppTheme.infoColor),
+                  Icons.inventory_2_rounded, s.profileLabel, SdStatus.info),
               if (s.expiration != null && s.expiration!.trim().isNotEmpty)
                 _infoChip(Icons.event_busy_rounded, s.expiration!,
-                    AppTheme.warningColor),
+                    SdStatus.warning),
               if (_phoneOf(s).isNotEmpty)
-                _infoChip(Icons.phone_rounded, _phoneOf(s),
-                    AppTheme.successColor,
+                _infoChip(Icons.phone_rounded, _phoneOf(s), SdStatus.success,
                     ltr: true),
               if (s.online)
-                _infoChip(Icons.wifi_rounded, 'متصل', AppTheme.successColor),
+                _infoChip(Icons.wifi_rounded, 'متصل', SdStatus.success),
             ],
           ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -595,27 +562,31 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
           .trim();
 
   /// شريحة حقل صغيرة (أيقونة + نص) بلون موحّد.
-  Widget _infoChip(IconData icon, String text, Color color,
+  Widget _infoChip(IconData icon, String text, SdStatus status,
       {bool ltr = false}) {
+    final tone = status.tone;
     final label = Text(
       text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.cairo(
-          fontSize: 10.5.sp, fontWeight: FontWeight.w700, color: color),
+      style: TextStyle(
+          fontFamily: SdText.family,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          color: tone.text),
     );
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 4.5.h),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8.r),
-        border: Border.all(color: color.withValues(alpha: 0.20)),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        border: Border.all(color: tone.tintEdge),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12.sp, color: color),
-          SizedBox(width: 4.w),
+          Icon(icon, size: 12, color: tone.text),
+          const SizedBox(width: 4),
           ltr
               ? Directionality(textDirection: TextDirection.ltr, child: label)
               : label,

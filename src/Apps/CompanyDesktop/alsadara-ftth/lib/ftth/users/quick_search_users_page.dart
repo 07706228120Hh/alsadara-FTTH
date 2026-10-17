@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import '../users/user_details_page.dart';
 import '../auth/auth_error_handler.dart';
 import '../../services/auth_service.dart';
+import '../../frontend/frontend.dart';
 
 class QuickSearchUsersPage extends StatefulWidget {
   final String authToken;
@@ -254,7 +255,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
           TextSpan(
             text: match,
             style: (style ?? const TextStyle()).copyWith(
-              backgroundColor: const Color(0xFF4CAF50).withValues(alpha: 0.25),
+              backgroundColor: SdColors.success.withValues(alpha: 0.25),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -538,75 +539,21 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final isLargeScreen = screenSize.width > 600;
-    // تكبير البطاقة ومحتوياتها بنسبة 20%
-    final double uiScale = 1.2;
 
-    final scaffold = Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1A237E),
-        elevation: 0,
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
-            ),
-          ),
-        ),
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.person_search, color: Colors.white),
-            SizedBox(width: 8),
-            Text(
-              'البحث السريع - المستخدمين',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Stack(
+    return SdPage(
+      scrollable: false,
+      appBar: const SdAppBar(title: 'البحث السريع - المستخدمين'),
+      padding: EdgeInsets.zero,
+      body: Column(
         children: [
-          // خلفية ثابتة — نفس ثيم الواجهة الرئيسية
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFF5F6FA),
-                  Color(0xFFEEF1F8),
-                  Color(0xFFF0F4FF),
-                  Color(0xFFF5F6FA),
-                ],
-              ),
-            ),
-          ),
-          // المحتوى
-          Column(
-            children: [
               // شريط البحث — صف واحد: [المنطقة | اسم المشترك | رقم الهاتف | مسح]
               Container(
                 margin: EdgeInsets.fromLTRB(_isPhone ? 8 : 12, _isPhone ? 6 : 10, _isPhone ? 8 : 12, 6),
                 padding: EdgeInsets.symmetric(horizontal: _isPhone ? 6 : 10, vertical: _isPhone ? 6 : 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.black, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  color: SdColors.surface,
+                  borderRadius: BorderRadius.circular(SdRadius.md),
+                  boxShadow: SdDepth.raised(),
                 ),
                 child: isLargeScreen ? Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -620,22 +567,22 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(bottom: 4, right: 2),
-                            child: Text('المنطقة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
+                            child: Text('المنطقة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SdColors.muted)),
                           ),
                           DropdownButtonFormField<String>(
                             value: selectedZoneId.isEmpty ? "" : selectedZoneId,
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.white,
+                              fillColor: SdColors.surface,
                               isDense: true,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                                borderSide: const BorderSide(color: SdColors.cardEdge, width: 1.5),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2),
+                                borderSide: const BorderSide(color: SdColors.primary, width: 2),
                               ),
                             ),
                             items: [
@@ -666,7 +613,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(bottom: 4, right: 2),
-                            child: Text('اسم المشترك', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
+                            child: Text('اسم المشترك', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SdColors.muted)),
                           ),
                           TextField(
                             controller: nameController,
@@ -684,10 +631,10 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                             },
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.white,
+                              fillColor: SdColors.surface,
                               isDense: true,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                              prefixIcon: const Icon(Icons.person_search, color: Color(0xFF1A237E), size: 20),
+                              prefixIcon: const Icon(Icons.person_search, color: SdColors.primary, size: 20),
                               suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                               suffixIcon: (isLoading && nameController.text.isNotEmpty)
                                   ? _InlineSpinner(size: 16)
@@ -696,25 +643,25 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                       : (nameController.text.isNotEmpty
                                           ? IconButton(
                                               tooltip: 'مسح',
-                                              icon: const Icon(Icons.clear, size: 16, color: Colors.red),
+                                              icon: const Icon(Icons.clear, size: 16, color: SdColors.danger),
                                               onPressed: _resetSearch,
                                               padding: EdgeInsets.zero,
                                               constraints: const BoxConstraints(),
                                             )
                                           : IconButton(
                                               tooltip: 'لصق',
-                                              icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)),
+                                              icon: const Icon(Icons.content_paste_go, size: 16, color: SdColors.primary),
                                               onPressed: () => _pasteIntoField(nameController, isPhone: false),
                                               padding: EdgeInsets.zero,
                                               constraints: const BoxConstraints(),
                                             )),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                                borderSide: const BorderSide(color: SdColors.cardEdge, width: 1.5),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2),
+                                borderSide: const BorderSide(color: SdColors.primary, width: 2),
                               ),
                             ),
                             style: const TextStyle(fontSize: 13),
@@ -732,7 +679,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(bottom: 4, right: 2),
-                            child: Text('رقم الهاتف', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
+                            child: Text('رقم الهاتف', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SdColors.muted)),
                           ),
                           TextField(
                             controller: phoneController,
@@ -749,35 +696,35 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                             },
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: Colors.white,
+                              fillColor: SdColors.surface,
                               isDense: true,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                              prefixIcon: const Icon(Icons.phone, color: Color(0xFF1A237E), size: 18),
+                              prefixIcon: const Icon(Icons.phone, color: SdColors.primary, size: 18),
                               suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                               suffixIcon: (isLoading && phoneController.text.isNotEmpty)
                                   ? _InlineSpinner(size: 16)
                                   : (phoneController.text.isNotEmpty
                                       ? IconButton(
                                           tooltip: 'مسح',
-                                          icon: const Icon(Icons.clear, size: 16, color: Colors.red),
+                                          icon: const Icon(Icons.clear, size: 16, color: SdColors.danger),
                                           onPressed: _resetSearch,
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(),
                                         )
                                       : IconButton(
                                           tooltip: 'لصق',
-                                          icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)),
+                                          icon: const Icon(Icons.content_paste_go, size: 16, color: SdColors.primary),
                                           onPressed: () => _pasteIntoField(phoneController, isPhone: true),
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(),
                                         )),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                                borderSide: const BorderSide(color: SdColors.cardEdge, width: 1.5),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2),
+                                borderSide: const BorderSide(color: SdColors.primary, width: 2),
                               ),
                             ),
                             style: const TextStyle(fontSize: 13),
@@ -792,7 +739,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         padding: const EdgeInsets.only(bottom: 4),
                         child: IconButton(
                           tooltip: 'مسح الكل',
-                          icon: const Icon(Icons.clear_all, color: Colors.red, size: 22),
+                          icon: const Icon(Icons.clear_all, color: SdColors.danger, size: 22),
                           onPressed: _resetSearch,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -815,15 +762,15 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                       onSubmitted: (_) { setState(() { currentPage = 1; _hasSearched = true; }); _performSearch(); },
                       decoration: InputDecoration(
                         labelText: 'اسم المشترك',
-                        filled: true, fillColor: Colors.white, isDense: true,
+                        filled: true, fillColor: SdColors.surface, isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                        prefixIcon: const Icon(Icons.person_search, color: Color(0xFF1A237E), size: 18),
+                        prefixIcon: const Icon(Icons.person_search, color: SdColors.primary, size: 18),
                         suffixIcon: nameController.text.isNotEmpty
-                            ? IconButton(icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                            ? IconButton(icon: const Icon(Icons.clear, size: 16, color: SdColors.danger), onPressed: _resetSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
                             : null,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.blue.shade300)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SdColors.cardEdge)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SdColors.primary, width: 2)),
                       ),
                       style: const TextStyle(fontSize: 13),
                     ),
@@ -838,15 +785,15 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                       onSubmitted: (_) { setState(() { currentPage = 1; _hasSearched = true; }); _performSearch(); },
                       decoration: InputDecoration(
                         labelText: 'رقم الهاتف',
-                        filled: true, fillColor: Colors.white, isDense: true,
+                        filled: true, fillColor: SdColors.surface, isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                        prefixIcon: const Icon(Icons.phone, color: Color(0xFF1A237E), size: 18),
+                        prefixIcon: const Icon(Icons.phone, color: SdColors.primary, size: 18),
                         suffixIcon: phoneController.text.isNotEmpty
-                            ? IconButton(icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                            ? IconButton(icon: const Icon(Icons.clear, size: 16, color: SdColors.danger), onPressed: _resetSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
                             : null,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.blue.shade300)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SdColors.cardEdge)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SdColors.primary, width: 2)),
                       ),
                       style: const TextStyle(fontSize: 13),
                     ),
@@ -865,11 +812,11 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color:
-                                const Color(0xFF1A237E).withValues(alpha: 0.9),
+                                SdColors.primary.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
+                                color: SdColors.primaryEdge.withValues(alpha: 0.25),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -883,7 +830,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                 child: CircularProgressIndicator(
                                   strokeWidth: 6,
                                   valueColor: const AlwaysStoppedAnimation(
-                                      Color(0xFF4CAF50)),
+                                      SdColors.success),
                                   backgroundColor:
                                       Colors.white.withValues(alpha: 0.25),
                                 ),
@@ -904,7 +851,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         const Text(
                           'يتم الاتصال بالخادم، يرجى الانتظار',
                           style:
-                              TextStyle(color: Color(0xFF2C3E50), fontSize: 12),
+                              TextStyle(color: SdColors.ink, fontSize: 12),
                         )
                       ],
                     ),
@@ -913,56 +860,28 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
               else if (errorMessage.isNotEmpty)
                 Expanded(
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline,
-                            size: 64, color: Colors.red.shade400),
-                        const SizedBox(height: 16),
-                        Text(
-                          'خطأ: $errorMessage',
-                          style: TextStyle(
-                              color: Colors.red.shade600, fontSize: _fs(16)),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: _performSearch,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('إعادة المحاولة'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4CAF50),
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
+                    child: SdEmptyState(
+                      title: 'حدث خطأ',
+                      message: errorMessage,
+                      icon: Icons.error_outline,
+                      status: SdStatus.danger,
+                      action: SdButton(
+                        label: 'إعادة المحاولة',
+                        icon: Icons.refresh,
+                        onPressed: _performSearch,
+                      ),
                     ),
                   ),
                 )
               else if (!_hasSearched)
                 const Expanded(child: SizedBox.shrink())
               else if (_hasSearched && searchResults.isEmpty)
-                Expanded(
+                const Expanded(
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off,
-                            size: 64, color: Colors.grey.shade400),
-                        const SizedBox(height: 16),
-                        Text(
-                          'لا توجد نتائج للبحث الحالي',
-                          style: TextStyle(
-                              color: Colors.grey.shade600, fontSize: _fs(16)),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'جرب البحث بكلمات مختلفة أو تغيير نوع البحث',
-                          style: TextStyle(
-                              color: Colors.grey.shade500, fontSize: _fs(14)),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                    child: SdEmptyState(
+                      title: 'لا توجد نتائج للبحث الحالي',
+                      message: 'جرب البحث بكلمات مختلفة أو تغيير نوع البحث',
+                      icon: Icons.search_off,
                     ),
                   ),
                 )
@@ -975,7 +894,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                         margin: EdgeInsets.symmetric(horizontal: _isPhone ? 8 : 12),
                         padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 14, vertical: _isPhone ? 6 : 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1A237E),
+                          color: SdColors.primary,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
@@ -1026,9 +945,9 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                           strokeWidth: 5,
                                           valueColor:
                                               const AlwaysStoppedAnimation(
-                                                  Color(0xFF1A237E)),
+                                                  SdColors.primary),
                                           backgroundColor:
-                                              const Color(0xFF4CAF50)
+                                              SdColors.success
                                                   .withValues(alpha: 0.25),
                                         ),
                                       ),
@@ -1036,7 +955,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                       const Text(
                                         'تحميل المزيد...',
                                         style: TextStyle(
-                                          color: Color(0xFF1A237E),
+                                          color: SdColors.primary,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -1062,19 +981,11 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                   : (userPhone != 'غير متوفر' ? userPhone : '');
                               final isFetching = _fetchingPhones[userId] == true;
 
-                              return Card(
-                                margin: const EdgeInsets.only(bottom: 10),
-                                elevation: 3,
-                                shadowColor: Colors.black.withValues(alpha: 0.15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  side: const BorderSide(
-                                    color: Colors.black,
-                                    width: 1.2,
-                                  ),
-                                ),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(14),
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: SdRaised(
+                                  radius: SdRadius.md,
+                                  padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 18, vertical: _isPhone ? 10 : 16),
                                   onTap: () {
                                     Navigator.push(
                                       context,
@@ -1102,9 +1013,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                       ),
                                     );
                                   },
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 18, vertical: _isPhone ? 10 : 16),
-                                    child: Row(
+                                  child: Row(
                                       children: [
                                         // أيقونة المستخدم
                                         Container(
@@ -1114,12 +1023,12 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                             gradient: const LinearGradient(
                                               begin: Alignment.topLeft,
                                               end: Alignment.bottomRight,
-                                              colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                                              colors: [SdColors.primary, SdColors.primaryLight],
                                             ),
                                             borderRadius: BorderRadius.circular(14),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: const Color(0xFF1A237E).withValues(alpha: 0.3),
+                                                color: SdColors.primary.withValues(alpha: 0.3),
                                                 blurRadius: 6,
                                                 offset: const Offset(0, 3),
                                               ),
@@ -1143,7 +1052,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                                       style: TextStyle(
                                                         fontWeight: FontWeight.w700,
                                                         fontSize: _fs(16),
-                                                        color: const Color(0xFF1A237E),
+                                                        color: SdColors.primary,
                                                       ),
                                                     ),
                                                   ),
@@ -1152,7 +1061,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                                     borderRadius: BorderRadius.circular(4),
                                                     child: Padding(
                                                       padding: const EdgeInsets.all(4),
-                                                      child: Icon(Icons.copy_rounded, size: 16, color: Colors.grey.shade500),
+                                                      child: Icon(Icons.copy_rounded, size: 16, color: SdColors.faint),
                                                     ),
                                                   ),
                                                 ],
@@ -1162,14 +1071,14 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                               Row(
                                                 children: [
                                                   // الهاتف
-                                                  Icon(Icons.phone, size: 15, color: Colors.grey.shade500),
+                                                  Icon(Icons.phone, size: 15, color: SdColors.faint),
                                                   const SizedBox(width: 5),
                                                   if (isFetching)
                                                     const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5))
                                                   else if (displayPhone.isNotEmpty)
                                                     InkWell(
                                                       onTap: () => _copyToClipboard('رقم الهاتف', displayPhone),
-                                                      child: Text(displayPhone, style: TextStyle(fontSize: _fs(14), color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
+                                                      child: Text(displayPhone, style: TextStyle(fontSize: _fs(14), color: SdColors.muted, fontWeight: FontWeight.w500)),
                                                     )
                                                   else if (userId.isNotEmpty && _fetchedPhones[userId] == null)
                                                     InkWell(
@@ -1177,21 +1086,21 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                                       child: Container(
                                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                                         decoration: BoxDecoration(
-                                                          color: Colors.blue.shade50,
+                                                          color: SdColors.infoTint,
                                                           borderRadius: BorderRadius.circular(6),
-                                                          border: Border.all(color: Colors.blue.shade200),
+                                                          border: Border.all(color: SdColors.infoTintEdge),
                                                         ),
-                                                        child: Text('إظهار الرقم', style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+                                                        child: Text('إظهار الرقم', style: TextStyle(fontSize: 12, color: SdColors.info, fontWeight: FontWeight.w600)),
                                                       ),
                                                     )
                                                   else
-                                                    Text('غير متوفر', style: TextStyle(fontSize: _fs(14), color: Colors.grey.shade400)),
+                                                    Text('غير متوفر', style: TextStyle(fontSize: _fs(14), color: SdColors.faint)),
                                                   SizedBox(width: _isPhone ? 10 : 20),
                                                   // ID
                                                   Container(
                                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.grey.shade100,
+                                                      color: SdColors.surfaceAlt,
                                                       borderRadius: BorderRadius.circular(6),
                                                     ),
                                                     child: InkWell(
@@ -1199,10 +1108,10 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                                       child: Row(
                                                         mainAxisSize: MainAxisSize.min,
                                                         children: [
-                                                          Text('ID: ', style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                                                          Text('ID: ', style: TextStyle(fontSize: 12, color: SdColors.faint, fontWeight: FontWeight.w600)),
                                                           Text(
                                                             userId.isEmpty ? '-' : userId,
-                                                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                                                            style: TextStyle(fontSize: 12, color: SdColors.muted, fontWeight: FontWeight.w500),
                                                           ),
                                                         ],
                                                       ),
@@ -1218,14 +1127,13 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                                         Container(
                                           padding: const EdgeInsets.all(6),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF1A237E).withValues(alpha: 0.08),
+                                            color: SdColors.primary.withValues(alpha: 0.08),
                                             shape: BoxShape.circle,
                                           ),
-                                          child: const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF1A237E)),
+                                          child: const Icon(Icons.arrow_forward_ios, size: 14, color: SdColors.primary),
                                         ),
                                       ],
                                     ),
-                                  ),
                                 ),
                               );
                             });
@@ -1238,10 +1146,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
                 ),
             ],
           ),
-        ],
-      ),
     );
-    return scaffold;
   }
 }
 
@@ -1321,7 +1226,7 @@ class _InlineSpinner extends StatelessWidget {
         height: size,
         child: CircularProgressIndicator(
           strokeWidth: 3,
-          valueColor: const AlwaysStoppedAnimation(Color(0xFF1A237E)),
+          valueColor: const AlwaysStoppedAnimation(SdColors.primary),
         ),
       ),
     );
@@ -1376,7 +1281,7 @@ class _InlineDotsState extends State<_InlineDots>
                         width: 6 * s(i),
                         height: 6 * s(i),
                         decoration: const BoxDecoration(
-                          color: Color(0xFF4CAF50),
+                          color: SdColors.success,
                           shape: BoxShape.circle,
                         ),
                       ),

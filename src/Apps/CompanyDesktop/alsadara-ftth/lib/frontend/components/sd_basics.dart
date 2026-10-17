@@ -224,6 +224,7 @@ class SdToggle extends StatelessWidget {
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(SdRadius.pill),
+            border: SdOutline.all,
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -287,6 +288,7 @@ class SdCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(SdRadius.lg),
+        border: SdOutline.all,
         boxShadow: SdDepth.raised(),
       ),
       padding: padding,

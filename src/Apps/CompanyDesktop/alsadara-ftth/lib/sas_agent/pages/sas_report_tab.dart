@@ -2,14 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../permissions/permission_manager.dart';
-import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
 import '../models/sas_report.dart';
 import '../services/sas_agent_api_service.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_report_widgets.dart';
 import '../widgets/sas_state_views.dart';
@@ -113,8 +111,10 @@ class _SasReportTabState extends State<SasReportTab> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg,
+          style: const TextStyle(
+              fontFamily: SdText.family, fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -145,23 +145,25 @@ class _SasReportTabState extends State<SasReportTab> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: Text('تأكيد إرسال التصريح',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+          title: const Text('تأكيد إرسال التصريح',
+              style: TextStyle(
+                  fontFamily: SdText.family, fontWeight: FontWeight.w800)),
           content: Text(
             'ستُصرّح بإجمالي «$total» مشترك منهم «$active» نشط.\n'
             'يُقارَن تصريحك آلياً مع ما تُظهره الشركة. متابعة؟',
-            style: GoogleFonts.cairo(height: 1.6),
+            style: const TextStyle(fontFamily: SdText.family, height: 1.6),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+              child: const Text('إلغاء',
+                  style: TextStyle(fontFamily: SdText.family)),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor),
+              style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
               onPressed: () => Navigator.pop(ctx, true),
-              child: Text('إرسال', style: GoogleFonts.cairo()),
+              child: const Text('إرسال',
+                  style: TextStyle(fontFamily: SdText.family)),
             ),
           ],
         ),
@@ -197,39 +199,32 @@ class _SasReportTabState extends State<SasReportTab> {
       child: SasContentWrap(
         maxWidth: 900,
         child: ListView(
-        padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
-        children: [
-          _banner(),
-          SizedBox(height: 16.h),
-          if (_canSubmit) ...[
-            const SasSectionHeader(
-              title: 'تصريح جديد',
-              icon: Icons.edit_note_rounded,
-              gradient: AppTheme.orangeGradient,
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+          children: [
+            _banner(),
+            const SizedBox(height: SdSpace.md),
+            if (_canSubmit) ...[
+              SdSectionHeader(
+                  title: 'تصريح جديد', tone: SdGroup.comms.tone),
+              const SizedBox(height: SdSpace.xs),
+              _reportForm(),
+              const SizedBox(height: SdSpace.md),
+            ],
+            const SdSectionHeader(title: 'نتيجة المطابقة (البلنك)'),
+            const SizedBox(height: SdSpace.xs),
+            if (_recon != null)
+              SasReconciliationCard(recon: _recon!)
+            else
+              _noReconHint(),
+            const SizedBox(height: SdSpace.md),
+            SdSectionHeader(
+              title: 'سجلّ التصاريح',
+              tone: SdStatus.success.tone,
+              count: _reports.isEmpty ? null : _reports.length,
             ),
-            SizedBox(height: 10.h),
-            _reportForm(),
-            SizedBox(height: 18.h),
+            const SizedBox(height: SdSpace.xs),
+            _reportsHistory(),
           ],
-          const SasSectionHeader(
-            title: 'نتيجة المطابقة (البلنك)',
-            icon: Icons.balance_rounded,
-          ),
-          SizedBox(height: 10.h),
-          if (_recon != null)
-            SasReconciliationCard(recon: _recon!)
-          else
-            _noReconHint(),
-          SizedBox(height: 18.h),
-          SasSectionHeader(
-            title: 'سجلّ التصاريح',
-            icon: Icons.history_rounded,
-            gradient: AppTheme.greenGradient,
-            trailingText: _reports.isEmpty ? null : '${_reports.length}',
-          ),
-          SizedBox(height: 10.h),
-          _reportsHistory(),
-        ],
         ),
       ),
     );
@@ -237,48 +232,51 @@ class _SasReportTabState extends State<SasReportTab> {
 
   Widget _banner() {
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: AppTheme.blueGradient,
+          colors: [SdColors.primaryMid, SdColors.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        boxShadow: SasUi.cardShadow(AppTheme.primaryColor),
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: [
+          BoxShadow(color: SdColors.primaryEdge, offset: const Offset(0, 5)),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 46.w,
-            height: 46.w,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.18),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
             ),
-            child:
-                Icon(Icons.assignment_rounded, color: Colors.white, size: 24.sp),
+            child: const Icon(Icons.assignment_rounded,
+                color: Colors.white, size: 24),
           ),
-          SizedBox(width: 12.w),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'التصريح الشهري (البلنك الموحّد)',
-                  style: GoogleFonts.cairo(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(
+                      fontFamily: SdText.family,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white),
                 ),
-                SizedBox(height: 2.h),
+                const SizedBox(height: 2),
                 Text(
                   widget.account.displayName,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
-                    fontSize: 11.5.sp,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
                     color: Colors.white.withValues(alpha: 0.80),
                     fontWeight: FontWeight.w500,
                   ),
@@ -292,18 +290,16 @@ class _SasReportTabState extends State<SasReportTab> {
   }
 
   Widget _reportForm() {
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: SasUi.card(),
+    return SdCard(
+      tone: SdGroup.comms.tone,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             'صرّح بعدد مشتركيك الفعلي — يُقارَن آلياً مع ما تنسبه الشركة إليك.',
-            style: GoogleFonts.cairo(
-                fontSize: 12.sp, color: Colors.grey[700], height: 1.5),
+            style: SdText.bodySm.copyWith(height: 1.5),
           ),
-          SizedBox(height: 14.h),
+          const SizedBox(height: SdSpace.sm),
           Row(
             children: [
               Expanded(
@@ -313,7 +309,7 @@ class _SasReportTabState extends State<SasReportTab> {
                   icon: Icons.people_rounded,
                 ),
               ),
-              SizedBox(width: 10.w),
+              const SizedBox(width: SdSpace.xs),
               Expanded(
                 child: _numField(
                   controller: _activeCtrl,
@@ -323,35 +319,32 @@ class _SasReportTabState extends State<SasReportTab> {
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: SdSpace.xs),
           _textField(
             controller: _noteCtrl,
             label: 'ملاحظة (اختياري)',
             icon: Icons.notes_rounded,
           ),
-          SizedBox(height: 14.h),
-          SizedBox(
-            height: 48.h,
-            child: FilledButton.icon(
-              onPressed: _submitting ? null : _submit,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(SasUi.radius.r)),
+          const SizedBox(height: SdSpace.sm),
+          if (_submitting)
+            const SizedBox(
+              height: 48,
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.4, color: SdColors.primary),
+                ),
               ),
-              icon: _submitting
-                  ? SizedBox(
-                      width: 18.w,
-                      height: 18.w,
-                      child: const CircularProgressIndicator(
-                          strokeWidth: 2.2, color: Colors.white),
-                    )
-                  : const Icon(Icons.send_rounded, size: 19),
-              label: Text('إرسال التصريح',
-                  style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.w800, fontSize: 14.sp)),
+            )
+          else
+            SdButton(
+              label: 'إرسال التصريح',
+              icon: Icons.send_rounded,
+              expand: true,
+              onPressed: _submit,
             ),
-          ),
         ],
       ),
     );
@@ -366,7 +359,10 @@ class _SasReportTabState extends State<SasReportTab> {
       controller: controller,
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+      style: const TextStyle(
+          fontFamily: SdText.family,
+          fontWeight: FontWeight.w700,
+          color: SdColors.ink),
       decoration: _inputDecoration(label, icon),
     );
   }
@@ -378,49 +374,45 @@ class _SasReportTabState extends State<SasReportTab> {
   }) {
     return TextField(
       controller: controller,
-      style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+      style: const TextStyle(
+          fontFamily: SdText.family,
+          fontWeight: FontWeight.w600,
+          color: SdColors.ink),
       decoration: _inputDecoration(label, icon),
     );
   }
 
   InputDecoration _inputDecoration(String label, IconData icon) {
+    OutlineInputBorder border(Color color, [double width = 1.2]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: BorderSide(color: color, width: width),
+        );
     return InputDecoration(
       labelText: label,
-      labelStyle: GoogleFonts.cairo(color: Colors.grey[600]),
-      prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 20.sp),
+      labelStyle: const TextStyle(
+          fontFamily: SdText.family, color: SdColors.muted),
+      prefixIcon: Icon(icon, color: SdColors.primary, size: 20),
       filled: true,
-      fillColor: const Color(0xFFF7F8FC),
+      fillColor: SdColors.surfaceAlt,
       isDense: true,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-        borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-        borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.18)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-        borderSide:
-            const BorderSide(color: AppTheme.primaryColor, width: 1.6),
-      ),
+      border: border(SdColors.edge),
+      enabledBorder: border(SdColors.edge),
+      focusedBorder: border(SdColors.primary, 1.6),
     );
   }
 
   Widget _noReconHint() {
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: SasUi.card(),
+    return SdCard(
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded,
-              color: Colors.grey[500], size: 20.sp),
-          SizedBox(width: 10.w),
+          const Icon(Icons.info_outline_rounded,
+              color: SdColors.faint, size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               'لا نتيجة مطابقة بعد — تظهر بعد مزامنة الشركة وتصريحك الأول.',
-              style: GoogleFonts.cairo(
-                  fontSize: 12.5.sp, color: Colors.grey[700], height: 1.5),
+              style: SdText.bodySm.copyWith(height: 1.5),
             ),
           ),
         ],
@@ -430,19 +422,14 @@ class _SasReportTabState extends State<SasReportTab> {
 
   Widget _reportsHistory() {
     if (_reports.isEmpty) {
-      return Container(
-        padding: EdgeInsets.all(14.w),
-        decoration: SasUi.card(),
+      return SdCard(
         child: Row(
           children: [
-            Icon(Icons.inbox_rounded, color: Colors.grey[400], size: 20.sp),
-            SizedBox(width: 10.w),
+            const Icon(Icons.inbox_rounded, color: SdColors.faint, size: 20),
+            const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                'لا تصاريح سابقة لهذا الحساب بعد.',
-                style: GoogleFonts.cairo(
-                    fontSize: 12.5.sp, color: Colors.grey[600]),
-              ),
+              child: Text('لا تصاريح سابقة لهذا الحساب بعد.',
+                  style: SdText.bodySm),
             ),
           ],
         ),
@@ -452,55 +439,54 @@ class _SasReportTabState extends State<SasReportTab> {
       children: [
         for (final r in _reports) ...[
           _reportRow(r),
-          SizedBox(height: 8.h),
+          const SizedBox(height: SdSpace.xs),
         ],
       ],
     );
   }
 
   Widget _reportRow(SasAgentReport r) {
-    return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: SasUi.card(),
+    final tone = SdStatus.success.tone;
+    return SdCard(
+      padding: const EdgeInsets.all(12),
       child: Row(
         children: [
-          SasUi.gradientBadge(
-            icon: Icons.assignment_turned_in_rounded,
-            colors: AppTheme.greenGradient,
-            size: 40,
-            iconSize: 20,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: tone.tint,
+              borderRadius: BorderRadius.circular(11),
+              boxShadow: [
+                BoxShadow(color: tone.tintEdge, offset: const Offset(0, 3))
+              ],
+            ),
+            child: Icon(Icons.assignment_turned_in_rounded,
+                color: tone.base, size: 20),
           ),
-          SizedBox(width: 12.w),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'كلّي: ${r.declaredTotal} · نشط: ${r.declaredActive}',
-                  style: GoogleFonts.cairo(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1A1A2E)),
+                  style: SdText.label,
                 ),
                 if (r.note.trim().isNotEmpty) ...[
-                  SizedBox(height: 3.h),
+                  const SizedBox(height: 3),
                   Text(
                     r.note,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
-                        fontSize: 11.5.sp, color: Colors.grey[600]),
+                    style: SdText.caption,
                   ),
                 ],
                 if (r.createdAt != null) ...[
-                  SizedBox(height: 3.h),
-                  Text(
-                    _fmtDate(r.createdAt!),
-                    style: GoogleFonts.cairo(
-                        fontSize: 11.sp,
-                        color: Colors.grey[500],
-                        fontWeight: FontWeight.w500),
-                  ),
+                  const SizedBox(height: 3),
+                  Text(_fmtDate(r.createdAt!),
+                      style: SdText.caption
+                          .copyWith(color: SdColors.faint)),
                 ],
               ],
             ),

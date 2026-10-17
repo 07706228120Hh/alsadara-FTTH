@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة كشف الحسابات - عرض جميع الحسابات الفرعية مع كشف حساب مفصّل
 class ClientAccountsPage extends StatefulWidget {
@@ -439,8 +440,44 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF0F2F8),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'كشف الحسابات',
+          subtitle: '${_allAccounts.length} حساب فرعي',
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: 'رجوع',
+            onPressed: () {
+              if (_selectedAccount != null) {
+                setState(() {
+                  _selectedAccount = null;
+                  _searchQuery = '';
+                  _searchController.clear();
+                  _stmtSearchQuery = '';
+                  _stmtSearchController.clear();
+                  _stmtTypeFilter = 'all';
+                  _statementLines = [];
+                  _statementSummary = {};
+                  _statementAccount = {};
+                });
+              } else {
+                Navigator.of(context).pop();
+              }
+            },
+          ),
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh_rounded,
+              label: 'تحديث',
+              onPressed: () {
+                _loadAccounts();
+                if (_selectedAccount != null) _reloadStatement();
+              },
+            ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Container(
             margin: isMob ? const EdgeInsets.all(6) : const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -463,7 +500,6 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               borderRadius: BorderRadius.circular(isMob ? 16 : 20),
               child: Column(
                 children: [
-                  _buildToolbar(),
                   _buildSearchBar(),
                   if (_selectedAccount == null && _searchMode == 'accounts')
                     _buildQuickFilters(),
@@ -1477,127 +1513,6 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   // ═══════════════════════════════════════════
   // شريط العنوان
   // ═══════════════════════════════════════════
-  Widget _buildToolbar() {
-    final ar = context.accR;
-    final isMob = ar.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 12 : 24, vertical: isMob ? 10 : 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2C3E50), Color(0xFF34495E)],
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-        ),
-      ),
-      child: Row(
-        children: [
-          Material(
-            color: Colors.white.withAlpha(20),
-            borderRadius: BorderRadius.circular(10),
-            child: InkWell(
-              onTap: () {
-                if (_selectedAccount != null) {
-                  setState(() {
-                    _selectedAccount = null;
-                    _searchQuery = '';
-                    _searchController.clear();
-                    _stmtSearchQuery = '';
-                    _stmtSearchController.clear();
-                    _stmtTypeFilter = 'all';
-                    _statementLines = [];
-                    _statementSummary = {};
-                    _statementAccount = {};
-                  });
-                } else {
-                  Navigator.of(context).pop();
-                }
-              },
-              borderRadius: BorderRadius.circular(10),
-              child: Padding(
-                padding: EdgeInsets.all(isMob ? 6 : 8),
-                child: Icon(Icons.arrow_back_rounded,
-                    size: isMob ? 18 : 22, color: Colors.white),
-              ),
-            ),
-          ),
-          SizedBox(width: isMob ? 10 : 16),
-          Container(
-            padding: EdgeInsets.all(isMob ? 8 : 10),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3498DB), Color(0xFF2980B9)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF3498DB).withAlpha(60),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(Icons.account_balance_wallet_rounded,
-                color: Colors.white, size: isMob ? 18 : 22),
-          ),
-          SizedBox(width: isMob ? 10 : 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('كشف الحسابات',
-                  style: GoogleFonts.cairo(
-                    fontSize: isMob ? 16 : 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  )),
-              Text('${_allAccounts.length} حساب فرعي',
-                  style: GoogleFonts.cairo(
-                    fontSize: isMob ? 10 : 12,
-                    color: Colors.white.withAlpha(180),
-                  )),
-            ],
-          ),
-          const Spacer(),
-          _toolbarButton(
-            icon: Icons.refresh_rounded,
-            tooltip: 'تحديث',
-            onTap: () {
-              _loadAccounts();
-              if (_selectedAccount != null) _reloadStatement();
-            },
-            isMob: isMob,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _toolbarButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-    required bool isMob,
-    bool isActive = false,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: isActive ? Colors.white.withAlpha(30) : Colors.white.withAlpha(15),
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(
-            padding: EdgeInsets.all(isMob ? 6 : 8),
-            child: Icon(icon,
-                size: isMob ? 18 : 20,
-                color: isActive ? const Color(0xFF3498DB) : Colors.white.withAlpha(200)),
-          ),
-        ),
-      ),
-    );
-  }
-
   /// عرض مشترك: حسابات + قيود
   Widget _buildCombinedResults() {
     final hasJournalResults = _searchQuery.length >= 2 && (_journalSearchResults.isNotEmpty || _isSearchingJournals);

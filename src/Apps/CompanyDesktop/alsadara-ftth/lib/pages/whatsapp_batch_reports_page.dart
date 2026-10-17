@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/whatsapp_batch_report_service.dart';
 
 /// صفحة تقارير الإرسال الجماعي
@@ -51,19 +52,21 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
     }
   }
 
-  Color _getStatusColor(String? status) {
+  SdStatus _getStatus(String? status) {
     switch (status?.toLowerCase()) {
       case 'completed':
-        return Colors.green;
+        return SdStatus.success;
       case 'in_progress':
       case 'processing':
-        return Colors.orange;
+        return SdStatus.warning;
       case 'failed':
-        return Colors.red;
+        return SdStatus.danger;
       default:
-        return Colors.grey;
+        return SdStatus.neutral;
     }
   }
+
+  Color _getStatusColor(String? status) => _getStatus(status).tone.base;
 
   IconData _getStatusIcon(String? status) {
     switch (status?.toLowerCase()) {
@@ -108,32 +111,16 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          iconTheme: const IconThemeData(color: Colors.white),
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF283593),
-                  Color(0xFF1976D2),
-                  Color(0xFF64B5F6)
-                ],
-              ),
-            ),
-          ),
-          title: const Text('📊 تقارير الإرسال الجماعي'),
-          centerTitle: true,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'تقارير الإرسال الجماعي',
           actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
               onPressed: _loadReports,
-              tooltip: 'تحديث',
             ),
           ],
         ),
@@ -148,51 +135,33 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
+            CircularProgressIndicator(color: SdColors.primary),
             SizedBox(height: 16),
-            Text('جاري تحميل التقارير...'),
+            Text('جاري تحميل التقارير...', style: SdText.bodySm),
           ],
         ),
       );
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text('خطأ: $_error'),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _loadReports,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ],
+      return SdEmptyState(
+        title: 'خطأ: $_error',
+        icon: Icons.error_outline_rounded,
+        status: SdStatus.danger,
+        action: SdButton(
+          label: 'إعادة المحاولة',
+          icon: Icons.refresh,
+          kind: SdButtonKind.secondary,
+          onPressed: _loadReports,
         ),
       );
     }
 
     if (_reports.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'لا توجد تقارير',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'ستظهر هنا تقارير الإرسال الجماعي',
-              style: TextStyle(color: Colors.grey[500]),
-            ),
-          ],
-        ),
+      return const SdEmptyState(
+        title: 'لا توجد تقارير',
+        message: 'ستظهر هنا تقارير الإرسال الجماعي',
+        icon: Icons.inbox_rounded,
       );
     }
 
@@ -223,166 +192,114 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
       successRate = (sent / total) * 100;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: _getStatusColor(status).withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+    final Color rateColor = successRate >= 90
+        ? SdColors.success
+        : successRate >= 50
+            ? SdColors.warning
+            : SdColors.danger;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SdRaised(
         onTap: () => _showReportDetails(report),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // الصف العلوي - الحالة والتاريخ
-              Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(status).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _getStatusColor(status).withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _getStatusIcon(status),
-                          size: 16,
-                          color: _getStatusColor(status),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _getStatusText(status),
-                          style: TextStyle(
-                            color: _getStatusColor(status),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _formatDate(completedAt ?? createdAt),
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // القالب
-              if (templateType != null) ...[
+        semanticLabel: _getTemplateText(templateType),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // الصف العلوي - الحالة والتاريخ
+            Row(
+              children: [
+                SdStatusChip(
+                  _getStatusText(status),
+                  status: _getStatus(status),
+                  icon: _getStatusIcon(status),
+                ),
+                const Spacer(),
                 Text(
-                  _getTemplateText(templateType),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  _formatDate(completedAt ?? createdAt),
+                  style: SdText.caption,
                 ),
-                const SizedBox(height: 8),
               ],
+            ),
 
-              // الإحصائيات
-              Row(
-                children: [
-                  _buildStatItem(
-                    icon: Icons.groups,
-                    label: 'الإجمالي',
-                    value: total.toString(),
-                    color: Colors.blue,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildStatItem(
-                    icon: Icons.check_circle,
-                    label: 'نجح',
-                    value: sent.toString(),
-                    color: Colors.green,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildStatItem(
-                    icon: Icons.error,
-                    label: 'فشل',
-                    value: failed.toString(),
-                    color: Colors.red,
-                  ),
-                ],
-              ),
+            const SizedBox(height: 12),
 
-              const SizedBox(height: 12),
-
-              // شريط التقدم
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'نسبة النجاح',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      Text(
-                        rate,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: successRate >= 90
-                              ? Colors.green
-                              : successRate >= 50
-                                  ? Colors.orange
-                                  : Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: successRate / 100,
-                      backgroundColor: Colors.grey[200],
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        successRate >= 90
-                            ? Colors.green
-                            : successRate >= 50
-                                ? Colors.orange
-                                : Colors.red,
-                      ),
-                      minHeight: 8,
-                    ),
-                  ),
-                ],
-              ),
-
-              // معرف الدفعة
-              const SizedBox(height: 8),
+            // القالب
+            if (templateType != null) ...[
               Text(
-                'ID: ${batchId ?? "-"}',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey[500],
-                  fontFamily: 'monospace',
-                ),
+                _getTemplateText(templateType),
+                style: SdText.titleSm,
               ),
+              const SizedBox(height: 8),
             ],
-          ),
+
+            // الإحصائيات
+            Row(
+              children: [
+                _buildStatItem(
+                  icon: Icons.groups,
+                  label: 'الإجمالي',
+                  value: total.toString(),
+                  color: SdColors.info,
+                ),
+                const SizedBox(width: 16),
+                _buildStatItem(
+                  icon: Icons.check_circle,
+                  label: 'نجح',
+                  value: sent.toString(),
+                  color: SdColors.success,
+                ),
+                const SizedBox(width: 16),
+                _buildStatItem(
+                  icon: Icons.error,
+                  label: 'فشل',
+                  value: failed.toString(),
+                  color: SdColors.danger,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // شريط التقدم
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('نسبة النجاح', style: SdText.caption),
+                    Text(
+                      rate,
+                      style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: rateColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: successRate / 100,
+                    backgroundColor: SdColors.divider,
+                    valueColor: AlwaysStoppedAnimation<Color>(rateColor),
+                    minHeight: 8,
+                  ),
+                ),
+              ],
+            ),
+
+            // معرف الدفعة
+            const SizedBox(height: 8),
+            Text(
+              'ID: ${batchId ?? "-"}',
+              style: SdText.mono.copyWith(fontSize: 11.5),
+            ),
+          ],
         ),
       ),
     );
@@ -408,16 +325,19 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
             Text(
               value,
               style: TextStyle(
+                fontFamily: SdText.family,
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w900,
                 color: color,
               ),
             ),
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
-                color: color.withValues(alpha: 0.8),
+                fontFamily: SdText.family,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: color.withValues(alpha: 0.85),
               ),
             ),
           ],
@@ -448,7 +368,7 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: SdColors.edge,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -460,8 +380,7 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
                   children: [
                     const Text(
                       '📋 تفاصيل التقرير',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: SdText.title,
                     ),
                     const Spacer(),
                     IconButton(
@@ -489,9 +408,9 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
                         'إجمالي المستلمين', '${report['total'] ?? 0}'),
                     _buildDetailRow(
                         'تم الإرسال بنجاح', '${report['sent'] ?? 0}',
-                        color: Colors.green),
+                        color: SdColors.success),
                     _buildDetailRow('فشل الإرسال', '${report['failed'] ?? 0}',
-                        color: Colors.red),
+                        color: SdColors.danger),
                     _buildDetailRow(
                         'نسبة النجاح', report['rate']?.toString() ?? '0%'),
                     _buildDetailRow('تاريخ الإنشاء',
@@ -505,32 +424,30 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
+                          color: SdColors.dangerTint,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: Colors.red.withValues(alpha: 0.3)),
+                          border:
+                              Border.all(color: SdColors.dangerTintEdge),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
-                                Icon(Icons.error_outline,
-                                    color: Colors.red, size: 20),
-                                SizedBox(width: 8),
+                                const Icon(Icons.error_outline,
+                                    color: SdColors.danger, size: 20),
+                                const SizedBox(width: 8),
                                 Text(
                                   'رسالة الخطأ',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.red,
-                                  ),
+                                  style: SdText.label
+                                      .copyWith(color: SdColors.danger),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 8),
                             Text(
                               report['error'].toString(),
-                              style: const TextStyle(fontSize: 12),
+                              style: SdText.bodySm,
                             ),
                           ],
                         ),
@@ -539,14 +456,12 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
 
                     // زر حذف التقرير
                     const SizedBox(height: 24),
-                    OutlinedButton.icon(
+                    SdButton(
+                      label: 'حذف التقرير',
+                      icon: Icons.delete,
+                      kind: SdButtonKind.danger,
+                      expand: true,
                       onPressed: () => _confirmDeleteReport(report),
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      label: const Text('حذف التقرير'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                      ),
                     ),
                   ],
                 ),
@@ -568,20 +483,13 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
             width: 120,
             child: Text(
               label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
+              style: SdText.bodySm,
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-                color: color,
-              ),
+              style: SdText.label.copyWith(color: color),
             ),
           ),
         ],
@@ -592,20 +500,24 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
   Future<void> _confirmDeleteReport(Map<String, dynamic> report) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: const Text('هل أنت متأكد من حذف هذا التقرير؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('حذف', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد الحذف'),
+          content: const Text('هل أنت متأكد من حذف هذا التقرير؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: SdColors.danger),
+              child: const Text('حذف', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
 

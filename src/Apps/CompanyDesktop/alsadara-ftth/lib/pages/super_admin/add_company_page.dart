@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../multi_tenant.dart';
+import '../../frontend/frontend.dart';
 
 class AddCompanyPage extends StatefulWidget {
   const AddCompanyPage({super.key});
@@ -128,7 +129,7 @@ class _AddCompanyPageState extends State<AddCompanyPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -175,7 +176,7 @@ class _AddCompanyPageState extends State<AddCompanyPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم إضافة الشركة بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
           Navigator.pop(context);
@@ -185,7 +186,7 @@ class _AddCompanyPageState extends State<AddCompanyPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result.errorMessage ?? 'حدث خطأ غير معروف'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -196,9 +197,9 @@ class _AddCompanyPageState extends State<AddCompanyPage> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -207,12 +208,11 @@ class _AddCompanyPageState extends State<AddCompanyPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('إضافة شركة جديدة'),
-        backgroundColor: const Color(0xFF1a237e),
-        foregroundColor: Colors.white,
-      ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: SdSpace.formMax,
+      appBar: const SdAppBar(title: 'إضافة شركة جديدة'),
       body: Form(
         key: _formKey,
         child: Stepper(
@@ -241,7 +241,7 @@ class _AddCompanyPageState extends State<AddCompanyPage> {
                   ElevatedButton(
                     onPressed: _isLoading ? null : details.onStepContinue,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1a237e),
+                      backgroundColor: SdColors.primary,
                       foregroundColor: Colors.white,
                     ),
                     child: _isLoading && _currentStep == 2

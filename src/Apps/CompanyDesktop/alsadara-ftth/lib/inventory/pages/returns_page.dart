@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import 'return_form_page.dart';
 
@@ -81,9 +82,9 @@ class _ReturnsPageState extends State<ReturnsPage>
   List<Widget> _buildReturnActions(String id, String status) {
     final actions = <Widget>[];
     if (status == 'Draft') {
-      actions.add(_returnActionBtn(Icons.check_circle_outline, 'تأكيد', Colors.green.shade800, () => _confirmReturn(id)));
-      actions.add(_returnActionBtn(Icons.cancel_outlined, 'إلغاء', Colors.orange.shade800, () => _cancelReturn(id)));
-      actions.add(_returnActionBtn(Icons.delete_outline, 'حذف', Colors.red.shade800, () => _deleteReturn(id)));
+      actions.add(_returnActionBtn(Icons.check_circle_outline, 'تأكيد', SdColors.success, () => _confirmReturn(id)));
+      actions.add(_returnActionBtn(Icons.cancel_outlined, 'إلغاء', SdColors.warning, () => _cancelReturn(id)));
+      actions.add(_returnActionBtn(Icons.delete_outline, 'حذف', SdColors.danger, () => _deleteReturn(id)));
     }
     return actions;
   }
@@ -109,7 +110,7 @@ class _ReturnsPageState extends State<ReturnsPage>
           content: const Text('هل تريد تأكيد هذا المرتجع؟ سيتم تعديل المخزون تلقائياً.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
           ],
         ),
       ),
@@ -117,10 +118,10 @@ class _ReturnsPageState extends State<ReturnsPage>
     if (ok != true) return;
     try {
       await _api.confirmReturn(id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تأكيد المرتجع'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تأكيد المرتجع'), backgroundColor: SdColors.success));
       _loadData();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
   }
 
@@ -134,7 +135,7 @@ class _ReturnsPageState extends State<ReturnsPage>
           content: const Text('هل تريد حذف هذا المرتجع نهائياً؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
           ],
         ),
       ),
@@ -142,10 +143,10 @@ class _ReturnsPageState extends State<ReturnsPage>
     if (ok != true) return;
     try {
       await _api.deleteReturn(id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف المرتجع'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف المرتجع'), backgroundColor: SdColors.success));
       _loadData();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
   }
 
@@ -159,7 +160,7 @@ class _ReturnsPageState extends State<ReturnsPage>
           content: const Text('هل تريد إلغاء هذا المرتجع؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء المرتجع')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء المرتجع')),
           ],
         ),
       ),
@@ -167,116 +168,88 @@ class _ReturnsPageState extends State<ReturnsPage>
     if (ok != true) return;
     try {
       await _api.cancelReturn(id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء المرتجع'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء المرتجع'), backgroundColor: SdColors.success));
       _loadData();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
+    }
+  }
+
+  SdStatus _statusTone(String status) {
+    switch (status) {
+      case 'Confirmed':
+        return SdStatus.success;
+      case 'Cancelled':
+        return SdStatus.danger;
+      default:
+        return SdStatus.neutral;
     }
   }
 
   Widget _statusChip(String status) {
-    Color bg;
-    Color fg;
-    switch (status) {
-      case 'Draft':
-        bg = Colors.grey.shade200;
-        fg = Colors.grey.shade800;
-        break;
-      case 'Confirmed':
-        bg = Colors.green.shade100;
-        fg = Colors.green.shade800;
-        break;
-      case 'Cancelled':
-        bg = Colors.red.shade100;
-        fg = Colors.red.shade800;
-        break;
-      default:
-        bg = Colors.grey.shade200;
-        fg = Colors.grey.shade800;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        _statusLabels[status] ?? status,
-        style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600),
-      ),
-    );
+    return SdStatusChip(_statusLabels[status] ?? status, status: _statusTone(status));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F6FA),
-          foregroundColor: const Color(0xFF1A1A2E),
-          iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
-          titleTextStyle: const TextStyle(
-              color: Color(0xFF1A1A2E),
-              fontSize: 18,
-              fontWeight: FontWeight.w700),
-          elevation: 0,
-          title: const Text('المرتجعات'),
-          actions: [
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ReturnFormPage(
-                      companyId: widget.companyId,
-                      returnType: _tabController.index == 0
-                          ? 'SalesReturn'
-                          : 'PurchaseReturn',
-                    ),
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'المرتجعات',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.add_rounded,
+            label: 'مرتجع جديد',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ReturnFormPage(
+                    companyId: widget.companyId,
+                    returnType: _tabController.index == 0
+                        ? 'SalesReturn'
+                        : 'PurchaseReturn',
                   ),
-                ).then((_) => _loadData());
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('مرتجع جديد'),
-            ),
-            const SizedBox(width: 12),
-          ],
-          bottom: TabBar(
-            controller: _tabController,
-            labelColor: const Color(0xFF1A1A2E),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: const Color(0xFF1A1A2E),
-            tabs: const [
-              Tab(text: 'مرتجع مبيعات'),
-              Tab(text: 'مرتجع مشتريات'),
-            ],
+                ),
+              ).then((_) => _loadData());
+            },
           ),
+        ],
+        bottom: SdTabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'مرتجع مبيعات'),
+            Tab(text: 'مرتجع مشتريات'),
+          ],
         ),
-        body: _buildBody(),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: SdSpace.sm),
+          Expanded(child: _buildBody()),
+        ],
       ),
     );
   }
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (_error != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-            const SizedBox(height: 12),
-            Text(_error!, style: TextStyle(color: Colors.red.shade700)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _loadData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل المرتجعات',
+          message: _error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh_rounded,
+            kind: SdButtonKind.secondary,
+            onPressed: _loadData,
+          ),
         ),
       );
     }
@@ -284,107 +257,158 @@ class _ReturnsPageState extends State<ReturnsPage>
     return TabBarView(
       controller: _tabController,
       children: [
-        _buildTable(_salesReturns, 'لا توجد مرتجعات مبيعات'),
-        _buildTable(_purchaseReturns, 'لا توجد مرتجعات مشتريات'),
+        _buildList(_salesReturns, 'لا توجد مرتجعات مبيعات'),
+        _buildList(_purchaseReturns, 'لا توجد مرتجعات مشتريات'),
       ],
     );
   }
 
-  Widget _buildTable(List<Map<String, dynamic>> data, String emptyMsg) {
+  Widget _buildList(List<Map<String, dynamic>> data, String emptyMsg) {
     if (data.isEmpty) {
       return Center(
-        child: Text(emptyMsg,
-            style: const TextStyle(fontSize: 16, color: Colors.grey)),
+        child: SdEmptyState(title: emptyMsg, icon: Icons.assignment_return_outlined),
+      );
+    }
+
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: data.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _buildCard(data[i]),
       );
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Table(
-          border: TableBorder.all(color: Colors.black54),
-          defaultColumnWidth: const IntrinsicColumnWidth(),
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          children: [
-            TableRow(
-              decoration: BoxDecoration(color: Colors.grey.shade200),
-              children: const [
-                _Cell('رقم المرتجع', isHeader: true),
-                _Cell('التاريخ', isHeader: true),
-                _Cell('الفاتورة الأصلية', isHeader: true),
-                _Cell('المبلغ', isHeader: true),
-                _Cell('الحالة', isHeader: true),
-                _Cell('إجراءات', isHeader: true),
-              ],
-            ),
-            ...data.asMap().entries.map((entry) {
-              final i = entry.key;
-              final m = entry.value;
-              final status =
-                  (m['Status'] ?? m['status'] ?? '').toString();
-              final rId = (m['Id'] ?? m['id'] ?? '').toString();
-              return TableRow(
-                decoration: BoxDecoration(
-                  color: i.isEven ? Colors.white : Colors.grey.shade50,
-                ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Table(
+            defaultColumnWidth: const IntrinsicColumnWidth(),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [
+              const TableRow(
+                decoration: BoxDecoration(color: SdColors.primary),
                 children: [
-                  _Cell((m['ReturnNumber'] ?? m['returnNumber'] ?? '-')
-                      .toString()),
-                  _Cell(_formatDate(
-                      (m['Date'] ?? m['date'] ?? '').toString())),
-                  _Cell(
-                      (m['InvoiceNumber'] ?? m['invoiceNumber'] ?? '-')
-                          .toString()),
-                  _Cell(fmtN(m['TotalAmount'] ?? m['totalAmount'] ?? m['Amount'] ?? m['amount'])),
-                  _CellWidget(child: _statusChip(status)),
-                  Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: _buildReturnActions(rId, status),
-                    ),
-                  ),
+                  _HeaderCell('رقم المرتجع'),
+                  _HeaderCell('التاريخ'),
+                  _HeaderCell('الفاتورة الأصلية'),
+                  _HeaderCell('المبلغ'),
+                  _HeaderCell('الحالة'),
+                  _HeaderCell('إجراءات'),
                 ],
-              );
-            }),
-          ],
+              ),
+              for (var i = 0; i < data.length; i++) _dataRow(i, data[i]),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  TableRow _dataRow(int i, Map<String, dynamic> m) {
+    final status = (m['Status'] ?? m['status'] ?? '').toString();
+    final rId = (m['Id'] ?? m['id'] ?? '').toString();
+    return TableRow(
+      decoration: BoxDecoration(
+        color: i.isEven ? SdColors.surface : SdColors.surfaceAlt,
+      ),
+      children: [
+        _DataCell((m['ReturnNumber'] ?? m['returnNumber'] ?? '-').toString()),
+        _DataCell(_formatDate((m['Date'] ?? m['date'] ?? '').toString())),
+        _DataCell((m['InvoiceNumber'] ?? m['invoiceNumber'] ?? '-').toString()),
+        _DataCell(fmtN(m['TotalAmount'] ?? m['totalAmount'] ?? m['Amount'] ?? m['amount'])),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Center(child: _statusChip(status)),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: _buildReturnActions(rId, status),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCard(Map<String, dynamic> m) {
+    final status = (m['Status'] ?? m['status'] ?? '').toString();
+    final rId = (m['Id'] ?? m['id'] ?? '').toString();
+    final actions = _buildReturnActions(rId, status);
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('#${(m['ReturnNumber'] ?? m['returnNumber'] ?? '-')}',
+                    style: SdText.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
+              _statusChip(status),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SdInfoRow(label: 'التاريخ', value: _formatDate((m['Date'] ?? m['date'] ?? '').toString())),
+          SdInfoRow(label: 'الفاتورة الأصلية', value: (m['InvoiceNumber'] ?? m['invoiceNumber'] ?? '-').toString()),
+          SdInfoRow(label: 'المبلغ', value: fmtN(m['TotalAmount'] ?? m['totalAmount'] ?? m['Amount'] ?? m['amount'])),
+          if (actions.isNotEmpty) ...[
+            const Divider(color: SdColors.divider, height: 16),
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
+          ],
+        ],
       ),
     );
   }
 }
 
-class _Cell extends StatelessWidget {
+class _HeaderCell extends StatelessWidget {
   final String text;
-  final bool isHeader;
-  const _Cell(this.text, {this.isHeader = false});
+  const _HeaderCell(this.text);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: TextStyle(
-          fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-          fontSize: isHeader ? 13 : 12,
-        ),
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontWeight: FontWeight.w800,
+            fontSize: 12.5,
+            color: Colors.white),
       ),
     );
   }
 }
 
-class _CellWidget extends StatelessWidget {
-  final Widget child;
-  const _CellWidget({required this.child});
+class _DataCell extends StatelessWidget {
+  final String text;
+  const _DataCell(this.text);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Center(child: child),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+            color: SdColors.ink),
+      ),
     );
   }
 }

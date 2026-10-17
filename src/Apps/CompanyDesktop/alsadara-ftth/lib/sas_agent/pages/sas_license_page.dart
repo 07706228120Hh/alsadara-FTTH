@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
-import '../../utils/responsive_helper.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 
 /// شاشة «الترخيص والصلاحيات» — تعرض استجابة `sasGet(id,'auth')`:
@@ -55,34 +52,20 @@ class _SasLicensePageState extends State<SasLicensePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          toolbarHeight: 56,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+    return SdPage(
+      maxWidth: SdSpace.contentMax,
+      appBar: SdAppBar(
+        title: 'الترخيص والصلاحيات',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loading ? null : _load,
           ),
-          title: Text('الترخيص والصلاحيات',
-              style:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 17)),
-          actions: [
-            IconButton(
-                onPressed: _loading ? null : _load,
-                icon: const Icon(Icons.refresh_rounded)),
-          ],
-        ),
-        body: _body(context),
+        ],
       ),
+      scrollable: !_loading && _error == null && (_info?.isNotEmpty ?? false),
+      body: _body(context),
     );
   }
 
@@ -91,81 +74,61 @@ class _SasLicensePageState extends State<SasLicensePage> {
     if (_error != null) return SasErrorView(message: _error!, onRetry: _load);
     final info = _info ?? const {};
     if (info.isEmpty) {
-      return SasEmptyView(
-        message: 'لا تتوفّر بيانات ترخيص لهذا الحساب',
+      return SdEmptyState(
+        title: 'لا تتوفّر بيانات ترخيص لهذا الحساب',
         icon: Icons.verified_user_outlined,
-        action: OutlinedButton.icon(
+        action: SdButton(
+          label: 'تحديث',
+          icon: Icons.refresh_rounded,
+          kind: SdButtonKind.secondary,
           onPressed: _load,
-          icon: const Icon(Icons.refresh_rounded),
-          label: Text('تحديث', style: GoogleFonts.cairo()),
         ),
       );
     }
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints:
-            BoxConstraints(maxWidth: context.responsive.maxContentWidth),
-        child: ListView(
-          padding: EdgeInsets.all(14.w),
-          children: [
-            _kvCard('الترخيص', Icons.workspace_premium_rounded,
-                AppTheme.blueGradient, {
-              'الحالة': info['license_status'] ?? info['status'],
-              'تاريخ الانتهاء':
-                  info['license_expiration'] ?? info['expiration'],
-              'الإصدار': info['version'],
-            }),
-            SizedBox(height: 14.h),
-            _listCard('الميزات المفعّلة', Icons.auto_awesome_rounded,
-                AppTheme.greenGradient, info['features']),
-            SizedBox(height: 14.h),
-            _listCard('الصلاحيات', Icons.shield_rounded,
-                AppTheme.orangeGradient, info['permissions']),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _kvCard('الترخيص', Icons.workspace_premium_rounded,
+            SdGroup.admin.tone, {
+          'الحالة': info['license_status'] ?? info['status'],
+          'تاريخ الانتهاء': info['license_expiration'] ?? info['expiration'],
+          'الإصدار': info['version'],
+        }),
+        const SizedBox(height: SdSpace.sm),
+        _listCard('الميزات المفعّلة', Icons.auto_awesome_rounded,
+            SdStatus.success, info['features']),
+        const SizedBox(height: SdSpace.sm),
+        _listCard('الصلاحيات', Icons.shield_rounded, SdStatus.warning,
+            info['permissions']),
+      ],
     );
   }
 
-  Widget _kvCard(String title, IconData icon, List<Color> gradient,
+  Widget _kvCard(String title, IconData icon, SdTone tone,
       Map<String, dynamic> kv) {
     final entries = kv.entries
         .where((e) => e.value != null && '${e.value}'.trim().isNotEmpty)
         .toList();
-    return _card(title, icon, gradient, [
-      if (entries.isEmpty)
-        Text('لا بيانات',
-            style: GoogleFonts.cairo(fontSize: 12.sp, color: Colors.grey[500]))
-      else
-        for (final e in entries)
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 6.h),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 140.w,
-                  child: Text(e.key,
-                      style: GoogleFonts.cairo(
-                          fontSize: 12.5.sp, color: Colors.grey[700])),
-                ),
-                Expanded(
-                  child: Text('${e.value}',
-                      style: GoogleFonts.cairo(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.primaryColor)),
-                ),
-              ],
-            ),
-          ),
-    ]);
+    return SdCard(
+      title: title,
+      icon: icon,
+      tone: tone,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (entries.isEmpty)
+            Text('لا بيانات', style: SdText.bodySm)
+          else
+            for (final e in entries)
+              SdInfoRow(label: e.key, value: '${e.value}'),
+        ],
+      ),
+    );
   }
 
   Widget _listCard(
-      String title, IconData icon, List<Color> gradient, dynamic value) {
+      String title, IconData icon, SdStatus status, dynamic value) {
     final items = <String>[];
     if (value is List) {
       items.addAll(value.map((e) => '$e'));
@@ -174,58 +137,21 @@ class _SasLicensePageState extends State<SasLicensePage> {
         if (v == true || v == 1) items.add('$k');
       });
     }
-    return _card(title, icon, gradient, [
-      if (items.isEmpty)
-        Text('لا بيانات',
-            style: GoogleFonts.cairo(fontSize: 12.sp, color: Colors.grey[500]))
-      else
-        Wrap(
-          spacing: 8.w,
-          runSpacing: 8.h,
-          children: [
-            for (final it in items)
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                decoration: BoxDecoration(
-                  color: gradient.first.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(20.r),
-                  border:
-                      Border.all(color: gradient.first.withValues(alpha: 0.28)),
-                ),
-                child: Text(it,
-                    style: GoogleFonts.cairo(
-                        fontSize: 11.5.sp,
-                        fontWeight: FontWeight.w700,
-                        color: gradient.first)),
+    return SdCard(
+      title: title,
+      icon: icon,
+      tone: status.tone,
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: items.isEmpty
+            ? Text('لا بيانات', style: SdText.bodySm)
+            : Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final it in items) SdStatusChip(it, status: status),
+                ],
               ),
-          ],
-        ),
-    ]);
-  }
-
-  Widget _card(String title, IconData icon, List<Color> gradient,
-      List<Widget> children) {
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: SasUi.card(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              SasUi.gradientBadge(
-                  icon: icon, colors: gradient, size: 34, iconSize: 17),
-              SizedBox(width: 10.w),
-              Text(title,
-                  style: GoogleFonts.cairo(
-                      fontSize: 14.5.sp,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1A1A2E))),
-            ],
-          ),
-          SizedBox(height: 10.h),
-          ...children,
-        ],
       ),
     );
   }

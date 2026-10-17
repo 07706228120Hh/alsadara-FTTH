@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/sadara_api_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../premises/ui/premises_list_screen.dart';
 import '../widgets/sas_metrics.dart';
@@ -92,7 +91,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           _section(
             title: 'الخادم',
             icon: Icons.dns_rounded,
-            gradient: AppTheme.greenGradient,
+            gradient: SdColors.greenGradient,
             body: _serverCard(),
           ),
           _section(
@@ -120,7 +119,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           _section(
             title: 'التسعير والمحاسبة',
             icon: Icons.point_of_sale_rounded,
-            gradient: AppTheme.orangeGradient,
+            gradient: SdColors.orangeGradient,
             body: _accountingCard(),
           ),
         ],
@@ -132,7 +131,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           _section(
             title: 'أدوات',
             icon: Icons.build_rounded,
-            gradient: AppTheme.orangeGradient,
+            gradient: SdColors.orangeGradient,
             body: _toolsCard(),
           ),
           _section(
@@ -143,7 +142,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
               child: Text(
                 'هذه القدرات محفوظة في الخادم للاستفادة منها لاحقاً — غير مفعّلة '
                 'في واجهة الوكيل حالياً.',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 12.sp,
                   color: Colors.grey[600],
                   height: 1.5,
@@ -194,7 +193,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
   Widget _section({
     required String title,
     required IconData icon,
-    List<Color> gradient = AppTheme.blueGradient,
+    List<Color> gradient = SdColors.blueGradient,
     Widget? note,
     required Widget body,
   }) {
@@ -257,18 +256,18 @@ class _SasSettingsTabState extends State<SasSettingsTab>
         splashBorderRadius: BorderRadius.circular(SasUi.radiusSm.r),
         indicator: BoxDecoration(
           gradient: const LinearGradient(
-            colors: AppTheme.blueGradient,
+            colors: SdColors.blueGradient,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-          boxShadow: SasUi.cardShadow(AppTheme.primaryColor),
+          boxShadow: SasUi.cardShadow(SdColors.primary),
         ),
         labelColor: Colors.white,
         unselectedLabelColor: const Color(0xFF64748B),
-        labelStyle: GoogleFonts.cairo(fontSize: 13.sp, fontWeight: FontWeight.w800),
+        labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 13.sp, fontWeight: FontWeight.w800),
         unselectedLabelStyle:
-            GoogleFonts.cairo(fontSize: 13.sp, fontWeight: FontWeight.w700),
+            TextStyle(fontFamily: 'Cairo', fontSize: 13.sp, fontWeight: FontWeight.w700),
         tabs: [
           for (final t in _tabs)
             Tab(
@@ -318,12 +317,12 @@ class _SasSettingsTabState extends State<SasSettingsTab>
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: AppTheme.blueGradient,
+          colors: SdColors.blueGradient,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(SasUi.radius.r),
-        boxShadow: SasUi.cardShadow(AppTheme.primaryColor),
+        boxShadow: SasUi.cardShadow(SdColors.primary),
       ),
       child: Row(
         children: [
@@ -344,7 +343,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
               children: [
                 Text(
                   'إعدادات وكيل الساس',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 15.sp,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
@@ -355,7 +354,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
                   'الحساب · الخادم · التسعير · أدوات · ميزات محفوظة',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.5.sp,
                     color: Colors.white.withValues(alpha: 0.80),
                     fontWeight: FontWeight.w500,
@@ -416,9 +415,9 @@ class _SasSettingsTabState extends State<SasSettingsTab>
                 OutlinedButton.icon(
                   onPressed: _checking ? null : _checkHealth,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primaryColor,
+                    foregroundColor: SdColors.primary,
                     side: BorderSide(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.40)),
+                        color: SdColors.primary.withValues(alpha: 0.40)),
                     shape: RoundedRectangleBorder(
                         borderRadius:
                             BorderRadius.circular(SasUi.radiusSm.r)),
@@ -431,7 +430,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
                         )
                       : Icon(Icons.wifi_tethering_rounded, size: 18.sp),
                   label: Text('فحص الاتصال',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
@@ -453,12 +452,12 @@ class _SasSettingsTabState extends State<SasSettingsTab>
     return ok
         ? const SasStatusBadge(
             label: 'الخادم متصل',
-            color: AppTheme.successColor,
+            color: SdColors.success,
             icon: Icons.check_circle_rounded,
           )
         : const SasStatusBadge(
             label: 'لا اتصال بالخادم',
-            color: AppTheme.errorColor,
+            color: SdColors.danger,
             icon: Icons.error_outline_rounded,
           );
   }
@@ -485,7 +484,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
                   _divider(),
                   _kvRow('الحالة', acc.isActive ? 'مفعّل' : 'غير مفعّل',
                       valueColor: acc.isActive
-                          ? AppTheme.successColor
+                          ? SdColors.success
                           : Colors.grey.shade600),
                 ],
               ),
@@ -501,7 +500,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
                   Expanded(
                     child: Text(
                       'لم يُحدَّد حساب ساس بعد — اذهب لتبويب «الحسابات» لربط/تحديد حساب.',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 12.5.sp,
                           color: Colors.grey[700],
                           height: 1.5),
@@ -513,7 +512,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           const Divider(height: 1),
           _tile(
             icon: Icons.manage_accounts_rounded,
-            iconColor: AppTheme.primaryColor,
+            iconColor: SdColors.primary,
             title: 'إدارة حسابات الساس',
             subtitle: 'ربط · تعديل · حذف · اختبار · مزامنة · تحديد الحساب الفعّال',
             onTap: _openAccountsManager,
@@ -548,7 +547,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
         children: [
           _tile(
             icon: Icons.sell_rounded,
-            iconColor: AppTheme.warningColor,
+            iconColor: SdColors.warning,
             title: 'أسعار الباقات',
             subtitle: disabledHint ??
                 'تسعير كل باقة: الكلفة · سعر البيع · الربح المحسوب · التفعيل',
@@ -559,7 +558,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           const Divider(height: 1),
           _tile(
             icon: Icons.map_rounded,
-            iconColor: AppTheme.accentColor,
+            iconColor: SdColors.info,
             title: 'المناطق وأجور الصيانة',
             subtitle:
                 'مناطق الشركة ومبلغ صيانة ثابت لكل منطقة يُطبَّق تلقائياً على مشتركيها',
@@ -568,7 +567,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           const Divider(height: 1),
           _tile(
             icon: Icons.insights_rounded,
-            iconColor: AppTheme.successColor,
+            iconColor: SdColors.success,
             title: 'تقرير الأرباح',
             subtitle:
                 'أرباح الساس للشركة ضمن فترة — إجمالي وتفصيل حسب المنطقة والباقة',
@@ -577,7 +576,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           const Divider(height: 1),
           _tile(
             icon: Icons.account_balance_wallet_rounded,
-            iconColor: AppTheme.errorColor,
+            iconColor: SdColors.danger,
             title: 'المدينون (ذمم المواطنين)',
             subtitle: disabledHint ??
                 'المشتركون المدينون بالآجل — الرصيد المستحق وكشف الحساب والتسديد',
@@ -603,7 +602,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           if (_isAdmin) ...[
             _tile(
               icon: Icons.travel_explore_rounded,
-              iconColor: AppTheme.infoColor,
+              iconColor: SdColors.info,
               title: 'مستكشف الساس المتقدّم (للمسؤول)',
               subtitle: acc == null
                   ? 'حدّد حساباً أولاً لفتح المستكشف'
@@ -616,7 +615,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           ],
           _tile(
             icon: Icons.maps_home_work_rounded,
-            iconColor: AppTheme.warningColor,
+            iconColor: SdColors.warning,
             title: 'العقارات (العنوان الوطني)',
             subtitle: 'إدارة العقارات وربط الاشتراكات بالعنوان الوطني NPN',
             onTap: () => _open(const PremisesListScreen()),
@@ -634,7 +633,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
       clipBehavior: Clip.antiAlias,
       child: _tile(
         icon: Icons.groups_2_rounded,
-        iconColor: AppTheme.primaryColor,
+        iconColor: SdColors.primary,
         title: 'إدارة الوكلاء (للمشرفين)',
         subtitle:
             'البلنك الموحّد — وكلاء الشركة وحساباتهم ومقاطعتها (تصريح/فعلي/فارق/حكم)',
@@ -672,10 +671,10 @@ class _SasSettingsTabState extends State<SasSettingsTab>
         child: Icon(f.icon, color: Colors.grey[500], size: 20.sp),
       ),
       title: Text(f.title,
-          style: GoogleFonts.cairo(
+          style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 13.5.sp, fontWeight: FontWeight.w800)),
       subtitle: Text(f.desc,
-          style: GoogleFonts.cairo(fontSize: 11.5.sp, color: Colors.grey[600])),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5.sp, color: Colors.grey[600])),
       trailing: const SasStatusBadge(
         label: 'محفوظ',
         color: Colors.grey,
@@ -692,21 +691,21 @@ class _SasSettingsTabState extends State<SasSettingsTab>
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Row(children: [
-            Icon(f.icon, color: AppTheme.primaryColor),
+            Icon(f.icon, color: SdColors.primary),
             SizedBox(width: 8.w),
             Expanded(
                 child: Text(f.title,
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800))),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800))),
           ]),
           content: Text(
             '${f.desc}\n\nهذه الميزة محفوظة في الخادم (لم تُحذف) وستُفعَّل في '
             'واجهة الوكيل عند الحاجة لاحقاً.',
-            style: GoogleFonts.cairo(height: 1.6),
+            style: TextStyle(fontFamily: 'Cairo', height: 1.6),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).maybePop(),
-              child: Text('حسناً', style: GoogleFonts.cairo()),
+              child: Text('حسناً', style: TextStyle(fontFamily: 'Cairo', )),
             ),
           ],
         ),
@@ -724,14 +723,14 @@ class _SasSettingsTabState extends State<SasSettingsTab>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('وحدة وكيل الساس — منصّة الصدارة',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 14.sp, fontWeight: FontWeight.w800)),
           SizedBox(height: 6.h),
           Text(
             'إدارة عمل الوكيل عبر نظام الساس الخاص بمزوّده — مشتركون · نظام · '
             'تجديد · تقارير · تصريح (بلنك) · تذاكر · عقارات — عبر بوّابة الصدارة '
             'الآمنة (عزل ثلاثي: شركة + مالك + صلاحية).',
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 12.sp, color: Colors.grey[600], height: 1.6),
           ),
         ],
@@ -761,10 +760,10 @@ class _SasSettingsTabState extends State<SasSettingsTab>
         child: Icon(icon, color: iconColor, size: 20.sp),
       ),
       title: Text(title,
-          style: GoogleFonts.cairo(
+          style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 13.5.sp, fontWeight: FontWeight.w800)),
       subtitle: Text(subtitle,
-          style: GoogleFonts.cairo(fontSize: 11.5.sp, color: Colors.grey[600])),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5.sp, color: Colors.grey[600])),
       trailing: Icon(Icons.chevron_left_rounded,
           size: 20.sp, color: enabled ? Colors.grey[500] : Colors.grey[300]),
       onTap: onTap,
@@ -780,7 +779,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           Expanded(
             flex: 2,
             child: Text(label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.5.sp,
                     color: Colors.grey[700],
                     fontWeight: FontWeight.w600)),
@@ -790,10 +789,10 @@ class _SasSettingsTabState extends State<SasSettingsTab>
             flex: 3,
             child: Text(value,
                 textAlign: TextAlign.end,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w800,
-                    color: valueColor ?? AppTheme.primaryColor)),
+                    color: valueColor ?? SdColors.primary)),
           ),
         ],
       ),
@@ -846,24 +845,7 @@ class _SasAccountsManagerScreenState
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          iconTheme: const IconThemeData(color: Colors.white),
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          title: Text('حسابات الساس',
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800, fontSize: 17.sp)),
-        ),
+        appBar: const SdAppBar(title: 'حسابات الساس'),
         body: SasAccountsPage(
           selected: _selected,
           onSelect: (acc) {

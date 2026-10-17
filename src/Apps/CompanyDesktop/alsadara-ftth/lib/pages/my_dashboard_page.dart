@@ -5,10 +5,9 @@ library;
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
-import '../utils/responsive_helper.dart';
+import '../frontend/frontend.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 import '../services/api/api_client.dart';
@@ -30,21 +29,18 @@ class MyDashboardPage extends StatefulWidget {
   State<MyDashboardPage> createState() => _MyDashboardPageState();
 }
 
-class _MyDashboardPageState extends State<MyDashboardPage>
-    with TickerProviderStateMixin {
-  // ── ألوان ──
-  static const _bgPage = Color(0xFFF5F6FA);
-  static const _bgCard = Colors.white;
-  static const _bgToolbar = Color(0xFF1A2332);
-  static const _textDark = Color(0xFF2C3E50);
-  static const _textGray = Color(0xFF95A5A6);
-  static const _textSubtle = Color(0xFF7F8C8D);
-  static const _shadowColor = Color(0x14000000);
-  static const _accentBlue = Color(0xFF3498DB);
-  static const _accentGreen = Color(0xFF27AE60);
-  static const _accentRed = Color(0xFFE74C3C);
-  static const _accentOrange = Color(0xFFF39C12);
-  static const _accentTeal = Color(0xFF00BCD4);
+class _MyDashboardPageState extends State<MyDashboardPage> {
+  // ── ألوان (موحّدة عبر نظام تصميم الصدارة) ──
+  static const _bgPage = SdColors.ground;
+  static const _bgCard = SdColors.surface;
+  static const _textDark = SdColors.ink;
+  static const _textGray = SdColors.muted;
+  static const _textSubtle = SdColors.muted;
+  static const _accentBlue = SdColors.info;
+  static const _accentGreen = SdColors.success;
+  static const _accentRed = SdColors.danger;
+  static const _accentOrange = SdColors.warning;
+  static const _accentTeal = SdColors.accent;
 
   final AttendanceApiService _attendanceApi = AttendanceApiService.instance;
   final _client = ApiClient.instance;
@@ -79,19 +75,9 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   List<dynamic> _withdrawalRequests = [];
   int _withdrawalTotal = 0;
 
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
-
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
     _fetchAll();
   }
 
@@ -244,43 +230,41 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   // ═══════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
-    final r = context.responsive;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _bgPage,
-        body: SafeArea(
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'شاشتي',
+        subtitle: widget.username,
+        actions: [
+          _buildClock(),
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _fetchAll,
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _fetchAll,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildToolbar(),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _fetchAll,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.all(r.contentPaddingH),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ═══ 1. أزرار سريعة (بصمة + إجازة + سحب أموال) ═══
-                        _buildQuickActions(),
-                        SizedBox(height: r.isMobile ? 12 : 20),
-                        _buildFinancialSummary(),
-                        SizedBox(height: r.isMobile ? 12 : 20),
-                        _buildSalarySection(),
-                        SizedBox(height: r.isMobile ? 12 : 20),
-                        _buildLeaveRequestsSection(),
-                        SizedBox(height: r.isMobile ? 12 : 20),
-                        _buildWithdrawalSection(),
-                        SizedBox(height: r.isMobile ? 12 : 20),
-                        _buildDailyAttendanceSection(),
-                        SizedBox(height: r.isMobile ? 12 : 20),
-                        _buildTransactionsSection(),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              // ═══ 1. أزرار سريعة (بصمة + إجازة + سحب أموال) ═══
+              _buildQuickActions(),
+              SizedBox(height: context.sd.sectionGap),
+              _buildFinancialSummary(),
+              SizedBox(height: context.sd.sectionGap),
+              _buildSalarySection(),
+              SizedBox(height: context.sd.sectionGap),
+              _buildLeaveRequestsSection(),
+              SizedBox(height: context.sd.sectionGap),
+              _buildWithdrawalSection(),
+              SizedBox(height: context.sd.sectionGap),
+              _buildDailyAttendanceSection(),
+              SizedBox(height: context.sd.sectionGap),
+              _buildTransactionsSection(),
             ],
           ),
         ),
@@ -288,98 +272,26 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     );
   }
 
-  // ═══════════════════════════════════════════════════════
-  //  TOOLBAR
-  // ═══════════════════════════════════════════════════════
-  Widget _buildToolbar() {
-    final r = context.responsive;
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: r.contentPaddingH,
-        vertical: r.isMobile ? 10 : 14,
-      ),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A2332), Color(0xFF2C3E50)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            style: IconButton.styleFrom(foregroundColor: Colors.white70),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: EdgeInsets.all(r.isMobile ? 6 : 8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [_accentBlue, _accentTeal],
+  Widget _buildClock() {
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(start: 8),
+      child: Center(
+        child: StreamBuilder(
+          stream: Stream.periodic(const Duration(seconds: 1)),
+          builder: (context, snapshot) {
+            final now = DateTime.now();
+            return Text(
+              '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+              style: const TextStyle(
+                fontFamily: SdText.family,
+                color: SdColors.surface,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                fontFeatures: [FontFeature.tabularFigures()],
               ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(Icons.dashboard_rounded,
-                color: Colors.white, size: r.appBarIconSize),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('شاشتي',
-                    style: GoogleFonts.cairo(
-                        fontSize: r.titleSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
-                Text(widget.username,
-                    style: GoogleFonts.cairo(
-                        fontSize: r.captionSize, color: Colors.white54)),
-              ],
-            ),
-          ),
-          // ساعة حية
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: _accentBlue.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _accentBlue.withOpacity(0.3)),
-            ),
-            child: StreamBuilder(
-              stream: Stream.periodic(const Duration(seconds: 1)),
-              builder: (context, snapshot) {
-                final now = DateTime.now();
-                return Text(
-                  '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}',
-                  style: GoogleFonts.cairo(
-                    color: _accentTeal,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 10),
-          IconButton(
-            onPressed: () {
-              _fetchAll();
-            },
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(foregroundColor: Colors.white70),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -388,120 +300,44 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   //  1. أزرار سريعة (بصمة + إجازة + سحب أموال)
   // ═══════════════════════════════════════════════════════
   Widget _buildQuickActions() {
-    final mobile = MediaQuery.of(context).size.width < 500;
-    final double gap = mobile ? 6 : 12;
-    return Row(
+    return SdTileGrid(
+      minTileWidth: 150,
+      maxColumns: 3,
+      phoneColumns: 3,
       children: [
-        Expanded(
-          child: _quickActionCard(
-            title: 'البصمة',
-            subtitle: 'تسجيل الحضور',
-            icon: Icons.fingerprint_rounded,
-            gradient: const [Color(0xFF667eea), Color(0xFF764ba2)],
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AttendancePage(
-                    username: widget.username,
-                    center: widget.center,
-                    permissions: widget.permissions,
-                  ),
+        SdMenuTile(
+          icon: Icons.fingerprint_rounded,
+          title: 'البصمة',
+          subtitle: 'تسجيل الحضور',
+          layout: SdTileLayout.vertical,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AttendancePage(
+                  username: widget.username,
+                  center: widget.center,
+                  permissions: widget.permissions,
                 ),
-              ).then((_) => _fetchAll());
-            },
-          ),
+              ),
+            ).then((_) => _fetchAll());
+          },
         ),
-        SizedBox(width: gap),
-        Expanded(
-          child: _quickActionCard(
-            title: 'طلب إجازة',
-            subtitle: 'تقديم طلب جديد',
-            icon: Icons.beach_access_rounded,
-            gradient: const [Color(0xFFF2994A), Color(0xFFF2C94C)],
-            onTap: _showLeaveRequestDialog,
-          ),
+        SdMenuTile(
+          icon: Icons.beach_access_rounded,
+          title: 'طلب إجازة',
+          subtitle: 'تقديم طلب جديد',
+          layout: SdTileLayout.vertical,
+          onTap: _showLeaveRequestDialog,
         ),
-        SizedBox(width: gap),
-        Expanded(
-          child: _quickActionCard(
-            title: 'سحب أموال',
-            subtitle: 'تقديم طلب سحب',
-            icon: Icons.account_balance_wallet_rounded,
-            gradient: const [Color(0xFF11998e), Color(0xFF38ef7d)],
-            onTap: _showWithdrawalRequestDialog,
-          ),
+        SdMenuTile(
+          icon: Icons.account_balance_wallet_rounded,
+          title: 'سحب أموال',
+          subtitle: 'تقديم طلب سحب',
+          layout: SdTileLayout.vertical,
+          onTap: _showWithdrawalRequestDialog,
         ),
       ],
-    );
-  }
-
-  Widget _quickActionCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required List<Color> gradient,
-    required VoidCallback onTap,
-  }) {
-    final w = MediaQuery.of(context).size.width;
-    final mobile = w < 500;
-    final double iconBox = mobile ? 34 : 44;
-    final double iconSize = mobile ? 18 : 24;
-    final double titleSize = mobile ? 12 : 14;
-    final double subSize = mobile ? 9 : 10;
-    final double vPad = mobile ? 10 : 16;
-    final double hPad = mobile ? 8 : 14;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(mobile ? 12 : 16),
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: vPad, horizontal: hPad),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: gradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(mobile ? 12 : 16),
-            boxShadow: [
-              BoxShadow(
-                color: gradient[0].withValues(alpha: 0.3),
-                blurRadius: mobile ? 6 : 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: iconBox,
-                height: iconBox,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(mobile ? 8 : 12),
-                ),
-                child: Icon(icon, color: Colors.white, size: iconSize),
-              ),
-              SizedBox(height: mobile ? 6 : 10),
-              Text(title,
-                  style: GoogleFonts.cairo(
-                      fontSize: titleSize,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              Text(subtitle,
-                  style: GoogleFonts.cairo(
-                      fontSize: subSize, color: Colors.white.withValues(alpha: 0.8)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -509,44 +345,14 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   //  دايالوج طلب إجازة جديد
   // ═══════════════════════════════════════════════════════
   static const List<Map<String, dynamic>> _leaveTypes = [
-    {
-      'value': 0,
-      'label': 'سنوية',
-      'icon': Icons.beach_access,
-      'color': Colors.blue
-    },
-    {
-      'value': 1,
-      'label': 'مرضية',
-      'icon': Icons.local_hospital,
-      'color': Colors.red
-    },
-    {
-      'value': 2,
-      'label': 'بدون راتب',
-      'icon': Icons.money_off,
-      'color': Colors.grey
-    },
-    {
-      'value': 3,
-      'label': 'طارئة',
-      'icon': Icons.emergency,
-      'color': Colors.orange
-    },
-    {'value': 4, 'label': 'رسمية', 'icon': Icons.flag, 'color': Colors.green},
-    {'value': 5, 'label': 'زواج', 'icon': Icons.favorite, 'color': Colors.pink},
-    {
-      'value': 6,
-      'label': 'أبوة/أمومة',
-      'icon': Icons.child_care,
-      'color': Colors.purple
-    },
-    {
-      'value': 7,
-      'label': 'وفاة',
-      'icon': Icons.sentiment_very_dissatisfied,
-      'color': Colors.brown
-    },
+    {'value': 0, 'label': 'سنوية', 'icon': Icons.beach_access, 'color': SdColors.info},
+    {'value': 1, 'label': 'مرضية', 'icon': Icons.local_hospital, 'color': SdColors.danger},
+    {'value': 2, 'label': 'بدون راتب', 'icon': Icons.money_off, 'color': SdColors.muted},
+    {'value': 3, 'label': 'طارئة', 'icon': Icons.emergency, 'color': SdColors.warning},
+    {'value': 4, 'label': 'رسمية', 'icon': Icons.flag, 'color': SdColors.success},
+    {'value': 5, 'label': 'زواج', 'icon': Icons.favorite, 'color': SdColors.primarySoft},
+    {'value': 6, 'label': 'أبوة/أمومة', 'icon': Icons.child_care, 'color': SdColors.primaryLight},
+    {'value': 7, 'label': 'وفاة', 'icon': Icons.sentiment_very_dissatisfied, 'color': SdColors.warningText},
   ];
 
   Future<void> _showLeaveRequestDialog() async {
@@ -563,10 +369,10 @@ class _MyDashboardPageState extends State<MyDashboardPage>
             title: Row(
               children: [
                 const Icon(Icons.beach_access_rounded,
-                    color: Color(0xFFF2994A)),
+                    color: SdColors.warning),
                 const SizedBox(width: 10),
                 Text('طلب إجازة جديد',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                    style: SdText.titleSm),
               ],
             ),
             content: SizedBox(
@@ -611,7 +417,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                           builder: (context, child) => Theme(
                             data: Theme.of(context).copyWith(
                               colorScheme:
-                                  ColorScheme.light(primary: Colors.blue[700]!),
+                                  const ColorScheme.light(primary: SdColors.primary),
                             ),
                             child: child!,
                           ),
@@ -631,9 +437,10 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                               ? '${dateRange!.start.toString().split(' ')[0]}  →  ${dateRange!.end.toString().split(' ')[0]}'
                               : 'اضغط لاختيار التاريخ',
                           style: TextStyle(
+                            fontFamily: SdText.family,
                             color: dateRange != null
-                                ? Colors.black87
-                                : Colors.grey,
+                                ? SdColors.ink
+                                : SdColors.muted,
                           ),
                         ),
                       ),
@@ -644,20 +451,21 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.blue[50],
+                          color: SdColors.infoTint,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.timer,
-                                size: 18, color: Colors.blue[700]),
+                            const Icon(Icons.timer,
+                                size: 18, color: SdColors.info),
                             const SizedBox(width: 6),
                             Text(
                               '${dateRange!.end.difference(dateRange!.start).inDays + 1} أيام',
-                              style: TextStyle(
+                              style: const TextStyle(
+                                fontFamily: SdText.family,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue[700],
+                                color: SdColors.info,
                               ),
                             ),
                           ],
@@ -680,14 +488,17 @@ class _MyDashboardPageState extends State<MyDashboardPage>
               ),
             ),
             actions: [
-              TextButton(
+              SdButton(
+                label: 'إلغاء',
+                kind: SdButtonKind.secondary,
+                height: 44,
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء'),
               ),
-              FilledButton.icon(
+              SdButton(
+                label: 'تقديم الطلب',
+                icon: Icons.send,
+                height: 44,
                 onPressed: () => Navigator.pop(ctx, true),
-                icon: const Icon(Icons.send),
-                label: const Text('تقديم الطلب'),
               ),
             ],
           ),
@@ -711,7 +522,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         final msg = res['message'] ?? res['Message'] ?? 'تم التقديم';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg, style: GoogleFonts.cairo(color: Colors.white)),
+            content: Text(msg, style: TextStyle(fontFamily: SdText.family,color: SdColors.surface)),
             backgroundColor: _accentGreen,
           ),
         );
@@ -722,7 +533,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text('خطأ', style: GoogleFonts.cairo(color: Colors.white)),
+                Text('خطأ', style: TextStyle(fontFamily: SdText.family,color: SdColors.surface)),
             backgroundColor: _accentRed,
           ),
         );
@@ -766,10 +577,10 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           title: Row(
             children: [
               const Icon(Icons.account_balance_wallet_rounded,
-                  color: Color(0xFF11998e)),
+                  color: SdColors.accent),
               const SizedBox(width: 10),
               Text('طلب سلفة على الراتب',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  style: SdText.titleSm),
             ],
           ),
           content: SizedBox(
@@ -782,13 +593,13 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: maxAmount > 0
-                          ? const Color(0xFFE8F5E9)
-                          : const Color(0xFFFCE4EC),
+                          ? SdColors.successTint
+                          : SdColors.dangerTint,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: maxAmount > 0
-                            ? const Color(0xFF81C784)
-                            : const Color(0xFFE57373),
+                            ? SdColors.successTintEdge
+                            : SdColors.dangerTintEdge,
                         width: 0.5,
                       ),
                     ),
@@ -801,20 +612,20 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                                   ? Icons.info_outline
                                   : Icons.warning_amber_rounded,
                               color: maxAmount > 0
-                                  ? const Color(0xFF388E3C)
-                                  : const Color(0xFFC62828),
+                                  ? SdColors.success
+                                  : SdColors.danger,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'المبلغ المتاح للسحب: ${_formatAmount(maxAmount)} د.ع',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(fontFamily: SdText.family,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
                                   color: maxAmount > 0
-                                      ? const Color(0xFF388E3C)
-                                      : const Color(0xFFC62828),
+                                      ? SdColors.success
+                                      : SdColors.danger,
                                 ),
                               ),
                             ),
@@ -823,9 +634,9 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                         if (maxInfo != null) ...[
                           const SizedBox(height: 6),
                           Text(maxInfo,
-                              style: GoogleFonts.cairo(
-                                  fontSize: 11,
-                                  color: const Color(0xFF757575))),
+                              style: const TextStyle(fontFamily: SdText.family,
+                                  fontSize: 11.5,
+                                  color: SdColors.muted)),
                         ],
                       ],
                     ),
@@ -858,14 +669,17 @@ class _MyDashboardPageState extends State<MyDashboardPage>
             ),
           ),
           actions: [
-            TextButton(
+            SdButton(
+              label: 'إلغاء',
+              kind: SdButtonKind.secondary,
+              height: 44,
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء'),
             ),
-            FilledButton.icon(
+            SdButton(
+              label: 'تقديم الطلب',
+              icon: Icons.send,
+              height: 44,
               onPressed: () => Navigator.pop(ctx, true),
-              icon: const Icon(Icons.send),
-              label: const Text('تقديم الطلب'),
             ),
           ],
         ),
@@ -880,7 +694,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('يرجى إدخال مبلغ صحيح',
-                style: GoogleFonts.cairo(color: Colors.white)),
+                style: TextStyle(fontFamily: SdText.family,color: SdColors.surface)),
             backgroundColor: _accentRed,
           ),
         );
@@ -900,7 +714,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         final msg = res['message'] ?? res['Message'] ?? 'تم التقديم';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg, style: GoogleFonts.cairo(color: Colors.white)),
+            content: Text(msg, style: TextStyle(fontFamily: SdText.family,color: SdColors.surface)),
             backgroundColor: _accentGreen,
           ),
         );
@@ -911,7 +725,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text('خطأ', style: GoogleFonts.cairo(color: Colors.white)),
+                Text('خطأ', style: TextStyle(fontFamily: SdText.family,color: SdColors.surface)),
             backgroundColor: _accentRed,
           ),
         );
@@ -927,7 +741,6 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       return _sectionCard(
         title: 'الملخص المالي',
         icon: Icons.account_balance_wallet_rounded,
-        iconGradient: const [_accentBlue, Color(0xFF2980B9)],
         child: const Center(
           child: Padding(
             padding: EdgeInsets.all(20),
@@ -945,7 +758,6 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     return _sectionCard(
       title: 'الملخص المالي',
       icon: Icons.account_balance_wallet_rounded,
-      iconGradient: const [_accentBlue, Color(0xFF2980B9)],
       child: LayoutBuilder(
         builder: (context, constraints) {
           final cols = constraints.maxWidth > 600 ? 3 : 2;
@@ -1001,7 +813,6 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       return _sectionCard(
         title: 'الراتب والاستحقاقات',
         icon: Icons.payments_rounded,
-        iconGradient: const [_accentGreen, Color(0xFF1ABC9C)],
         child: const Center(
           child: Padding(
             padding: EdgeInsets.all(20),
@@ -1017,7 +828,6 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     return _sectionCard(
       title: 'الراتب والاستحقاقات - $monthName ${now.year}',
       icon: Icons.payments_rounded,
-      iconGradient: const [_accentGreen, Color(0xFF1ABC9C)],
       child: Column(
         children: [
           if (_salaryData != null) ...[
@@ -1032,7 +842,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                color: const Color(0xFFF8F9FA),
+                color: SdColors.surfaceAlt,
               ),
               child: Column(
                 children: [
@@ -1041,7 +851,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   const SizedBox(height: 8),
                   Text(
                     'لم يتم إصدار كشف الراتب لهذا الشهر بعد',
-                    style: GoogleFonts.cairo(color: _textGray, fontSize: 14),
+                    style: TextStyle(fontFamily: SdText.family,color: _textGray, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   if (_attendanceReport != null) ...[
@@ -1179,11 +989,11 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                 'السلف',
                 advances,
                 Icons.money_off_rounded,
-                Colors.deepOrange,
+                SdColors.warning,
                 onTap: () => _showAdjustmentsDialog(
                   title: 'السلف المخصومة',
                   type: -1, // special type for advances
-                  color: Colors.deepOrange,
+                  color: SdColors.warning,
                   icon: Icons.money_off_rounded,
                   attendanceItems: [],
                 ),
@@ -1195,7 +1005,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                 'صافي الراتب',
                 netSalary,
                 Icons.payments_rounded,
-                const Color(0xFF2C3E50),
+                SdColors.primary,
                 badge: statusText,
                 badgeColor: statusColor,
               ),
@@ -1238,7 +1048,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
               color: color,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: iconSz),
+            child: Icon(icon, color: SdColors.surface, size: iconSz),
           ),
           SizedBox(width: mobile ? 6 : 10),
           Expanded(
@@ -1250,7 +1060,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
                     '${_formatAmount(amount)} د.ع',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: SdText.family,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: color,
@@ -1258,7 +1068,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   ),
                 ),
                 Text(label,
-                    style: GoogleFonts.cairo(fontSize: 11, color: _textGray)),
+                    style: TextStyle(fontFamily: SdText.family,fontSize: 11.5, color: _textGray)),
                 if (badge != null)
                   Container(
                     margin: const EdgeInsets.only(top: 2),
@@ -1270,9 +1080,9 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                     ),
                     child: Text(
                       badge,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: SdText.family,
                         color: badgeColor ?? color,
-                        fontSize: 9,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1370,13 +1180,13 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: const Color(0xFFF8F9FA),
+        color: SdColors.surfaceAlt,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('تفاصيل الخصومات والمكافآت',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: SdText.family,
                   color: _textDark, fontSize: 13, fontWeight: FontWeight.bold)),
           const Divider(height: 16),
           ...items.where((i) {
@@ -1397,12 +1207,12 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(item.label,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: SdText.family,
                               color: _textSubtle, fontSize: 12)),
                     ),
                     Text(
                       '${_formatAmount(item.amount)} د.ع',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: SdText.family,
                         color: item.color,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -1446,7 +1256,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: const Color(0xFFFFF3E0),
+        color: SdColors.warningTint,
         border: Border.all(color: _accentOrange.withOpacity(0.2)),
       ),
       child: Row(
@@ -1454,13 +1264,13 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           Icon(Icons.beach_access_rounded, color: _accentOrange, size: 20),
           const SizedBox(width: 10),
           Text('الإجازات: ',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: SdText.family,
                   color: _textDark, fontSize: 12, fontWeight: FontWeight.bold)),
           Text('${l['TotalRequests'] ?? 0} طلب',
-              style: GoogleFonts.cairo(color: _textSubtle, fontSize: 12)),
+              style: TextStyle(fontFamily: SdText.family,color: _textSubtle, fontSize: 12)),
           const SizedBox(width: 16),
           Text('أيام موافق عليها: ${l['ApprovedDays'] ?? 0}',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: SdText.family,
                   color: _accentGreen,
                   fontSize: 12,
                   fontWeight: FontWeight.w600)),
@@ -1473,19 +1283,11 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   //  طلبات سحب الأموال
   // ═══════════════════════════════════════════════════════
   static const _withdrawalStatusInfo = <int, Map<String, dynamic>>{
-    0: {
-      'label': 'بانتظار الموافقة',
-      'color': Color(0xFFF39C12),
-      'icon': Icons.hourglass_empty
-    },
-    1: {
-      'label': 'موافق عليه',
-      'color': Color(0xFF27AE60),
-      'icon': Icons.check_circle
-    },
-    2: {'label': 'مرفوض', 'color': Color(0xFFE74C3C), 'icon': Icons.cancel},
-    3: {'label': 'ملغي', 'color': Color(0xFF95A5A6), 'icon': Icons.block},
-    4: {'label': 'تم الصرف', 'color': Color(0xFF3498DB), 'icon': Icons.paid},
+    0: {'label': 'بانتظار الموافقة', 'color': SdColors.warning, 'status': SdStatus.warning, 'icon': Icons.hourglass_empty},
+    1: {'label': 'موافق عليه', 'color': SdColors.success, 'status': SdStatus.success, 'icon': Icons.check_circle},
+    2: {'label': 'مرفوض', 'color': SdColors.danger, 'status': SdStatus.danger, 'icon': Icons.cancel},
+    3: {'label': 'ملغي', 'color': SdColors.muted, 'status': SdStatus.neutral, 'icon': Icons.block},
+    4: {'label': 'تم الصرف', 'color': SdColors.info, 'status': SdStatus.info, 'icon': Icons.paid},
   };
 
   // ═══════════════════════════════════════════════════════
@@ -1493,10 +1295,10 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   // ═══════════════════════════════════════════════════════
 
   static const Map<int, Map<String, dynamic>> _leaveStatusInfo = {
-    0: {'label': 'بانتظار الموافقة', 'color': Color(0xFFF39C12), 'icon': Icons.hourglass_empty},
-    1: {'label': 'موافق عليه', 'color': Color(0xFF27AE60), 'icon': Icons.check_circle},
-    2: {'label': 'مرفوض', 'color': Color(0xFFE74C3C), 'icon': Icons.cancel},
-    3: {'label': 'ملغي', 'color': Color(0xFF95A5A6), 'icon': Icons.block},
+    0: {'label': 'بانتظار الموافقة', 'color': SdColors.warning, 'status': SdStatus.warning, 'icon': Icons.hourglass_empty},
+    1: {'label': 'موافق عليه', 'color': SdColors.success, 'status': SdStatus.success, 'icon': Icons.check_circle},
+    2: {'label': 'مرفوض', 'color': SdColors.danger, 'status': SdStatus.danger, 'icon': Icons.cancel},
+    3: {'label': 'ملغي', 'color': SdColors.muted, 'status': SdStatus.neutral, 'icon': Icons.block},
   };
 
   int _parseLeaveStatus(Map<String, dynamic> r) {
@@ -1537,10 +1339,9 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     return _sectionCard(
       title: 'طلبات الإجازة (${_leaveRequests.length})',
       icon: Icons.beach_access_rounded,
-      iconGradient: const [Color(0xFFF2994A), Color(0xFFF2C94C)],
       trailing: IconButton(
         onPressed: _showLeaveRequestDialog,
-        icon: const Icon(Icons.add_circle_outline, color: Color(0xFFF2994A)),
+        icon: const Icon(Icons.add_circle_outline, color: SdColors.warning),
         tooltip: 'طلب إجازة جديد',
       ),
       child: _isLoadingLeaves
@@ -1586,12 +1387,12 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                               children: [
                                 Icon(info['icon'] as IconData, color: cardColor, size: mobile ? 16 : 20),
                                 SizedBox(width: mobile ? 6 : 8),
-                                _chip(info['label'] as String, cardColor),
+                                SdStatusChip(info['label'] as String, status: info['status'] as SdStatus),
                                 SizedBox(width: mobile ? 4 : 8),
-                                _chip(_leaveTypeName(leaveType), _accentBlue),
+                                SdStatusChip(_leaveTypeName(leaveType), status: SdStatus.info),
                                 const Spacer(),
                                 if (totalDays != null)
-                                  Text('$totalDays يوم', style: GoogleFonts.cairo(
+                                  Text('$totalDays يوم', style: TextStyle(fontFamily: SdText.family,
                                     fontSize: mobile ? 13 : 15, fontWeight: FontWeight.bold, color: _textDark)),
                                 SizedBox(width: mobile ? 4 : 6),
                                 Icon(isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -1622,16 +1423,20 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                               if (statusInt == 0 && id != null)
                                 Align(
                                   alignment: Alignment.centerLeft,
-                                  child: TextButton.icon(
+                                  child: SdButton(
+                                    label: 'إلغاء الطلب',
+                                    icon: Icons.close,
+                                    kind: SdButtonKind.danger,
+                                    height: 40,
                                     onPressed: () async {
                                       final confirm = await showDialog<bool>(
                                         context: context,
                                         builder: (ctx) => AlertDialog(
-                                          title: Text('إلغاء طلب الإجازة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                                          content: Text('هل أنت متأكد من إلغاء هذا الطلب؟', style: GoogleFonts.cairo()),
+                                          title: Text('إلغاء طلب الإجازة', style: TextStyle(fontFamily: SdText.family, fontWeight: FontWeight.bold)),
+                                          content: Text('هل أنت متأكد من إلغاء هذا الطلب؟', style: const TextStyle(fontFamily: SdText.family)),
                                           actions: [
-                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('لا', style: GoogleFonts.cairo())),
-                                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('نعم، إلغاء', style: GoogleFonts.cairo(color: _accentRed))),
+                                            SdButton(label: 'لا', kind: SdButtonKind.secondary, height: 44, onPressed: () => Navigator.pop(ctx, false)),
+                                            SdButton(label: 'نعم، إلغاء', kind: SdButtonKind.danger, height: 44, onPressed: () => Navigator.pop(ctx, true)),
                                           ],
                                         ),
                                       );
@@ -1640,9 +1445,6 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                                         _loadLeaveRequests();
                                       }
                                     },
-                                    icon: const Icon(Icons.close, size: 14, color: Color(0xFFE74C3C)),
-                                    label: Text('إلغاء الطلب', style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFFE74C3C))),
-                                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                                   ),
                                 ),
                             ],
@@ -1662,10 +1464,9 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     return _sectionCard(
       title: 'طلبات سحب الأموال ($_withdrawalTotal)',
       icon: Icons.account_balance_wallet_rounded,
-      iconGradient: const [Color(0xFF11998e), Color(0xFF38ef7d)],
       trailing: IconButton(
         onPressed: _showWithdrawalRequestDialog,
-        icon: const Icon(Icons.add_circle_outline, color: Color(0xFF11998e)),
+        icon: const Icon(Icons.add_circle_outline, color: SdColors.accent),
         tooltip: 'طلب سحب جديد',
       ),
       child: _isLoadingWithdrawals
@@ -1709,10 +1510,10 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                               children: [
                                 Icon(info['icon'] as IconData, color: cardColor, size: mobile ? 16 : 20),
                                 SizedBox(width: mobile ? 6 : 8),
-                                _chip(info['label'] as String, cardColor),
+                                SdStatusChip(info['label'] as String, status: info['status'] as SdStatus),
                                 const Spacer(),
                                 Text('${_formatAmount(amount)} د.ع',
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(fontFamily: SdText.family,
                                         fontSize: mobile ? 14 : 16,
                                         fontWeight: FontWeight.bold,
                                         color: _textDark)),
@@ -1736,11 +1537,12 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                               if (statusInt == 0 && id != null)
                                 Align(
                                   alignment: Alignment.centerLeft,
-                                  child: TextButton.icon(
+                                  child: SdButton(
+                                    label: 'إلغاء الطلب',
+                                    icon: Icons.close,
+                                    kind: SdButtonKind.danger,
+                                    height: 40,
                                     onPressed: () => _cancelWithdrawal(r),
-                                    icon: const Icon(Icons.close, size: 14, color: Color(0xFFE74C3C)),
-                                    label: Text('إلغاء الطلب', style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFFE74C3C))),
-                                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                                   ),
                                 ),
                             ],
@@ -1763,19 +1565,22 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('تأكيد الإلغاء',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              style: TextStyle(fontFamily: SdText.family,fontWeight: FontWeight.bold)),
           content: Text(
               'هل تريد إلغاء طلب سحب ${_formatAmount(req['amount'] ?? req['Amount'])} د.ع؟',
-              style: GoogleFonts.cairo()),
+              style: TextStyle(fontFamily: SdText.family,)),
           actions: [
-            TextButton(
+            SdButton(
+              label: 'رجوع',
+              kind: SdButtonKind.secondary,
+              height: 44,
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('رجوع'),
             ),
-            FilledButton(
+            SdButton(
+              label: 'إلغاء الطلب',
+              kind: SdButtonKind.danger,
+              height: 44,
               onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: _accentRed),
-              child: const Text('إلغاء الطلب'),
             ),
           ],
         ),
@@ -1791,7 +1596,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم إلغاء الطلب',
-                style: GoogleFonts.cairo(color: Colors.white)),
+                style: TextStyle(fontFamily: SdText.family,color: SdColors.surface)),
             backgroundColor: _accentGreen,
           ),
         );
@@ -1802,7 +1607,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text('خطأ', style: GoogleFonts.cairo(color: Colors.white)),
+                Text('خطأ', style: TextStyle(fontFamily: SdText.family,color: SdColors.surface)),
             backgroundColor: _accentRed,
           ),
         );
@@ -1817,7 +1622,6 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     return _sectionCard(
       title: 'المعاملات المالية ($_txTotal)',
       icon: Icons.receipt_long_rounded,
-      iconGradient: const [_accentOrange, Color(0xFFE67E22)],
       child: _isLoadingTx
           ? const Center(
               child: Padding(
@@ -1837,17 +1641,9 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   }
 
   Widget _buildEmptyTx() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Column(
-        children: [
-          Icon(Icons.receipt_long, size: 60, color: _textGray.withOpacity(0.3)),
-          const SizedBox(height: 12),
-          Text('لا توجد معاملات مالية حالياً',
-              style: GoogleFonts.cairo(color: _textGray, fontSize: 15)),
-        ],
-      ),
+    return const SdEmptyState(
+      title: 'لا توجد معاملات مالية حالياً',
+      icon: Icons.receipt_long,
     );
   }
 
@@ -1888,7 +1684,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           color: isExpanded ? typeColor.withOpacity(0.03) : _bgCard,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isExpanded ? typeColor.withOpacity(0.3) : const Color(0xFFECF0F1),
+            color: isExpanded ? typeColor.withOpacity(0.3) : SdColors.divider,
           ),
         ),
         child: Column(
@@ -1903,7 +1699,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                     color: typeColor,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(_getTypeIcon(type), color: Colors.white, size: mobile ? 15 : 18),
+                  child: Icon(_getTypeIcon(type), color: SdColors.surface, size: mobile ? 15 : 18),
                 ),
                 SizedBox(width: mobile ? 8 : 12),
                 Expanded(
@@ -1920,17 +1716,17 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(_getTypeName(type),
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(fontFamily: SdText.family,
                                     color: typeColor,
-                                    fontSize: mobile ? 9 : 10,
+                                    fontSize: mobile ? 11.5 : 11.5,
                                     fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(title,
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(fontFamily: SdText.family,
                                     color: _textDark,
-                                    fontSize: mobile ? 11 : 12,
+                                    fontSize: mobile ? 11.5 : 12,
                                     fontWeight: FontWeight.w600),
                                 overflow: TextOverflow.ellipsis),
                           ),
@@ -1953,15 +1749,15 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   children: [
                     Text(
                       '${type == 'Charge' ? '-' : '+'}${_formatAmount(amount)}',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: SdText.family,
                         color: typeColor,
                         fontSize: mobile ? 14 : 17,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text('د.ع',
-                        style: GoogleFonts.cairo(
-                            color: _textGray, fontSize: mobile ? 9 : 10)),
+                        style: TextStyle(fontFamily: SdText.family,
+                            color: _textGray, fontSize: mobile ? 11.5 : 11.5)),
                   ],
                 ),
                 const SizedBox(width: 4),
@@ -2024,7 +1820,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       return Padding(
         padding: const EdgeInsets.only(top: 10),
         child: Text('لا توجد تفاصيل إضافية',
-            style: GoogleFonts.cairo(color: _textGray, fontSize: 12)),
+            style: TextStyle(fontFamily: SdText.family,color: _textGray, fontSize: 12)),
       );
     }
 
@@ -2054,9 +1850,9 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   Flexible(
                     child: Text(
                       e.value,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: SdText.family,
                         color: _textDark,
-                        fontSize: mobile ? 11 : 12,
+                        fontSize: mobile ? 11.5 : 12,
                         height: 1.4,
                       ),
                     ),
@@ -2075,30 +1871,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   // ═══════════════════════════════════════════════════════
 
   Widget _buildEmptyState(IconData icon, String text) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 30),
-      child: Column(
-        children: [
-          Icon(icon, size: 48, color: _textGray.withOpacity(0.3)),
-          const SizedBox(height: 8),
-          Text(text, style: GoogleFonts.cairo(color: _textGray, fontSize: 14)),
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(label,
-          style: GoogleFonts.cairo(
-              fontSize: 10, fontWeight: FontWeight.w600, color: color)),
-    );
+    return SdEmptyState(title: text, icon: icon);
   }
 
   Widget _iconText(IconData icon, String text, bool mobile) {
@@ -2109,8 +1882,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         const SizedBox(width: 3),
         Flexible(
           child: Text(text,
-              style: GoogleFonts.cairo(
-                  fontSize: mobile ? 10 : 11, color: _textSubtle),
+              style: TextStyle(fontFamily: SdText.family,
+                  fontSize: mobile ? 11.5 : 11.5, color: _textSubtle),
               overflow: TextOverflow.ellipsis),
         ),
       ],
@@ -2128,14 +1901,14 @@ class _MyDashboardPageState extends State<MyDashboardPage>
           Icon(icon, size: mobile ? 14 : 16, color: color ?? _textGray),
           const SizedBox(width: 6),
           Text('$label: ',
-              style: GoogleFonts.cairo(
-                  fontSize: mobile ? 11 : 12,
+              style: TextStyle(fontFamily: SdText.family,
+                  fontSize: mobile ? 11.5 : 12,
                   color: color ?? _textGray,
                   fontWeight: FontWeight.w600)),
           Expanded(
             child: Text(value,
-                style: GoogleFonts.cairo(
-                    fontSize: mobile ? 11 : 12, color: color ?? _textDark)),
+                style: TextStyle(fontFamily: SdText.family,
+                    fontSize: mobile ? 11.5 : 12, color: color ?? _textDark)),
           ),
         ],
       ),
@@ -2149,7 +1922,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         Icon(icon, size: 12, color: _textGray),
         const SizedBox(width: 3),
         Text(text,
-            style: GoogleFonts.cairo(color: _textSubtle, fontSize: 11),
+            style: TextStyle(fontFamily: SdText.family,color: _textSubtle, fontSize: 11.5),
             overflow: TextOverflow.ellipsis),
       ],
     );
@@ -2162,10 +1935,11 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (_txPage > 1)
-            TextButton(
+            SdButton(
+              label: 'السابق',
+              kind: SdButtonKind.secondary,
+              height: 40,
               onPressed: () => _loadTransactions(page: _txPage - 1),
-              child:
-                  Text('السابق', style: GoogleFonts.cairo(color: _accentBlue)),
             ),
           const SizedBox(width: 12),
           Container(
@@ -2173,17 +1947,18 @@ class _MyDashboardPageState extends State<MyDashboardPage>
             decoration: BoxDecoration(
               color: _bgCard,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFECF0F1)),
+              border: Border.all(color: SdColors.divider),
             ),
             child: Text('$_txPage / $_txTotalPages',
-                style: GoogleFonts.cairo(color: _textDark, fontSize: 13)),
+                style: const TextStyle(fontFamily: SdText.family, color: _textDark, fontSize: 13)),
           ),
           const SizedBox(width: 12),
           if (_txPage < _txTotalPages)
-            TextButton(
+            SdButton(
+              label: 'التالي',
+              kind: SdButtonKind.secondary,
+              height: 40,
               onPressed: () => _loadTransactions(page: _txPage + 1),
-              child:
-                  Text('التالي', style: GoogleFonts.cairo(color: _accentBlue)),
             ),
         ],
       ),
@@ -2196,54 +1971,15 @@ class _MyDashboardPageState extends State<MyDashboardPage>
   Widget _sectionCard({
     required String title,
     required IconData icon,
-    required List<Color> iconGradient,
     required Widget child,
     Widget? trailing,
   }) {
-    final mobile = MediaQuery.of(context).size.width < 500;
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(mobile ? 10 : 16),
-      decoration: BoxDecoration(
-        color: _bgCard,
-        borderRadius: BorderRadius.circular(mobile ? 10 : 14),
-        boxShadow: const [
-          BoxShadow(color: _shadowColor, blurRadius: 12, offset: Offset(0, 3)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(mobile ? 4 : 6),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: iconGradient),
-                  borderRadius: BorderRadius.circular(mobile ? 6 : 8),
-                ),
-                child: Icon(icon, color: Colors.white, size: mobile ? 14 : 18),
-              ),
-              SizedBox(width: mobile ? 6 : 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.cairo(
-                    color: _textDark,
-                    fontSize: mobile ? 13 : 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (trailing != null) trailing,
-            ],
-          ),
-          Divider(height: mobile ? 14 : 20),
-          child,
-        ],
-      ),
+    return SdCard(
+      title: title,
+      icon: icon,
+      tone: SdGroup.admin.tone,
+      trailing: trailing,
+      child: child,
     );
   }
 
@@ -2267,7 +2003,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
               color: color,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: mobile ? 16 : 20),
+            child: Icon(icon, color: SdColors.surface, size: mobile ? 16 : 20),
           ),
           SizedBox(width: mobile ? 6 : 10),
           Expanded(
@@ -2279,7 +2015,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
                     value,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: SdText.family,
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: _textDark,
@@ -2287,11 +2023,11 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                   ),
                 ),
                 Text(title,
-                    style: GoogleFonts.cairo(fontSize: 11, color: _textGray)),
+                    style: TextStyle(fontFamily: SdText.family,fontSize: 11.5, color: _textGray)),
                 if (subtitle != null)
                   Text(subtitle,
-                      style: GoogleFonts.cairo(
-                          fontSize: 10,
+                      style: TextStyle(fontFamily: SdText.family,
+                          fontSize: 11.5,
                           color: color,
                           fontWeight: FontWeight.w600)),
               ],
@@ -2316,9 +2052,9 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ),
         const SizedBox(width: 6),
         Text('$label: ',
-            style: GoogleFonts.cairo(color: _textSubtle, fontSize: 12)),
+            style: TextStyle(fontFamily: SdText.family,color: _textSubtle, fontSize: 12)),
         Text(value,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: SdText.family,
                 color: _textDark, fontSize: 12, fontWeight: FontWeight.bold)),
       ],
     );
@@ -2450,7 +2186,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       case 'Absent':
         return _accentRed;
       case 'HalfDay':
-        return const Color(0xFF9B59B6);
+        return SdGroup.platform.tone.base;
       case 'EarlyDeparture':
         return _accentOrange;
       case 'Leave':
@@ -2459,6 +2195,25 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         return _textGray;
       default:
         return _textGray;
+    }
+  }
+
+  /// نبرة sd لحالة الحضور (لشرائح SdStatusChip).
+  SdStatus _statusSd(String? status) {
+    switch (status) {
+      case 'Present':
+        return SdStatus.success;
+      case 'Late':
+      case 'EarlyDeparture':
+        return SdStatus.warning;
+      case 'Absent':
+        return SdStatus.danger;
+      case 'HalfDay':
+      case 'Leave':
+        return SdStatus.info;
+      case 'Weekend':
+      default:
+        return SdStatus.neutral;
     }
   }
 
@@ -2519,7 +2274,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                           color: _getTypeColor(typeFilter), size: 22),
                       const SizedBox(width: 10),
                       Text('$title (${filtered.length})',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: SdText.family,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: _textDark)),
@@ -2544,7 +2299,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                                   size: 48, color: _textGray.withOpacity(0.3)),
                               const SizedBox(height: 8),
                               Text('لا توجد عمليات',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(fontFamily: SdText.family,
                                       color: _textGray, fontSize: 14)),
                             ],
                           ),
@@ -2594,20 +2349,20 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(_getCategoryName(category),
-                                            style: GoogleFonts.cairo(
+                                            style: TextStyle(fontFamily: SdText.family,
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w600,
                                                 color: _textDark)),
                                         if (customer != null &&
                                             customer.isNotEmpty)
                                           Text(customer,
-                                              style: GoogleFonts.cairo(
-                                                  fontSize: 11,
+                                              style: TextStyle(fontFamily: SdText.family,
+                                                  fontSize: 11.5,
                                                   color: _textSubtle)),
                                         if (notes != null && notes.isNotEmpty)
                                           Text(notes,
-                                              style: GoogleFonts.cairo(
-                                                  fontSize: 10,
+                                              style: TextStyle(fontFamily: SdText.family,
+                                                  fontSize: 11.5,
                                                   color: _textGray),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis),
@@ -2619,14 +2374,14 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                                     children: [
                                       Text(
                                         '${_formatAmount(amount)} د.ع',
-                                        style: GoogleFonts.cairo(
+                                        style: TextStyle(fontFamily: SdText.family,
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
                                             color: _getTypeColor(typeFilter)),
                                       ),
                                       Text(dateStr,
-                                          style: GoogleFonts.cairo(
-                                              fontSize: 10, color: _textGray)),
+                                          style: TextStyle(fontFamily: SdText.family,
+                                              fontSize: 11.5, color: _textGray)),
                                     ],
                                   ),
                                 ],
@@ -2688,7 +2443,6 @@ class _MyDashboardPageState extends State<MyDashboardPage>
     return _sectionCard(
       title: 'سجل الحضور والانصراف',
       icon: Icons.calendar_month_rounded,
-      iconGradient: const [Color(0xFF8E44AD), Color(0xFF9B59B6)],
       child: _isLoadingReport
           ? const Center(
               child: Padding(
@@ -2705,7 +2459,7 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                           size: 48, color: _textGray.withOpacity(0.3)),
                       const SizedBox(height: 8),
                       Text('لا توجد سجلات حضور لهذا الشهر',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: SdText.family,
                               color: _textGray, fontSize: 13)),
                     ],
                   ),
@@ -2789,11 +2543,11 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                 color: isExpanded
                     ? sColor.withOpacity(0.06)
                     : isWeekend
-                        ? const Color(0xFFF5F5F5)
+                        ? SdColors.surfaceAlt
                         : _bgCard,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isExpanded ? sColor.withOpacity(0.25) : const Color(0xFFEEEEEE),
+                  color: isExpanded ? sColor.withOpacity(0.25) : SdColors.divider,
                 ),
               ),
               child: Column(
@@ -2807,36 +2561,36 @@ class _MyDashboardPageState extends State<MyDashboardPage>
                         child: Column(
                           children: [
                             Text(formattedDate,
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(fontFamily: SdText.family,
                                     fontSize: mobile ? 12 : 13,
                                     fontWeight: FontWeight.w700,
                                     color: _textDark)),
                             Text(dayName,
-                                style: GoogleFonts.cairo(
-                                    fontSize: mobile ? 9 : 10,
+                                style: TextStyle(fontFamily: SdText.family,
+                                    fontSize: mobile ? 11.5 : 11.5,
                                     color: isFriday ? _accentRed : _textGray)),
                           ],
                         ),
                       ),
                       SizedBox(width: mobile ? 8 : 12),
                       // الحالة
-                      _chip(_statusArabic(status), sColor),
+                      SdStatusChip(_statusArabic(status), status: _statusSd(status)),
                       const Spacer(),
                       // الدخول والخروج مختصر
                       if (validCheckIn != null) ...[
                         Icon(Icons.login, size: mobile ? 12 : 14, color: _accentGreen),
                         const SizedBox(width: 3),
                         Text(validCheckIn,
-                            style: GoogleFonts.cairo(
-                                fontSize: mobile ? 10 : 12, color: _accentGreen, fontWeight: FontWeight.w600)),
+                            style: TextStyle(fontFamily: SdText.family,
+                                fontSize: mobile ? 11.5 : 12, color: _accentGreen, fontWeight: FontWeight.w600)),
                         SizedBox(width: mobile ? 8 : 12),
                       ],
                       if (validCheckOut != null) ...[
                         Icon(Icons.logout, size: mobile ? 12 : 14, color: _accentRed),
                         const SizedBox(width: 3),
                         Text(validCheckOut,
-                            style: GoogleFonts.cairo(
-                                fontSize: mobile ? 10 : 12, color: _accentRed, fontWeight: FontWeight.w600)),
+                            style: TextStyle(fontFamily: SdText.family,
+                                fontSize: mobile ? 11.5 : 12, color: _accentRed, fontWeight: FontWeight.w600)),
                       ],
                       SizedBox(width: mobile ? 4 : 8),
                       Icon(isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -2882,8 +2636,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$label: ', style: GoogleFonts.cairo(fontSize: mobile ? 10 : 11, color: _textGray)),
-          Text(value, style: GoogleFonts.cairo(fontSize: mobile ? 11 : 12, fontWeight: FontWeight.w700, color: color)),
+          Text('$label: ', style: TextStyle(fontFamily: SdText.family,fontSize: mobile ? 11.5 : 11.5, color: _textGray)),
+          Text(value, style: TextStyle(fontFamily: SdText.family,fontSize: mobile ? 11.5 : 12, fontWeight: FontWeight.w700, color: color)),
         ],
       ),
     );
@@ -2895,8 +2649,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       child: Center(
         child: Text(
           text,
-          style: GoogleFonts.cairo(
-            fontSize: 11,
+          style: TextStyle(fontFamily: SdText.family,
+            fontSize: 11.5,
             fontWeight: FontWeight.bold,
             color: _textDark,
           ),
@@ -2912,8 +2666,8 @@ class _MyDashboardPageState extends State<MyDashboardPage>
       child: Center(
         child: Text(
           text,
-          style: GoogleFonts.cairo(
-            fontSize: 11,
+          style: TextStyle(fontFamily: SdText.family,
+            fontSize: 11.5,
             color: color ?? _textSubtle,
           ),
           textAlign: TextAlign.center,
@@ -2933,19 +2687,14 @@ class _MyDashboardPageState extends State<MyDashboardPage>
         ),
         const SizedBox(width: 4),
         Text('$label: ',
-            style: GoogleFonts.cairo(fontSize: 11, color: _textSubtle)),
+            style: TextStyle(fontFamily: SdText.family,fontSize: 11.5, color: _textSubtle)),
         Text(value,
-            style: GoogleFonts.cairo(
-                fontSize: 11, color: _textDark, fontWeight: FontWeight.bold)),
+            style: TextStyle(fontFamily: SdText.family,
+                fontSize: 11.5, color: _textDark, fontWeight: FontWeight.bold)),
       ],
     );
   }
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3000,8 +2749,8 @@ class _AdjustmentsDialogContent extends StatefulWidget {
 }
 
 class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
-  static const _textDark = Color(0xFF2C3E50);
-  static const _textGray = Color(0xFF95A5A6);
+  static const _textDark = SdColors.ink;
+  static const _textGray = SdColors.muted;
 
   bool _isLoading = true;
   List<Map<String, dynamic>> _records = [];
@@ -3104,13 +2853,13 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(widget.title,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(fontFamily: SdText.family,
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
                             color: _textDark)),
                     Text(
                       '${widget.arabicMonth(widget.month)} ${widget.year}',
-                      style: GoogleFonts.cairo(fontSize: 11, color: _textGray),
+                      style: TextStyle(fontFamily: SdText.family,fontSize: 11.5, color: _textGray),
                     ),
                   ],
                 ),
@@ -3136,7 +2885,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text('حسب الحضور',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: SdText.family,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: _textGray)),
@@ -3160,7 +2909,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Text(_error!,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: SdText.family,
                               fontSize: 13, color: _textGray)),
                     )
                   else if (_records.isNotEmpty) ...[
@@ -3171,7 +2920,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text('عمليات يدوية',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: SdText.family,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: _textGray)),
@@ -3187,7 +2936,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                               size: 36, color: _textGray.withOpacity(0.4)),
                           const SizedBox(height: 8),
                           Text('لا توجد عمليات لهذا الشهر',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(fontFamily: SdText.family,
                                   fontSize: 13, color: _textGray)),
                         ],
                       ),
@@ -3203,14 +2952,14 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
           Row(
             children: [
               Text('الإجمالي',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: SdText.family,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: _textDark)),
               const Spacer(),
               Text(
                 '${widget.formatAmount(grandTotal)} د.ع',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: SdText.family,
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
                     color: widget.color),
@@ -3230,10 +2979,10 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: isZero ? const Color(0xFFF5F5F5) : color.withOpacity(0.06),
+        color: isZero ? SdColors.surfaceAlt : color.withOpacity(0.06),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isZero ? const Color(0xFFE0E0E0) : color.withOpacity(0.18),
+          color: isZero ? SdColors.divider : color.withOpacity(0.18),
         ),
       ),
       child: Row(
@@ -3252,17 +3001,17 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: SdText.family,
                         fontSize: 13, color: isZero ? _textGray : _textDark)),
                 if (subtitle != null)
                   Text(subtitle,
-                      style: GoogleFonts.cairo(fontSize: 11, color: _textGray)),
+                      style: TextStyle(fontFamily: SdText.family,fontSize: 11.5, color: _textGray)),
               ],
             ),
           ),
           Text(
             '${widget.formatAmount(v)} د.ع',
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: SdText.family,
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: isZero ? _textGray : color,
@@ -3317,7 +3066,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
               Expanded(
                 child: Text(
                   category.isNotEmpty ? category : widget.title,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: SdText.family,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: _textDark),
@@ -3325,7 +3074,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
               ),
               Text(
                 '${widget.formatAmount(amount)} د.ع',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: SdText.family,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: widget.color,
@@ -3354,7 +3103,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                 Flexible(
                   child: Text(
                     createdByName,
-                    style: GoogleFonts.cairo(fontSize: 11, color: _textGray),
+                    style: TextStyle(fontFamily: SdText.family,fontSize: 11.5, color: _textGray),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -3366,7 +3115,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                 const SizedBox(width: 4),
                 Text(
                   createdAtFormatted,
-                  style: GoogleFonts.cairo(fontSize: 11, color: _textGray),
+                  style: TextStyle(fontFamily: SdText.family,fontSize: 11.5, color: _textGray),
                 ),
                 const SizedBox(width: 12),
               ],
@@ -3375,20 +3124,20 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF39C12).withOpacity(0.12),
+                    color: SdColors.warning.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.repeat,
-                          size: 12, color: Color(0xFFF39C12)),
+                          size: 12, color: SdColors.warning),
                       const SizedBox(width: 4),
                       Text('متكرر',
-                          style: GoogleFonts.cairo(
-                              fontSize: 10,
+                          style: const TextStyle(fontFamily: SdText.family,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFFF39C12))),
+                              color: SdColors.warning)),
                     ],
                   ),
                 ),
@@ -3411,7 +3160,7 @@ class _AdjustmentsDialogContentState extends State<_AdjustmentsDialogContent> {
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: GoogleFonts.cairo(fontSize: 12, color: _textGray),
+              style: TextStyle(fontFamily: SdText.family,fontSize: 12, color: _textGray),
               children: [
                 TextSpan(
                     text: '$label: ',

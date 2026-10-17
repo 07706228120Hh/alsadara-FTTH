@@ -66,6 +66,7 @@ import '../../services/ftth/ftth_event_bus.dart';
 
 import '../../utils/responsive_helper.dart';
 import '../../widgets/notification_bell.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../pages/super_admin/super_admin_dashboard.dart'; // ✅ لوحة تحكم Super Admin
 import '../../pages/server_data_page.dart'; // صفحة بيانات السيرفر
 import '../tasks/ftth_tasks_page.dart'; // صفحة مهام التوصيل FTTH
@@ -164,8 +165,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   DateTime? _lastDashboardFetch; // throttle: 10 ثوانٍ بين كل جلبين
 
   // Sidebar state (للشاشات العريضة)
-  bool _sidebarExpanded = false;
-  Timer? _autoCollapseTimer;
 
   // Mobile Bottom Navigation
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -484,7 +483,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     VpsSyncService.instance.stopAutoSync();
     VpsUploadService.instance.stopAutoSync();
-    _autoCollapseTimer?.cancel();
     _timer?.cancel();
     _walletTimer?.cancel();
     _searchDebounce?.cancel();
@@ -2242,90 +2240,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return RepaintBoundary(
       child: Stack(
         children: [
-          // خلفية Aurora فاخرة داكنة مع كرات ضوئية متحركة
-          // خلفية ثابتة (بدون أنيميشن)
-          Builder(builder: (context) {
-            final size = MediaQuery.of(context).size;
-            return Stack(
-              children: [
-                Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFF5F6FA),
-                        Color(0xFFEEF1F8),
-                        Color(0xFFF0F4FF),
-                        Color(0xFFF5F6FA),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: size.width * 0.1,
-                  top: size.height * 0.05,
-                  child: Container(
-                    width: size.width * 0.7,
-                    height: size.width * 0.7,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [Color(0x0F3498DB), Color(0x003498DB)],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: size.width * 0.65,
-                  top: size.height * 0.5,
-                  child: Container(
-                    width: size.width * 0.6,
-                    height: size.width * 0.6,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [Color(0x0D1ABC9C), Color(0x001ABC9C)],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: size.width * 0.35,
-                  top: size.height * 0.75,
-                  child: Container(
-                    width: size.width * 0.5,
-                    height: size.width * 0.5,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [Color(0x0A9B59B6), Color(0x009B59B6)],
-                      ),
-                    ),
-                  ),
-                ),
-                // أيقونات الخلفية — تظهر فقط على الشاشات العريضة
-                if (size.width > 500)
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _InternetIconsBackgroundPainter(
-                        animValue: 0,
-                        color: const Color(0xFF3498DB).withValues(alpha: 0.07),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          }),
+          // خلفية سادة موحّدة (sd) — أُزيلت زخرفة Aurora والأيقونات الباهتة
+          const Positioned.fill(
+            child: ColoredBox(color: SdColors.ground),
+          ),
           Scaffold(
             key: _scaffoldKey,
             backgroundColor: Colors.transparent,
             appBar: _buildAppBar(isTablet, isSmallPhone, screenWidth),
-            drawer: screenWidth <= 700 ? _buildDrawer(isTablet, isSmallPhone, screenWidth) : null,
+            // القائمة الجانبية الموحّدة (SdSideNav): درج على الهاتف، لوحة جانبية غير ذلك.
+            drawer: context.sd.isPhone
+                ? SdSideNav.drawer(context, _buildSideNav(inDrawer: true))
+                : null,
             bottomNavigationBar: null,
             body: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (screenWidth > 700) _buildSidebar(isTablet, isSmallPhone),
+                if (!context.sd.isPhone) _buildSideNav(inDrawer: false),
                 Expanded(
                   child: isLoadingDashboard
                       ? _buildLoadingIndicator(isTablet)
@@ -2363,22 +2294,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF3498DB).withValues(alpha: 0.06),
-                    blurRadius: 20,
-                    spreadRadius: -3,
-                    offset: const Offset(0, 6),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+                color: SdColors.surface,
+                borderRadius: BorderRadius.circular(SdRadius.md),
+                border: Border.all(color: SdColors.cardEdge, width: 2.0),
+                boxShadow: SdDepth.raised(),
               ),
               child: Row(
                 children: [
@@ -2392,11 +2311,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ? progress.current / progress.total
                           : null,
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFF3B82F6),
+                        SdColors.info,
                       ),
-                      backgroundColor: const Color(
-                        0xFF3B82F6,
-                      ).withValues(alpha: 0.2),
+                      backgroundColor: SdColors.info.withValues(alpha: 0.2),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -2409,7 +2326,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         Text(
                           'جلب البيانات في الخلفية',
                           style: const TextStyle(
-                            color: Color(0xFF1A1A1A),
+                            color: SdColors.ink,
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
@@ -2417,9 +2334,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         const SizedBox(height: 2),
                         Text(
                           progress.message,
-                          style: TextStyle(
-                            color: const Color(0xFF555555),
-                            fontSize: 11,
+                          style: const TextStyle(
+                            color: SdColors.muted,
+                            fontSize: 11.5,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -2434,17 +2351,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                      color: SdColors.infoTint,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFF3B82F6).withValues(alpha: 0.25),
+                        color: SdColors.infoTintEdge,
                         width: 1,
                       ),
                     ),
                     child: Text(
                       '${progress.percentage.toStringAsFixed(0)}%',
                       style: const TextStyle(
-                        color: Color(0xFF93C5FD),
+                        color: SdColors.info,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
@@ -2458,16 +2375,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: Container(
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDC2626).withValues(alpha: 0.15),
+                        color: SdColors.dangerTint,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0xFFDC2626).withValues(alpha: 0.3),
+                          color: SdColors.dangerTintEdge,
                           width: 1,
                         ),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         IconsaxPlusBold.close_circle,
-                        color: const Color(0xFFFCA5A5),
+                        color: SdColors.danger,
                         size: 16,
                       ),
                     ),
@@ -2492,7 +2409,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
 
         final isError = vps.lastResult?.success == false;
-        final color = isError ? const Color(0xFFDC2626) : const Color(0xFF0D9488);
+        final color = isError ? SdColors.danger : SdColors.accent;
 
         return Positioned(
           bottom: 16,
@@ -2503,7 +2420,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               duration: const Duration(milliseconds: 300),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: SdColors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: color.withValues(alpha: 0.3)),
                 boxShadow: [
@@ -2537,7 +2454,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width < 400 ? 150 : 220),
                     child: Text(
                       vps.statusMessage,
-                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 11.5, color: color, fontWeight: FontWeight.w500),
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -2545,7 +2462,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     const SizedBox(width: 8),
                     Text(
                       '${(vps.progress * 100).toStringAsFixed(0)}%',
-                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontSize: 11.5, color: color, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ],
@@ -2562,535 +2479,283 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     bool isSmallPhone,
     double screenWidth,
   ) {
-    // ألوان فاخرة - تيل أخضر مع تدرج عصري
-    final gradientColors = [
-      const Color(0xFF2C3E50), // أساس (نمط الحسابات)
-      const Color(0xFF34495E), // متوسط
-      const Color(0xFF2C3E50), // عودة
-    ];
-
-    // أحجام متجاوبة للشريط العلوي
-    final isPhone = screenWidth < 500;
-    final appBarHeight = isSmallPhone ? 50.0 : (isPhone ? 54.0 : (isTablet ? 72.0 : 64.0));
-    final leadingMargin = isSmallPhone ? 4.0 : (isPhone ? 6.0 : 10.0);
-    final leadingRadius = isSmallPhone ? 8.0 : 14.0;
-    final actionMarginH = isPhone ? 1.0 : 2.0;
-    final actionRadius = isPhone ? 8.0 : 14.0;
-    final actionBorderW = isSmallPhone ? 1.5 : 2.0;
-    final actionPadding = isSmallPhone ? 4.0 : (isPhone ? 5.0 : (isTablet ? 10.0 : 8.0));
-    final actionIconSize = isSmallPhone ? 18.0 : (isPhone ? 20.0 : (isTablet ? 28.0 : 24.0));
-
-    // لون موحد للأزرار
-    const btnColor = Color(0xFF94A3B8); // رمادي فاتح أنيق
-
-    Widget iconBtn({
-      required IconData icon,
-      required VoidCallback? onPressed,
-      required String tooltip,
-      bool animated = false,
-    }) {
-      final btn = IconButton(
-        icon: Icon(icon, color: Colors.white.withValues(alpha: 0.85), size: actionIconSize),
-        onPressed: onPressed,
-        tooltip: tooltip,
-        padding: EdgeInsets.all(actionPadding),
-        constraints: const BoxConstraints(),
-      );
-      return Container(
-        margin: EdgeInsets.symmetric(horizontal: actionMarginH + 1),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(actionRadius),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.12),
-            width: 1,
-          ),
-        ),
-        child: animated
-            ? AnimatedBuilder(
-                animation: _refreshAnimationController,
-                builder: (context, child) => Transform.rotate(
-                  angle: _refreshAnimationController.value * 2 * 3.14159,
-                  child: btn,
-                ),
-              )
-            : btn,
-      );
-    }
-
-    return AppBar(
-      elevation: 0,
-      toolbarHeight: appBarHeight,
-      shadowColor: Colors.transparent,
-      backgroundColor: Colors.transparent,
-      automaticallyImplyLeading: false,
-      leadingWidth: 0,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF1E293B),
-              const Color(0xFF334155),
-              const Color(0xFF1E293B),
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-      ),
-      centerTitle: true,
-      title: partnerName != null
-          ? GestureDetector(
-              onTap: _showUserInfoDialog,
-              child: Container(
-                constraints: BoxConstraints(maxWidth: isPhone ? screenWidth * 0.38 : screenWidth * 0.45),
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallPhone ? 6.0 : (isPhone ? 8.0 : 14.0),
-                  vertical: isSmallPhone ? 4.0 : (isPhone ? 5.0 : 8.0),
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      IconsaxPlusLinear.user,
-                      color: Colors.white.withValues(alpha: 0.8),
-                      size: isSmallPhone ? 14.0 : (isPhone ? 15.0 : 19.0),
-                    ),
-                    SizedBox(width: isSmallPhone ? 4.0 : (isPhone ? 5.0 : 8.0)),
-                    Flexible(
-                      child: Text(
-                        partnerName!,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isSmallPhone ? 11.0 : (isPhone ? 12.0 : (isTablet ? 14.0 : 13.0)),
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.3,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                    SizedBox(width: isSmallPhone ? 4.0 : 6.0),
-                    Icon(
-                      IconsaxPlusLinear.info_circle,
-                      color: Colors.white.withValues(alpha: 0.5),
-                      size: isSmallPhone ? 15.0 : 16.0,
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : Text(
-              'لوحة التحكم',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: isSmallPhone ? 16.0 : (isTablet ? 20.0 : 18.0),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+    // الشريط العلوي الموحّد (sd): نيلي الصدارة بحافّة بارزة، وأزرار إجراء
+    // بأيقونة + اسم. كل المنطق والتنقّل كما هو.
+    final name = partnerName;
+    return SdAppBar(
+      title: name ?? 'لوحة التحكم',
+      automaticallyImplyLeading: true,
+      // زر العودة الموحّد (leading) مع تنظيف واتساب قبل العودة.
+      onBack: () {
+        WhatsAppBottomWindow.hideConversationsFloatingButton();
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+      },
       actions: [
-        // جرس الإشعارات
-        NotificationBell(iconSize: actionIconSize),
-        // ── الجهة اليسرى (في RTL): الرجوع ──
-        iconBtn(
-          icon: IconsaxPlusBold.arrow_right_1,
-          onPressed: () {
-            // تنظيف واتساب فقط — الشريط العائم يُعاد تهيئته في النظام الأول
-            WhatsAppBottomWindow.hideConversationsFloatingButton();
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            }
-          },
-          tooltip: 'رجوع',
-        ),
+        // جرس الإشعارات (ودجت موحّد قائم بذاته)
+        const NotificationBell(iconSize: 22.0),
+        // معلومات الحساب — تفتح نفس نافذة بيانات المستخدم
+        if (name != null)
+          SdAppBarAction(
+            icon: IconsaxPlusLinear.info_circle,
+            label: 'معلومات الحساب',
+            onPressed: _showUserInfoDialog,
+          ),
         if (widget.isSuperAdminMode)
-          iconBtn(
+          SdAppBarAction(
             icon: IconsaxPlusBold.security_user,
+            label: 'لوحة مدير النظام',
             onPressed: () {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const SuperAdminDashboard()),
                 (route) => false,
               );
             },
-            tooltip: 'العودة للوحة تحكم مدير النظام',
           ),
-        // ── فاصل مرن ──
-        const Spacer(),
-        // ── الجهة اليمنى (في RTL): تحديث + قائمة ──
-        iconBtn(
+        // تحديث كامل
+        SdAppBarAction(
           icon: IconsaxPlusBold.refresh,
+          label: 'تحديث كامل',
           onPressed: isRefreshing ? null : _manualFullRefresh,
-          tooltip: 'تحديث كامل',
-          animated: true,
         ),
-        if (screenWidth <= 700)
-          Builder(
-            builder: (ctx) => iconBtn(
-              icon: IconsaxPlusBold.menu_1,
-              onPressed: () => Scaffold.of(ctx).openDrawer(),
-              tooltip: 'القائمة الجانبية',
-            ),
-          ),
-        SizedBox(width: leadingMargin),
+        // زر القائمة الجانبية يُضاف تلقائياً من SdAppBar على الهاتف.
       ],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(isPhone ? 16.0 : 24.0)),
-      ),
     );
   }
 
-  // ═══ Sidebar قابل للطي (للشاشات العريضة) ═══
+  // ═══ القائمة الجانبية الموحّدة (SdSideNav) ═══
+  // مصدر واحد لعناصر القائمة بدل الشريط الجانبي والدرج المكرّرين سابقاً.
 
-  bool _sidebarHovered = false;
-
-  void _toggleSidebar() {
-    _autoCollapseTimer?.cancel();
-    setState(() => _sidebarExpanded = !_sidebarExpanded);
-    if (_sidebarExpanded && !_sidebarHovered) {
-      _startAutoCollapseTimer();
-    }
+  Widget _buildSideNav({required bool inDrawer}) {
+    return SdSideNav(
+      inDrawer: inDrawer,
+      title: 'القائمة الرئيسية',
+      subtitle: widget.username,
+      sections: _navSections(),
+      footer: _navFooter(),
+    );
   }
 
-  void _startAutoCollapseTimer() {
-    _autoCollapseTimer?.cancel();
-    _autoCollapseTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && _sidebarExpanded && !_sidebarHovered) {
-        setState(() => _sidebarExpanded = false);
-      }
-    });
-  }
-
-  Widget _buildSidebar(bool isTablet, bool isSmallPhone) {
-    final r = context.responsive;
-    final expanded = _sidebarExpanded;
-    final width = expanded ? r.sidebarExpandedWidth : r.sidebarCollapsedWidth;
-    return MouseRegion(
-      onEnter: (_) {
-        _sidebarHovered = true;
-        _autoCollapseTimer?.cancel();
-      },
-      onExit: (_) {
-        _sidebarHovered = false;
-        if (_sidebarExpanded) _startAutoCollapseTimer();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        width: width,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: const Border(
-            left: BorderSide(color: Color(0xFFE8E8E8), width: 1),
+  List<SdNavSection> _navSections() {
+    final sections = <SdNavSection>[
+      SdNavSection(
+        title: 'العمليات الميدانية',
+        items: [
+          SdNavItem(
+            id: 'ftth_tasks',
+            label: 'مهام التوصيل',
+            icon: IconsaxPlusBold.wifi,
+            group: SdGroup.field,
+            onTap: () => navigateToPage(const FtthTasksPage()),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 6,
-              offset: const Offset(-2, 0),
-            ),
-          ],
-        ),
-        child: Column(
-        children: [
-          const SizedBox(height: 8),
-          // زر طي/فتح القائمة
-          InkWell(
-            onTap: _toggleSidebar,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                mainAxisAlignment:
-                    expanded ? MainAxisAlignment.start : MainAxisAlignment.center,
-                children: [
-                  AnimatedRotation(
-                    turns: expanded ? 0.0 : 0.5,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(Icons.menu_open,
-                        color: const Color(0xFF2C3E50), size: r.iconSizeMedium),
-                  ),
-                  if (expanded) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      'القائمة',
-                      style: TextStyle(
-                        fontSize: r.menuItemTitleSize,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF2C3E50),
-                      ),
-                    ),
-                  ],
-                ],
+          SdNavItem(
+            id: 'customer_search_connect',
+            label: 'بحث مشترك — توصيل',
+            icon: IconsaxPlusBold.user_search,
+            group: SdGroup.field,
+            onTap: () => navigateToPage(const CustomerSearchConnectPage()),
+          ),
+          SdNavItem(
+            id: 'customer_hub',
+            label: 'تسجيل مشترك جديد',
+            icon: IconsaxPlusBold.user_add,
+            group: SdGroup.field,
+            onTap: () =>
+                navigateToPage(CustomerHubPage(authToken: currentToken)),
+          ),
+          if (_hasPermission('quick_search'))
+            SdNavItem(
+              id: 'quick_search',
+              label: 'البحث السريع',
+              icon: IconsaxPlusBold.search_normal_1,
+              group: SdGroup.field,
+              onTap: () => navigateToPage(
+                QuickSearchUsersPage(
+                  authToken: currentToken,
+                  activatedBy: widget.username,
+                  hasServerSavePermission: hasServerSavePermission(),
+                  hasWhatsAppPermission: hasWhatsAppPermission(),
+                  isAdminFlag: isAdmin,
+                  importantFtthApiPermissions: _getImportantPermissions(),
+                ),
               ),
             ),
-          ),
-          const Divider(height: 1, color: Color(0xFFE8E8E8)),
-          const SizedBox(height: 8),
-          // ── عناصر القائمة ──
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                // if (_hasPermission('server_data'))
-                //   _sidebarBtn(
-                //     icon: IconsaxPlusBold.data,
-                //     label: 'بيانات السيرفر',
-                //     color: Colors.indigo,
-                //     onTap: () => navigateToPage(
-                //       DashboardProjectPage(authToken: currentToken),
-                //     ),
-                //   ),
-                // إدارة راوترات المستخدمين (GenieACS)
-                _sidebarBtn(
-                  icon: IconsaxPlusBold.cpu,
-                  label: 'إدارة الراوترات',
-                  color: Colors.deepOrange,
-                  onTap: () => navigateToPage(PlatformWebView(
-                    url: 'http://187.124.177.236:3000',
-                    title: 'إدارة راوترات المستخدمين',
-                  )),
+          if (_hasPermission('users'))
+            SdNavItem(
+              id: 'users',
+              label: 'المشتركين',
+              icon: IconsaxPlusBold.profile_2user,
+              group: SdGroup.field,
+              onTap: () => navigateToPage(
+                UsersPage(
+                  authToken: currentToken,
+                  activatedBy: widget.username,
+                  hasServerSavePermission: hasServerSavePermission(),
+                  hasWhatsAppPermission: hasWhatsAppPermission(),
+                  isAdminFlag: isAdmin,
+                  importantFtthApiPermissions: _getImportantPermissions(),
                 ),
-                if (_hasPermission('zones'))
-                  _sidebarBtn(
-                    icon: IconsaxPlusBold.location,
-                    label: 'إدارة الزونات',
-                    color: Colors.teal,
-                    onTap: () =>
-                        navigateToPage(ZonesPage(authToken: currentToken)),
-                  ),
-                _sidebarBtn(
-                  icon: IconsaxPlusBold.map,
-                  label: 'خريطة الزونات',
-                  color: const Color(0xFF0EA5E9),
-                  onTap: () => navigateToPage(const KmlZonesMapPage()),
-                ),
-                if (_hasPermission('audit_logs'))
-                  _sidebarBtn(
-                    icon: IconsaxPlusBold.clock,
-                    label: 'سجل التدقيق',
-                    color: Colors.indigo,
-                    onTap: () => navigateToPage(
-                      CaounterDetailsPage(
-                        authToken: currentToken,
-                        username: widget.username,
-                      ),
-                    ),
-                  ),
-                if (_hasPermission('export'))
-                  _sidebarBtn(
-                    icon: IconsaxPlusBold.export_1,
-                    label: 'تصدير البيانات',
-                    color: Colors.brown,
-                    onTap: () =>
-                        navigateToPage(ExportPage(authToken: currentToken)),
-                  ),
-                if (_hasPermission('transactions'))
-                  _sidebarBtn(
-                    icon: IconsaxPlusBold.wallet_2,
-                    label: 'التحويلات',
-                    color: Colors.amber,
-                    onTap: _navigateToTransactionsWithPassword,
-                  ),
-                // مخفي — متاح من الواجهة الرئيسية
-                // if (_hasPermission('whatsapp_bulk_sender'))
-                //   _sidebarBtn(
-                //     icon: IconsaxPlusBold.send_2,
-                //     label: 'إرسال جماعي',
-                //     color: Colors.teal,
-                //     onTap: () =>
-                //         navigateToPage(const WhatsAppBulkSenderPage()),
-                //   ),
-                if (_hasPermission('whatsapp_settings'))
-                  _sidebarBtn(
-                    icon: IconsaxPlusBold.mobile,
-                    label: 'مركز الواتساب',
-                    color: Colors.green,
-                    onTap: () =>
-                        navigateToPage(const WhatsAppSettingsHubPage()),
-                  ),
-                if (_hasPermission('local_storage'))
-                  _sidebarBtn(
-                    icon: IconsaxPlusBold.box_1,
-                    label: 'التخزين الداخلي',
-                    color: Colors.cyan,
-                    onTap: () => navigateToPage(
-                      LocalStoragePage(authToken: currentToken),
-                    ),
-                  ),
-                // مخفي — متاح من الواجهة الرئيسية
-                // _sidebarBtn(
-                //   icon: IconsaxPlusBold.video_play,
-                //   label: 'مشتركي IPTV',
-                //   color: Colors.deepPurple,
-                //   onTap: () => navigateToPage(const IptvSubscribersPage()),
-                // ),
-                if (_hasPermission('fetch_server_data'))
-                  _sidebarBtn(
-                    icon: IconsaxPlusBold.cloud_connection,
-                    label: 'جلب بيانات الموقع',
-                    color: Colors.teal,
-                    onTap: () => navigateToPage(FetchServerDataPage(authToken: currentToken)),
-                  ),
-                _sidebarBtn(
-                  icon: IconsaxPlusBold.chart,
-                  label: 'تحليلات Superset',
-                  color: const Color(0xFF6A1B9A),
-                  onTap: () => navigateToPage(DashboardProjectPage(authToken: currentToken)),
-                ),
-                _sidebarBtn(
-                  icon: IconsaxPlusBold.wifi,
-                  label: 'مهام التوصيل',
-                  color: const Color(0xFF00897B),
-                  onTap: () => navigateToPage(const FtthTasksPage()),
-                ),
-                _sidebarBtn(
-                  icon: IconsaxPlusBold.user_search,
-                  label: 'بحث مشترك — توصيل',
-                  color: const Color(0xFF0277BD),
-                  onTap: () => navigateToPage(const CustomerSearchConnectPage()),
-                ),
-                _sidebarBtn(
-                  icon: IconsaxPlusBold.user_add,
-                  label: 'تسجيل مشترك جديد',
-                  color: const Color(0xFF6A1B9A),
-                  onTap: () => navigateToPage(CustomerHubPage(authToken: currentToken)),
-                ),
-                if (_hasPermission('quick_search'))
-                  _sidebarBtn(
-                    icon: IconsaxPlusBold.search_normal_1,
-                    label: 'البحث السريع',
-                    color: Colors.green,
-                    onTap: () => navigateToPage(
-                      QuickSearchUsersPage(
-                        authToken: currentToken,
-                        activatedBy: widget.username,
-                        hasServerSavePermission: hasServerSavePermission(),
-                        hasWhatsAppPermission: hasWhatsAppPermission(),
-                        isAdminFlag: isAdmin,
-                        importantFtthApiPermissions: _getImportantPermissions(),
-                      ),
-                    ),
-                  ),
-                if (_hasPermission('users'))
-                  _sidebarBtn(
-                    icon: IconsaxPlusBold.profile_2user,
-                    label: 'المشتركين',
-                    color: Colors.purple,
-                    onTap: () => navigateToPage(
-                      UsersPage(
-                        authToken: currentToken,
-                        activatedBy: widget.username,
-                        hasServerSavePermission: hasServerSavePermission(),
-                        hasWhatsAppPermission: hasWhatsAppPermission(),
-                        isAdminFlag: isAdmin,
-                        importantFtthApiPermissions: _getImportantPermissions(),
-                      ),
-                    ),
-                  ),
-                // مخفي — متاح من الواجهة الرئيسية
-                // if (_hasPermission('expiring_soon'))
-                //   _sidebarBtn(
-                //     icon: IconsaxPlusBold.timer_1,
-                //     label: 'المنتهي قريباً',
-                //     color: Colors.red,
-                //     onTap: () => navigateToPage(
-                //       ExpiringSoonPage(
-                //         activatedBy: widget.username,
-                //         hasServerSavePermission: hasServerSavePermission(),
-                //         hasWhatsAppPermission: hasWhatsAppPermission(),
-                //         importantFtthApiPermissions: _getImportantPermissions(),
-                //       ),
-                //     ),
-                //   ),
-              ],
+              ),
             ),
+          // إدارة راوترات المستخدمين (GenieACS)
+          SdNavItem(
+            id: 'routers',
+            label: 'إدارة الراوترات',
+            icon: IconsaxPlusBold.cpu,
+            group: SdGroup.field,
+            onTap: () => navigateToPage(PlatformWebView(
+              url: 'http://187.124.177.236:3000',
+              title: 'إدارة راوترات المستخدمين',
+            )),
           ),
         ],
       ),
+      SdNavSection(
+        title: 'الزونات والخرائط',
+        items: [
+          if (_hasPermission('zones'))
+            SdNavItem(
+              id: 'zones',
+              label: 'إدارة الزونات',
+              icon: IconsaxPlusBold.location,
+              group: SdGroup.field,
+              onTap: () => navigateToPage(ZonesPage(authToken: currentToken)),
+            ),
+          SdNavItem(
+            id: 'kml_zones_map',
+            label: 'خريطة الزونات',
+            icon: IconsaxPlusBold.map,
+            group: SdGroup.field,
+            onTap: () => navigateToPage(const KmlZonesMapPage()),
+          ),
+        ],
       ),
-    );
+      SdNavSection(
+        title: 'البيانات والتقارير',
+        items: [
+          if (_hasPermission('audit_logs'))
+            SdNavItem(
+              id: 'audit_logs',
+              label: 'سجل التدقيق',
+              icon: IconsaxPlusBold.clock,
+              group: SdGroup.platform,
+              onTap: () => navigateToPage(
+                CaounterDetailsPage(
+                  authToken: currentToken,
+                  username: widget.username,
+                ),
+              ),
+            ),
+          if (_hasPermission('export'))
+            SdNavItem(
+              id: 'export',
+              label: 'تصدير البيانات',
+              icon: IconsaxPlusBold.export_1,
+              group: SdGroup.platform,
+              onTap: () => navigateToPage(ExportPage(authToken: currentToken)),
+            ),
+          if (_hasPermission('fetch_server_data'))
+            SdNavItem(
+              id: 'fetch_server_data',
+              label: 'جلب بيانات الموقع',
+              icon: IconsaxPlusBold.cloud_connection,
+              group: SdGroup.platform,
+              onTap: () => navigateToPage(
+                  FetchServerDataPage(authToken: currentToken)),
+            ),
+          if (_hasPermission('local_storage'))
+            SdNavItem(
+              id: 'local_storage',
+              label: 'التخزين الداخلي',
+              icon: IconsaxPlusBold.box_1,
+              group: SdGroup.platform,
+              onTap: () => navigateToPage(
+                LocalStoragePage(authToken: currentToken),
+              ),
+            ),
+          // مشروع Dashboard (جلب بيانات الشارتات)
+          if (_hasPermission('dashboard_project'))
+            SdNavItem(
+              id: 'dashboard_project',
+              label: 'مشروع Dashboard',
+              icon: IconsaxPlusBold.element_3,
+              group: SdGroup.platform,
+              onTap: () => navigateToPage(
+                DashboardProjectPage(authToken: currentToken),
+              ),
+            ),
+          SdNavItem(
+            id: 'superset',
+            label: 'تحليلات Superset',
+            icon: IconsaxPlusBold.chart,
+            group: SdGroup.platform,
+            onTap: () => navigateToPage(
+                DashboardProjectPage(authToken: currentToken)),
+          ),
+        ],
+      ),
+      SdNavSection(
+        title: 'المالية',
+        items: [
+          if (_hasPermission('transactions'))
+            SdNavItem(
+              id: 'transactions',
+              label: 'التحويلات',
+              icon: IconsaxPlusBold.wallet_2,
+              group: SdGroup.admin,
+              onTap: _navigateToTransactionsWithPassword,
+            ),
+        ],
+      ),
+      SdNavSection(
+        title: 'الواتساب',
+        items: [
+          if (_hasPermission('whatsapp_bulk_sender'))
+            SdNavItem(
+              id: 'whatsapp_bulk_sender',
+              label: 'إرسال رسائل جماعية',
+              icon: IconsaxPlusBold.send_2,
+              group: SdGroup.comms,
+              onTap: () => navigateToPage(const WhatsAppBulkSenderPage()),
+            ),
+          if (_hasPermission('whatsapp_settings'))
+            SdNavItem(
+              id: 'whatsapp_settings',
+              label: 'مركز الواتساب',
+              icon: IconsaxPlusBold.mobile,
+              group: SdGroup.comms,
+              onTap: () => navigateToPage(const WhatsAppSettingsHubPage()),
+            ),
+        ],
+      ),
+    ];
+    // إخفاء الأقسام الفارغة (حسب الصلاحيات).
+    return sections.where((sec) => sec.items.isNotEmpty).toList();
   }
 
-  Widget _sidebarBtn({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final r = context.responsive;
-    final expanded = _sidebarExpanded;
-    final iconBoxSize = r.scaled(24, 28, 32);
-    final iconInnerSize = r.iconSizeSmall;
-    final labelSize = r.menuItemSubtitleSize;
-    return Tooltip(
-      message: expanded ? '' : label,
-      preferBelow: false,
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-            horizontal: expanded ? 4 : 4, vertical: 1),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(6),
-            hoverColor: color.withOpacity(0.15),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: expanded ? 6 : 0, vertical: 5),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.black, width: 0.5),
-              ),
-              child: expanded
-                  ? Row(
-                      children: [
-                        Container(
-                          width: iconBoxSize,
-                          height: iconBoxSize,
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Icon(icon, color: color, size: iconInnerSize),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: labelSize,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF333333),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Center(
-                      child: Icon(icon, color: color, size: iconInnerSize),
-                    ),
-            ),
-          ),
-        ),
+  /// تذييل القائمة: تنبيه «لا توجد صلاحيات» عند غياب كل الصلاحيات
+  /// (نفس شرط الدرج السابق).
+  List<SdNavItem> _navFooter() {
+    const keys = [
+      'users', 'subscriptions', 'tasks', 'zones', 'accounts',
+      'account_records', 'export', 'agents', 'expiring_soon', 'quick_search',
+      'google_sheets', 'audit_logs', 'whatsapp', 'wallet_balance',
+      'whatsapp_link', 'whatsapp_settings', 'plans_bundles', 'local_storage',
+      'server_data', 'dashboard_project', 'fetch_server_data',
+    ];
+    final none = keys.every((k) => !_hasPermission(k));
+    if (!none) return const [];
+    return const [
+      SdNavItem(
+        id: 'no_permissions',
+        label: 'لا توجد صلاحيات متاحة',
+        hint: 'يرجى التواصل مع المدير لمنح الصلاحيات',
+        icon: IconsaxPlusLinear.lock,
+        group: SdGroup.comms,
+        enabled: false,
       ),
-    );
+    ];
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3151,468 +2816,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDrawer(bool isTablet, bool isSmallPhone, double screenWidth) {
-    return Drawer(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF5F6FA), Color(0xFFEEF1F8)],
-            stops: [0.0, 1.0],
-          ),
-        ),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            SizedBox(height: isSmallPhone ? 8 : 12),
-            Container(
-              color: const Color(0xFFF5F6FA),
-              child: Column(
-                children: [
-                  // ============ الأزرار التالية تظهر فقط في الواجهة الرئيسية (الوصول السريع) ============
-                  // البحث السريع، المشتركين، الاشتراكات، الانتهاء قريباً، المهام، سجلات الحسابات
-                  // ==================================================================================
-
-                  // ═══════════════════════════════════════════════════════════════════
-                  // 📊 قسم البيانات والإدارة
-                  // ═══════════════════════════════════════════════════════════════════
-
-                  // 0.5 بيانات السيرفر (ملفات JSON المحلية) — مخفي حالياً
-                  // if (_hasPermission('server_data'))
-                  //   _buildDrawerItem(
-                  //     icon: IconsaxPlusBold.data,
-                  //     title: 'بيانات السيرفر',
-                  //     isTablet: isTablet,
-                  //     isSmallPhone: isSmallPhone,
-                  //     color: Colors.indigo,
-                  //     onTap: () => navigateToPage(
-                  //       DashboardProjectPage(authToken: currentToken),
-                  //     ),
-                  //   ),
-
-                  // 0.6 مشروع Dashboard (جلب بيانات الشارتات)
-                  if (_hasPermission('dashboard_project'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.element_3,
-                      title: 'مشروع Dashboard',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.deepPurple,
-                      onTap: () => navigateToPage(
-                        DashboardProjectPage(authToken: currentToken),
-                      ),
-                    ),
-
-
-                  // إدارة راوترات المستخدمين (GenieACS)
-                  _buildDrawerItem(
-                    icon: IconsaxPlusBold.cpu,
-                    title: 'إدارة الراوترات',
-                    isTablet: isTablet,
-                    isSmallPhone: isSmallPhone,
-                    color: Colors.deepOrange,
-                    onTap: () => navigateToPage(PlatformWebView(
-                      url: 'http://187.124.177.236:3000',
-                      title: 'إدارة راوترات المستخدمين',
-                    )),
-                  ),
-
-                  // 2 إدارة الزونات
-                  if (_hasPermission('zones'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.location,
-                      title: 'إدارة الزونات',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.teal,
-                      onTap: () =>
-                          navigateToPage(ZonesPage(authToken: currentToken)),
-                    ),
-
-                  // 2b خريطة الزونات
-                  _buildDrawerItem(
-                    icon: IconsaxPlusBold.map,
-                    title: 'خريطة الزونات',
-                    isTablet: isTablet,
-                    isSmallPhone: isSmallPhone,
-                    color: Colors.cyan,
-                    onTap: () => navigateToPage(const KmlZonesMapPage()),
-                  ),
-
-                  // 3 سجل التدقيق
-                  if (_hasPermission('audit_logs'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.clock,
-                      title: 'سجل التدقيق',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.indigo,
-                      onTap: () => navigateToPage(
-                        CaounterDetailsPage(
-                          authToken: currentToken,
-                          username: widget.username,
-                        ),
-                      ),
-                    ),
-
-                  // 4 تصدير البيانات
-                  if (_hasPermission('export'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.export_1,
-                      title: 'تصدير البيانات',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.brown,
-                      onTap: () =>
-                          navigateToPage(ExportPage(authToken: currentToken)),
-                    ),
-
-                  // ═══════════════════════════════════════════════════════════════════
-                  // 💰 قسم المالية
-                  // ═══════════════════════════════════════════════════════════════════
-
-                  // 5 التحويلات
-                  if (_hasPermission('transactions'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.wallet_2,
-                      title: 'التحويلات',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.amber,
-                      onTap: _navigateToTransactionsWithPassword,
-                    ),
-
-                  // ═══════════════════════════════════════════════════════════════════
-                  // 💬 قسم الواتساب
-                  // ═══════════════════════════════════════════════════════════════════
-
-                  // 7 إرسال رسائل جماعية (يحتوي على إعدادات API والتقارير)
-                  if (_hasPermission('whatsapp_bulk_sender'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.send_2,
-                      title: 'إرسال رسائل جماعية',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.teal,
-                      onTap: () =>
-                          navigateToPage(const WhatsAppBulkSenderPage()),
-                    ),
-
-                  // 9 مركز إعدادات الواتساب (السيرفر، API، ويب)
-                  if (_hasPermission('whatsapp_settings'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.mobile,
-                      title: 'مركز الواتساب',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.green,
-                      onTap: () =>
-                          navigateToPage(const WhatsAppSettingsHubPage()),
-                    ),
-
-                  // ═══════════════════════════════════════════════════════════════════
-                  // 🔧 قسم الخدمات
-                  // ═══════════════════════════════════════════════════════════════════
-
-                  // 11 التخزين الداخلي
-                  if (_hasPermission('local_storage'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.box_1,
-                      title: 'التخزين الداخلي',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.cyan,
-                      onTap: () => navigateToPage(
-                        LocalStoragePage(authToken: currentToken),
-                      ),
-                    ),
-
-                  // مخفي — متاح من الواجهة الرئيسية
-                  // _buildDrawerItem(
-                  //   icon: IconsaxPlusBold.video_play,
-                  //   title: 'مشتركي IPTV',
-                  //   isTablet: isTablet,
-                  //   isSmallPhone: isSmallPhone,
-                  //   color: Colors.deepPurple,
-                  //   onTap: () => navigateToPage(const IptvSubscribersPage()),
-                  // ),
-
-                  // 12 جلب بيانات الموقع
-                  if (_hasPermission('fetch_server_data'))
-                    _buildDrawerItem(
-                      icon: IconsaxPlusBold.cloud_connection,
-                      title: 'جلب بيانات الموقع',
-                      isTablet: isTablet,
-                      isSmallPhone: isSmallPhone,
-                      color: Colors.teal,
-                      onTap: () => navigateToPage(FetchServerDataPage(authToken: currentToken)),
-                    ),
-
-                  // 13 تحليلات Superset
-                  _buildDrawerItem(
-                    icon: IconsaxPlusBold.chart,
-                    title: 'تحليلات Superset',
-                    isTablet: isTablet,
-                    isSmallPhone: isSmallPhone,
-                    color: Colors.purple,
-                    onTap: () => navigateToPage(DashboardProjectPage(authToken: currentToken)),
-                  ),
-                  // 14 مهام التوصيل
-                  _buildDrawerItem(
-                    icon: IconsaxPlusBold.wifi,
-                    title: 'مهام التوصيل',
-                    isTablet: isTablet,
-                    isSmallPhone: isSmallPhone,
-                    color: Colors.teal,
-                    onTap: () => navigateToPage(const FtthTasksPage()),
-                  ),
-                  // 15 بحث مشترك — توصيل
-                  _buildDrawerItem(
-                    icon: IconsaxPlusBold.user_search,
-                    title: 'بحث مشترك — توصيل',
-                    isTablet: isTablet,
-                    isSmallPhone: isSmallPhone,
-                    color: Colors.lightBlue,
-                    onTap: () => navigateToPage(const CustomerSearchConnectPage()),
-                  ),
-                  // 16 تسجيل مشترك جديد
-                  _buildDrawerItem(
-                    icon: IconsaxPlusBold.user_add,
-                    title: 'تسجيل مشترك جديد',
-                    isTablet: isTablet,
-                    isSmallPhone: isSmallPhone,
-                    color: Colors.deepPurple,
-                    onTap: () => navigateToPage(CustomerHubPage(authToken: currentToken)),
-                  ),
-
-                  // تمت إزالة زر معلومات الشريك من القائمة الجانبية بناءً على الطلب
-
-                  // رسالة في حالة عدم وجود صلاحيات
-                  if (!_hasPermission('users') &&
-                      !_hasPermission('subscriptions') &&
-                      !_hasPermission('tasks') &&
-                      !_hasPermission('zones') &&
-                      !_hasPermission('accounts') &&
-                      !_hasPermission('account_records') &&
-                      !_hasPermission('export') &&
-                      !_hasPermission('agents') &&
-                      !_hasPermission('expiring_soon') &&
-                      !_hasPermission('quick_search') &&
-                      !_hasPermission('google_sheets') &&
-                      !_hasPermission('audit_logs') &&
-                      !_hasPermission('whatsapp') &&
-                      !_hasPermission('wallet_balance') &&
-                      !_hasPermission('whatsapp_link') &&
-                      !_hasPermission('whatsapp_settings') &&
-                      !_hasPermission('plans_bundles') &&
-                      !_hasPermission('local_storage') &&
-                      !_hasPermission('server_data') &&
-                      !_hasPermission('dashboard_project') &&
-                      !_hasPermission('fetch_server_data'))
-                    Container(
-                      margin: const EdgeInsets.all(16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.orange[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange[200]!),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            IconsaxPlusLinear.lock,
-                            color: Colors.orange[600],
-                            size: isSmallPhone ? 24 : 32,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'لا توجد صلاحيات متاحة',
-                            style: TextStyle(
-                              color: Colors.orange[700],
-                              fontWeight: FontWeight.bold,
-                              fontSize: isSmallPhone ? 12 : 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'يرجى التواصل مع المدير لمنح الصلاحيات',
-                            style: TextStyle(
-                              color: Colors.orange[600],
-                              fontSize: isSmallPhone ? 10 : 12,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawerHeader(bool isTablet, bool isSmallPhone) {
-    final double headerHeight = isSmallPhone ? 90 : (isTablet ? 100 : 95);
-    return Container(
-      height: headerHeight,
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: isSmallPhone ? 8 : 12,
-      ),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF2C3E50), Color(0xFF34495E), Color(0xFF2C3E50)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2C3E50).withValues(alpha: 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // طبقة بريق شفافة
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFFF59E0B).withValues(alpha: 0.06),
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.2),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
-                ),
-              ),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // أيقونة فخمة متوهجة
-                Container(
-                  padding: EdgeInsets.all(isSmallPhone ? 6 : 10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        const Color(0xFFF59E0B).withValues(alpha: 0.12),
-                        const Color(0xFFF59E0B).withValues(alpha: 0.3),
-                      ],
-                    ),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.55),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        spreadRadius: -2,
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
-                        blurRadius: 30,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    IconsaxPlusBold.shield_tick,
-                    color: const Color(0xFFFCD34D),
-                    size: isSmallPhone ? 18 : 26,
-                  ),
-                ),
-                SizedBox(height: isSmallPhone ? 4 : 6),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'القائمة الرئيسية',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isSmallPhone ? 13 : (isTablet ? 18 : 16),
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    required bool isTablet,
-    required bool isSmallPhone,
-    required MaterialColor color,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.pop(context);
-            onTap();
-          },
-          borderRadius: BorderRadius.circular(8),
-          hoverColor: color.withOpacity(0.08),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: color, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: isSmallPhone ? 12 : 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF333333),
-                    ),
-                  ),
-                ),
-                Icon(Icons.chevron_left,
-                    color: const Color(0xFF999999), size: 18),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildLoadingIndicator(bool isLargeScreen) {
     return Center(
       child: Column(
@@ -3622,57 +2825,44 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           Container(
             padding: const EdgeInsets.all(35),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SdColors.surface,
               borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF3498DB).withValues(alpha: 0.06),
-                  blurRadius: 40,
-                  spreadRadius: -5,
-                  offset: const Offset(0, 15),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 60,
-                  spreadRadius: -10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+              border: Border.all(color: SdColors.cardEdge, width: 2.0),
+              boxShadow: SdDepth.raised(depth: SdDepth.hero),
             ),
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // حلقة خارجية كبيرة - أزرق فاتح
+                // حلقة خارجية كبيرة - تركوازي فاتح
                 SizedBox(
                   width: 80,
                   height: 80,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      const Color(0xFF3498DB).withValues(alpha: 0.25),
+                      SdColors.accent.withValues(alpha: 0.25),
                     ),
                   ),
                 ),
-                // حلقة وسطى - أزرق
+                // حلقة وسطى - تركوازي
                 SizedBox(
                   width: 60,
                   height: 60,
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      const Color(0xFF3498DB).withValues(alpha: 0.5),
+                      SdColors.accent.withValues(alpha: 0.5),
                     ),
                   ),
                 ),
-                // حلقة داخلية أساسية - أزرق
-                SizedBox(
+                // حلقة داخلية أساسية - تركوازي
+                const SizedBox(
                   width: 42,
                   height: 42,
                   child: CircularProgressIndicator(
                     strokeWidth: 4,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF3498DB),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      SdColors.accent,
                     ),
                   ),
                 ),
@@ -3683,15 +2873,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                        color: SdColors.warning.withValues(alpha: 0.4),
                         blurRadius: 8,
                         spreadRadius: -2,
                       ),
                     ],
                   ),
-                  child: Icon(
+                  child: const Icon(
                     IconsaxPlusBold.verify,
-                    color: const Color(0xFFFCD34D),
+                    color: SdColors.warning,
                     size: 18,
                   ),
                 ),
@@ -3705,7 +2895,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             style: TextStyle(
               fontSize: isLargeScreen ? 18 : 16,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF1A1A1A),
+              color: SdColors.ink,
               letterSpacing: 0.5,
             ),
           ),
@@ -3715,7 +2905,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             style: TextStyle(
               fontSize: isLargeScreen ? 14 : 12,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF555555),
+              color: SdColors.muted,
               letterSpacing: 0.3,
             ),
           ),
@@ -3880,9 +3070,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final r = context.responsive;
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobileLayout = screenWidth < 600;
-    final bdr = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(r.buttonRadius)), borderSide: const BorderSide(color: Colors.black, width: 1.5));
-    final fbdr = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(r.buttonRadius)), borderSide: const BorderSide(color: Color(0xFF1A237E), width: 2));
-    final lbl = TextStyle(fontSize: r.bodySize, fontWeight: FontWeight.w700, color: Colors.grey.shade700);
+    final bdr = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(r.buttonRadius)), borderSide: const BorderSide(color: SdColors.cardEdge, width: 1.5));
+    final fbdr = OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(r.buttonRadius)), borderSide: const BorderSide(color: SdColors.primary, width: 2));
+    final lbl = TextStyle(fontSize: r.bodySize, fontWeight: FontWeight.w700, color: SdColors.muted);
     final searchPad = r.scaled(6, 8, 10);
 
     return Column(
@@ -3892,12 +3082,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         Container(
           padding: EdgeInsets.fromLTRB(searchPad, searchPad + 2, searchPad, searchPad - 2),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.black, width: 2),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 3)),
-            ],
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.sm),
+            border: Border.all(color: SdColors.cardEdge, width: 2),
+            boxShadow: SdDepth.raised(),
           ),
           child: isMobileLayout
               // ═══ موبايل: حقلان عموديان (هاتف + اسم) ═══
@@ -3916,13 +3104,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         labelStyle: lbl,
                         floatingLabelBehavior: FloatingLabelBehavior.always,
                         floatingLabelAlignment: FloatingLabelAlignment.center,
-                        filled: true, fillColor: Colors.white, isDense: true,
+                        filled: true, fillColor: SdColors.surface, isDense: true,
                         contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
-                        prefixIcon: Icon(Icons.phone, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
+                        prefixIcon: Icon(Icons.phone, color: SdColors.primary, size: r.iconSizeSmall),
                         suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                         suffixIcon: _searchPhoneCtrl.text.isNotEmpty
-                            ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
-                            : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                            ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: SdColors.danger), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                            : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: SdColors.primary), onPressed: () async {
                                 final data = await Clipboard.getData(Clipboard.kTextPlain);
                                 if (data?.text != null && data!.text!.isNotEmpty && mounted) {
                                   final cleaned = _toWestern(data.text!).replaceAll(RegExp(r'[^0-9+]'), '').trim();
@@ -3950,17 +3138,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         labelStyle: lbl,
                         floatingLabelBehavior: FloatingLabelBehavior.always,
                         floatingLabelAlignment: FloatingLabelAlignment.center,
-                        filled: true, fillColor: Colors.white, isDense: true,
+                        filled: true, fillColor: SdColors.surface, isDense: true,
                         contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
-                        prefixIcon: Icon(Icons.person_search, color: const Color(0xFF1A237E), size: r.iconSizeMedium),
+                        prefixIcon: Icon(Icons.person_search, color: SdColors.primary, size: r.iconSizeMedium),
                         suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                         suffixIcon: (_searchLoading && _searchNameCtrl.text.isNotEmpty)
                             ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                             : _searchWaiting
                                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5))
                                 : (_searchNameCtrl.text.isNotEmpty
-                                    ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
-                                    : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                                    ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: SdColors.danger), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                                    : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: SdColors.primary), onPressed: () async {
                                         final data = await Clipboard.getData(Clipboard.kTextPlain);
                                         if (data?.text != null && data!.text!.isNotEmpty && mounted) {
                                           _searchNameCtrl.text = _toWestern(data.text!).trim();
@@ -4007,14 +3195,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               labelStyle: lbl,
                               floatingLabelBehavior: FloatingLabelBehavior.always,
                               floatingLabelAlignment: FloatingLabelAlignment.center,
-                              filled: true, fillColor: Colors.white, isDense: true,
+                              filled: true, fillColor: SdColors.surface, isDense: true,
                               contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
-                              prefixIcon: Icon(Icons.location_on, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
+                              prefixIcon: Icon(Icons.location_on, color: SdColors.primary, size: r.iconSizeSmall),
                               suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                               suffixIcon: controller.text.isNotEmpty
                                   ? IconButton(
                                       tooltip: 'مسح المنطقة',
-                                      icon: const Icon(Icons.clear, size: 16, color: Colors.red),
+                                      icon: const Icon(Icons.clear, size: 16, color: SdColors.danger),
                                       onPressed: () {
                                         controller.clear();
                                         setState(() => _searchZoneId = '');
@@ -4078,17 +3266,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           labelStyle: lbl,
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           floatingLabelAlignment: FloatingLabelAlignment.center,
-                          filled: true, fillColor: Colors.white, isDense: true,
+                          filled: true, fillColor: SdColors.surface, isDense: true,
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
-                          prefixIcon: Icon(Icons.person_search, color: const Color(0xFF1A237E), size: r.iconSizeMedium),
+                          prefixIcon: Icon(Icons.person_search, color: SdColors.primary, size: r.iconSizeMedium),
                           suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                           suffixIcon: (_searchLoading && _searchNameCtrl.text.isNotEmpty)
                               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                               : _searchWaiting
                                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 1.5))
                                   : (_searchNameCtrl.text.isNotEmpty
-                                      ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
-                                      : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                                      ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: SdColors.danger), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                                      : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: SdColors.primary), onPressed: () async {
                                           final data = await Clipboard.getData(Clipboard.kTextPlain);
                                           if (data?.text != null && data!.text!.isNotEmpty && mounted) {
                                             _searchNameCtrl.text = _toWestern(data.text!).trim();
@@ -4117,13 +3305,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           labelStyle: lbl,
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           floatingLabelAlignment: FloatingLabelAlignment.center,
-                          filled: true, fillColor: Colors.white, isDense: true,
+                          filled: true, fillColor: SdColors.surface, isDense: true,
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: r.scaled(10, 12, 14)),
-                          prefixIcon: Icon(Icons.phone, color: const Color(0xFF1A237E), size: r.iconSizeSmall),
+                          prefixIcon: Icon(Icons.phone, color: SdColors.primary, size: r.iconSizeSmall),
                           suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                           suffixIcon: _searchPhoneCtrl.text.isNotEmpty
-                              ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: Colors.red), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
-                              : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: Color(0xFF1A237E)), onPressed: () async {
+                              ? IconButton(tooltip: 'مسح', icon: const Icon(Icons.clear, size: 16, color: SdColors.danger), onPressed: _resetQuickSearch, padding: EdgeInsets.zero, constraints: const BoxConstraints())
+                              : IconButton(tooltip: 'لصق', icon: const Icon(Icons.content_paste_go, size: 16, color: SdColors.primary), onPressed: () async {
                                   final data = await Clipboard.getData(Clipboard.kTextPlain);
                                   if (data?.text != null && data!.text!.isNotEmpty && mounted) {
                                     final cleaned = _toWestern(data.text!).replaceAll(RegExp(r'[^0-9+]'), '').trim();
@@ -4143,7 +3331,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     if (_searchNameCtrl.text.isNotEmpty || _searchPhoneCtrl.text.isNotEmpty || _searchZoneId.isNotEmpty)
                       IconButton(
                         tooltip: 'مسح الكل',
-                        icon: Icon(Icons.clear_all, color: Colors.red, size: r.iconSizeMedium),
+                        icon: Icon(Icons.clear_all, color: SdColors.danger, size: r.iconSizeMedium),
                         onPressed: _resetQuickSearch,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -4161,9 +3349,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(Color(0xFF1A237E)))),
+                SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, valueColor: AlwaysStoppedAnimation(SdColors.primary))),
                 SizedBox(width: 12),
-                Text('جاري البحث...', style: TextStyle(color: Color(0xFF1A237E), fontWeight: FontWeight.w600)),
+                Text('جاري البحث...', style: TextStyle(color: SdColors.primary, fontWeight: FontWeight.w600)),
               ],
             ),
           )
@@ -4172,14 +3360,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             margin: const EdgeInsets.only(top: 10),
             padding: const EdgeInsets.symmetric(vertical: 16),
             alignment: Alignment.center,
-            child: Text('لا توجد نتائج', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+            child: const Text('لا توجد نتائج', style: TextStyle(color: SdColors.faint, fontSize: 14)),
           )
         else if (_searchResults.isNotEmpty) ...[
           // عداد النتائج
           Container(
             margin: const EdgeInsets.only(top: 8),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(color: const Color(0xFF1A237E), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: SdColors.primary, borderRadius: BorderRadius.circular(SdRadius.xs)),
             child: Row(
               children: [
                 const Icon(Icons.manage_search, color: Colors.white, size: 16),
@@ -4216,7 +3404,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 6),
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Colors.black, width: 1)),
+                  color: SdColors.surface,
+                  surfaceTintColor: SdColors.surface,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: SdColors.cardEdge, width: 1)),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () {
@@ -4241,7 +3431,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           Container(
                             width: 40, height: 40,
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(colors: [Color(0xFF1A237E), Color(0xFF3949AB)]),
+                              gradient: const LinearGradient(colors: [SdColors.primary, SdColors.primaryLight]),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(Icons.person, color: Colors.white, size: 22),
@@ -4251,13 +3441,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(userName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: Color(0xFF1A237E)), overflow: TextOverflow.ellipsis),
+                                Text(userName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: SdColors.primary), overflow: TextOverflow.ellipsis),
                                 if (zone.isNotEmpty)
-                                  Text(zone, style: TextStyle(fontSize: 11, color: Colors.grey.shade600), overflow: TextOverflow.ellipsis),
+                                  Text(zone, style: const TextStyle(fontSize: 11.5, color: SdColors.muted), overflow: TextOverflow.ellipsis),
                               ],
                             ),
                           ),
-                          const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+                          const Icon(Icons.chevron_right, color: SdColors.faint, size: 20),
                         ],
                       ),
                     ),
@@ -4350,7 +3540,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         label: 'إجمالي العملاء',
         value: total,
         icon: IconsaxPlusBold.people,
-        color: const Color(0xFF2563EB),
+        color: SdColors.info,
         changeText: '100%',
         isPositive: true,
       ),
@@ -4358,7 +3548,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         label: 'نشط',
         value: active,
         icon: IconsaxPlusBold.tick_circle,
-        color: const Color(0xFF059669),
+        color: SdColors.success,
         changeText: total > 0
             ? '${(active / total * 100).toStringAsFixed(1)}%'
             : '0%',
@@ -4368,7 +3558,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         label: 'منتهي',
         value: inactive,
         icon: IconsaxPlusBold.close_circle,
-        color: const Color(0xFFDC2626),
+        color: SdColors.danger,
         changeText: total > 0
             ? '${(inactive / total * 100).toStringAsFixed(1)}%'
             : '0%',
@@ -4378,7 +3568,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         label: 'ينتهي قريباً',
         value: _expiringSoonCount,
         icon: IconsaxPlusBold.timer_1,
-        color: const Color(0xFFEA580C),
+        color: SdColors.warning,
         changeText: total > 0
             ? '${(_expiringSoonCount / total * 100).toStringAsFixed(1)}%'
             : '0%',
@@ -4459,16 +3649,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      color: SdColors.surface,
+                      borderRadius: BorderRadius.circular(SdRadius.sm),
                       border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                      boxShadow: SdDepth.raised(
+                        edge: SdColors.cardEdge,
+                        depth: SdDepth.card,
+                        glow: color.withValues(alpha: 0.16),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -4494,20 +3682,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 alignment: Alignment.centerRight,
                                 child: Text(
                                   _formatCounterNumber(displayValue),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w900,
-                                    color: const Color(0xFF1A1A1A),
+                                    color: SdColors.ink,
                                     height: 1.1,
                                   ),
                                 ),
                               ),
                               Text(
                                 label,
-                                style: TextStyle(
-                                  fontSize: 10,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade600,
+                                  color: SdColors.muted,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -4558,25 +3746,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   padding:
                       EdgeInsets.symmetric(vertical: vPad, horizontal: hPad),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: SdColors.surface,
                     borderRadius:
                         BorderRadius.circular(cardWidth < 100 ? 12 : 18),
                     border: Border.all(
                       color: isHovered
                           ? color.withValues(alpha: 0.35)
-                          : const Color(0xFFE0E0E0),
+                          : SdColors.cardEdge,
                       width: isHovered ? 2.5 : 2.0,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isHovered
-                            ? color.withValues(alpha: 0.12)
-                            : Colors.black.withValues(alpha: 0.04),
-                        blurRadius: isHovered ? 16 : 6,
-                        spreadRadius: isHovered ? -1 : -2,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    boxShadow: SdDepth.raised(
+                      edge: SdColors.cardEdge,
+                      depth: isHovered ? SdDepth.hero : SdDepth.card,
+                      glow: isHovered
+                          ? color.withValues(alpha: 0.22)
+                          : const Color(0x591A237E),
+                    ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -4619,7 +3804,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                             style: TextStyle(
                                               fontSize: valueFontSize,
                                               fontWeight: FontWeight.w900,
-                                              color: const Color(0xFF1A1A1A),
+                                              color: SdColors.ink,
                                               letterSpacing: -0.3,
                                               height: 1.0,
                                             ),
@@ -4656,7 +3841,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             child: Text(
                               label,
                               style: TextStyle(
-                                color: const Color(0xFF1A1A1A),
+                                color: SdColors.ink,
                                 fontSize: labelFontSize,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.3,
@@ -4908,10 +4093,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: Container(
                     height: 1.5,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
+                      gradient: const LinearGradient(
                         colors: [
                           Colors.transparent,
-                          const Color(0xFF3498DB).withValues(alpha: 0.3),
+                          SdColors.accentTintEdge,
                         ],
                       ),
                       borderRadius: BorderRadius.circular(1),
@@ -4922,33 +4107,33 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   margin: const EdgeInsets.symmetric(horizontal: 12),
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3498DB).withValues(alpha: 0.08),
+                    color: SdColors.accentTint,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: const Color(0xFF3498DB).withValues(alpha: 0.2),
+                      color: SdColors.accentTintEdge,
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF3498DB).withValues(alpha: 0.1),
+                        color: SdColors.accent.withValues(alpha: 0.1),
                         blurRadius: 8,
                         spreadRadius: -2,
                       ),
                     ],
                   ),
-                  child: Icon(
+                  child: const Icon(
                     IconsaxPlusBold.element_2,
                     size: 16,
-                    color: const Color(0xFF3498DB),
+                    color: SdColors.accent,
                   ),
                 ),
                 Expanded(
                   child: Container(
                     height: 1.5,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
+                      gradient: const LinearGradient(
                         colors: [
-                          const Color(0xFF3498DB).withValues(alpha: 0.3),
+                          SdColors.accentTintEdge,
                           Colors.transparent,
                         ],
                       ),
@@ -4984,7 +4169,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _buildQuickActionItem(
           'الاشتراكات',
           IconsaxPlusBold.wifi_square,
-          Colors.blue,
+          SdStatus.info.tone,
           () => navigateToPage(SubscriptionsPage(
             authToken: currentToken,
             activatedBy: widget.username,
@@ -5008,7 +4193,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _buildQuickActionItem(
           'المنتهي قريباً',
           IconsaxPlusBold.timer_1,
-          Colors.red,
+          SdStatus.danger.tone,
           () => navigateToPage(
             ExpiringSoonPage(
               activatedBy: widget.username,
@@ -5028,7 +4213,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _buildQuickActionItem(
           'سجلات الحسابات',
           IconsaxPlusBold.book_1,
-          Colors.cyan,
+          SdGroup.field.tone,
           () => navigateToPage(
             AccountRecordsPage(
               authToken: currentToken,
@@ -5049,7 +4234,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _buildQuickActionItem(
           'التسديدات اليومية',
           IconsaxPlusBold.money_send,
-          Colors.teal,
+          SdStatus.success.tone,
           () => navigateToPage(
             DailySettlementPage(
               authToken: currentToken,
@@ -5066,7 +4251,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _buildQuickActionItem(
         'صفحة الشركة',
         IconsaxPlusBold.building_4,
-        Colors.indigo,
+        SdGroup.admin.tone,
         () => navigateToPage(const FtthCompanyPage()),
       ),
     );
@@ -5077,96 +4262,63 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildQuickActionItem(
     String title,
     IconData icon,
-    MaterialColor color,
+    SdTone tone,
     VoidCallback onTap,
   ) {
-    final hoverNotifier = ValueNotifier<bool>(false);
-
-    return ValueListenableBuilder<bool>(
-      valueListenable: hoverNotifier,
-      builder: (context, isHovered, _) {
-        return MouseRegion(
-          onEnter: (_) => hoverNotifier.value = true,
-          onExit: (_) => hoverNotifier.value = false,
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () { if (mounted) onTap(); },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
+    final r = context.responsive;
+    final phoneSm = MediaQuery.of(context).size.width < 500;
+    final iconBoxSize = phoneSm ? 26.0 : r.scaled(30, 34, 38);
+    final iconSz = phoneSm ? 15.0 : r.scaled(17, 20, 22);
+    final textSz = phoneSm ? 12.0 : r.scaled(13, 15, 16);
+    final hPad = phoneSm ? 6.0 : r.scaled(8, 10, 12);
+    final vPad = phoneSm ? 6.0 : r.scaled(10, 12, 14);
+    return SdRaised(
+      onTap: () { if (mounted) onTap(); },
+      radius: phoneSm ? SdRadius.sm : SdRadius.md,
+      depth: SdDepth.button,
+      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [tone.light, tone.base],
+      ),
+      edgeColor: tone.edge,
+      glowColor: tone.edge.withValues(alpha: 0.45),
+      semanticLabel: title,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // الأيقونة
+            Container(
+              width: iconBoxSize, height: iconBoxSize,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isHovered
-                      ? [color.shade600, color.shade800]
-                      : [color.shade500, color.shade700],
-                ),
-                borderRadius: BorderRadius.circular(MediaQuery.of(context).size.width < 500 ? 12 : 16),
+                color: Colors.white.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: isHovered ? 0.5 : 0.3),
-                  width: MediaQuery.of(context).size.width < 500 ? 1.0 : 1.5,
+                  color: Colors.white.withValues(alpha: 0.35),
+                  width: 1.5,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: isHovered ? 0.45 : 0.25),
-                    blurRadius: isHovered ? 16 : (MediaQuery.of(context).size.width < 500 ? 4 : 8),
-                    offset: Offset(0, isHovered ? 6 : (MediaQuery.of(context).size.width < 500 ? 2 : 3)),
-                  ),
-                ],
               ),
-              child: Builder(
-                builder: (context) {
-                  final r = context.responsive;
-                  final phoneSm = MediaQuery.of(context).size.width < 500;
-                  final iconBoxSize = phoneSm ? 26.0 : r.scaled(30, 34, 38);
-                  final iconSz = phoneSm ? 15.0 : r.scaled(17, 20, 22);
-                  final textSz = phoneSm ? 12.0 : r.scaled(13, 15, 16);
-                  final hPad = phoneSm ? 6.0 : r.scaled(8, 10, 12);
-                  final vPad = phoneSm ? 6.0 : r.scaled(10, 12, 14);
-                  return Padding(
-                    padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // الأيقونة
-                          Container(
-                            width: iconBoxSize, height: iconBoxSize,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.22),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.35),
-                                width: 1.5,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Icon(icon, size: iconSz, color: Colors.white),
-                          ),
-                          const SizedBox(width: 8),
-                          // النص
-                          Text(
-                            title,
-                            style: TextStyle(
-                              fontSize: textSz,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              letterSpacing: 0.3,
-                            ),
-                            maxLines: 1,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+              alignment: Alignment.center,
+              child: Icon(icon, size: iconSz, color: Colors.white),
             ),
-          ),
-        );
-      },
+            const SizedBox(width: 8),
+            // النص
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: textSz,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.3,
+              ),
+              maxLines: 1,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -5178,7 +4330,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         final taskButton = _buildQuickActionItem(
           'تذاكر',
           IconsaxPlusBold.task_square,
-          Colors.orange,
+          SdGroup.comms.tone,
           () {
             BadgeService.instance.clear();
             navigateToPage(TKTATsPage(authToken: currentToken));
@@ -5196,15 +4348,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.red[700],
+                    color: SdColors.danger,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(color: Colors.red.withValues(alpha: 0.35), blurRadius: 5, offset: const Offset(0, 2)),
+                    boxShadow: const [
+                      BoxShadow(color: SdColors.dangerEdge, blurRadius: 5, offset: Offset(0, 2)),
                     ],
                   ),
                   child: Text(
                     count > 99 ? '99+' : count.toString(),
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, height: 1),
+                    style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold, height: 1),
                   ),
                 ),
               ),
@@ -5220,7 +4372,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: _buildWalletCard(
           title: 'رصيد المحفظة',
           value: walletBalance,
-          color: Colors.blue,
+          color: SdColors.primary,
         ),
       ),
       const SizedBox(width: 12),
@@ -5228,7 +4380,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: _buildWalletCard(
           title: 'العمولة',
           value: commission,
-          color: Colors.green,
+          color: SdColors.success,
         ),
       ),
     ];
@@ -5241,7 +4393,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           child: _buildWalletCard(
             title: 'محفظة عضو الفريق',
             value: teamMemberWalletBalance,
-            color: Colors.deepPurple,
+            color: SdColors.primaryLight,
           ),
         ),
       );
@@ -5282,7 +4434,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           child: _buildWalletCard(
             title: 'محفظة عضو الفريق',
             value: teamMemberWalletBalance,
-            color: Colors.deepPurple,
+            color: SdColors.primaryLight,
           ),
         ),
       ],
@@ -5292,7 +4444,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildWalletCard({
     required String title,
     required double value,
-    required MaterialColor color,
+    required Color color,
   }) {
     // تصميم أفقي متناسق مع بطاقات الإحصائيات
     return LayoutBuilder(
@@ -5312,23 +4464,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
         return Container(
           decoration: BoxDecoration(
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(cardRadius),
             border: Border.all(
-                color: const Color(0xFFD5D5D5),
+                color: SdColors.cardEdge,
                 width: isVeryCompact ? 1.5 : 2.0),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.08),
-                blurRadius: 20,
-                spreadRadius: -2,
-                offset: const Offset(0, 6),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            boxShadow: SdDepth.raised(
+              edge: SdColors.cardEdge,
+              depth: SdDepth.card,
+              glow: color.withValues(alpha: 0.18),
+            ),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(cardRadius),
@@ -5340,7 +4485,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     vertical: vPadding,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: SdColors.surface,
                     borderRadius: BorderRadius.circular(cardRadius),
                   ),
                   child: Row(
@@ -5380,7 +4525,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               child: Text(
                                 title,
                                 style: TextStyle(
-                                  color: const Color(0xFF555555),
+                                  color: SdColors.muted,
                                   fontSize: titleFontSize,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 0.3,
@@ -5396,7 +4541,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               child: _animatedCount(
                                 value,
                                 TextStyle(
-                                  color: const Color(0xFF1A1A1A),
+                                  color: SdColors.ink,
                                   fontSize: valueFontSize,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.5,
@@ -5710,6 +4855,8 @@ class _RadialWavePainter extends CustomPainter {
 }
 
 // رسام خلفية رموز الإنترنت المتحركة (واي فاي، إشارة، سحابة، كرة أرضية، راوتر...)
+// محفوظ خاملاً بعد توحيد الخلفية إلى SdColors.ground.
+// ignore: unused_element
 class _InternetIconsBackgroundPainter extends CustomPainter {
   final double animValue; // 0..1
   final Color color;

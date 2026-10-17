@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/subscription_logs_service.dart';
 import '../../models/filter_criteria.dart';
 
@@ -302,10 +303,10 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
           decoration: BoxDecoration(
-            color: isActive ? Colors.blue.shade50 : Colors.grey.shade100,
+            color: isActive ? SdColors.infoTint : SdColors.surfaceAlt,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isActive ? Colors.blue.shade300 : Colors.grey.shade300,
+              color: isActive ? SdColors.infoTintEdge : SdColors.divider,
             ),
           ),
           child: Row(
@@ -314,7 +315,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
               Icon(
                 icon,
                 size: 16,
-                color: isActive ? Colors.blue.shade700 : Colors.grey.shade600,
+                color: isActive ? SdColors.infoEdge : SdColors.muted,
               ),
               const SizedBox(width: 4),
               Text(
@@ -322,7 +323,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: isActive ? Colors.blue.shade700 : Colors.grey.shade600,
+                  color: isActive ? SdColors.infoEdge : SdColors.muted,
                 ),
               ),
             ],
@@ -359,10 +360,10 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: SdColors.divider),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
+            color: SdColors.muted.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -374,7 +375,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
           // عنوان التصفية
           Row(
             children: [
-              Icon(Icons.tune, color: Colors.deepPurple.shade700, size: 20),
+              Icon(Icons.tune, color: SdColors.primaryEdge, size: 20),
               const SizedBox(width: 8),
               const Text(
                 'تصفية الوصولات',
@@ -392,19 +393,19 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: SdColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.clear, size: 14, color: Colors.grey.shade600),
+                      Icon(Icons.clear, size: 14, color: SdColors.muted),
                       const SizedBox(width: 4),
                       Text(
                         'مسح الكل',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade700,
+                          color: SdColors.ink,
                         ),
                       ),
                     ],
@@ -428,7 +429,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: Colors.grey.shade700,
+                        color: SdColors.ink,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -452,11 +453,11 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
+                          border: Border.all(color: SdColors.faint),
                           borderRadius: BorderRadius.circular(8),
                           color: localFromDate != null
-                              ? Colors.blue.shade50
-                              : Colors.grey.shade50,
+                              ? SdColors.infoTint
+                              : SdColors.surfaceAlt,
                         ),
                         child: Row(
                           children: [
@@ -464,8 +465,8 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                               Icons.calendar_today,
                               size: 16,
                               color: localFromDate != null
-                                  ? Colors.blue.shade700
-                                  : Colors.grey.shade600,
+                                  ? SdColors.infoEdge
+                                  : SdColors.muted,
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -476,8 +477,8 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                               style: TextStyle(
                                 fontSize: 12,
                                 color: localFromDate != null
-                                    ? Colors.blue.shade700
-                                    : Colors.grey.shade600,
+                                    ? SdColors.infoEdge
+                                    : SdColors.muted,
                               ),
                             ),
                           ],
@@ -498,7 +499,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: Colors.grey.shade700,
+                        color: SdColors.ink,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -522,11 +523,11 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
+                          border: Border.all(color: SdColors.faint),
                           borderRadius: BorderRadius.circular(8),
                           color: localToDate != null
-                              ? Colors.blue.shade50
-                              : Colors.grey.shade50,
+                              ? SdColors.infoTint
+                              : SdColors.surfaceAlt,
                         ),
                         child: Row(
                           children: [
@@ -534,8 +535,8 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                               Icons.calendar_today,
                               size: 16,
                               color: localToDate != null
-                                  ? Colors.blue.shade700
-                                  : Colors.grey.shade600,
+                                  ? SdColors.infoEdge
+                                  : SdColors.muted,
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -546,8 +547,8 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                               style: TextStyle(
                                 fontSize: 12,
                                 color: localToDate != null
-                                    ? Colors.blue.shade700
-                                    : Colors.grey.shade600,
+                                    ? SdColors.infoEdge
+                                    : SdColors.muted,
                               ),
                             ),
                           ],
@@ -596,17 +597,17 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade700,
+                  color: SdColors.ink,
                 ),
               ),
               const SizedBox(height: 4),
               Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade400),
+                  border: Border.all(color: SdColors.faint),
                   borderRadius: BorderRadius.circular(8),
                   color: selectedTechnicianFilter != 'الكل'
-                      ? Colors.blue.shade50
-                      : Colors.grey.shade50,
+                      ? SdColors.infoTint
+                      : SdColors.surfaceAlt,
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -629,8 +630,8 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                             style: TextStyle(
                               fontSize: 12,
                               color: selectedTechnicianFilter == technician
-                                  ? Colors.blue.shade700
-                                  : Colors.grey.shade800,
+                                  ? SdColors.infoEdge
+                                  : SdColors.ink,
                             ),
                           ),
                         ),
@@ -801,16 +802,16 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                       'إجمالي الفنيين',
                       totalTechnicians.toString(),
                       Icons.engineering,
-                      Colors.blue),
+                      SdColors.info),
                 ),
                 Container(
                   width: 1,
                   height: 40,
-                  color: Colors.grey.shade300,
+                  color: SdColors.divider,
                 ),
                 Expanded(
                   child: _buildStatItem('إجمالي الوصولات',
-                      totalConnections.toString(), Icons.link, Colors.orange),
+                      totalConnections.toString(), Icons.link, SdColors.warning),
                 ),
               ],
             ),
@@ -824,10 +825,10 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                     padding: const EdgeInsets.symmetric(
                         vertical: 12, horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
+                      color: SdColors.warningTint,
                       borderRadius: BorderRadius.circular(12),
                       border:
-                          Border.all(color: Colors.orange.shade300, width: 1.5),
+                          Border.all(color: SdColors.warningTintEdge, width: 1.5),
                     ),
                     child: Column(
                       children: [
@@ -835,14 +836,14 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.account_balance_wallet,
-                                color: Colors.orange.shade700, size: 20),
+                                color: SdColors.warningEdge, size: 20),
                             const SizedBox(width: 6),
                             Text(
                               'الإجمالي',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.orange.shade800,
+                                color: SdColors.warningEdge,
                               ),
                             ),
                           ],
@@ -853,7 +854,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.orange.shade900,
+                            color: SdColors.warningEdge,
                           ),
                         ),
                       ],
@@ -867,10 +868,10 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                     padding: const EdgeInsets.symmetric(
                         vertical: 12, horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.green.shade50,
+                      color: SdColors.successTint,
                       borderRadius: BorderRadius.circular(12),
                       border:
-                          Border.all(color: Colors.green.shade300, width: 1.5),
+                          Border.all(color: SdColors.successTintEdge, width: 1.5),
                     ),
                     child: Column(
                       children: [
@@ -878,14 +879,14 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.check_circle,
-                                color: Colors.green.shade700, size: 20),
+                                color: SdColors.successEdge, size: 20),
                             const SizedBox(width: 6),
                             Text(
                               'المسدد',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.green.shade800,
+                                color: SdColors.successEdge,
                               ),
                             ),
                           ],
@@ -896,7 +897,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green.shade900,
+                            color: SdColors.successEdge,
                           ),
                         ),
                       ],
@@ -910,10 +911,10 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                     padding: const EdgeInsets.symmetric(
                         vertical: 12, horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade50,
+                      color: SdColors.dangerTint,
                       borderRadius: BorderRadius.circular(12),
                       border:
-                          Border.all(color: Colors.red.shade300, width: 1.5),
+                          Border.all(color: SdColors.dangerTintEdge, width: 1.5),
                     ),
                     child: Column(
                       children: [
@@ -921,14 +922,14 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.pending,
-                                color: Colors.red.shade700, size: 20),
+                                color: SdColors.dangerEdge, size: 20),
                             const SizedBox(width: 6),
                             Text(
                               'غير المسدد',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.red.shade800,
+                                color: SdColors.dangerEdge,
                               ),
                             ),
                           ],
@@ -939,7 +940,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.red.shade900,
+                            color: SdColors.dangerEdge,
                           ),
                         ),
                       ],
@@ -956,7 +957,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
 
   /// بناء عنصر إحصائي
   Widget _buildStatItem(
-      String label, String value, IconData icon, MaterialColor color) {
+      String label, String value, IconData icon, Color color) {
     final isPhone = MediaQuery.of(context).size.width < 500;
 
     return Column(
@@ -981,7 +982,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey.shade600,
+            color: SdColors.muted,
           ),
           textAlign: TextAlign.center,
         ),
@@ -991,69 +992,52 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-            widget.specificUser != null
-                ? 'وصولات المستخدم ${widget.specificUser}'
-                : widget.specificTechnician != null
-                    ? 'وصولات الفني ${widget.specificTechnician}'
-                    : 'جميع الوصولات', // تغيير العنوان لإزالة أي إشارة للتصفية
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          // إضافة زر التصفية المحلية
-          IconButton(
-            icon: Icon(
-              showLocalFilters ? Icons.filter_alt : Icons.filter_list,
-              color: (localFromDate != null ||
-                      localToDate != null ||
-                      selectedTechnicianFilter != 'الكل')
-                  ? Colors.orange // لون مختلف إذا كانت هناك تصفية نشطة
-                  : Colors.white,
+    final hasActiveFilter = localFromDate != null ||
+        localToDate != null ||
+        selectedTechnicianFilter != 'الكل';
+    return SdTheme.scope(
+      child: Scaffold(
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: widget.specificUser != null
+              ? 'وصولات المستخدم ${widget.specificUser}'
+              : widget.specificTechnician != null
+                  ? 'وصولات الفني ${widget.specificTechnician}'
+                  : 'جميع الوصولات',
+          actions: [
+            SdAppBarAction(
+              icon: showLocalFilters ? Icons.filter_alt : Icons.filter_list,
+              label: showLocalFilters ? 'إخفاء التصفية' : 'إظهار التصفية',
+              danger: hasActiveFilter,
+              onPressed: () {
+                setState(() {
+                  showLocalFilters = !showLocalFilters;
+                });
+              },
             ),
-            onPressed: () {
-              setState(() {
-                showLocalFilters = !showLocalFilters;
-              });
-            },
-            tooltip: showLocalFilters ? 'إخفاء التصفية' : 'إظهار التصفية',
-          ),
-          // إضافة أيقونة بحث
-          IconButton(
-            icon: Icon(isSearching ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                isSearching = !isSearching;
-                if (!isSearching) {
-                  _searchController.clear();
-                  _filterData('');
-                }
-              });
-            },
-            tooltip: isSearching ? 'إلغاء البحث' : 'بحث',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadConnectionsData,
-            tooltip: 'تحديث البيانات',
-          ),
-        ],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.deepPurple.withValues(alpha: 0.1),
-              Colors.white,
-            ],
-          ),
+            SdAppBarAction(
+              icon: isSearching ? Icons.close : Icons.search,
+              label: isSearching ? 'إلغاء البحث' : 'بحث',
+              onPressed: () {
+                setState(() {
+                  isSearching = !isSearching;
+                  if (!isSearching) {
+                    _searchController.clear();
+                    _filterData('');
+                  }
+                });
+              },
+            ),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث البيانات',
+              onPressed: _loadConnectionsData,
+            ),
+          ],
         ),
-        child: Column(
+        body: SafeArea(
+          top: false,
+          child: Column(
           children: [
             // شريط البحث
             if (isSearching)
@@ -1062,7 +1046,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(color: SdColors.divider),
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -1093,15 +1077,15 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: SdColors.warningTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
+                  border: Border.all(color: SdColors.warningTintEdge),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.tune,
-                      color: Colors.orange.shade700,
+                      color: SdColors.warningEdge,
                       size: 18,
                     ),
                     const SizedBox(width: 8),
@@ -1110,7 +1094,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                         _getLocalFilterDescription(),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.orange.shade800,
+                          color: SdColors.warningEdge,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1121,12 +1105,12 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade100,
+                          color: SdColors.warningTint,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Icon(
                           Icons.clear,
-                          color: Colors.orange.shade700,
+                          color: SdColors.warningEdge,
                           size: 16,
                         ),
                       ),
@@ -1140,6 +1124,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -1150,10 +1135,10 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+              valueColor: AlwaysStoppedAnimation<Color>(SdColors.primary),
             ),
             SizedBox(height: 16),
-            Text('جاري تحميل البيانات...'),
+            Text('جاري تحميل البيانات...', style: SdText.bodySm),
           ],
         ),
       );
@@ -1161,51 +1146,31 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
 
     if (errorMessage != null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
-            const SizedBox(height: 16),
-            Text(errorMessage!,
-                style: const TextStyle(fontSize: 16, color: Colors.red),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadConnectionsData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('إعادة المحاولة'),
-            ),
-          ],
+        child: SdEmptyState(
+          icon: Icons.error_outline,
+          status: SdStatus.danger,
+          title: errorMessage!,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh,
+            onPressed: _loadConnectionsData,
+          ),
         ),
       );
     }
 
     if (filteredConnectionsData.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.info_outline, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-                _searchController.text.isNotEmpty
-                    ? 'لا توجد نتائج للبحث "${_searchController.text}"'
-                    : widget.specificUser != null
-                        ? 'لا توجد وصولات للمستخدم ${widget.specificUser}'
-                        : widget.specificTechnician != null
-                            ? 'لا توجد وصولات للفني ${widget.specificTechnician}'
-                            : 'لا توجد وصولات بفني توصيل محدد',
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            const Text(
-                'الوصولات التي تحتوي على فني توصيل في عامود AE ستظهر هنا',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-                textAlign: TextAlign.center),
-          ],
+        child: SdEmptyState(
+          icon: Icons.info_outline,
+          title: _searchController.text.isNotEmpty
+              ? 'لا توجد نتائج للبحث "${_searchController.text}"'
+              : widget.specificUser != null
+                  ? 'لا توجد وصولات للمستخدم ${widget.specificUser}'
+                  : widget.specificTechnician != null
+                      ? 'لا توجد وصولات للفني ${widget.specificTechnician}'
+                      : 'لا توجد وصولات بفني توصيل محدد',
+          message: 'الوصولات التي تحتوي على فني توصيل في عامود AE ستظهر هنا',
         ),
       );
     }
@@ -1231,10 +1196,10 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
             ),
             child: ExpansionTile(
               leading: CircleAvatar(
-                backgroundColor: Colors.blue.shade100,
+                backgroundColor: SdColors.infoTint,
                 child: Icon(
                   Icons.engineering,
-                  color: Colors.blue.shade800,
+                  color: SdColors.infoEdge,
                   size: 20,
                 ),
               ),
@@ -1243,7 +1208,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+                  color: SdColors.info,
                 ),
               ),
               subtitle: Padding(
@@ -1294,13 +1259,13 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                       runSpacing: 6,
                       children: [
                         badge('عملية', '${technicianConnections.length}',
-                            Colors.blue.shade50, Colors.blue.shade300, Colors.blue.shade700, Icons.link),
+                            SdColors.infoTint, SdColors.infoTintEdge, SdColors.infoEdge, Icons.link),
                         badge('الكلي', _formatAmount(totalAmount),
-                            Colors.orange.shade50, Colors.orange.shade300, Colors.orange.shade700, Icons.account_balance_wallet),
+                            SdColors.warningTint, SdColors.warningTintEdge, SdColors.warningEdge, Icons.account_balance_wallet),
                         badge('مسدد', '$paidCount (${_formatAmount(paidAmount)})',
-                            Colors.green.shade50, Colors.green.shade300, Colors.green.shade700, Icons.check_circle),
+                            SdColors.successTint, SdColors.successTintEdge, SdColors.successEdge, Icons.check_circle),
                         badge('غير مسدد', '$unpaidCount (${_formatAmount(unpaidAmount)})',
-                            Colors.red.shade50, Colors.red.shade300, Colors.red.shade700, Icons.pending),
+                            SdColors.dangerTint, SdColors.dangerTintEdge, SdColors.dangerEdge, Icons.pending),
                         ElevatedButton.icon(
                           onPressed: hasUnpaidConnections
                               ? () {
@@ -1311,14 +1276,14 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                                 }
                               : null,
                           icon: Icon(Icons.payment, size: 14,
-                              color: hasUnpaidConnections ? Colors.white : Colors.grey),
+                              color: hasUnpaidConnections ? Colors.white : SdColors.muted),
                           label: Text('تسديد الكل',
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
-                                  color: hasUnpaidConnections ? Colors.white : Colors.grey)),
+                                  color: hasUnpaidConnections ? Colors.white : SdColors.muted)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: hasUnpaidConnections
-                                ? Colors.green.shade600
-                                : Colors.grey.shade300,
+                                ? SdColors.success
+                                : SdColors.divider,
                             elevation: hasUnpaidConnections ? 2 : 0,
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1346,15 +1311,15 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isPaid ? Colors.green.shade50 : Colors.red.shade50,
+        color: isPaid ? SdColors.successTint : SdColors.dangerTint,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isPaid ? Colors.green.shade300 : Colors.red.shade300,
+          color: isPaid ? SdColors.successTintEdge : SdColors.dangerTintEdge,
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: isPaid ? Colors.green.shade100 : Colors.red.shade100,
+            color: isPaid ? SdColors.successTint : SdColors.dangerTint,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1382,7 +1347,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple,
+                              color: SdColors.primary,
                             ),
                           ),
                         ),
@@ -1392,8 +1357,8 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: isPaid
-                                ? Colors.green.shade600
-                                : Colors.red.shade600,
+                                ? SdColors.success
+                                : SdColors.danger,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -1423,7 +1388,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                       'رقم الهاتف: ${connection['phoneNumber'] ?? ''}',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey.shade600,
+                        color: SdColors.muted,
                       ),
                     ),
                   ],
@@ -1467,9 +1432,9 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: SdColors.infoTint,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.shade200),
+              border: Border.all(color: SdColors.infoTintEdge),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1477,13 +1442,13 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 Row(
                   children: [
                     Icon(Icons.engineering,
-                        color: Colors.blue.shade600, size: 16),
+                        color: SdColors.info, size: 16),
                     const SizedBox(width: 6),
                     Text(
                       'فني التوصيل:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade700,
+                        color: SdColors.infoEdge,
                         fontSize: 14,
                       ),
                     ),
@@ -1493,7 +1458,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 Text(
                   connection['deviceModel'] ?? 'غير محدد',
                   style: TextStyle(
-                    color: Colors.blue.shade800,
+                    color: SdColors.infoEdge,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1520,7 +1485,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
               '$label:',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey.shade600,
+                color: SdColors.muted,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1530,7 +1495,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
               value.isNotEmpty ? value : 'غير محدد',
               style: TextStyle(
                 fontSize: 13,
-                color: value.isNotEmpty ? Colors.black87 : Colors.grey,
+                color: value.isNotEmpty ? Colors.black87 : SdColors.muted,
               ),
             ),
           ),
@@ -1543,15 +1508,15 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
     switch (status.toLowerCase()) {
       case 'active':
       case 'نشط':
-        return Colors.green;
+        return SdColors.success;
       case 'inactive':
       case 'غير نشط':
-        return Colors.red;
+        return SdColors.danger;
       case 'suspended':
       case 'معلق':
-        return Colors.orange;
+        return SdColors.warning;
       default:
-        return Colors.grey;
+        return SdColors.muted;
     }
   }
 
@@ -1596,15 +1561,15 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade600,
-                  disabledBackgroundColor: Colors.green.shade600,
+                  backgroundColor: SdColors.success,
+                  disabledBackgroundColor: SdColors.success,
                   padding:
                       const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                   elevation: 2,
-                  shadowColor: Colors.green.shade200,
+                  shadowColor: SdColors.successTintEdge,
                 ),
               ),
             ),
@@ -1629,7 +1594,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade600,
+                  backgroundColor: SdColors.warning,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
@@ -1637,7 +1602,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   elevation: 2,
-                  shadowColor: Colors.orange.shade200,
+                  shadowColor: SdColors.warningTintEdge,
                 ),
               ),
             ),
@@ -1662,14 +1627,14 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
             elevation: 4,
-            shadowColor: Colors.red.shade200,
+            shadowColor: SdColors.dangerTintEdge,
           ),
         ),
       );
@@ -1788,7 +1753,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 ),
               ],
             ),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 4),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1814,7 +1779,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 ),
               ],
             ),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 5),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1830,7 +1795,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.payment, color: Colors.blue),
+            Icon(Icons.payment, color: SdColors.info),
             SizedBox(width: 8),
             Text('تأكيد التسديد'),
           ],
@@ -1846,7 +1811,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Colors.deepPurple,
+                color: SdColors.primary,
               ),
             ),
             const SizedBox(height: 8),
@@ -1858,7 +1823,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
               'سيتم تحديث حالة التسديد في النظام.',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey,
+                color: SdColors.muted,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -1872,7 +1837,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
               foregroundColor: Colors.white,
             ),
             child: const Text('تأكيد التسديد'),
@@ -1973,7 +1938,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.payment, color: Colors.green.shade600),
+              Icon(Icons.payment, color: SdColors.success),
               const SizedBox(width: 8),
               const Text('تسديد جميع العمليات'),
             ],
@@ -1990,9 +1955,9 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: SdColors.warningTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
+                  border: Border.all(color: SdColors.warningTintEdge),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2000,7 +1965,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                     Row(
                       children: [
                         Icon(Icons.pending,
-                            color: Colors.red.shade600, size: 16),
+                            color: SdColors.danger, size: 16),
                         const SizedBox(width: 4),
                         Text(
                             'عدد العمليات غير المسددة: ${unpaidConnections.length}'),
@@ -2010,7 +1975,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                     Row(
                       children: [
                         Icon(Icons.attach_money,
-                            color: Colors.green.shade600, size: 16),
+                            color: SdColors.success, size: 16),
                         const SizedBox(width: 4),
                         Text(
                             'المبلغ الإجمالي: ${_formatAmount(totalAmount)} IQD'),
@@ -2037,7 +2002,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
               label: const Text('تسديد الكل',
                   style: TextStyle(color: Colors.white)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade600,
+                backgroundColor: SdColors.success,
               ),
             ),
           ],
@@ -2063,7 +2028,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
             ],
           ),
           duration: const Duration(seconds: 2),
-          backgroundColor: Colors.blue.shade600,
+          backgroundColor: SdColors.info,
         ),
       );
 
@@ -2084,7 +2049,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 Text('تم تسديد جميع عمليات $technicianName بنجاح'),
               ],
             ),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -2094,7 +2059,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في التسديد'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -2110,7 +2075,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.cancel, color: Colors.orange.shade600),
+              Icon(Icons.cancel, color: SdColors.warning),
               const SizedBox(width: 8),
               const Text('إلغاء التسديد'),
             ],
@@ -2142,7 +2107,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
               label: const Text('تأكيد الإلغاء',
                   style: TextStyle(color: Colors.white)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange.shade600,
+                backgroundColor: SdColors.warning,
               ),
             ),
           ],
@@ -2210,7 +2175,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
                 const Text('تم إلغاء التسديد بنجاح'),
               ],
             ),
-            backgroundColor: Colors.orange.shade600,
+            backgroundColor: SdColors.warning,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -2223,7 +2188,7 @@ class _ConnectionsListPageState extends State<ConnectionsListPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في إلغاء التسديد'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
           ),
         );
       }

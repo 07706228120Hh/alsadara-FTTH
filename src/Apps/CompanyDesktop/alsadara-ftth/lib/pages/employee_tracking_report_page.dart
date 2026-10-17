@@ -3,8 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/api/api_client.dart';
 import '../permissions/permission_manager.dart';
 
@@ -290,10 +290,10 @@ class _EmployeeTrackingReportPageState
               const SizedBox(height: 8),
               if (days == 0)
                 Text('⚠️ سيتم حذف جميع السجلات والمواقع الحالية!',
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.bold))
+                    style: TextStyle(fontFamily: SdText.family, color: SdColors.danger, fontSize: 12.5, fontWeight: FontWeight.bold))
               else
                 Text('⚠️ هذا الإجراء لا يمكن التراجع عنه',
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 12)),
+                    style: TextStyle(fontFamily: SdText.family, color: SdColors.danger, fontSize: 12.5)),
             ],
           ),
           actions: [
@@ -302,7 +302,7 @@ class _EmployeeTrackingReportPageState
               child: const Text('إلغاء'),
             ),
             ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
               icon: const Icon(Icons.delete_forever, color: Colors.white),
               label: Text(days == 0 ? 'مسح الكل' : 'مسح',
                   style: const TextStyle(color: Colors.white)),
@@ -343,7 +343,7 @@ class _EmployeeTrackingReportPageState
             content: Text(days == 0
                 ? '✅ تم حذف جميع البيانات ($count سجل)'
                 : '✅ تم حذف $count سجل (أقدم من $days يوم)'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         _loadEmployees();
@@ -351,13 +351,13 @@ class _EmployeeTrackingReportPageState
         scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('❌ ${response?['message'] ?? 'فشل الحذف'}'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
     } catch (e) {
       scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('❌ خطأ في الاتصال'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('❌ خطأ في الاتصال'), backgroundColor: SdColors.danger),
       );
     }
   }
@@ -367,52 +367,48 @@ class _EmployeeTrackingReportPageState
   @override
   Widget build(BuildContext context) {
     final mobile = _isMobile;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF1F5F9),
-        appBar: AppBar(
-          backgroundColor: _primaryColor,
-          foregroundColor: Colors.white,
-          toolbarHeight: mobile ? 46 : kToolbarHeight,
-          title: Text(
-            mobile ? 'تقارير التتبع' : 'تقارير تتبع الموظفين',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: mobile ? 15 : 20),
-          ),
-          actions: [
-            // 🗑️ زر مسح البيانات — للمدير فقط
-            if (PermissionManager.instance.canDelete('tracking') ||
-                PermissionManager.instance.canView('accounting'))
-              IconButton(
-                icon: Icon(Icons.delete_sweep, color: Colors.redAccent, size: mobile ? 20 : 24),
-                tooltip: 'مسح بيانات التتبع القديمة',
-                onPressed: _showPurgeDialog,
-              ),
-            IconButton(
-              icon: Icon(Icons.refresh, size: mobile ? 20 : 24),
-              onPressed: () {
-                _loadEmployees();
-                if (_selectedUserId != null) _loadReport(_selectedUserId!);
-              },
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: mobile ? 'تقارير التتبع' : 'تقارير تتبع الموظفين',
+        actions: [
+          // زر مسح البيانات — للمدير فقط
+          if (PermissionManager.instance.canDelete('tracking') ||
+              PermissionManager.instance.canView('accounting'))
+            SdAppBarAction(
+              icon: Icons.delete_sweep,
+              label: 'مسح بيانات التتبع القديمة',
+              danger: true,
+              onPressed: _showPurgeDialog,
             ),
-          ],
-        ),
-        // على الهاتف: drawer للموظفين | على الحاسوب: sidebar ثابت
-        drawer: mobile ? Drawer(child: _buildSidebar()) : null,
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : mobile
-                ? _buildMobileLayout()
-                : Row(
-                    children: [
-                      SizedBox(
-                        width: (MediaQuery.of(context).size.width * 0.25).clamp(200, 280),
-                        child: _buildSidebar(),
-                      ),
-                      Expanded(child: _buildMainContent()),
-                    ],
-                  ),
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
+            onPressed: () {
+              _loadEmployees();
+              if (_selectedUserId != null) _loadReport(_selectedUserId!);
+            },
+          ),
+        ],
       ),
+      // على الهاتف: drawer للموظفين | على الحاسوب: sidebar ثابت
+      drawer: mobile ? Drawer(child: _buildSidebar()) : null,
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
+          : mobile
+              ? _buildMobileLayout()
+              : Row(
+                  children: [
+                    SizedBox(
+                      width: (MediaQuery.of(context).size.width * 0.25)
+                          .clamp(200, 280),
+                      child: _buildSidebar(),
+                    ),
+                    Expanded(child: _buildMainContent()),
+                  ],
+                ),
     );
   }
 
@@ -443,9 +439,9 @@ class _EmployeeTrackingReportPageState
 
   Widget _buildSidebar() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(left: BorderSide(color: Colors.grey.shade200)),
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
+        border: Border(left: BorderSide(color: SdColors.divider)),
       ),
       child: Column(
         children: [
@@ -456,7 +452,7 @@ class _EmployeeTrackingReportPageState
               children: [
                 const Icon(Icons.access_time, size: 18, color: _accentColor),
                 const SizedBox(width: 8),
-                const Text('الفترة:'),
+                const Text('الفترة:', style: SdText.label),
                 const SizedBox(width: 8),
                 Expanded(
                   child: DropdownButton<int>(
@@ -486,10 +482,12 @@ class _EmployeeTrackingReportPageState
           // قائمة الموظفين
           Expanded(
             child: _employees.isEmpty
-                ? const Center(child: Text('لا يوجد موظفين نشطين'))
+                ? const Center(
+                    child: Text('لا يوجد موظفين نشطين', style: SdText.bodySm))
                 : ListView.separated(
                     itemCount: _employees.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, color: SdColors.divider),
                     itemBuilder: (_, i) {
                       final emp = _employees[i];
                       final userId = emp['userId'] ?? '';
@@ -499,22 +497,21 @@ class _EmployeeTrackingReportPageState
                         selected: isSelected,
                         selectedTileColor: _accentColor.withValues(alpha: 0.1),
                         leading: CircleAvatar(
-                          backgroundColor: isSelected
-                              ? _accentColor
-                              : Colors.grey.shade300,
+                          backgroundColor:
+                              isSelected ? _accentColor : SdColors.faint,
                           child: Icon(Icons.person,
-                              color: isSelected
-                                  ? Colors.white
-                                  : Colors.grey.shade600,
+                              color: isSelected ? Colors.white : SdColors.muted,
                               size: 20),
                         ),
                         title: Text(userId,
-                            style: TextStyle(
+                            style: SdText.label.copyWith(
                               fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
                             )),
-                        subtitle: dept.isNotEmpty ? Text(dept) : null,
+                        subtitle: dept.isNotEmpty
+                            ? Text(dept, style: SdText.caption)
+                            : null,
                         trailing: isSelected
                             ? const Icon(Icons.chevron_left,
                                 color: _accentColor)
@@ -536,16 +533,9 @@ class _EmployeeTrackingReportPageState
 
   Widget _buildMainContent() {
     if (_selectedUserId == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.map_outlined, size: 80, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text('اختر موظفاً لعرض مساره',
-                style: TextStyle(fontSize: 18, color: Colors.grey.shade500)),
-          ],
-        ),
+      return const SdEmptyState(
+        icon: Icons.map_outlined,
+        title: 'اختر موظفاً لعرض مساره',
       );
     }
 
@@ -644,7 +634,7 @@ class _EmployeeTrackingReportPageState
         children: [
           Container(width: 16, height: 4, color: color),
           const SizedBox(width: 6),
-          Text(label, style: const TextStyle(fontSize: 9)),
+          Text(label, style: const TextStyle(fontFamily: SdText.family, fontSize: 11.5, color: SdColors.ink)),
         ],
       ),
     );
@@ -680,7 +670,7 @@ class _EmployeeTrackingReportPageState
       // على الهاتف: شريط قابل للتمرير أفقياً
       final cardW = ((MediaQuery.of(context).size.width - 32) / 3.5).clamp(85.0, 130.0);
       return SizedBox(
-        height: 70,
+        height: 84,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -709,9 +699,9 @@ class _EmployeeTrackingReportPageState
     return Container(
       padding: EdgeInsets.all(mobile ? 8 : 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        boxShadow: SdDepth.raised(),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -719,14 +709,16 @@ class _EmployeeTrackingReportPageState
           Icon(icon, color: color, size: mobile ? 18 : 22),
           const SizedBox(height: 4),
           Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: mobile ? 11 : 14, color: color),
+              style: SdText.label.copyWith(
+                  fontWeight: FontWeight.w900,
+                  fontSize: mobile ? 11.5 : 14,
+                  color: color),
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
           Text(label,
-              style: TextStyle(fontSize: mobile ? 8 : 10, color: Colors.grey.shade600),
+              style: SdText.caption.copyWith(fontSize: mobile ? 11.5 : 11.5),
               textAlign: TextAlign.center),
         ],
       ),

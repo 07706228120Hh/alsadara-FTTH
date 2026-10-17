@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../frontend/frontend.dart';
 import '../../services/announcement_service.dart';
 import '../../services/api/api_client.dart';
 import '../../services/api/api_config.dart';
@@ -18,9 +19,8 @@ class AnnouncementsPage extends StatefulWidget {
 }
 
 class _AnnouncementsPageState extends State<AnnouncementsPage> {
-  static const _primaryColor = Color(0xFF1976D2);
-  static const _dangerColor = Color(0xFFE53935);
-  static const _successColor = Color(0xFF43A047);
+  // ── نبرة القسم: التواصل (برتقالي) ──
+  SdTone get _tone => SdGroup.comms.tone;
 
   List<Map<String, dynamic>> _announcements = [];
   bool _isLoading = true;
@@ -61,86 +61,75 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
   @override
   Widget build(BuildContext context) {
     final isMobile = _isMobile;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
-        appBar: AppBar(
-          title: Text(
-            'الإعلانات والتبليغات',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 16 : 20),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: 'الإعلانات والتبليغات',
+        actions: [
+          if (_canAdd)
+            SdAppBarAction(
+              icon: Icons.add_circle_outline,
+              label: 'إعلان جديد',
+              onPressed: () => _showCreateEditDialog(),
+            ),
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
+            onPressed: _loadAnnouncements,
           ),
-          backgroundColor: _primaryColor,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          actions: [
-            if (_canAdd)
-              IconButton(icon: const Icon(Icons.add_circle_outline), tooltip: 'إعلان جديد', onPressed: () => _showCreateEditDialog()),
-            IconButton(icon: const Icon(Icons.refresh), tooltip: 'تحديث', onPressed: _loadAnnouncements),
-          ],
-        ),
-        body: _buildBody(),
-        floatingActionButton: _canAdd
-            ? FloatingActionButton(
-                onPressed: () => _showCreateEditDialog(),
-                backgroundColor: _primaryColor,
-                foregroundColor: Colors.white,
-                mini: isMobile,
-                child: const Icon(Icons.add),
-              )
-            : null,
+        ],
       ),
+      floatingActionButton: _canAdd
+          ? FloatingActionButton(
+              onPressed: () => _showCreateEditDialog(),
+              backgroundColor: _tone.base,
+              foregroundColor: Colors.white,
+              mini: isMobile,
+              child: const Icon(Icons.add),
+            )
+          : null,
+      body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator(color: _tone.base));
+    }
     if (_hasError) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: _isMobile ? 48 : 64, color: Colors.grey),
-              const SizedBox(height: 12),
-              const Text('حدث خطأ في تحميل الإعلانات', textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(onPressed: _loadAnnouncements, icon: const Icon(Icons.refresh), label: const Text('إعادة المحاولة')),
-            ],
-          ),
+      return SdEmptyState(
+        icon: Icons.error_outline,
+        status: SdStatus.danger,
+        title: 'حدث خطأ في تحميل الإعلانات',
+        action: SdButton(
+          label: 'إعادة المحاولة',
+          icon: Icons.refresh,
+          kind: SdButtonKind.secondary,
+          onPressed: _loadAnnouncements,
         ),
       );
     }
     if (_announcements.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.campaign_outlined, size: _isMobile ? 56 : 80, color: Colors.grey.shade400),
-              const SizedBox(height: 12),
-              Text('لا توجد إعلانات', style: TextStyle(fontSize: _isMobile ? 15 : 18, color: Colors.grey.shade600)),
-              if (_canAdd) ...[
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  onPressed: () => _showCreateEditDialog(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('إنشاء أول إعلان'),
-                  style: ElevatedButton.styleFrom(backgroundColor: _primaryColor, foregroundColor: Colors.white),
-                ),
-              ],
-            ],
-          ),
-        ),
+      return SdEmptyState(
+        icon: Icons.campaign_outlined,
+        status: SdStatus.warning,
+        title: 'لا توجد إعلانات',
+        action: _canAdd
+            ? SdButton(
+                label: 'إنشاء أول إعلان',
+                icon: Icons.add,
+                onPressed: () => _showCreateEditDialog(),
+              )
+            : null,
       );
     }
 
     return RefreshIndicator(
       onRefresh: _loadAnnouncements,
+      color: _tone.base,
       child: ListView.builder(
-        padding: EdgeInsets.all(_isMobile ? 8 : 16),
+        padding: EdgeInsets.all(_isMobile ? 12 : 16),
         itemCount: _announcements.length,
         itemBuilder: (context, index) => _buildAnnouncementCard(_announcements[index]),
       ),
@@ -165,119 +154,135 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     final targetLabel = _getTargetLabel(targetType, targetValue, announcement);
     final isExpired = expiresAt != null && expiresAt.isBefore(DateTime.now());
 
-    return Card(
-      margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(isMobile ? 10 : 12),
-        side: BorderSide(color: isUrgent ? Colors.red : Colors.red.shade200, width: isUrgent ? 2 : 1),
+    final radius = BorderRadius.circular(SdRadius.lg);
+    final headerBg = isExpired
+        ? SdColors.surfaceAlt
+        : isPublished
+            ? SdColors.surfaceAlt
+            : SdColors.warningTint;
+    final headerIconColor = isExpired
+        ? SdColors.faint
+        : isPublished
+            ? _tone.base
+            : SdColors.warning;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: isMobile ? 10 : 12),
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: radius,
+        border: isUrgent ? Border.all(color: SdColors.danger, width: 1.5) : null,
+        boxShadow: SdDepth.raised(),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16, vertical: isMobile ? 8 : 12),
-            decoration: BoxDecoration(
-              color: isExpired ? Colors.grey.shade100 : isPublished ? _primaryColor.withOpacity(0.05) : Colors.orange.shade50,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(isMobile ? 10 : 12)),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isExpired ? Icons.schedule : isPublished ? Icons.campaign : Icons.visibility_off,
-                  color: isExpired ? Colors.grey : isPublished ? _primaryColor : Colors.orange,
-                  size: isMobile ? 18 : 20,
-                ),
-                SizedBox(width: isMobile ? 6 : 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 13 : 16, color: isExpired ? Colors.grey : Colors.black87),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: isExpired ? Colors.grey.shade300 : isPublished ? _successColor.withOpacity(0.15) : Colors.orange.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    isExpired ? 'منتهي' : isPublished ? 'منشور' : 'مسودة',
-                    style: TextStyle(fontSize: isMobile ? 10 : 11, fontWeight: FontWeight.bold, color: isExpired ? Colors.grey.shade700 : isPublished ? _successColor : Colors.orange),
-                  ),
-                ),
-                if (isUrgent) ...[
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: isMobile ? 5 : 6, vertical: 2),
-                    decoration: BoxDecoration(color: _dangerColor.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.warning_rounded, size: isMobile ? 10 : 12, color: _dangerColor),
-                      const SizedBox(width: 2),
-                      Text('عاجل', style: TextStyle(fontSize: isMobile ? 9 : 10, fontWeight: FontWeight.bold, color: _dangerColor)),
-                    ]),
-                  ),
-                ],
-                if (isPinned) ...[
-                  const SizedBox(width: 4),
-                  Icon(Icons.push_pin_rounded, size: isMobile ? 14 : 16, color: _primaryColor),
-                ],
-                if (_canEdit || _canDelete) ...[
-                  const SizedBox(width: 2),
-                  PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert, size: isMobile ? 18 : 20),
-                    padding: EdgeInsets.zero,
-                    onSelected: (value) {
-                      if (value == 'edit') _showCreateEditDialog(announcement: announcement);
-                      if (value == 'delete') _confirmDelete(id);
-                      if (value == 'report') _showReadReport(id);
-                    },
-                    itemBuilder: (context) => [
-                      if (_canEdit) const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18), SizedBox(width: 8), Text('تعديل')])),
-                      if (_canEdit) const PopupMenuItem(value: 'report', child: Row(children: [Icon(Icons.analytics, size: 18, color: Colors.blue), SizedBox(width: 8), Text('تقرير القراءة', style: TextStyle(color: Colors.blue))])),
-                      if (_canDelete) const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 18, color: Colors.red), SizedBox(width: 8), Text('حذف', style: TextStyle(color: Colors.red))])),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-          // Image
-          if (imageUrl != null && imageUrl.toString().isNotEmpty)
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
             Container(
-              width: double.infinity,
-              constraints: BoxConstraints(maxHeight: isMobile ? 150 : 200),
-              child: Image.network(
-                imageUrl.startsWith('http') ? imageUrl : '${ApiConfig.baseUrl.replaceFirst('/api', '')}$imageUrl',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16, vertical: isMobile ? 8 : 12),
+              color: headerBg,
+              child: Row(
+                children: [
+                  Icon(
+                    isExpired ? Icons.schedule : isPublished ? Icons.campaign : Icons.visibility_off,
+                    color: headerIconColor,
+                    size: isMobile ? 18 : 20,
+                  ),
+                  SizedBox(width: isMobile ? 6 : 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontWeight: FontWeight.w900,
+                        fontSize: isMobile ? 13.5 : 16,
+                        color: isExpired ? SdColors.faint : SdColors.ink,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  SdStatusChip(
+                    isExpired ? 'منتهي' : isPublished ? 'منشور' : 'مسودة',
+                    status: isExpired
+                        ? SdStatus.neutral
+                        : isPublished
+                            ? SdStatus.success
+                            : SdStatus.warning,
+                  ),
+                  if (isUrgent) ...[
+                    const SizedBox(width: 4),
+                    const SdStatusChip('عاجل', status: SdStatus.danger, icon: Icons.warning_rounded),
+                  ],
+                  if (isPinned) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.push_pin_rounded, size: isMobile ? 16 : 18, color: _tone.base),
+                  ],
+                  if (_canEdit || _canDelete) ...[
+                    const SizedBox(width: 2),
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, size: isMobile ? 20 : 22, color: SdColors.muted),
+                      padding: EdgeInsets.zero,
+                      onSelected: (value) {
+                        if (value == 'edit') _showCreateEditDialog(announcement: announcement);
+                        if (value == 'delete') _confirmDelete(id);
+                        if (value == 'report') _showReadReport(id);
+                      },
+                      itemBuilder: (context) => [
+                        if (_canEdit) const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18), SizedBox(width: 8), Text('تعديل')])),
+                        if (_canEdit) PopupMenuItem(value: 'report', child: Row(children: [Icon(Icons.analytics, size: 18, color: SdColors.info), const SizedBox(width: 8), Text('تقرير القراءة', style: TextStyle(color: SdColors.info))])),
+                        if (_canDelete) PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 18, color: SdColors.danger), const SizedBox(width: 8), Text('حذف', style: TextStyle(color: SdColors.danger))])),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
-          // Body
-          Padding(
-            padding: EdgeInsets.all(isMobile ? 10 : 16),
-            child: Text(body, style: TextStyle(fontSize: isMobile ? 13 : 14, color: Colors.grey.shade800, height: 1.6)),
-          ),
-          // Footer
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16, vertical: isMobile ? 6 : 8),
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.shade200))),
-            child: Wrap(
-              spacing: isMobile ? 8 : 16,
-              runSpacing: 4,
-              children: [
-                _infoChip(Icons.person_outline, createdBy),
-                if (createdAt != null) _infoChip(Icons.access_time, DateFormat('yyyy/MM/dd HH:mm').format(createdAt.toLocal())),
-                _infoChip(Icons.visibility, '$readCount قراءة'),
-                _infoChip(Icons.group_outlined, targetLabel),
-                if (expiresAt != null) _infoChip(Icons.timer_off, 'ينتهي: ${DateFormat('yyyy/MM/dd').format(expiresAt.toLocal())}', color: isExpired ? _dangerColor : null),
-              ],
+            // Image
+            if (imageUrl != null && imageUrl.toString().isNotEmpty)
+              Container(
+                width: double.infinity,
+                constraints: BoxConstraints(maxHeight: isMobile ? 150 : 200),
+                child: Image.network(
+                  imageUrl.startsWith('http') ? imageUrl : '${ApiConfig.baseUrl.replaceFirst('/api', '')}$imageUrl',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+            // Body
+            Padding(
+              padding: EdgeInsets.all(isMobile ? 12 : 16),
+              child: Text(
+                body,
+                style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: isMobile ? 13.5 : 14,
+                  fontWeight: FontWeight.w600,
+                  color: SdColors.ink,
+                  height: 1.6,
+                ),
+              ),
             ),
-          ),
-        ],
+            // Footer
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16, vertical: isMobile ? 8 : 10),
+              decoration: const BoxDecoration(border: Border(top: BorderSide(color: SdColors.divider))),
+              child: Wrap(
+                spacing: isMobile ? 10 : 16,
+                runSpacing: 6,
+                children: [
+                  _infoChip(Icons.person_outline, createdBy),
+                  if (createdAt != null) _infoChip(Icons.access_time, DateFormat('yyyy/MM/dd HH:mm').format(createdAt.toLocal())),
+                  _infoChip(Icons.visibility, '$readCount قراءة'),
+                  _infoChip(Icons.group_outlined, targetLabel),
+                  if (expiresAt != null) _infoChip(Icons.timer_off, 'ينتهي: ${DateFormat('yyyy/MM/dd').format(expiresAt.toLocal())}', color: isExpired ? SdColors.danger : null),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -287,9 +292,20 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: isMobile ? 12 : 14, color: color ?? Colors.grey.shade500),
-        const SizedBox(width: 3),
-        Flexible(child: Text(text, style: TextStyle(fontSize: isMobile ? 10 : 12, color: color ?? Colors.grey.shade600), overflow: TextOverflow.ellipsis)),
+        Icon(icon, size: isMobile ? 13 : 15, color: color ?? SdColors.faint),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: isMobile ? 11.5 : 12.5,
+              fontWeight: FontWeight.w600,
+              color: color ?? SdColors.muted,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }
@@ -361,7 +377,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                       contentPadding: isMobile ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10) : null,
                     ),
                   ),
-                  SizedBox(height: isMobile ? 10 : 16),
+                  SizedBox(height: isMobile ? 12 : 16),
 
                   // المحتوى
                   TextField(
@@ -376,7 +392,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                       contentPadding: isMobile ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10) : null,
                     ),
                   ),
-                  SizedBox(height: isMobile ? 10 : 16),
+                  SizedBox(height: isMobile ? 12 : 16),
 
                   // الصورة
                   Row(
@@ -388,11 +404,11 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                             if (picked != null) setDialogState(() => imageFile = File(picked.path));
                           },
                           icon: const Icon(Icons.image, size: 18),
-                          label: Text(imageFile != null || imageUrl != null ? 'تغيير الصورة' : 'إضافة صورة', style: TextStyle(fontSize: isMobile ? 12 : 14)),
+                          label: Text(imageFile != null || imageUrl != null ? 'تغيير الصورة' : 'إضافة صورة', style: TextStyle(fontSize: isMobile ? 12.5 : 14)),
                         ),
                       ),
                       if (imageFile != null || imageUrl != null)
-                        IconButton(icon: const Icon(Icons.close, color: Colors.red, size: 18), onPressed: () => setDialogState(() { imageFile = null; imageUrl = null; })),
+                        IconButton(icon: const Icon(Icons.close, color: SdColors.danger, size: 18), onPressed: () => setDialogState(() { imageFile = null; imageUrl = null; })),
                     ],
                   ),
                   if (imageFile != null)
@@ -412,15 +428,15 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                         ),
                       ),
                     ),
-                  SizedBox(height: isMobile ? 10 : 16),
+                  SizedBox(height: isMobile ? 12 : 16),
 
                   // الاستهداف
-                  Text('الاستهداف', style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 13 : 14)),
+                  Text('الاستهداف', style: TextStyle(fontFamily: SdText.family, fontWeight: FontWeight.w900, fontSize: isMobile ? 13.5 : 14, color: SdColors.ink)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
                     value: targetType,
                     isDense: true,
-                    style: TextStyle(fontSize: isMobile ? 13 : 14, color: Colors.black87),
+                    style: TextStyle(fontSize: isMobile ? 13.5 : 14, color: SdColors.ink),
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.group, size: 20),
@@ -428,11 +444,11 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                       contentPadding: isMobile ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10) : null,
                     ),
                     items: [
-                      DropdownMenuItem(value: 0, child: Text('الكل', style: TextStyle(fontSize: isMobile ? 13 : 14))),
-                      DropdownMenuItem(value: 1, child: Text('حسب القسم', style: TextStyle(fontSize: isMobile ? 13 : 14))),
-                      DropdownMenuItem(value: 2, child: Text('حسب الدور', style: TextStyle(fontSize: isMobile ? 13 : 14))),
-                      DropdownMenuItem(value: 3, child: Text('حسب الموقع', style: TextStyle(fontSize: isMobile ? 13 : 14))),
-                      DropdownMenuItem(value: 4, child: Text('مخصص', style: TextStyle(fontSize: isMobile ? 13 : 14))),
+                      DropdownMenuItem(value: 0, child: Text('الكل', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
+                      DropdownMenuItem(value: 1, child: Text('حسب القسم', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
+                      DropdownMenuItem(value: 2, child: Text('حسب الدور', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
+                      DropdownMenuItem(value: 3, child: Text('حسب الموقع', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
+                      DropdownMenuItem(value: 4, child: Text('مخصص', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
                     ],
                     onChanged: (v) => setDialogState(() { targetType = v ?? 0; targetValue = null; selectedUsers = []; }),
                   ),
@@ -443,7 +459,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                       value: targetValue,
                       isDense: true,
                       decoration: InputDecoration(labelText: 'اختر القسم', border: const OutlineInputBorder(), isDense: isMobile),
-                      items: DepartmentsDataService.instance.departmentNames.map((d) => DropdownMenuItem(value: d, child: Text(d, style: TextStyle(fontSize: isMobile ? 13 : 14)))).toList(),
+                      items: DepartmentsDataService.instance.departmentNames.map((d) => DropdownMenuItem(value: d, child: Text(d, style: TextStyle(fontSize: isMobile ? 13.5 : 14)))).toList(),
                       onChanged: (v) => setDialogState(() => targetValue = v),
                     ),
 
@@ -453,11 +469,11 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                       isDense: true,
                       decoration: InputDecoration(labelText: 'اختر الدور', border: const OutlineInputBorder(), isDense: isMobile),
                       items: [
-                        DropdownMenuItem(value: 'Employee', child: Text('موظف', style: TextStyle(fontSize: isMobile ? 13 : 14))),
-                        DropdownMenuItem(value: 'CompanyAdmin', child: Text('مدير شركة', style: TextStyle(fontSize: isMobile ? 13 : 14))),
-                        DropdownMenuItem(value: 'Manager', child: Text('مدير', style: TextStyle(fontSize: isMobile ? 13 : 14))),
-                        DropdownMenuItem(value: 'Technician', child: Text('فني', style: TextStyle(fontSize: isMobile ? 13 : 14))),
-                        DropdownMenuItem(value: 'Accountant', child: Text('محاسب', style: TextStyle(fontSize: isMobile ? 13 : 14))),
+                        DropdownMenuItem(value: 'Employee', child: Text('موظف', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
+                        DropdownMenuItem(value: 'CompanyAdmin', child: Text('مدير شركة', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
+                        DropdownMenuItem(value: 'Manager', child: Text('مدير', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
+                        DropdownMenuItem(value: 'Technician', child: Text('فني', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
+                        DropdownMenuItem(value: 'Accountant', child: Text('محاسب', style: TextStyle(fontSize: isMobile ? 13.5 : 14))),
                       ],
                       onChanged: (v) => setDialogState(() => targetValue = v),
                     ),
@@ -467,13 +483,13 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                       decoration: InputDecoration(labelText: 'اسم المركز/الموقع', border: const OutlineInputBorder(), isDense: isMobile),
                       onChanged: (v) => targetValue = v,
                       controller: TextEditingController(text: targetValue),
-                      style: TextStyle(fontSize: isMobile ? 13 : 14),
+                      style: TextStyle(fontSize: isMobile ? 13.5 : 14),
                     ),
 
                   if (targetType == 4)
                     _buildCustomUserPicker(selectedUsers, setDialogState),
 
-                  SizedBox(height: isMobile ? 10 : 16),
+                  SizedBox(height: isMobile ? 12 : 16),
 
                   // تاريخ الانتهاء
                   Row(
@@ -492,61 +508,68 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                           icon: const Icon(Icons.calendar_today, size: 16),
                           label: Text(
                             expiresAt != null ? 'ينتهي: ${DateFormat('yyyy/MM/dd').format(expiresAt!)}' : 'تاريخ انتهاء',
-                            style: TextStyle(fontSize: isMobile ? 12 : 14),
+                            style: TextStyle(fontSize: isMobile ? 12.5 : 14),
                           ),
                         ),
                       ),
-                      if (expiresAt != null) IconButton(icon: const Icon(Icons.close, size: 16, color: Colors.red), onPressed: () => setDialogState(() => expiresAt = null)),
+                      if (expiresAt != null) IconButton(icon: const Icon(Icons.close, size: 16, color: SdColors.danger), onPressed: () => setDialogState(() => expiresAt = null)),
                     ],
                   ),
                   const SizedBox(height: 8),
 
                   // النشر
                   SwitchListTile(
-                    title: Text('نشر فوراً', style: TextStyle(fontSize: isMobile ? 13 : 14)),
-                    subtitle: Text(isPublished ? 'سيظهر للموظفين مباشرة' : 'سيُحفظ كمسودة', style: TextStyle(fontSize: isMobile ? 11 : 12)),
+                    title: Text('نشر فوراً', style: TextStyle(fontSize: isMobile ? 13.5 : 14)),
+                    subtitle: Text(isPublished ? 'سيظهر للموظفين مباشرة' : 'سيُحفظ كمسودة', style: TextStyle(fontSize: isMobile ? 11.5 : 12.5)),
                     value: isPublished,
                     onChanged: (v) => setDialogState(() => isPublished = v),
-                    activeColor: _primaryColor,
+                    activeColor: _tone.base,
                     contentPadding: EdgeInsets.zero,
                     dense: true,
                   ),
                   // عاجل
                   SwitchListTile(
-                    title: Text('عاجل', style: TextStyle(fontSize: isMobile ? 13 : 14, color: isUrgent ? _dangerColor : null)),
-                    subtitle: Text(isUrgent ? 'يتطلب تأكيد "قرأت وفهمت"' : 'إعلان عادي', style: TextStyle(fontSize: isMobile ? 11 : 12)),
+                    title: Text('عاجل', style: TextStyle(fontSize: isMobile ? 13.5 : 14, color: isUrgent ? SdColors.danger : null)),
+                    subtitle: Text(isUrgent ? 'يتطلب تأكيد "قرأت وفهمت"' : 'إعلان عادي', style: TextStyle(fontSize: isMobile ? 11.5 : 12.5)),
                     value: isUrgent,
                     onChanged: (v) => setDialogState(() => isUrgent = v),
-                    activeColor: _dangerColor,
+                    activeColor: SdColors.danger,
                     contentPadding: EdgeInsets.zero,
                     dense: true,
-                    secondary: Icon(Icons.warning_rounded, size: 20, color: isUrgent ? _dangerColor : Colors.grey.shade400),
+                    secondary: Icon(Icons.warning_rounded, size: 20, color: isUrgent ? SdColors.danger : SdColors.faint),
                   ),
                   // تثبيت
                   SwitchListTile(
-                    title: Text('تثبيت', style: TextStyle(fontSize: isMobile ? 13 : 14, color: isPinned ? _primaryColor : null)),
-                    subtitle: Text(isPinned ? 'سيبقى في أعلى القائمة' : 'ترتيب عادي', style: TextStyle(fontSize: isMobile ? 11 : 12)),
+                    title: Text('تثبيت', style: TextStyle(fontSize: isMobile ? 13.5 : 14, color: isPinned ? _tone.base : null)),
+                    subtitle: Text(isPinned ? 'سيبقى في أعلى القائمة' : 'ترتيب عادي', style: TextStyle(fontSize: isMobile ? 11.5 : 12.5)),
                     value: isPinned,
                     onChanged: (v) => setDialogState(() => isPinned = v),
-                    activeColor: _primaryColor,
+                    activeColor: _tone.base,
                     contentPadding: EdgeInsets.zero,
                     dense: true,
-                    secondary: Icon(Icons.push_pin_rounded, size: 20, color: isPinned ? _primaryColor : Colors.grey.shade400),
+                    secondary: Icon(Icons.push_pin_rounded, size: 20, color: isPinned ? _tone.base : SdColors.faint),
                   ),
                 ],
               ),
             );
 
+            void doSave() => _handleSave(ctx, setDialogState, isEdit: isEdit, announcement: announcement, titleCtrl: titleCtrl, bodyCtrl: bodyCtrl, targetType: targetType, targetValue: targetValue, isPublished: isPublished, isUrgent: isUrgent, isPinned: isPinned, expiresAt: expiresAt, imageUrl: imageUrl, imageFile: imageFile, selectedUsers: selectedUsers, setIsSaving: (v) => setDialogState(() => isSaving = v));
+
             // أزرار الحوار
             final actions = Row(
               children: [
-                TextButton(onPressed: isSaving ? null : () => Navigator.pop(ctx), child: const Text('إلغاء')),
+                SdButton(
+                  label: 'إلغاء',
+                  kind: SdButtonKind.secondary,
+                  height: 46,
+                  onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                ),
                 const Spacer(),
-                ElevatedButton.icon(
-                  onPressed: isSaving ? null : () => _handleSave(ctx, setDialogState, isEdit: isEdit, announcement: announcement, titleCtrl: titleCtrl, bodyCtrl: bodyCtrl, targetType: targetType, targetValue: targetValue, isPublished: isPublished, isUrgent: isUrgent, isPinned: isPinned, expiresAt: expiresAt, imageUrl: imageUrl, imageFile: imageFile, selectedUsers: selectedUsers, setIsSaving: (v) => setDialogState(() => isSaving = v)),
-                  icon: isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Icon(isEdit ? Icons.save : Icons.send, size: 18),
-                  label: Text(isEdit ? 'حفظ' : 'نشر', style: TextStyle(fontSize: isMobile ? 13 : 14)),
-                  style: ElevatedButton.styleFrom(backgroundColor: _primaryColor, foregroundColor: Colors.white),
+                SdButton(
+                  label: isEdit ? 'حفظ' : 'نشر',
+                  icon: isEdit ? Icons.save : Icons.send,
+                  height: 46,
+                  onPressed: isSaving ? null : doSave,
                 ),
               ],
             );
@@ -556,20 +579,15 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
               return Directionality(
                 textDirection: TextDirection.rtl,
                 child: Scaffold(
-                  appBar: AppBar(
-                    title: Text(isEdit ? 'تعديل إعلان' : 'إعلان جديد', style: const TextStyle(fontSize: 16)),
-                    backgroundColor: _primaryColor,
-                    foregroundColor: Colors.white,
+                  backgroundColor: SdColors.ground,
+                  appBar: SdAppBar(
+                    title: isEdit ? 'تعديل إعلان' : 'إعلان جديد',
                     leading: IconButton(icon: const Icon(Icons.close), onPressed: isSaving ? null : () => Navigator.pop(ctx)),
                     actions: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: ElevatedButton.icon(
-                          onPressed: isSaving ? null : () => _handleSave(ctx, setDialogState, isEdit: isEdit, announcement: announcement, titleCtrl: titleCtrl, bodyCtrl: bodyCtrl, targetType: targetType, targetValue: targetValue, isPublished: isPublished, isUrgent: isUrgent, isPinned: isPinned, expiresAt: expiresAt, imageUrl: imageUrl, imageFile: imageFile, selectedUsers: selectedUsers, setIsSaving: (v) => setDialogState(() => isSaving = v)),
-                          icon: isSaving ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Icon(isEdit ? Icons.save : Icons.send, size: 16),
-                          label: Text(isEdit ? 'حفظ' : 'نشر', style: const TextStyle(fontSize: 13)),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: _primaryColor, elevation: 0),
-                        ),
+                      SdAppBarAction(
+                        icon: isEdit ? Icons.save : Icons.send,
+                        label: isEdit ? 'حفظ' : 'نشر',
+                        onPressed: isSaving ? null : doSave,
                       ),
                     ],
                   ),
@@ -582,7 +600,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
               textDirection: TextDirection.rtl,
               child: AlertDialog(
                 title: Row(children: [
-                  Icon(isEdit ? Icons.edit : Icons.add_circle, color: _primaryColor),
+                  Icon(isEdit ? Icons.edit : Icons.add_circle, color: _tone.base),
                   const SizedBox(width: 8),
                   Text(isEdit ? 'تعديل إعلان' : 'إعلان جديد'),
                 ]),
@@ -616,7 +634,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     required void Function(bool) setIsSaving,
   }) async {
     if (titleCtrl.text.trim().isEmpty || bodyCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('العنوان والمحتوى مطلوبان'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('العنوان والمحتوى مطلوبان'), backgroundColor: SdColors.danger));
       return;
     }
     setIsSaving(true);
@@ -644,10 +662,10 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     if (ctx.mounted) {
       Navigator.pop(ctx);
       if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? 'تم تعديل الإعلان' : 'تم إنشاء الإعلان'), backgroundColor: _successColor));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? 'تم تعديل الإعلان' : 'تم إنشاء الإعلان'), backgroundColor: SdColors.success));
         _loadAnnouncements();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('حدث خطأ'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('حدث خطأ'), backgroundColor: SdColors.danger));
       }
     }
   }
@@ -660,7 +678,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
         OutlinedButton.icon(
           onPressed: () => _showEmployeePicker(selectedUsers, setDialogState),
           icon: const Icon(Icons.person_add, size: 18),
-          label: Text('اختيار موظفين (${selectedUsers.length} محدد)', style: TextStyle(fontSize: _isMobile ? 12 : 14)),
+          label: Text('اختيار موظفين (${selectedUsers.length} محدد)', style: TextStyle(fontSize: _isMobile ? 12.5 : 14)),
         ),
         if (selectedUsers.isNotEmpty)
           Padding(
@@ -668,7 +686,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
             child: Wrap(
               spacing: 4, runSpacing: 4,
               children: selectedUsers.map((u) => Chip(
-                label: Text(u['name'] ?? u['fullName'] ?? '—', style: TextStyle(fontSize: _isMobile ? 11 : 12)),
+                label: Text(u['name'] ?? u['fullName'] ?? '—', style: TextStyle(fontSize: _isMobile ? 11.5 : 12.5)),
                 deleteIcon: const Icon(Icons.close, size: 14),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
@@ -723,7 +741,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                     children: [
                       TextField(
                         decoration: InputDecoration(hintText: 'بحث...', prefixIcon: const Icon(Icons.search), border: const OutlineInputBorder(), isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: isMobile ? 8 : 12)),
-                        style: TextStyle(fontSize: isMobile ? 13 : 14),
+                        style: TextStyle(fontSize: isMobile ? 13.5 : 14),
                         onChanged: (v) => setPickerState(() => search = v),
                       ),
                       const SizedBox(height: 8),
@@ -737,8 +755,9 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                                   final empId = emp['id']?.toString() ?? '';
                                   final isSelected = selectedUsers.any((u) => u['userId']?.toString() == empId);
                                   return CheckboxListTile(
-                                    title: Text(emp['fullName'] ?? '—', style: TextStyle(fontSize: isMobile ? 13 : 14)),
-                                    subtitle: Text(emp['department'] ?? '', style: TextStyle(fontSize: isMobile ? 11 : 12)),
+                                    activeColor: _tone.base,
+                                    title: Text(emp['fullName'] ?? '—', style: TextStyle(fontSize: isMobile ? 13.5 : 14)),
+                                    subtitle: Text(emp['department'] ?? '', style: TextStyle(fontSize: isMobile ? 11.5 : 12.5)),
                                     value: isSelected,
                                     onChanged: (checked) {
                                       setPickerState(() {
@@ -758,7 +777,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                 actions: [
                   TextButton(
                     onPressed: () { parentSetState(() {}); Navigator.pop(ctx); },
-                    child: Text('تم (${selectedUsers.length})', style: TextStyle(fontSize: isMobile ? 13 : 14)),
+                    child: Text('تم (${selectedUsers.length})', style: TextStyle(fontSize: isMobile ? 13.5 : 14)),
                   ),
                 ],
               ),
@@ -791,7 +810,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
               textDirection: TextDirection.rtl,
               child: AlertDialog(
                 title: Row(children: [
-                  const Icon(Icons.analytics, color: _primaryColor, size: 22),
+                  Icon(Icons.analytics, color: _tone.base, size: 22),
                   const SizedBox(width: 8),
                   Text('تقرير القراءة', style: TextStyle(fontSize: isMobile ? 16 : 18)),
                 ]),
@@ -806,9 +825,10 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                           child: Column(
                             children: [
                               TabBar(
-                                labelColor: _primaryColor,
-                                unselectedLabelColor: Colors.grey,
-                                labelStyle: TextStyle(fontSize: isMobile ? 12 : 14, fontWeight: FontWeight.bold),
+                                labelColor: _tone.base,
+                                indicatorColor: _tone.base,
+                                unselectedLabelColor: SdColors.muted,
+                                labelStyle: TextStyle(fontSize: isMobile ? 12.5 : 14, fontWeight: FontWeight.bold),
                                 tabs: [
                                   Tab(text: 'قرأ ($totalRead)'),
                                   Tab(text: 'لم يقرأ ($totalNotRead)'),
@@ -841,7 +861,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
   Widget _buildUserList(List<Map<String, dynamic>> users, {required bool isRead, required bool isMobile}) {
     if (users.isEmpty) {
       return Center(
-        child: Text(isRead ? 'لا أحد قرأ بعد' : 'الجميع قرأ', style: TextStyle(color: Colors.grey, fontSize: isMobile ? 13 : 14)),
+        child: Text(isRead ? 'لا أحد قرأ بعد' : 'الجميع قرأ', style: TextStyle(color: SdColors.muted, fontSize: isMobile ? 13.5 : 14)),
       );
     }
     return ListView.builder(
@@ -853,13 +873,13 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
         return ListTile(
           dense: true,
           leading: CircleAvatar(
-            radius: isMobile ? 14 : 16,
-            backgroundColor: isRead ? _successColor.withOpacity(0.15) : _dangerColor.withOpacity(0.15),
-            child: Icon(isRead ? Icons.check : Icons.schedule, size: isMobile ? 14 : 16, color: isRead ? _successColor : _dangerColor),
+            radius: isMobile ? 15 : 16,
+            backgroundColor: isRead ? SdColors.successTint : SdColors.dangerTint,
+            child: Icon(isRead ? Icons.check : Icons.schedule, size: isMobile ? 15 : 16, color: isRead ? SdColors.success : SdColors.danger),
           ),
-          title: Text(name, style: TextStyle(fontSize: isMobile ? 13 : 14)),
+          title: Text(name, style: TextStyle(fontSize: isMobile ? 13.5 : 14)),
           subtitle: isRead && readAt != null
-              ? Text(_formatDate(readAt), style: TextStyle(fontSize: isMobile ? 10 : 11, color: Colors.grey))
+              ? Text(_formatDate(readAt), style: TextStyle(fontSize: isMobile ? 11.5 : 12, color: SdColors.muted))
               : null,
         );
       },
@@ -885,10 +905,12 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
           content: const Text('هل أنت متأكد من حذف هذا الإعلان؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            ElevatedButton(
+            SdButton(
+              label: 'حذف',
+              icon: Icons.delete,
+              kind: SdButtonKind.danger,
+              height: 46,
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: _dangerColor, foregroundColor: Colors.white),
-              child: const Text('حذف'),
             ),
           ],
         ),
@@ -900,7 +922,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(success ? 'تم حذف الإعلان' : 'حدث خطأ في الحذف'),
-          backgroundColor: success ? _successColor : _dangerColor,
+          backgroundColor: success ? SdColors.success : SdColors.danger,
         ));
         if (success) _loadAnnouncements();
       }

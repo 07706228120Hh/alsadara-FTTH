@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/vps_auth_service.dart';
 import '../services/sadara_api_service.dart';
 import '../services/api/api_client.dart';
@@ -56,22 +57,27 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            '🔧 تشخيص النظام',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.indigo[700],
-          foregroundColor: Colors.white,
-          bottom: TabBar(
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: '🔧 تشخيص النظام',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: () => setState(() {}),
+            ),
+            SdAppBarAction(
+              icon: Icons.copy_all,
+              label: 'نسخ الكل',
+              onPressed: _copyAllDiagnostics,
+            ),
+          ],
+          bottom: SdTabBar(
             controller: _tabController,
             isScrollable: true,
-            indicatorColor: Colors.amber,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
+            height: 72,
             tabs: const [
               Tab(icon: Icon(Icons.person), text: 'المستخدم'),
               Tab(icon: Icon(Icons.business), text: 'الشركة'),
@@ -82,30 +88,27 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
               Tab(icon: Icon(Icons.storage), text: 'الجلسة'),
             ],
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () => setState(() {}),
-              tooltip: 'تحديث',
-            ),
-            IconButton(
-              icon: const Icon(Icons.copy_all),
-              onPressed: _copyAllDiagnostics,
-              tooltip: 'نسخ الكل',
-            ),
-          ],
         ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildUserTab(),
-            _buildCompanyTab(),
-            _buildPermissionsTab(),
-            _buildApiTab(),
-            _buildEmployeesTab(),
-            _buildPortalDiagnosticsTab(),
-            _buildSessionTab(),
-          ],
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildUserTab(),
+                    _buildCompanyTab(),
+                    _buildPermissionsTab(),
+                    _buildApiTab(),
+                    _buildEmployeesTab(),
+                    _buildPortalDiagnosticsTab(),
+                    _buildSessionTab(),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -126,7 +129,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '👤 معلومات المستخدم الأساسية',
             icon: Icons.person,
-            color: Colors.blue,
+            color: SdColors.info,
             children: [
               _buildInfoTile('المعرف (ID)', user.id, Icons.fingerprint),
               _buildInfoTile(
@@ -147,11 +150,11 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '📋 قائمة الصلاحيات (permissions)',
             icon: Icons.list,
-            color: Colors.green,
+            color: SdColors.success,
             children: [
               if (user.permissions.isEmpty)
                 const ListTile(
-                  leading: Icon(Icons.warning, color: Colors.orange),
+                  leading: Icon(Icons.warning, color: SdColors.warning),
                   title: Text('لا توجد صلاحيات'),
                 )
               else
@@ -180,7 +183,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '🏢 معلومات الشركة',
             icon: Icons.business,
-            color: Colors.purple,
+            color: SdColors.platformBase,
             children: [
               _buildInfoTile('المعرف (ID)', company.id, Icons.fingerprint),
               _buildInfoTile('اسم الشركة', company.name, Icons.business),
@@ -193,7 +196,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '📅 معلومات الاشتراك',
             icon: Icons.calendar_today,
-            color: company.isExpired ? Colors.red : Colors.teal,
+            color: company.isExpired ? SdColors.danger : SdColors.accent,
             children: [
               _buildInfoTile(
                 'تاريخ انتهاء الاشتراك',
@@ -221,11 +224,11 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '⚡ ميزات النظام الأول المفعلة',
             icon: Icons.flash_on,
-            color: Colors.orange,
+            color: SdColors.warning,
             children: [
               if (company.enabledFirstSystemFeatures.isEmpty)
                 const ListTile(
-                  leading: Icon(Icons.warning, color: Colors.orange),
+                  leading: Icon(Icons.warning, color: SdColors.warning),
                   title: Text('لا توجد ميزات مفعلة'),
                 )
               else
@@ -242,11 +245,11 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '⚡ ميزات النظام الثاني المفعلة',
             icon: Icons.flash_on,
-            color: Colors.cyan,
+            color: SdColors.accentLight,
             children: [
               if (company.enabledSecondSystemFeatures.isEmpty)
                 const ListTile(
-                  leading: Icon(Icons.warning, color: Colors.orange),
+                  leading: Icon(Icons.warning, color: SdColors.warning),
                   title: Text('لا توجد ميزات مفعلة'),
                 )
               else
@@ -274,15 +277,19 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       child: Column(
         children: [
           // زر التشخيص الشامل
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: SdColors.surface,
+              borderRadius: BorderRadius.circular(SdRadius.md),
+              boxShadow: SdDepth.raised(),
+            ),
             child: ListTile(
-              leading: const Icon(Icons.security_rounded, color: Colors.indigo, size: 32),
+              leading: const Icon(Icons.security_rounded, color: SdColors.primary, size: 32),
               title: Text('تشخيص شامل للصلاحيات',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: SdColors.primary)),
               subtitle: const Text('فحص جميع الصفحات والأزرار وكشف المشاكل'),
-              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.indigo),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, color: SdColors.primary),
               onTap: () => Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const PermissionsDiagnosticsPage())),
             ),
@@ -292,7 +299,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '📄 صلاحيات الصفحات (من PermissionManager)',
             icon: Icons.pages,
-            color: Colors.brown,
+            color: SdColors.muted,
             children: [
               ...PermissionManager.instance.firstSystemPermissions.entries.map(
                     (e) => _buildInfoTile(
@@ -315,10 +322,10 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '📊 مقارنة الصلاحيات',
             icon: Icons.compare_arrows,
-            color: Colors.teal,
+            color: SdColors.accent,
             children: [
               ListTile(
-                leading: const Icon(Icons.info, color: Colors.blue),
+                leading: const Icon(Icons.info, color: SdColors.info),
                 title: const Text('ملاحظة'),
                 subtitle: Text(
                   user?.isAdmin == true
@@ -363,7 +370,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '🌐 معلومات الاتصال',
             icon: Icons.cloud,
-            color: Colors.blue,
+            color: SdColors.info,
             children: [
               _buildInfoTile(
                 'عنوان API',
@@ -388,8 +395,8 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
             title: '🧪 اختبار الاتصال',
             icon: Icons.science,
             color: _apiTestSuccess == null
-                ? Colors.grey
-                : (_apiTestSuccess! ? Colors.green : Colors.red),
+                ? SdColors.faint
+                : (_apiTestSuccess! ? SdColors.success : SdColors.danger),
             children: [
               ListTile(
                 leading: _isLoading
@@ -405,8 +412,8 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                                 ? Icons.check_circle
                                 : Icons.error),
                         color: _apiTestSuccess == null
-                            ? Colors.grey
-                            : (_apiTestSuccess! ? Colors.green : Colors.red),
+                            ? SdColors.faint
+                            : (_apiTestSuccess! ? SdColors.success : SdColors.danger),
                       ),
                 title: Text(_apiTestResult ?? 'اضغط لاختبار الاتصال'),
                 subtitle: _apiTestSuccess != null
@@ -421,7 +428,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                   icon: const Icon(Icons.play_arrow),
                   label: const Text('اختبار الاتصال بالخادم'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: SdColors.info,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 48),
                   ),
@@ -433,7 +440,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '📝 معلومات التنقية (Debug)',
             icon: Icons.bug_report,
-            color: Colors.orange,
+            color: SdColors.warning,
             children: [
               _buildInfoTile(
                 'tenantId (المُمرر)',
@@ -469,7 +476,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '🔑 حالة الجلسة',
             icon: Icons.lock,
-            color: Colors.green,
+            color: SdColors.success,
             children: [
               _buildInfoTile(
                 'مسجل الدخول',
@@ -492,7 +499,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '📦 البيانات الخام (JSON)',
             icon: Icons.code,
-            color: Colors.grey,
+            color: SdColors.faint,
             children: [
               ExpansionTile(
                 leading: const Icon(Icons.person),
@@ -501,7 +508,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(8),
-                    color: Colors.grey[100],
+                    color: SdColors.surfaceAlt,
                     child: SelectableText(
                       user != null
                           ? const JsonEncoder.withIndent('  ')
@@ -520,7 +527,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(8),
-                    color: Colors.grey[100],
+                    color: SdColors.surfaceAlt,
                     child: SelectableText(
                       company != null
                           ? const JsonEncoder.withIndent('  ')
@@ -551,7 +558,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context, true),
                       style:
-                          ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                          ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
                       child: const Text('تسجيل الخروج'),
                     ),
                   ],
@@ -568,7 +575,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
             icon: const Icon(Icons.logout),
             label: const Text('تسجيل الخروج'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 48),
             ),
@@ -585,9 +592,13 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
     required Color color,
     required List<Widget> children,
   }) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -629,7 +640,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
   /// بناء صف معلومات
   Widget _buildInfoTile(String label, String value, IconData icon) {
     return ListTile(
-      leading: Icon(icon, size: 20, color: Colors.grey[600]),
+      leading: Icon(icon, size: 20, color: SdColors.muted),
       title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
       subtitle: SelectableText(value),
       dense: true,
@@ -651,17 +662,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
   /// حالة فارغة
   Widget _buildEmptyState(String message, IconData icon) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: GoogleFonts.cairo(fontSize: 18, color: Colors.grey[600]),
-          ),
-        ],
-      ),
+      child: SdEmptyState(title: message, icon: icon),
     );
   }
 
@@ -788,7 +789,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('✅ تم نسخ تقرير التشخيص الكامل'),
-        backgroundColor: Colors.green,
+        backgroundColor: SdColors.success,
         duration: Duration(seconds: 2),
       ),
     );
@@ -803,7 +804,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '👥 قائمة موظفي الشركة',
             icon: Icons.group,
-            color: Colors.teal,
+            color: SdColors.accent,
             children: [
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -823,7 +824,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                       ? 'جاري التحميل...'
                       : 'جلب قائمة الموظفين'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
+                    backgroundColor: SdColors.accent,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 48),
                   ),
@@ -846,7 +847,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                         leading: CircleAvatar(
                           backgroundColor: emp['Role'] == 'CompanyAdmin'
                               ? Colors.amber
-                              : Colors.blue,
+                              : SdColors.info,
                           child: Icon(
                             emp['Role'] == 'CompanyAdmin'
                                 ? Icons.admin_panel_settings
@@ -872,8 +873,8 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                               ? Icons.check_circle
                               : Icons.cancel,
                           color: emp['IsActive'] == true
-                              ? Colors.green
-                              : Colors.red,
+                              ? SdColors.success
+                              : SdColors.danger,
                         ),
                         isThreeLine: true,
                       ),
@@ -899,7 +900,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
           _buildSectionCard(
             title: '🔑 حالة المصادقة للمنصة',
             icon: Icons.vpn_key,
-            color: Colors.deepPurple,
+            color: SdColors.platformBase,
             children: [
               _buildInfoTile(
                 'SadaraAPI مصادق',
@@ -934,10 +935,10 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
             title: '🧪 تشخيص جلب بيانات المنصة',
             icon: Icons.science,
             color: _portalResults.isEmpty
-                ? Colors.grey
+                ? SdColors.faint
                 : (_portalResults.every((r) => r.success)
-                    ? Colors.green
-                    : Colors.orange),
+                    ? SdColors.success
+                    : SdColors.warning),
             children: [
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -957,7 +958,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                       ? 'جاري التشخيص...'
                       : 'تشغيل تشخيص المنصة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: SdColors.platformBase,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 48),
                   ),
@@ -979,10 +980,10 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                                       ? Icons.hourglass_top
                                       : Icons.error),
                               color: r.success
-                                  ? Colors.green
+                                  ? SdColors.success
                                   : (r.status == 'جاري...'
-                                      ? Colors.blue
-                                      : Colors.red),
+                                      ? SdColors.info
+                                      : SdColors.danger),
                             ),
                       title: Text(
                         r.title,
@@ -996,7 +997,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                             Text(
                               '⏱ ${r.duration!.inMilliseconds} مللي ثانية',
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: SdColors.muted,
                                 fontSize: 12,
                               ),
                             ),
@@ -1007,7 +1008,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey[100],
+                                  color: SdColors.surfaceAlt,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: SelectableText(
@@ -1271,7 +1272,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('❌ لا توجد شركة محددة'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
       return;
@@ -1311,7 +1312,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
             SnackBar(
               content: Text(
                   '✅ تم العثور على "${sabah.first['FullName']}" في قائمة الموظفين!'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
               duration: const Duration(seconds: 5),
             ),
           );
@@ -1320,7 +1321,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ فشل جلب الموظفين: ${response.message}'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -1328,7 +1329,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ خطأ'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
     } finally {

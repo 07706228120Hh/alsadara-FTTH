@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/iptv_service.dart';
 import '../../services/custom_auth_service.dart';
 import '../../services/vps_auth_service.dart';
@@ -123,22 +124,16 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
     final activeCount = _subscribers.where((s) => s['isActive'] == true).length;
     final inactiveCount = _subscribers.length - activeCount;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
-        appBar: AppBar(
-          title: const Text('مشتركي IPTV',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          centerTitle: true,
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1e293b),
-          elevation: 0.5,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'مشتركي IPTV',
           actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
+            SdAppBarAction(
+              icon: Icons.refresh_rounded,
+              label: 'تحديث',
               onPressed: _loadData,
-              tooltip: 'تحديث',
             ),
           ],
         ),
@@ -148,11 +143,13 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
           icon: const Icon(Icons.add_rounded),
           label: const Text('إضافة مشترك',
               style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
           elevation: 4,
         ),
-        body: Column(
+        body: SafeArea(
+          top: false,
+          child: Column(
           children: [
             // شريط الإحصائيات والبحث
             Container(
@@ -161,7 +158,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -172,7 +169,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                   _buildStatChip(
                     'الكل',
                     _subscribers.length,
-                    Colors.deepPurple,
+                    SdColors.platformBase,
                     _statusFilter == 'all',
                     () => setState(() {
                       _statusFilter = 'all';
@@ -183,7 +180,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                   _buildStatChip(
                     'فعال',
                     activeCount,
-                    Colors.green,
+                    SdColors.success,
                     _statusFilter == 'active',
                     () => setState(() {
                       _statusFilter = 'active';
@@ -194,7 +191,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                   _buildStatChip(
                     'غير فعال',
                     inactiveCount,
-                    Colors.red,
+                    SdColors.danger,
                     _statusFilter == 'inactive',
                     () => setState(() {
                       _statusFilter = 'inactive';
@@ -207,15 +204,15 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                     width: 300,
                     child: TextField(
                       style: const TextStyle(
-                          color: Color(0xFF1e293b), fontSize: 13),
+                          color: SdColors.ink, fontSize: 13),
                       decoration: InputDecoration(
                         hintText: 'بحث بالاسم، الهاتف، اليوزر، الكود...',
                         hintStyle: TextStyle(
-                            color: Colors.grey.shade400, fontSize: 13),
+                            color: SdColors.faint, fontSize: 13),
                         prefixIcon: Icon(Icons.search_rounded,
-                            color: Colors.grey.shade400, size: 20),
+                            color: SdColors.faint, size: 20),
                         filled: true,
-                        fillColor: const Color(0xFFF1F5F9),
+                        fillColor: SdColors.surfaceAlt,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
@@ -239,28 +236,20 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
               child: _loading
                   ? const Center(
                       child:
-                          CircularProgressIndicator(color: Colors.deepPurple))
+                          CircularProgressIndicator(color: SdColors.platformBase))
                   : _filtered.isEmpty
                       ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.live_tv_rounded,
-                                  size: 64, color: Colors.grey.shade300),
-                              const SizedBox(height: 16),
-                              Text(
-                                _subscribers.isEmpty
-                                    ? 'لا يوجد مشتركين IPTV'
-                                    : 'لا توجد نتائج',
-                                style: TextStyle(
-                                    color: Colors.grey.shade500, fontSize: 16),
-                              ),
-                            ],
+                          child: SdEmptyState(
+                            icon: Icons.live_tv_rounded,
+                            title: _subscribers.isEmpty
+                                ? 'لا يوجد مشتركين IPTV'
+                                : 'لا توجد نتائج',
                           ),
                         )
                       : _buildDataTable(),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -274,10 +263,10 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.1) : Colors.transparent,
+          color: selected ? color.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? color : Colors.grey.shade300,
+            color: selected ? color : SdColors.divider,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -286,7 +275,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
           children: [
             Text(label,
                 style: TextStyle(
-                    color: selected ? color : Colors.grey.shade600,
+                    color: selected ? color : SdColors.muted,
                     fontSize: 13,
                     fontWeight:
                         selected ? FontWeight.w600 : FontWeight.normal)),
@@ -294,7 +283,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text('$count',
@@ -317,7 +306,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -326,16 +315,16 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: DataTable(
-            headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+            headingRowColor: WidgetStateProperty.all(SdColors.primary),
             dataRowColor: WidgetStateProperty.all(Colors.white),
             columnSpacing: 16,
             horizontalMargin: 16,
             headingTextStyle: const TextStyle(
-                color: Color(0xFF475569),
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 13),
             dataTextStyle:
-                const TextStyle(color: Color(0xFF1e293b), fontSize: 13),
+                const TextStyle(color: SdColors.ink, fontSize: 13),
             columns: const [
               DataColumn(label: Text('#')),
               DataColumn(label: Text('الاسم')),
@@ -355,16 +344,16 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
 
               return DataRow(
                 color: WidgetStateProperty.resolveWith((states) =>
-                    i.isEven ? Colors.white : const Color(0xFFFAFBFC)),
+                    i.isEven ? Colors.white : SdColors.surfaceAlt),
                 cells: [
                   DataCell(Text('${i + 1}',
-                      style: TextStyle(color: Colors.grey.shade500))),
+                      style: TextStyle(color: SdColors.faint))),
                   DataCell(Text(sub['customerName'] ?? '',
                       style: const TextStyle(fontWeight: FontWeight.w500))),
                   DataCell(Text(sub['phone'] ?? '-')),
                   DataCell(SelectableText(sub['iptvUsername'] ?? '-',
                       style: const TextStyle(
-                          color: Colors.deepPurple,
+                          color: SdColors.platformBase,
                           fontSize: 13,
                           fontWeight: FontWeight.w500))),
                   DataCell(SelectableText(sub['iptvPassword'] ?? '-',
@@ -377,16 +366,16 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: isActive
-                          ? Colors.green.withOpacity(0.1)
-                          : Colors.red.withOpacity(0.1),
+                          ? SdColors.success.withValues(alpha: 0.1)
+                          : SdColors.danger.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       isActive ? 'فعال' : 'غير فعال',
                       style: TextStyle(
                         color: isActive
-                            ? Colors.green.shade700
-                            : Colors.red.shade700,
+                            ? SdColors.successEdge
+                            : SdColors.dangerEdge,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -400,28 +389,28 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                     children: [
                       _buildActionButton(
                         icon: Icons.send_rounded,
-                        color: Colors.green,
+                        color: SdColors.success,
                         tooltip: 'إرسال عبر واتساب',
                         onTap: () => _sendWhatsApp(sub),
                       ),
                       const SizedBox(width: 4),
                       _buildActionButton(
                         icon: Icons.copy_rounded,
-                        color: Colors.blue,
+                        color: SdColors.info,
                         tooltip: 'نسخ البيانات',
                         onTap: () => _copyData(sub),
                       ),
                       const SizedBox(width: 4),
                       _buildActionButton(
                         icon: Icons.edit_rounded,
-                        color: Colors.orange,
+                        color: SdColors.warning,
                         tooltip: 'تعديل',
                         onTap: () => _showAddEditDialog(existing: sub),
                       ),
                       const SizedBox(width: 4),
                       _buildActionButton(
                         icon: Icons.delete_outline_rounded,
-                        color: Colors.red,
+                        color: SdColors.danger,
                         tooltip: 'حذف',
                         onTap: () => _confirmDelete(sub),
                       ),
@@ -445,12 +434,12 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
 
     if (!hasLink) {
       return Text('غير مرتبط',
-          style: TextStyle(color: Colors.grey.shade400, fontSize: 12));
+          style: TextStyle(color: SdColors.faint, fontSize: 12));
     }
 
     if (ftthStatus.isEmpty) {
       return Text('لا توجد بيانات',
-          style: TextStyle(color: Colors.orange.shade400, fontSize: 12));
+          style: TextStyle(color: SdColors.warning, fontSize: 12));
     }
 
     final isActiveFtth =
@@ -469,7 +458,9 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
       }
     }
 
-    final color = isActiveFtth && !isExpired ? Colors.green : Colors.red;
+    final color = isActiveFtth && !isExpired ? SdColors.success : SdColors.danger;
+    final colorEdge =
+        isActiveFtth && !isExpired ? SdColors.successEdge : SdColors.dangerEdge;
 
     final statusText =
         isExpired ? 'منتهي' : (isActiveFtth ? 'فعال' : ftthStatus);
@@ -484,18 +475,18 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_rounded, size: 13, color: color.shade700),
+            Icon(Icons.wifi_rounded, size: 13, color: colorEdge),
             const SizedBox(width: 4),
             Text(statusText,
                 style: TextStyle(
-                    color: color.shade700,
+                    color: colorEdge,
                     fontSize: 11,
                     fontWeight: FontWeight.w600)),
           ],
@@ -518,12 +509,12 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.location_on_rounded,
-                  size: 13, color: Colors.blue.shade400),
+                  size: 13, color: SdColors.info),
               const SizedBox(width: 3),
               Flexible(
                 child: Text(ftthZone,
                     style: TextStyle(
-                        color: Colors.blue.shade700,
+                        color: SdColors.infoEdge,
                         fontSize: 12,
                         fontWeight: FontWeight.w500),
                     overflow: TextOverflow.ellipsis),
@@ -532,14 +523,14 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
           ),
           if (manualLocation.isNotEmpty && manualLocation != ftthZone)
             Text(manualLocation,
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 10),
+                style: TextStyle(color: SdColors.faint, fontSize: 10),
                 overflow: TextOverflow.ellipsis),
         ],
       );
     }
 
     return Text(manualLocation.isNotEmpty ? manualLocation : '-',
-        style: TextStyle(color: Colors.grey.shade600));
+        style: TextStyle(color: SdColors.muted));
   }
 
   Widget _buildActionButton({
@@ -556,7 +547,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, size: 16, color: color),
@@ -574,7 +565,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('لا يوجد رقم هاتف لهذا المشترك'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
       return;
@@ -609,7 +600,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
         content: Text(result.success
             ? 'تم إرسال البيانات بنجاح'
             : result.error ?? 'فشل الإرسال'),
-        backgroundColor: result.success ? Colors.green : Colors.red,
+        backgroundColor: result.success ? SdColors.success : SdColors.danger,
       ),
     );
   }
@@ -626,7 +617,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('تم نسخ البيانات'),
-        backgroundColor: Colors.blue,
+        backgroundColor: SdColors.info,
         duration: Duration(seconds: 1),
       ),
     );
@@ -645,21 +636,21 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('تأكيد الحذف',
               style: TextStyle(
-                  color: Color(0xFF1e293b), fontWeight: FontWeight.bold)),
+                  color: SdColors.ink, fontWeight: FontWeight.bold)),
           content: Text(
             'هل تريد حذف المشترك "${sub['customerName']}"؟',
-            style: const TextStyle(color: Color(0xFF475569)),
+            style: const TextStyle(color: SdColors.muted),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child:
-                  Text('إلغاء', style: TextStyle(color: Colors.grey.shade600)),
+                  Text('إلغاء', style: TextStyle(color: SdColors.muted)),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: SdColors.danger,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
@@ -683,12 +674,12 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('تم الحذف بنجاح'), backgroundColor: Colors.green),
+            content: Text('تم الحذف بنجاح'), backgroundColor: SdColors.success),
       );
       _loadData();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('فشل الحذف'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('فشل الحذف'), backgroundColor: SdColors.danger),
       );
     }
   }
@@ -732,7 +723,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
             title: Text(
               isEdit ? 'تعديل مشترك IPTV' : 'إضافة مشترك IPTV',
               style: const TextStyle(
-                  color: Color(0xFF1e293b), fontWeight: FontWeight.bold),
+                  color: SdColors.ink, fontWeight: FontWeight.bold),
             ),
             content: SizedBox(
               width: min(500, MediaQuery.of(context).size.width * 0.85),
@@ -745,15 +736,15 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: Colors.deepPurple.withOpacity(0.05),
+                        color: SdColors.platformBase.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: Colors.deepPurple.withOpacity(0.2)),
+                            color: SdColors.platformBase.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         children: [
                           Icon(Icons.link_rounded,
-                              color: Colors.deepPurple.shade400, size: 20),
+                              color: SdColors.platformLight, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -762,8 +753,8 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                                   : 'غير مرتبط بمشترك FTTH',
                               style: TextStyle(
                                 color: linkedSubscriptionId != null
-                                    ? Colors.deepPurple
-                                    : Colors.grey.shade500,
+                                    ? SdColors.platformBase
+                                    : SdColors.faint,
                                 fontSize: 12,
                               ),
                             ),
@@ -788,7 +779,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                             child: Text(
                               linkedSubscriptionId != null ? 'تغيير' : 'ربط',
                               style: const TextStyle(
-                                  color: Colors.deepPurple, fontSize: 12),
+                                  color: SdColors.platformBase, fontSize: 12),
                             ),
                           ),
                         ],
@@ -850,14 +841,14 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 14),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
+                                color: SdColors.surfaceAlt,
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.shade300),
+                                border: Border.all(color: SdColors.divider),
                               ),
                               child: Row(
                                 children: [
                                   Icon(Icons.calendar_today_rounded,
-                                      color: Colors.grey.shade500, size: 18),
+                                      color: SdColors.faint, size: 18),
                                   const SizedBox(width: 8),
                                   Text(
                                     activationDate != null
@@ -866,8 +857,8 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                                         : 'تاريخ التفعيل',
                                     style: TextStyle(
                                       color: activationDate != null
-                                          ? const Color(0xFF1e293b)
-                                          : Colors.grey.shade400,
+                                          ? SdColors.ink
+                                          : SdColors.faint,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -881,10 +872,10 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                           children: [
                             Text('فعال',
                                 style: TextStyle(
-                                    color: Colors.grey.shade700, fontSize: 13)),
+                                    color: SdColors.muted, fontSize: 13)),
                             Switch(
                               value: isActive,
-                              activeColor: Colors.green,
+                              activeColor: SdColors.success,
                               onChanged: (v) =>
                                   setDialogState(() => isActive = v),
                             ),
@@ -900,12 +891,12 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 child: Text('إلغاء',
-                    style: TextStyle(color: Colors.grey.shade600)),
+                    style: TextStyle(color: SdColors.muted)),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: SdColors.platformBase,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8)),
@@ -922,7 +913,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
     if (nameCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('اسم العميل مطلوب'), backgroundColor: Colors.orange),
+            content: Text('اسم العميل مطلوب'), backgroundColor: SdColors.warning),
       );
       return;
     }
@@ -947,7 +938,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(success ? 'تم التعديل بنجاح' : 'فشل التعديل'),
-          backgroundColor: success ? Colors.green : Colors.red,
+          backgroundColor: success ? SdColors.success : SdColors.danger,
         ),
       );
     } else {
@@ -956,7 +947,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('خطأ: لم يتم تحديد معرف الشركة'),
-              backgroundColor: Colors.red),
+              backgroundColor: SdColors.danger),
         );
         return;
       }
@@ -986,7 +977,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
           content: Text(created != null
               ? 'تم الإضافة بنجاح'
               : 'فشل الإضافة${createError != null ? ': $createError' : ''}'),
-          backgroundColor: created != null ? Colors.green : Colors.red,
+          backgroundColor: created != null ? SdColors.success : SdColors.danger,
         ),
       );
     }
@@ -1000,24 +991,24 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
     return TextField(
       controller: ctrl,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      style: const TextStyle(color: Color(0xFF1e293b), fontSize: 13),
+      style: const TextStyle(color: SdColors.ink, fontSize: 13),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-        prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 18),
+        labelStyle: TextStyle(color: SdColors.faint, fontSize: 13),
+        prefixIcon: Icon(icon, color: SdColors.faint, size: 18),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: SdColors.surfaceAlt,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: SdColors.divider),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: SdColors.divider),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.deepPurple, width: 1.5),
+          borderSide: const BorderSide(color: SdColors.platformBase, width: 1.5),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -1035,7 +1026,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('لا توجد بيانات محلية - قم بالمزامنة أولاً'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return null;
@@ -1055,7 +1046,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Text('اختيار مشترك FTTH',
                 style: TextStyle(
-                    color: Color(0xFF1e293b),
+                    color: SdColors.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.bold)),
             content: SizedBox(
@@ -1065,14 +1056,14 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                 children: [
                   TextField(
                     style:
-                        const TextStyle(color: Color(0xFF1e293b), fontSize: 13),
+                        const TextStyle(color: SdColors.ink, fontSize: 13),
                     decoration: InputDecoration(
                       hintText: 'بحث...',
-                      hintStyle: TextStyle(color: Colors.grey.shade400),
+                      hintStyle: TextStyle(color: SdColors.faint),
                       prefixIcon: Icon(Icons.search_rounded,
-                          color: Colors.grey.shade400, size: 18),
+                          color: SdColors.faint, size: 18),
                       filled: true,
-                      fillColor: const Color(0xFFF1F5F9),
+                      fillColor: SdColors.surfaceAlt,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide.none,
@@ -1107,11 +1098,11 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                               borderRadius: BorderRadius.circular(8)),
                           title: Text(s['display_name'] ?? '',
                               style: const TextStyle(
-                                  color: Color(0xFF1e293b), fontSize: 13)),
+                                  color: SdColors.ink, fontSize: 13)),
                           subtitle: Text(
                             '${s['phone'] ?? '-'} | ${s['zone_name'] ?? ''}',
                             style: TextStyle(
-                                color: Colors.grey.shade500, fontSize: 11),
+                                color: SdColors.faint, fontSize: 11),
                           ),
                           onTap: () => Navigator.pop(dlgCtx, s),
                         );
@@ -1125,7 +1116,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
               TextButton(
                 onPressed: () => Navigator.pop(dlgCtx),
                 child: Text('إلغاء',
-                    style: TextStyle(color: Colors.grey.shade600)),
+                    style: TextStyle(color: SdColors.muted)),
               ),
             ],
           ),

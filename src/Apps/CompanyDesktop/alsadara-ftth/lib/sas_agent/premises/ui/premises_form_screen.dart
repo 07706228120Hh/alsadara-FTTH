@@ -4,9 +4,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../../theme/app_theme.dart';
+import '../../../frontend/frontend.dart';
 import '../../services/sas_agent_api_service.dart';
 import '../../widgets/sas_state_views.dart';
 import '../models/premises.dart';
@@ -135,8 +134,8 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor,
+        content: Text(m, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+        backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -157,7 +156,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               _section('العنوان الوصفي', Icons.location_city_rounded,
-                  AppTheme.blueGradient),
+                  SdColors.blueGradient),
               const SizedBox(height: 10),
               _panel([
                 _dropdown(),
@@ -172,13 +171,13 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
               const SizedBox(height: 16),
 
               _section('الموقع الجغرافي (لتوليد رمز IQ-Pin)',
-                  Icons.my_location_rounded, AppTheme.greenGradient),
+                  Icons.my_location_rounded, SdColors.greenGradient),
               const SizedBox(height: 10),
               _panel([_locationRow()]),
               const SizedBox(height: 16),
 
               _section('التصنيف', Icons.category_rounded,
-                  AppTheme.orangeGradient),
+                  SdColors.orangeGradient),
               const SizedBox(height: 10),
               _panel([
                 _chipsLabel('نوع الملكية'),
@@ -192,7 +191,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
               const SizedBox(height: 16),
 
               _section('معلومات إضافية', Icons.contacts_rounded,
-                  AppTheme.blueGradient),
+                  SdColors.blueGradient),
               const SizedBox(height: 10),
               _panel([
                 _text(_phone, 'رقم الهاتف',
@@ -208,7 +207,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
               FilledButton.icon(
                 onPressed: _saving ? null : _save,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
+                  backgroundColor: SdColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 15),
                 ),
                 icon: _saving
@@ -221,7 +220,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
                         ? Icons.save_rounded
                         : Icons.check_circle_rounded),
                 label: Text(editing ? 'حفظ التعديلات' : 'إنشاء العقار',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontWeight: FontWeight.w800, fontSize: 15)),
               ),
             ],
@@ -233,21 +232,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
   }
 
   PreferredSizeWidget _appBar(bool editing) {
-    return AppBar(
-      elevation: 0,
-      backgroundColor: AppTheme.primaryColor,
-      flexibleSpace: const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: AppTheme.blueGradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-      ),
-      title: Text(editing ? 'تعديل عقار' : 'عقار جديد',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 17)),
-    );
+    return SdAppBar(title: editing ? 'تعديل عقار' : 'عقار جديد');
   }
 
   Widget _section(String title, IconData icon, List<Color> gradient) =>
@@ -266,19 +251,19 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
     return DropdownButtonFormField<String>(
       initialValue: _gov,
       isExpanded: true,
-      style: GoogleFonts.cairo(
+      style: TextStyle(fontFamily: 'Cairo', 
           fontWeight: FontWeight.w600, color: const Color(0xFF1A1A2E)),
       decoration: InputDecoration(
         labelText: 'المحافظة',
-        labelStyle: GoogleFonts.cairo(),
+        labelStyle: TextStyle(fontFamily: 'Cairo', ),
         prefixIcon:
-            const Icon(Icons.location_on_rounded, color: AppTheme.primaryColor),
+            const Icon(Icons.location_on_rounded, color: SdColors.primary),
         isDense: true,
       ),
       items: [
         for (final g in _governorates)
           DropdownMenuItem(
-              value: g, child: Text(g, style: GoogleFonts.cairo())),
+              value: g, child: Text(g, style: TextStyle(fontFamily: 'Cairo', ))),
       ],
       onChanged: (v) => setState(() => _gov = v ?? _gov),
     );
@@ -292,14 +277,14 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
         Row(
           children: [
             Icon(hasLoc ? Icons.place_rounded : Icons.location_off_rounded,
-                color: hasLoc ? AppTheme.successColor : Colors.grey),
+                color: hasLoc ? SdColors.success : Colors.grey),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 hasLoc
                     ? '${_lat!.toStringAsFixed(5)}, ${_lon!.toStringAsFixed(5)}'
                     : 'لم يُحدَّد الموقع بعد',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w700,
                     color: hasLoc ? const Color(0xFF1A1A2E) : Colors.grey[600]),
               ),
@@ -307,7 +292,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
             FilledButton.icon(
               onPressed: _locating ? null : _useMyLocation,
               style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.successColor),
+                  backgroundColor: SdColors.success),
               icon: _locating
                   ? const SizedBox(
                       width: 16,
@@ -316,7 +301,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
                           strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.my_location_rounded, size: 18),
               label: Text('موقعي',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -329,11 +314,11 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
                 _lon = null;
               }),
               icon: const Icon(Icons.clear_rounded,
-                  size: 16, color: AppTheme.errorColor),
+                  size: 16, color: SdColors.danger),
               label: Text('مسح الموقع',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.errorColor)),
+                      color: SdColors.danger)),
             ),
           ),
       ],
@@ -343,7 +328,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
   Widget _chipsLabel(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(t,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
                 color: Colors.grey[700])),
@@ -358,7 +343,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
         for (final e in options.entries)
           ChoiceChip(
             label: Text(e.value,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w700,
                     fontSize: 12.5,
                     color: value == e.key
@@ -367,10 +352,10 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
             selected: value == e.key,
             showCheckmark: false,
             backgroundColor: Colors.white,
-            selectedColor: AppTheme.primaryColor,
+            selectedColor: SdColors.primary,
             side: BorderSide(
                 color: value == e.key
-                    ? AppTheme.primaryColor
+                    ? SdColors.primary
                     : Colors.grey.withValues(alpha: 0.25)),
             onSelected: (_) => onSet(e.key),
           ),
@@ -392,16 +377,16 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
         controller: c,
         maxLines: maxLines,
         keyboardType: keyboard,
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         validator: requiredField
             ? (v) => (v == null || v.trim().isEmpty) ? 'حقل مطلوب' : null
             : null,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: GoogleFonts.cairo(),
+          labelStyle: TextStyle(fontFamily: 'Cairo', ),
           prefixIcon: icon == null
               ? null
-              : Icon(icon, color: AppTheme.primaryColor, size: 20),
+              : Icon(icon, color: SdColors.primary, size: 20),
           isDense: true,
         ),
       ),

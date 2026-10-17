@@ -4,10 +4,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../permissions/permission_manager.dart';
-import '../../../theme/app_theme.dart';
+import '../../../frontend/frontend.dart';
 import '../../services/sas_agent_api_service.dart';
 import '../../widgets/sas_metrics.dart';
 import '../../widgets/sas_state_views.dart';
@@ -106,75 +105,42 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: _appBar(),
-        floatingActionButton: _canManage
-            ? FloatingActionButton.extended(
-                onPressed: _add,
-                backgroundColor: AppTheme.primaryColor,
-                icon: const Icon(Icons.add_home_work_rounded),
-                label: Text('عقار جديد',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
-              )
-            : null,
-        body: SasContentWrap(
-          maxWidth: 1000,
-          child: Column(
-            children: [
-              _searchBar(),
-              _filters(),
-              Expanded(child: _list()),
-            ],
-          ),
+    return SdPage(
+      maxWidth: 1000,
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: _appBar(),
+      floatingActionButton: _canManage
+          ? FloatingActionButton.extended(
+              onPressed: _add,
+              backgroundColor: SdColors.primary,
+              icon: const Icon(Icons.add_home_work_rounded),
+              label: Text('عقار جديد',
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
+            )
+          : null,
+      body: SasContentWrap(
+        maxWidth: 1000,
+        child: Column(
+          children: [
+            _searchBar(),
+            _filters(),
+            Expanded(child: _list()),
+          ],
         ),
       ),
     );
   }
 
   PreferredSizeWidget _appBar() {
-    return AppBar(
-      elevation: 0,
-      toolbarHeight: 62,
-      backgroundColor: AppTheme.primaryColor,
-      flexibleSpace: const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: AppTheme.blueGradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-      ),
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
-            ),
-            child: const Icon(Icons.maps_home_work_rounded,
-                size: 19, color: Colors.white),
-          ),
-          const SizedBox(width: 10),
-          Text('العقارات',
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800, fontSize: 17)),
-        ],
-      ),
+    return SdAppBar(
+      title: 'العقارات',
       actions: [
-        IconButton(
-          tooltip: 'تحديث',
+        SdAppBarAction(
+          icon: Icons.refresh_rounded,
+          label: 'تحديث',
           onPressed: _loading ? null : () => _load(page: _page),
-          icon: const Icon(Icons.refresh_rounded, color: Colors.white),
         ),
-        const SizedBox(width: 4),
       ],
     );
   }
@@ -186,15 +152,15 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
         controller: _q,
         textInputAction: TextInputAction.search,
         onSubmitted: (_) => _load(),
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           hintText: 'بحث: رقم وطني / هاتف / مالك / عنوان',
-          hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
+          hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[500]),
           prefixIcon:
-              const Icon(Icons.search_rounded, color: AppTheme.primaryColor),
+              const Icon(Icons.search_rounded, color: SdColors.primary),
           suffixIcon: IconButton(
             icon: const Icon(Icons.arrow_back_rounded,
-                color: AppTheme.primaryColor),
+                color: SdColors.primary),
             onPressed: () => _load(),
           ),
           isDense: true,
@@ -233,7 +199,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
       padding: const EdgeInsets.only(left: 8),
       child: ChoiceChip(
         label: Text(label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontWeight: FontWeight.w700,
                 fontSize: 12.5,
                 color: selected ? Colors.white : const Color(0xFF475569))),
@@ -241,10 +207,10 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
         onSelected: (_) => onTap(),
         showCheckmark: false,
         backgroundColor: Colors.white,
-        selectedColor: AppTheme.primaryColor,
+        selectedColor: SdColors.primary,
         side: BorderSide(
             color: selected
-                ? AppTheme.primaryColor
+                ? SdColors.primary
                 : Colors.grey.withValues(alpha: 0.25)),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusPill)),
@@ -267,13 +233,13 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
             ? FilledButton.icon(
                 onPressed: _add,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
+                  backgroundColor: SdColors.primary,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                 ),
                 icon: const Icon(Icons.add_home_work_rounded),
                 label: Text('عقار جديد',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
               )
             : null,
       );
@@ -300,18 +266,18 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
             onPressed: _page > 1 ? () => _load(page: _page - 1) : null,
             icon: const Icon(Icons.chevron_right_rounded),
             label: Text('السابق',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
           const SizedBox(width: 12),
           Text('صفحة $_page',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontWeight: FontWeight.w800, color: Colors.grey[700])),
           const SizedBox(width: 12),
           OutlinedButton.icon(
             onPressed: _hasMore ? () => _load(page: _page + 1) : null,
             icon: const Icon(Icons.chevron_left_rounded),
             label: Text('التالي',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -320,7 +286,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
 
   Widget _card(Premises p) {
     final commercial = p.propertyType == 'commercial';
-    final tint = commercial ? AppTheme.warningColor : AppTheme.primaryColor;
+    final tint = commercial ? SdColors.warning : SdColors.primary;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -336,8 +302,8 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
                     ? Icons.storefront_rounded
                     : Icons.home_rounded,
                 colors: commercial
-                    ? AppTheme.orangeGradient
-                    : AppTheme.blueGradient,
+                    ? SdColors.orangeGradient
+                    : SdColors.blueGradient,
                 size: 46,
                 iconSize: 23,
               ),
@@ -351,7 +317,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
                       p.npnDisplay.isEmpty ? 'عقار #${p.id}' : p.npnDisplay,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
                           color: const Color(0xFF1A1A2E)),
@@ -361,7 +327,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
                       Text(p.shortAddress,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 12, color: Colors.grey[600])),
                     ],
                     const SizedBox(height: 6),
@@ -371,9 +337,9 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
                       children: [
                         _tag(propertyLabel(p.propertyType), tint),
                         _tag(ownershipLabel(p.ownership),
-                            AppTheme.successColor),
+                            SdColors.success),
                         _tag('${p.subscriberCount} اشتراك',
-                            AppTheme.secondaryColor),
+                            SdColors.primaryLight),
                         if (p.phone.trim().isNotEmpty)
                           _tag(p.phone, Colors.blueGrey),
                       ],
@@ -397,7 +363,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
           border: Border.all(color: c.withValues(alpha: 0.22)),
         ),
         child: Text(t,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 color: c, fontWeight: FontWeight.w700, fontSize: 11)),
       );
 }

@@ -4,10 +4,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/vps_auth_service.dart';
 import '../../services/custom_auth_service.dart';
 import '../../config/data_source_config.dart';
-import '../../theme/energy_dashboard_theme.dart';
 
 class AccountInfoPage extends StatefulWidget {
   const AccountInfoPage({super.key});
@@ -184,191 +184,163 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   @override
   Widget build(BuildContext context) {
     if (!_isLoggedIn) {
-      return Scaffold(
-        backgroundColor: EnergyDashboardTheme.backgroundColor,
-        appBar: AppBar(
-          title: const Text('حسابي'),
-          backgroundColor: EnergyDashboardTheme.surfaceColor,
-          foregroundColor: EnergyDashboardTheme.textPrimary,
-          elevation: 0,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.account_circle_outlined,
-                size: 80,
-                color: EnergyDashboardTheme.textMuted.withOpacity(0.5),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'لم يتم تسجيل الدخول بعد',
-                style: TextStyle(
-                    color: EnergyDashboardTheme.textMuted, fontSize: 18),
-              ),
-            ],
-          ),
+      return SdPage(
+        appBar: const SdAppBar(title: 'حسابي'),
+        body: const SdEmptyState(
+          icon: Icons.account_circle_outlined,
+          title: 'لم يتم تسجيل الدخول بعد',
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: EnergyDashboardTheme.backgroundColor,
-      appBar: AppBar(
-        title: const Text('معلومات الحساب'),
-        backgroundColor: EnergyDashboardTheme.surfaceColor,
-        foregroundColor: EnergyDashboardTheme.textPrimary,
-        elevation: 0,
+    final isPhone = context.sd.isPhone;
+    final leftColumn = Column(
+      children: [
+        _buildInfoCard(
+          title: 'معلومات الحساب',
+          icon: Icons.person,
+          tone: SdStatus.info.tone,
+          items: [
+            _InfoItem('معرف الحساب', _userId, Icons.fingerprint),
+            _InfoItem('اسم المستخدم', _username, Icons.account_circle),
+            _InfoItem('الاسم الكامل', _fullName, Icons.badge),
+            if (_email.isNotEmpty)
+              _InfoItem('البريد الإلكتروني', _email, Icons.email),
+            if (_phone.isNotEmpty) _InfoItem('رقم الهاتف', _phone, Icons.phone),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildInfoCard(
+          title: 'الصلاحيات والدور',
+          icon: Icons.security,
+          tone: SdGroup.platform.tone,
+          items: [
+            _InfoItem('الدور', _role, Icons.admin_panel_settings),
+            _InfoItem('الحالة', _isActive ? 'نشط' : 'غير نشط',
+                _isActive ? Icons.check_circle : Icons.cancel),
+            if (_isSuperAdmin)
+              _InfoItem('نوع الحساب', 'مدير النظام الرئيسي', Icons.shield),
+          ],
+        ),
+      ],
+    );
+    final rightColumn = Column(
+      children: [
+        _buildInfoCard(
+          title: 'معلومات الجلسة',
+          icon: Icons.vpn_key,
+          tone: SdStatus.warning.tone,
+          items: [
+            if (_lastLogin != null)
+              _InfoItem('آخر دخول', _formatDateTime(_lastLogin!), Icons.login),
+            if (_tokenExpiry != null)
+              _InfoItem(
+                  'انتهاء الجلسة', _formatDateTime(_tokenExpiry!), Icons.timer),
+            _InfoItem('حالة الجلسة', _token.isNotEmpty ? 'نشطة' : 'غير نشطة',
+                Icons.wifi),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (_token.isNotEmpty) _buildTokenCard(),
+      ],
+    );
+
+    return SdPage(
+      appBar: SdAppBar(
+        title: 'معلومات الحساب',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
             onPressed: _loadUserData,
-            tooltip: 'تحديث',
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_errorMessage != null) _buildMessageBox(_errorMessage!, true),
-            if (_successMessage != null)
-              _buildMessageBox(_successMessage!, false),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_errorMessage != null) _buildMessageBox(_errorMessage!, true),
+          if (_successMessage != null) _buildMessageBox(_successMessage!, false),
 
-            // بطاقة المعلومات الرئيسية
-            _buildProfileCard(),
+          // بطاقة المعلومات الرئيسية
+          _buildProfileCard(),
 
+          const SizedBox(height: 16),
+
+          // بطاقات المعلومات
+          if (isPhone) ...[
+            leftColumn,
             const SizedBox(height: 16),
-
-            // بطاقات المعلومات
+            rightColumn,
+          ] else
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildInfoCard(
-                        title: 'معلومات الحساب',
-                        icon: Icons.person,
-                        color: Colors.blue,
-                        items: [
-                          _InfoItem('معرف الحساب', _userId, Icons.fingerprint),
-                          _InfoItem(
-                              'اسم المستخدم', _username, Icons.account_circle),
-                          _InfoItem('الاسم الكامل', _fullName, Icons.badge),
-                          if (_email.isNotEmpty)
-                            _InfoItem('البريد الإلكتروني', _email, Icons.email),
-                          if (_phone.isNotEmpty)
-                            _InfoItem('رقم الهاتف', _phone, Icons.phone),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _buildInfoCard(
-                        title: 'الصلاحيات والدور',
-                        icon: Icons.security,
-                        color: Colors.purple,
-                        items: [
-                          _InfoItem('الدور', _role, Icons.admin_panel_settings),
-                          _InfoItem('الحالة', _isActive ? 'نشط' : 'غير نشط',
-                              _isActive ? Icons.check_circle : Icons.cancel),
-                          if (_isSuperAdmin)
-                            _InfoItem('نوع الحساب', 'مدير النظام الرئيسي',
-                                Icons.shield),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                Expanded(child: leftColumn),
                 const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildInfoCard(
-                        title: 'معلومات الجلسة',
-                        icon: Icons.vpn_key,
-                        color: Colors.orange,
-                        items: [
-                          if (_lastLogin != null)
-                            _InfoItem('آخر دخول', _formatDateTime(_lastLogin!),
-                                Icons.login),
-                          if (_tokenExpiry != null)
-                            _InfoItem('انتهاء الجلسة',
-                                _formatDateTime(_tokenExpiry!), Icons.timer),
-                          _InfoItem(
-                              'حالة الجلسة',
-                              _token.isNotEmpty ? 'نشطة' : 'غير نشطة',
-                              Icons.wifi),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      if (_token.isNotEmpty) _buildTokenCard(),
-                    ],
-                  ),
-                ),
+                Expanded(child: rightColumn),
               ],
             ),
 
-            const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-            if (!_isSuperAdmin && _permissions.isNotEmpty)
-              _buildPermissionsCard(),
+          if (!_isSuperAdmin && _permissions.isNotEmpty) _buildPermissionsCard(),
 
-            const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-            // قسم التعديل - فقط للموظفين وليس لـ SuperAdmin
-            if (!_isSuperAdmin) _buildEditCard(),
+          // قسم التعديل - فقط للموظفين وليس لـ SuperAdmin
+          if (!_isSuperAdmin) _buildEditCard(),
 
-            // ملاحظة للـ SuperAdmin
-            if (_isSuperAdmin)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'لتعديل بيانات مدير النظام، استخدم صفحة إدارة قاعدة البيانات',
-                        style: TextStyle(color: Colors.orange, fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
+          // ملاحظة للـ SuperAdmin
+          if (_isSuperAdmin)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: SdColors.warningTint,
+                borderRadius: BorderRadius.circular(SdRadius.sm),
+                border: Border.all(color: SdColors.warningTintEdge),
               ),
-          ],
-        ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline,
+                      color: SdColors.warning, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'لتعديل بيانات مدير النظام، استخدم صفحة إدارة قاعدة البيانات',
+                      style: SdText.bodySm
+                          .copyWith(color: SdColors.warningText, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
 
   Widget _buildProfileCard() {
+    final gradient = _isSuperAdmin
+        ? const LinearGradient(
+            colors: [Color(0xFF7B1FA2), Color(0xFF4A148C)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : const LinearGradient(
+            colors: [SdColors.primaryMid, SdColors.primary],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: _isSuperAdmin
-              ? [Colors.purple.shade700, Colors.deepPurple.shade900]
-              : [
-                  EnergyDashboardTheme.primaryColor,
-                  EnergyDashboardTheme.accentColor
-                ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(SdRadius.md),
         boxShadow: [
           BoxShadow(
-            color: (_isSuperAdmin
-                    ? Colors.purple
-                    : EnergyDashboardTheme.primaryColor)
-                .withOpacity(0.3),
+            color: (_isSuperAdmin ? const Color(0xFF4A148C) : SdColors.primary)
+                .withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -380,8 +352,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(SdRadius.md),
             ),
             child: Icon(
               _isSuperAdmin ? Icons.admin_panel_settings : Icons.person,
@@ -397,24 +369,27 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                 Text(
                   _fullName.isNotEmpty ? _fullName : _username,
                   style: const TextStyle(
+                    fontFamily: SdText.family,
                     color: Colors.white,
                     fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '@$_username',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.8), fontSize: 14),
+                      fontFamily: SdText.family,
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 14),
                 ),
                 const SizedBox(height: 8),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(SdRadius.lg),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -424,9 +399,10 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                       const SizedBox(width: 6),
                       Text(_role,
                           style: const TextStyle(
+                              fontFamily: SdText.family,
                               color: Colors.white,
                               fontSize: 12,
-                              fontWeight: FontWeight.bold)),
+                              fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),
@@ -438,8 +414,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(SdRadius.sm),
                 ),
                 child: Icon(_isActive ? Icons.verified : Icons.warning,
                     color: Colors.white, size: 24),
@@ -447,7 +423,9 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               const SizedBox(height: 4),
               Text(_isActive ? 'نشط' : 'معطل',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.9), fontSize: 12)),
+                      fontFamily: SdText.family,
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 12)),
             ],
           ),
         ],
@@ -458,37 +436,16 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   Widget _buildInfoCard({
     required String title,
     required IconData icon,
-    required Color color,
+    required SdTone tone,
     required List<_InfoItem> items,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: EnergyDashboardTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
-      ),
+    return SdCard(
+      title: title,
+      icon: icon,
+      tone: tone,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, color: color, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Text(title,
-                  style: const TextStyle(
-                      color: EnergyDashboardTheme.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const Divider(height: 20),
           ...items.map((item) => _buildInfoRow(item)),
         ],
       ),
@@ -500,27 +457,22 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(item.icon, color: EnergyDashboardTheme.textMuted, size: 16),
+          Icon(item.icon, color: SdColors.faint, size: 16),
           const SizedBox(width: 10),
-          Text('${item.label}:',
-              style: const TextStyle(
-                  color: EnergyDashboardTheme.textMuted, fontSize: 12)),
+          Text('${item.label}:', style: SdText.caption),
           const SizedBox(width: 8),
           Expanded(
             child: SelectableText(
               item.value.isNotEmpty ? item.value : 'غير محدد',
-              style: TextStyle(
-                color: item.value.isNotEmpty
-                    ? EnergyDashboardTheme.textPrimary
-                    : EnergyDashboardTheme.textMuted,
+              style: SdText.label.copyWith(
+                color: item.value.isNotEmpty ? SdColors.ink : SdColors.muted,
                 fontSize: 13,
-                fontWeight: FontWeight.w500,
               ),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.copy, size: 14),
-            color: EnergyDashboardTheme.textMuted,
+            color: SdColors.faint,
             onPressed: () {
               Clipboard.setData(ClipboardData(text: item.value));
               ScaffoldMessenger.of(context).showSnackBar(
@@ -541,157 +493,74 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   Widget _buildTokenCard() {
     final shortToken =
         _token.length > 50 ? '${_token.substring(0, 50)}...' : _token;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: EnergyDashboardTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+    return SdCard(
+      title: 'رمز الجلسة (Token)',
+      icon: Icons.key,
+      tone: SdStatus.success.tone,
+      trailing: IconButton(
+        icon: const Icon(Icons.copy, size: 18),
+        color: SdColors.faint,
+        onPressed: () {
+          Clipboard.setData(ClipboardData(text: _token));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('تم نسخ Token'),
+                duration: Duration(seconds: 1)),
+          );
+        },
+        tooltip: 'نسخ Token كامل',
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.key, color: Colors.green, size: 18),
-              ),
-              const SizedBox(width: 10),
-              const Text('رمز الجلسة (Token)',
-                  style: TextStyle(
-                      color: EnergyDashboardTheme.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold)),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.copy, size: 18),
-                color: EnergyDashboardTheme.textMuted,
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: _token));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('تم نسخ Token'),
-                        duration: Duration(seconds: 1)),
-                  );
-                },
-                tooltip: 'نسخ Token كامل',
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-                color: EnergyDashboardTheme.backgroundColor,
-                borderRadius: BorderRadius.circular(8)),
-            child: SelectableText(shortToken,
-                style: const TextStyle(
-                    color: EnergyDashboardTheme.textMuted,
-                    fontSize: 11,
-                    fontFamily: 'monospace')),
-          ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: SdColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(SdRadius.xs)),
+        child: SelectableText(shortToken,
+            style: SdText.mono.copyWith(fontSize: 11.5)),
       ),
     );
   }
 
   Widget _buildPermissionsCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: EnergyDashboardTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+    return SdCard(
+      title: 'الصلاحيات الممنوحة',
+      icon: Icons.list_alt,
+      tone: SdGroup.field.tone,
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+            color: SdColors.accentTint,
+            borderRadius: BorderRadius.circular(SdRadius.sm)),
+        child: Text('${_permissions.length}',
+            style: SdText.caption.copyWith(color: SdColors.accentEdge)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.list_alt, color: Colors.teal, size: 18),
-              ),
-              const SizedBox(width: 10),
-              const Text('الصلاحيات الممنوحة',
-                  style: TextStyle(
-                      color: EnergyDashboardTheme.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12)),
-                child: Text('${_permissions.length}',
-                    style: const TextStyle(
-                        color: Colors.teal,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _permissions.map((permission) {
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: EnergyDashboardTheme.borderColor),
-                ),
-                child: Text(permission,
-                    style: const TextStyle(
-                        color: EnergyDashboardTheme.textPrimary, fontSize: 11)),
-              );
-            }).toList(),
-          ),
-        ],
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _permissions.map((permission) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: SdColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(SdRadius.xs),
+              border: Border.all(color: SdColors.divider),
+            ),
+            child: Text(permission,
+                style: SdText.caption.copyWith(color: SdColors.ink)),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildEditCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: EnergyDashboardTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
-      ),
+    return SdCard(
+      title: 'تعديل البيانات',
+      icon: Icons.edit,
+      tone: SdGroup.admin.tone,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: Colors.indigo.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.edit, color: Colors.indigo, size: 18),
-              ),
-              const SizedBox(width: 10),
-              const Text('تعديل البيانات',
-                  style: TextStyle(
-                      color: EnergyDashboardTheme.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const Divider(height: 24),
           _buildEditableField(
               controller: _usernameController,
               label: 'اسم المستخدم',
@@ -701,24 +570,19 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isSaving ? null : _saveChanges,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.save, size: 18),
-              label: Text(_isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: EnergyDashboardTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
+            child: _isSaving
+                ? const SdButton(
+                    label: 'جاري الحفظ...',
+                    icon: Icons.hourglass_top,
+                    onPressed: null,
+                    expand: true,
+                  )
+                : SdButton(
+                    label: 'حفظ التغييرات',
+                    icon: Icons.save,
+                    expand: true,
+                    onPressed: _saveChanges,
+                  ),
           ),
         ],
       ),
@@ -726,28 +590,25 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   }
 
   Widget _buildMessageBox(String message, bool isError) {
+    final tone = (isError ? SdStatus.danger : SdStatus.success).tone;
     return Container(
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: (isError ? Colors.red : Colors.green).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-            color: (isError ? Colors.red : Colors.green).withOpacity(0.3)),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        border: Border.all(color: tone.tintEdge),
       ),
       child: Row(
         children: [
           Icon(isError ? Icons.error_outline : Icons.check_circle_outline,
-              color: isError ? Colors.red : Colors.green, size: 20),
+              color: tone.base, size: 20),
           const SizedBox(width: 10),
           Expanded(
               child: Text(message,
-                  style: TextStyle(
-                      color: isError ? Colors.red : Colors.green,
-                      fontSize: 13))),
+                  style: SdText.bodySm.copyWith(color: tone.text, fontSize: 13))),
           IconButton(
-            icon: Icon(Icons.close,
-                color: isError ? Colors.red : Colors.green, size: 18),
+            icon: Icon(Icons.close, color: tone.base, size: 18),
             onPressed: () => setState(() {
               if (isError) {
                 _errorMessage = null;
@@ -770,33 +631,26 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-                color: EnergyDashboardTheme.textMuted, fontSize: 12)),
+        Text(label, style: SdText.caption),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
-          style: const TextStyle(
-              color: EnergyDashboardTheme.textPrimary, fontSize: 14),
+          style: SdText.label.copyWith(fontSize: 14),
           decoration: InputDecoration(
-            prefixIcon:
-                Icon(icon, color: EnergyDashboardTheme.textMuted, size: 20),
+            prefixIcon: Icon(icon, color: SdColors.faint, size: 20),
             filled: true,
-            fillColor: EnergyDashboardTheme.backgroundColor,
+            fillColor: SdColors.surfaceAlt,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: EnergyDashboardTheme.borderColor)),
+                borderRadius: BorderRadius.circular(SdRadius.xs),
+                borderSide: const BorderSide(color: SdColors.divider)),
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: EnergyDashboardTheme.borderColor)),
+                borderRadius: BorderRadius.circular(SdRadius.xs),
+                borderSide: const BorderSide(color: SdColors.divider)),
             focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: EnergyDashboardTheme.primaryColor)),
+                borderRadius: BorderRadius.circular(SdRadius.xs),
+                borderSide: const BorderSide(color: SdColors.primary)),
           ),
         ),
       ],
@@ -807,44 +661,36 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('كلمة المرور الجديدة',
-            style:
-                TextStyle(color: EnergyDashboardTheme.textMuted, fontSize: 12)),
+        Text('كلمة المرور الجديدة', style: SdText.caption),
         const SizedBox(height: 6),
         TextField(
           controller: _passwordController,
           obscureText: !_showPassword,
-          style: const TextStyle(
-              color: EnergyDashboardTheme.textPrimary, fontSize: 14),
+          style: SdText.label.copyWith(fontSize: 14),
           decoration: InputDecoration(
             hintText: 'اتركه فارغاً لعدم التغيير',
-            hintStyle: const TextStyle(
-                color: EnergyDashboardTheme.textMuted, fontSize: 12),
-            prefixIcon: const Icon(Icons.lock,
-                color: EnergyDashboardTheme.textMuted, size: 20),
+            hintStyle: SdText.caption,
+            prefixIcon: const Icon(Icons.lock, color: SdColors.faint, size: 20),
             suffixIcon: IconButton(
               icon: Icon(
                   _showPassword ? Icons.visibility : Icons.visibility_off,
-                  color: EnergyDashboardTheme.textMuted,
+                  color: SdColors.faint,
                   size: 20),
               onPressed: () => setState(() => _showPassword = !_showPassword),
             ),
             filled: true,
-            fillColor: EnergyDashboardTheme.backgroundColor,
+            fillColor: SdColors.surfaceAlt,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: EnergyDashboardTheme.borderColor)),
+                borderRadius: BorderRadius.circular(SdRadius.xs),
+                borderSide: const BorderSide(color: SdColors.divider)),
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: EnergyDashboardTheme.borderColor)),
+                borderRadius: BorderRadius.circular(SdRadius.xs),
+                borderSide: const BorderSide(color: SdColors.divider)),
             focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: EnergyDashboardTheme.primaryColor)),
+                borderRadius: BorderRadius.circular(SdRadius.xs),
+                borderSide: const BorderSide(color: SdColors.primary)),
           ),
         ),
       ],

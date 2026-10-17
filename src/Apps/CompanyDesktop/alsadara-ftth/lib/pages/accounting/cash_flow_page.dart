@@ -6,6 +6,7 @@ import '../../services/accounting_export_service.dart';
 import '../../services/accounting_pdf_export_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة التدفقات النقدية - Cash Flow Statement
 class CashFlowPage extends StatefulWidget {
@@ -182,203 +183,104 @@ class _CashFlowPageState extends State<CashFlowPage> {
   @override
   Widget build(BuildContext context) {
     final ar = context.accR;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF5F6FA),
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(ar),
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
-                    : _errorMessage != null
-                        ? AccountingTheme.errorView(_errorMessage!, _loadData)
-                        : _buildContent(ar),
-              ),
-            ],
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'التدفقات النقدية',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.file_download_outlined,
+            label: 'تصدير Excel',
+            onPressed: _isLoading ? null : _exportReport,
           ),
-        ),
+          SdAppBarAction(
+            icon: Icons.picture_as_pdf,
+            label: 'تصدير PDF',
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    await AccountingPdfExportService.exportCashFlow(
+                      operating: _operatingItems,
+                      investing: _investingItems,
+                      financing: _financingItems,
+                      totalOperating: _totalOperating,
+                      totalInvesting: _totalInvesting,
+                      totalFinancing: _totalFinancing,
+                    );
+                  },
+          ),
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loadData,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildDateBar(ar),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: AccountingTheme.neonGreen))
+                : _errorMessage != null
+                    ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                    : _buildContent(ar),
+          ),
+        ],
       ),
     );
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // شريط الأدوات
+  // شريط فلتر التاريخ (نُقل من شريط الأدوات القديم — نفس المنطق)
   // ═══════════════════════════════════════════════════════════════
 
-  Widget _buildToolbar(AccountingResponsive ar) {
+  Widget _buildDateBar(AccountingResponsive ar) {
     final isMob = ar.isMobile;
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
+          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceS),
       decoration: const BoxDecoration(
         color: AccountingTheme.bgCard,
         border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: Icon(Icons.arrow_forward_rounded, size: isMob ? 20 : 24),
-                tooltip: 'رجوع',
-                style: IconButton.styleFrom(
-                    foregroundColor: AccountingTheme.textSecondary),
+          InkWell(
+            onTap: () => _pickDateRange(context),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: isMob ? 6 : 10, vertical: isMob ? 3 : 5),
+              decoration: BoxDecoration(
+                color: AccountingTheme.bgSecondary,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AccountingTheme.borderColor),
               ),
-              SizedBox(width: isMob ? 4 : ar.spaceS),
-              Container(
-                padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF00BCD4), Color(0xFF0097A7)],
-                  ),
-                  borderRadius: BorderRadius.circular(isMob ? 6 : 8),
-                ),
-                child: Icon(Icons.waterfall_chart_rounded,
-                    color: Colors.white, size: isMob ? 16 : ar.iconM),
-              ),
-              SizedBox(width: isMob ? 6 : ar.spaceM),
-              Expanded(
-                child: Text('التدفقات النقدية',
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
-                      fontSize: isMob ? 14 : ar.headingMedium,
-                      fontWeight: FontWeight.bold,
-                      color: AccountingTheme.textPrimary,
-                    )),
-              ),
-              if (!isMob) ...[
-                // فلتر التاريخ
-                InkWell(
-                  onTap: () => _pickDateRange(context),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AccountingTheme.bgSecondary,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AccountingTheme.borderColor),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.calendar_month,
-                            size: 16, color: AccountingTheme.neonBlue),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${_dateFmt.format(_dateFrom)} - ${_dateFmt.format(_dateTo)}',
-                          style: GoogleFonts.cairo(
-                              fontSize: ar.small,
-                              color: AccountingTheme.textSecondary),
-                        ),
-                      ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.calendar_month,
+                      size: isMob ? 12 : 16, color: AccountingTheme.neonBlue),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      '${_dateFmt.format(_dateFrom)} - ${_dateFmt.format(_dateTo)}',
+                      style: GoogleFonts.cairo(
+                          fontSize: isMob ? 9 : ar.small,
+                          color: AccountingTheme.textSecondary),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              // تصدير
-              IconButton(
-                onPressed: _isLoading ? null : _exportReport,
-                icon: Icon(Icons.file_download_outlined, size: isMob ? 18 : 22),
-                tooltip: 'تصدير Excel',
-                style: IconButton.styleFrom(
-                    foregroundColor: AccountingTheme.neonGreen),
+                ],
               ),
-              if (!isMob)
-                IconButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () async {
-                          await AccountingPdfExportService.exportCashFlow(
-                            operating: _operatingItems,
-                            investing: _investingItems,
-                            financing: _financingItems,
-                            totalOperating: _totalOperating,
-                            totalInvesting: _totalInvesting,
-                            totalFinancing: _totalFinancing,
-                          );
-                        },
-                  icon: const Icon(Icons.picture_as_pdf),
-                  tooltip: 'تصدير PDF',
-                  style: IconButton.styleFrom(
-                      foregroundColor: AccountingTheme.textSecondary),
-                ),
-              // تحديث
-              IconButton(
-                onPressed: _loadData,
-                icon: Icon(Icons.refresh_rounded, size: isMob ? 18 : 22),
-                tooltip: 'تحديث',
-                style: IconButton.styleFrom(
-                    foregroundColor: AccountingTheme.neonBlue),
-              ),
-            ],
-          ),
-          if (isMob) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => _pickDateRange(context),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AccountingTheme.bgSecondary,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AccountingTheme.borderColor),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.calendar_month,
-                              size: 12, color: AccountingTheme.neonBlue),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              '${_dateFmt.format(_dateFrom)} - ${_dateFmt.format(_dateTo)}',
-                              style: GoogleFonts.cairo(
-                                  fontSize: 9,
-                                  color: AccountingTheme.textSecondary),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () async {
-                          await AccountingPdfExportService.exportCashFlow(
-                            operating: _operatingItems,
-                            investing: _investingItems,
-                            financing: _financingItems,
-                            totalOperating: _totalOperating,
-                            totalInvesting: _totalInvesting,
-                            totalFinancing: _totalFinancing,
-                          );
-                        },
-                  icon: const Icon(Icons.picture_as_pdf, size: 18),
-                  tooltip: 'تصدير PDF',
-                  constraints:
-                      const BoxConstraints(minWidth: 32, minHeight: 32),
-                  padding: EdgeInsets.zero,
-                  style: IconButton.styleFrom(
-                      foregroundColor: AccountingTheme.textSecondary),
-                ),
-              ],
             ),
-          ],
+          ),
+          const Spacer(),
         ],
       ),
     );

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 
 /// نموذج إنشاء/تعديل مشترك ساس بثيم الصدارة.
@@ -221,9 +219,9 @@ class _SasSubscriberFormPageState extends State<SasSubscriberFormPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message,
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor:
-            isError ? AppTheme.errorColor : AppTheme.successColor,
+            style: const TextStyle(
+                fontFamily: SdText.family, fontWeight: FontWeight.w600)),
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -231,145 +229,112 @@ class _SasSubscriberFormPageState extends State<SasSubscriberFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          title: Text(
-            _isEdit ? 'تعديل المشترك' : 'مشترك جديد',
-            style: GoogleFonts.cairo(
-                fontWeight: FontWeight.w800, color: Colors.white),
-          ),
-          iconTheme: const IconThemeData(color: Colors.white),
-        ),
-        body: _loading
-            ? const SasLoadingView(message: 'جاري تحميل الباقات…')
-            : _loadError != null
-                ? SasErrorView(message: _loadError!, onRetry: _loadProfiles)
-                : _buildForm(),
-      ),
+    return SdPage(
+      maxWidth: SdSpace.formMax,
+      scrollable: false,
+      appBar: SdAppBar(title: _isEdit ? 'تعديل المشترك' : 'مشترك جديد'),
+      body: _loading
+          ? const SasLoadingView(message: 'جاري تحميل الباقات…')
+          : _loadError != null
+              ? SasErrorView(message: _loadError!, onRetry: _loadProfiles)
+              : _buildForm(),
     );
   }
 
   Widget _buildForm() {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: Form(
-          key: _form,
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 28.h),
-            children: [
-              _sectionCard(
-                title: 'بيانات الدخول',
-                icon: Icons.badge_rounded,
-                gradient: AppTheme.blueGradient,
-                children: [
-                  _field(_username, 'اسم المستخدم *',
-                      required: true, enabled: !_isEdit),
-                  _field(
-                    _password,
-                    _isEdit ? 'كلمة مرور جديدة (اختياري)' : 'كلمة المرور *',
-                    required: !_isEdit,
-                    obscure: _obscurePw,
-                    toggleObscure: () =>
-                        setState(() => _obscurePw = !_obscurePw),
-                  ),
-                  _field(
-                    _confirm,
-                    _isEdit ? 'تأكيد كلمة المرور' : 'تأكيد كلمة المرور *',
-                    required: !_isEdit,
-                    obscure: _obscureConfirm,
-                    toggleObscure: () =>
-                        setState(() => _obscureConfirm = !_obscureConfirm),
-                    validator: (v) {
-                      if (_password.text.isEmpty) return null;
-                      return v != _password.text ? 'غير مطابقة' : null;
-                    },
-                  ),
-                ],
-              ),
-              _sectionCard(
-                title: 'الاشتراك',
-                icon: Icons.wifi_rounded,
-                gradient: AppTheme.greenGradient,
-                children: [
-                  _profileDropdown(),
-                  _field(_sessions, 'عدد الجلسات المتزامنة',
-                      keyboard: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ]),
-                  _switchRow('مُفعَّل', _enabled,
-                      (v) => setState(() => _enabled = v)),
-                  _switchRow('تجديد تلقائي', _autoRenew,
-                      (v) => setState(() => _autoRenew = v)),
-                  _switchRow('مصادقة MAC', _macAuth,
-                      (v) => setState(() => _macAuth = v)),
-                ],
-              ),
-              _sectionCard(
-                title: 'البيانات الشخصية',
-                icon: Icons.person_rounded,
-                gradient: AppTheme.orangeGradient,
-                children: [
-                  _field(_firstname, 'الاسم الأول'),
-                  _field(_lastname, 'الاسم الأخير'),
-                  _field(_phone, 'الهاتف', keyboard: TextInputType.phone),
-                  _field(_email, 'البريد الإلكتروني',
-                      keyboard: TextInputType.emailAddress),
-                  _field(_nationalId, 'الهوية الوطنية'),
-                  _field(_contractId, 'رقم العقد'),
-                ],
-              ),
-              _sectionCard(
-                title: 'العنوان والشبكة',
-                icon: Icons.location_on_rounded,
-                gradient: const [Color(0xFF7B1FA2), Color(0xFF9C27B0)],
-                children: [
-                  _field(_city, 'المدينة'),
-                  _field(_address, 'العنوان'),
-                  _field(_staticIp, 'IP ثابت (اختياري)'),
-                  _field(_notes, 'ملاحظات', maxLines: 3),
-                ],
-              ),
-              SizedBox(height: 8.h),
-              _submitButton(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionCard({
-    required String title,
-    required IconData icon,
-    required List<Color> gradient,
-    required List<Widget> children,
-  }) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 14.h),
-      padding: EdgeInsets.all(14.w),
-      decoration: SasUi.card(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Form(
+      key: _form,
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          SasSectionHeader(title: title, icon: icon, gradient: gradient),
-          SizedBox(height: 10.h),
-          ...children,
+          SdCard(
+            title: 'بيانات الدخول',
+            icon: Icons.badge_rounded,
+            tone: SdGroup.admin.tone,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _field(_username, 'اسم المستخدم *',
+                    required: true, enabled: !_isEdit),
+                _field(
+                  _password,
+                  _isEdit ? 'كلمة مرور جديدة (اختياري)' : 'كلمة المرور *',
+                  required: !_isEdit,
+                  obscure: _obscurePw,
+                  toggleObscure: () =>
+                      setState(() => _obscurePw = !_obscurePw),
+                ),
+                _field(
+                  _confirm,
+                  _isEdit ? 'تأكيد كلمة المرور' : 'تأكيد كلمة المرور *',
+                  required: !_isEdit,
+                  obscure: _obscureConfirm,
+                  toggleObscure: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
+                  validator: (v) {
+                    if (_password.text.isEmpty) return null;
+                    return v != _password.text ? 'غير مطابقة' : null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: SdSpace.sm),
+          SdCard(
+            title: 'الاشتراك',
+            icon: Icons.wifi_rounded,
+            tone: SdGroup.field.tone,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _profileDropdown(),
+                _field(_sessions, 'عدد الجلسات المتزامنة',
+                    keyboard: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                _switchRow(
+                    'مُفعَّل', _enabled, (v) => setState(() => _enabled = v)),
+                _switchRow('تجديد تلقائي', _autoRenew,
+                    (v) => setState(() => _autoRenew = v)),
+                _switchRow('مصادقة MAC', _macAuth,
+                    (v) => setState(() => _macAuth = v)),
+              ],
+            ),
+          ),
+          const SizedBox(height: SdSpace.sm),
+          SdCard(
+            title: 'البيانات الشخصية',
+            icon: Icons.person_rounded,
+            tone: SdGroup.comms.tone,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _field(_firstname, 'الاسم الأول'),
+                _field(_lastname, 'الاسم الأخير'),
+                _field(_phone, 'الهاتف', keyboard: TextInputType.phone),
+                _field(_email, 'البريد الإلكتروني',
+                    keyboard: TextInputType.emailAddress),
+                _field(_nationalId, 'الهوية الوطنية'),
+                _field(_contractId, 'رقم العقد'),
+              ],
+            ),
+          ),
+          const SizedBox(height: SdSpace.sm),
+          SdCard(
+            title: 'العنوان والشبكة',
+            icon: Icons.location_on_rounded,
+            tone: SdGroup.platform.tone,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _field(_city, 'المدينة'),
+                _field(_address, 'العنوان'),
+                _field(_staticIp, 'IP ثابت (اختياري)'),
+                _field(_notes, 'ملاحظات', maxLines: 3),
+              ],
+            ),
+          ),
+          const SizedBox(height: SdSpace.md),
+          _submitButton(),
         ],
       ),
     );
@@ -387,8 +352,13 @@ class _SasSubscriberFormPageState extends State<SasSubscriberFormPage> {
     VoidCallback? toggleObscure,
     String? Function(String?)? validator,
   }) {
+    OutlineInputBorder border(Color color, [double width = 1.2]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: BorderSide(color: color, width: width),
+        );
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 6.h),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: TextFormField(
         controller: c,
         obscureText: obscure,
@@ -396,13 +366,17 @@ class _SasSubscriberFormPageState extends State<SasSubscriberFormPage> {
         maxLines: obscure ? 1 : maxLines,
         keyboardType: keyboard,
         inputFormatters: inputFormatters,
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontWeight: FontWeight.w600,
+            color: SdColors.ink),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: GoogleFonts.cairo(color: Colors.grey[600]),
+          labelStyle: const TextStyle(
+              fontFamily: SdText.family, color: SdColors.muted),
           isDense: true,
           filled: true,
-          fillColor: enabled ? Colors.white : Colors.grey.withValues(alpha: 0.06),
+          fillColor: enabled ? SdColors.surface : SdColors.surfaceAlt,
           suffixIcon: toggleObscure == null
               ? null
               : IconButton(
@@ -411,23 +385,13 @@ class _SasSubscriberFormPageState extends State<SasSubscriberFormPage> {
                         ? Icons.visibility_off_rounded
                         : Icons.visibility_rounded,
                     size: 20,
-                    color: Colors.grey[500],
+                    color: SdColors.faint,
                   ),
                   onPressed: toggleObscure,
                 ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-            borderSide:
-                const BorderSide(color: AppTheme.primaryColor, width: 1.6),
-          ),
+          border: border(SdColors.edge),
+          enabledBorder: border(SdColors.edge),
+          focusedBorder: border(SdColors.primary, 1.6),
         ),
         validator: validator ??
             (required
@@ -438,32 +402,30 @@ class _SasSubscriberFormPageState extends State<SasSubscriberFormPage> {
   }
 
   Widget _profileDropdown() {
+    OutlineInputBorder border(Color color, [double width = 1.2]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: BorderSide(color: color, width: width),
+        );
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 6.h),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: DropdownButtonFormField<int>(
         initialValue: _profileId,
         isExpanded: true,
-        style: GoogleFonts.cairo(
-            fontWeight: FontWeight.w600, color: const Color(0xFF1A1A2E)),
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontWeight: FontWeight.w600,
+            color: SdColors.ink),
         decoration: InputDecoration(
           labelText: 'الباقة *',
-          labelStyle: GoogleFonts.cairo(color: Colors.grey[600]),
+          labelStyle: const TextStyle(
+              fontFamily: SdText.family, color: SdColors.muted),
           isDense: true,
           filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-            borderSide:
-                const BorderSide(color: AppTheme.primaryColor, width: 1.6),
-          ),
+          fillColor: SdColors.surface,
+          border: border(SdColors.edge),
+          enabledBorder: border(SdColors.edge),
+          focusedBorder: border(SdColors.primary, 1.6),
         ),
         items: [
           for (final p in _profiles)
@@ -485,38 +447,30 @@ class _SasSubscriberFormPageState extends State<SasSubscriberFormPage> {
       onChanged: onChanged,
       contentPadding: EdgeInsets.zero,
       dense: true,
-      activeThumbColor: AppTheme.primaryColor,
-      title: Text(label,
-          style: GoogleFonts.cairo(
-              fontWeight: FontWeight.w600, color: const Color(0xFF1A1A2E))),
+      activeThumbColor: SdColors.primary,
+      title: Text(label, style: SdText.label),
     );
   }
 
   Widget _submitButton() {
-    return SizedBox(
-      height: 50,
-      child: FilledButton.icon(
-        onPressed: _saving ? null : _submit,
-        style: FilledButton.styleFrom(
-          backgroundColor: AppTheme.primaryColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+    if (_saving) {
+      return const SizedBox(
+        height: 52,
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+                strokeWidth: 2.6, color: SdColors.primary),
           ),
         ),
-        icon: _saving
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2.4, color: Colors.white),
-              )
-            : Icon(_isEdit ? Icons.save_rounded : Icons.person_add_rounded,
-                size: 20),
-        label: Text(
-          _isEdit ? 'حفظ التعديلات' : 'إنشاء المشترك',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 15),
-        ),
-      ),
+      );
+    }
+    return SdButton(
+      label: _isEdit ? 'حفظ التعديلات' : 'إنشاء المشترك',
+      icon: _isEdit ? Icons.save_rounded : Icons.person_add_rounded,
+      expand: true,
+      onPressed: _submit,
     );
   }
 }

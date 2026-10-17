@@ -1,45 +1,39 @@
 /// أدوات تصميم مشتركة لشاشات سجل العقارات (نواة الصدارة) — عرض فقط.
 ///
-/// مستقلّة عن وحدة الساس (`lib/sas_agent/`): تعيد نفس اللغة البصرية (ألوان
-/// [AppTheme] + Cairo + حواف مستديرة + ظلال ناعمة) لكن ضمن النظام الأساسي.
+/// مرحَّلة إلى نظام تصميم الصدارة الموحّد (sd): الألوان من [SdColors]، النص Cairo
+/// عبر [SdText]، البروز المجسّم عبر [SdDepth]، وحالات الفراغ/الخطأ عبر
+/// [SdEmptyState] والشريط العلوي عبر [SdAppBar]. تبقى أسماء/تواقيع الأدوات
+/// العامة كما هي حتى لا تنكسر الشاشات المستهلكة.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/components/sd_app_bar.dart';
+import '../../frontend/components/sd_basics.dart';
+import '../../frontend/components/sd_raised.dart';
+import '../../frontend/tokens/sd_colors.dart';
+import '../../frontend/tokens/sd_metrics.dart';
+import '../../frontend/tokens/sd_typography.dart';
 
-/// ثوابت/مولّدات بصرية موحّدة لشاشات العقارات.
+/// ثوابت/مولّدات بصرية موحّدة لشاشات العقارات (موجّهة لنظام sd).
 class PropUi {
   PropUi._();
 
-  static const Color pageBg = Color(0xFFF4F6FB);
-  static const Color ink = Color(0xFF1A1A2E);
-  static const double radius = 16;
-  static const double radiusPill = 40;
+  static const Color pageBg = SdColors.ground;
+  static const Color ink = SdColors.ink;
+  static const double radius = SdRadius.lg;
+  static const double radiusPill = SdRadius.pill;
 
   static List<BoxShadow> cardShadow([Color? tint]) {
-    final base = tint ?? AppTheme.primaryColor;
-    return [
-      BoxShadow(
-        color: base.withValues(alpha: 0.07),
-        blurRadius: 14,
-        spreadRadius: -3,
-        offset: const Offset(0, 6),
-      ),
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.03),
-        blurRadius: 4,
-        offset: const Offset(0, 1),
-      ),
-    ];
+    return SdDepth.raised(
+      glow: tint == null ? const Color(0x591A237E) : tint.withValues(alpha: 0.30),
+    );
   }
 
   static BoxDecoration card() => BoxDecoration(
-        color: Colors.white,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.16), width: 1.2),
-        boxShadow: cardShadow(),
+        boxShadow: SdDepth.raised(),
       );
 
   static Widget gradientBadge({
@@ -71,44 +65,12 @@ class PropUi {
     );
   }
 
-  /// شريط علوي موحّد بتدرّج الصدارة.
+  /// شريط علوي موحّد بهوية الصدارة (sd).
   static PreferredSizeWidget appBar(String title,
       {List<Widget> actions = const [], IconData? leadingIcon}) {
-    return AppBar(
-      elevation: 0,
-      toolbarHeight: 62,
-      backgroundColor: AppTheme.primaryColor,
-      flexibleSpace: const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: AppTheme.blueGradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-      ),
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (leadingIcon != null) ...[
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
-              ),
-              child: Icon(leadingIcon, size: 19, color: Colors.white),
-            ),
-            const SizedBox(width: 10),
-          ],
-          Text(title,
-              style:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 17)),
-        ],
-      ),
-      actions: actions,
+    return SdAppBar(
+      title: title,
+      actions: actions.isEmpty ? null : actions,
     );
   }
 }
@@ -130,7 +92,7 @@ class PropContentWrap extends StatelessWidget {
   }
 }
 
-/// شارة حالة صغيرة (نص + أيقونة + لون دلالي) — pill.
+/// شارة حالة صغيرة (نص + أيقونة + لون دلالي) — pill بنمط sd.
 class PropBadge extends StatelessWidget {
   final String label;
   final Color color;
@@ -154,8 +116,11 @@ class PropBadge extends StatelessWidget {
             const SizedBox(width: 4),
           ],
           Text(label,
-              style: GoogleFonts.cairo(
-                  fontSize: 11, fontWeight: FontWeight.w800, color: color)),
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: color)),
         ],
       ),
     );
@@ -174,7 +139,7 @@ class PropSectionHeader extends StatelessWidget {
     super.key,
     required this.title,
     required this.icon,
-    this.gradient = AppTheme.blueGradient,
+    this.gradient = SdColors.blueGradient,
     this.trailingText,
     this.action,
   });
@@ -189,8 +154,11 @@ class PropSectionHeader extends StatelessWidget {
           child: Text(title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.cairo(
-                  fontSize: 15, fontWeight: FontWeight.w800, color: PropUi.ink)),
+              style: const TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: SdColors.ink)),
         ),
         if (trailingText != null) ...[
           const SizedBox(width: 8),
@@ -201,8 +169,9 @@ class PropSectionHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(trailingText!,
-                style: GoogleFonts.cairo(
-                    fontSize: 11,
+                style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                     color: gradient.first)),
           ),
@@ -214,7 +183,7 @@ class PropSectionHeader extends StatelessWidget {
   }
 }
 
-/// حالة تحميل موحّدة.
+/// حالة تحميل موحّدة (sd).
 class PropLoadingView extends StatelessWidget {
   final String? message;
   const PropLoadingView({super.key, this.message});
@@ -230,17 +199,14 @@ class PropLoadingView extends StatelessWidget {
             height: 44,
             child: CircularProgressIndicator(
               strokeWidth: 3.2,
-              valueColor: AlwaysStoppedAnimation(AppTheme.primaryColor),
+              valueColor: AlwaysStoppedAnimation(SdColors.primary),
             ),
           ),
           if (message != null) ...[
             const SizedBox(height: 16),
             Text(message!,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.cairo(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600)),
+                style: SdText.bodySm),
           ],
         ],
       ),
@@ -248,7 +214,7 @@ class PropLoadingView extends StatelessWidget {
   }
 }
 
-/// حالة خطأ موحّدة مع زرّ إعادة.
+/// حالة خطأ موحّدة مع زرّ إعادة (sd).
 class PropErrorView extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
@@ -257,51 +223,23 @@ class PropErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 84,
-              height: 84,
-              decoration: BoxDecoration(
-                color: AppTheme.errorColor.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.error_outline_rounded,
-                  size: 42, color: AppTheme.errorColor),
-            ),
-            const SizedBox(height: 16),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.cairo(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                    fontWeight: FontWeight.w600,
-                    height: 1.5)),
-            if (onRetry != null) ...[
-              const SizedBox(height: 18),
-              FilledButton.icon(
+      child: SdEmptyState(
+        title: message,
+        icon: Icons.error_outline_rounded,
+        status: SdStatus.danger,
+        action: onRetry == null
+            ? null
+            : SdButton(
+                label: 'إعادة المحاولة',
+                icon: Icons.refresh_rounded,
                 onPressed: onRetry,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                ),
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text('إعادة المحاولة',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
               ),
-            ],
-          ],
-        ),
       ),
     );
   }
 }
 
-/// حالة فراغ موحّدة.
+/// حالة فراغ موحّدة (sd).
 class PropEmptyView extends StatelessWidget {
   final String message;
   final IconData icon;
@@ -316,36 +254,11 @@ class PropEmptyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 92,
-              height: 92,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.05),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon,
-                  size: 46,
-                  color: AppTheme.primaryColor.withValues(alpha: 0.55)),
-            ),
-            const SizedBox(height: 16),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.cairo(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600,
-                    height: 1.5)),
-            if (action != null) ...[
-              const SizedBox(height: 18),
-              action!,
-            ],
-          ],
-        ),
+      child: SdEmptyState(
+        title: message,
+        icon: icon,
+        status: SdStatus.neutral,
+        action: action,
       ),
     );
   }

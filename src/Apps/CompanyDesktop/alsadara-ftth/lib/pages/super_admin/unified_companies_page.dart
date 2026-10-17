@@ -22,6 +22,7 @@ import '../../theme/energy_dashboard_theme.dart';
 import '../home_page.dart';
 import '../../permissions/permissions.dart';
 import '../../multi_tenant.dart';
+import '../../frontend/frontend.dart';
 
 /// حالة الاشتراك
 enum CompanyStatus {
@@ -234,8 +235,9 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: EnergyDashboardTheme.bgLight,
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
       body: Column(
         children: [
           // شريط الأدوات العلوي الفخم
@@ -256,6 +258,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           ),
         ],
       ),
+    ),
     );
   }
 

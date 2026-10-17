@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import 'invoice_form_page.dart';
 import 'invoice_details_page.dart';
@@ -139,6 +140,27 @@ class _InvoicesPageState extends State<InvoicesPage>
     return _formatDate(dt);
   }
 
+  InputDecoration _dec(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: SdText.bodySm,
+        filled: true,
+        fillColor: SdColors.surface,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+      );
+
   Future<void> _pickDate(bool isFrom, {required bool isSales}) async {
     final current = isSales
         ? (isFrom ? _salesDateFrom : _salesDateTo)
@@ -169,88 +191,47 @@ class _InvoicesPageState extends State<InvoicesPage>
     }
   }
 
-  Widget _statusChip(String? status) {
-    Color bg;
-    Color fg;
-    String label;
+  SdStatus _statusTone(String? status) {
     switch (status) {
-      case 'Draft':
-        bg = Colors.grey.shade200;
-        fg = Colors.grey.shade800;
-        label = 'مسودة';
-        break;
       case 'Confirmed':
-        bg = Colors.blue.shade100;
-        fg = Colors.blue.shade800;
-        label = 'مؤكدة';
-        break;
+        return SdStatus.info;
       case 'PartiallyPaid':
-        bg = Colors.orange.shade100;
-        fg = Colors.orange.shade800;
-        label = 'مدفوعة جزئياً';
-        break;
+        return SdStatus.warning;
       case 'Paid':
-        bg = Colors.green.shade100;
-        fg = Colors.green.shade800;
-        label = 'مدفوعة';
-        break;
+        return SdStatus.success;
       case 'Cancelled':
-        bg = Colors.red.shade100;
-        fg = Colors.red.shade800;
-        label = 'ملغاة';
-        break;
+        return SdStatus.danger;
       default:
-        bg = Colors.grey.shade200;
-        fg = Colors.grey.shade800;
-        label = status ?? '-';
+        return SdStatus.neutral;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style:
-              TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
-    );
+  }
+
+  Widget _statusChip(String? status) {
+    final label = _statusMap[status] ?? (status ?? '-');
+    return SdStatusChip(label, status: _statusTone(status));
   }
 
   Widget _paymentChip(String? paymentType) {
-    Color bg;
-    Color fg;
-    String label;
+    late final String label;
+    late final SdStatus status;
     switch (paymentType) {
       case 'Cash':
-        bg = Colors.green.shade100;
-        fg = Colors.green.shade800;
         label = 'نقدي';
+        status = SdStatus.success;
         break;
       case 'Credit':
-        bg = Colors.orange.shade100;
-        fg = Colors.orange.shade800;
         label = 'آجل';
+        status = SdStatus.warning;
         break;
       case 'Partial':
-        bg = Colors.blue.shade100;
-        fg = Colors.blue.shade800;
         label = 'جزئي';
+        status = SdStatus.info;
         break;
       default:
-        bg = Colors.grey.shade200;
-        fg = Colors.grey.shade800;
         label = paymentType ?? '-';
+        status = SdStatus.neutral;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style:
-              TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
-    );
+    return SdStatusChip(label, status: status);
   }
 
   // ================================================================
@@ -259,120 +240,128 @@ class _InvoicesPageState extends State<InvoicesPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F6FA),
-          foregroundColor: const Color(0xFF1A1A2E),
-          iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
-          titleTextStyle: const TextStyle(
-            color: Color(0xFF1A1A2E),
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-          elevation: 0,
-          title: const Text('الفواتير'),
-          actions: [
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => InvoiceFormPage(
-                      companyId: widget.companyId,
-                      invoiceType: 'Sales',
-                    ),
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'الفواتير',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.add_rounded,
+            label: 'فاتورة بيع',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => InvoiceFormPage(
+                    companyId: widget.companyId,
+                    invoiceType: 'Sales',
                   ),
-                ).then((_) {
-                  _loadSales();
-                });
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('فاتورة بيع +'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => InvoiceFormPage(
-                      companyId: widget.companyId,
-                      invoiceType: 'Purchase',
-                    ),
-                  ),
-                ).then((_) {
-                  _loadPurchases();
-                });
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('فاتورة شراء +'),
-            ),
-            const SizedBox(width: 12),
-          ],
-          bottom: TabBar(
-            controller: _tabController,
-            labelColor: const Color(0xFF1A1A2E),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: const Color(0xFF1A1A2E),
-            tabs: const [
-              Tab(text: 'فواتير البيع'),
-              Tab(text: 'فواتير الشراء'),
-            ],
+                ),
+              ).then((_) {
+                _loadSales();
+              });
+            },
           ),
-        ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildTabContent(
-              isSales: true,
-              loading: _salesLoading,
-              error: _salesError,
-              invoices: _salesInvoices,
-              statusFilter: _salesStatusFilter,
-              dateFrom: _salesDateFrom,
-              dateTo: _salesDateTo,
-              onStatusChanged: (v) {
-                setState(() => _salesStatusFilter = v);
-                _loadSales();
-              },
-              onClearFilters: () {
-                setState(() {
-                  _salesStatusFilter = null;
-                  _salesDateFrom = null;
-                  _salesDateTo = null;
-                });
-                _loadSales();
-              },
-              onReload: _loadSales,
-              counterpartLabel: 'العميل',
-            ),
-            _buildTabContent(
-              isSales: false,
-              loading: _purchaseLoading,
-              error: _purchaseError,
-              invoices: _purchaseInvoices,
-              statusFilter: _purchaseStatusFilter,
-              dateFrom: _purchaseDateFrom,
-              dateTo: _purchaseDateTo,
-              onStatusChanged: (v) {
-                setState(() => _purchaseStatusFilter = v);
+          SdAppBarAction(
+            icon: Icons.add_rounded,
+            label: 'فاتورة شراء',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => InvoiceFormPage(
+                    companyId: widget.companyId,
+                    invoiceType: 'Purchase',
+                  ),
+                ),
+              ).then((_) {
                 _loadPurchases();
-              },
-              onClearFilters: () {
-                setState(() {
-                  _purchaseStatusFilter = null;
-                  _purchaseDateFrom = null;
-                  _purchaseDateTo = null;
-                });
-                _loadPurchases();
-              },
-              onReload: _loadPurchases,
-              counterpartLabel: 'المورد',
+              });
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTabBar(),
+          const SizedBox(height: SdSpace.sm),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildTabContent(
+                  isSales: true,
+                  loading: _salesLoading,
+                  error: _salesError,
+                  invoices: _salesInvoices,
+                  statusFilter: _salesStatusFilter,
+                  dateFrom: _salesDateFrom,
+                  dateTo: _salesDateTo,
+                  onStatusChanged: (v) {
+                    setState(() => _salesStatusFilter = v);
+                    _loadSales();
+                  },
+                  onClearFilters: () {
+                    setState(() {
+                      _salesStatusFilter = null;
+                      _salesDateFrom = null;
+                      _salesDateTo = null;
+                    });
+                    _loadSales();
+                  },
+                  onReload: _loadSales,
+                  counterpartLabel: 'العميل',
+                ),
+                _buildTabContent(
+                  isSales: false,
+                  loading: _purchaseLoading,
+                  error: _purchaseError,
+                  invoices: _purchaseInvoices,
+                  statusFilter: _purchaseStatusFilter,
+                  dateFrom: _purchaseDateFrom,
+                  dateTo: _purchaseDateTo,
+                  onStatusChanged: (v) {
+                    setState(() => _purchaseStatusFilter = v);
+                    _loadPurchases();
+                  },
+                  onClearFilters: () {
+                    setState(() {
+                      _purchaseStatusFilter = null;
+                      _purchaseDateFrom = null;
+                      _purchaseDateTo = null;
+                    });
+                    _loadPurchases();
+                  },
+                  onReload: _loadPurchases,
+                  counterpartLabel: 'المورد',
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        labelColor: SdColors.primary,
+        unselectedLabelColor: SdColors.muted,
+        indicatorColor: SdColors.primary,
+        labelStyle: SdText.label,
+        unselectedLabelStyle: SdText.label.copyWith(fontWeight: FontWeight.w600),
+        tabs: const [
+          Tab(text: 'فواتير البيع'),
+          Tab(text: 'فواتير الشراء'),
+        ],
       ),
     );
   }
@@ -398,7 +387,7 @@ class _InvoicesPageState extends State<InvoicesPage>
       children: [
         // Filters row
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.only(bottom: SdSpace.xs),
           child: Wrap(
             spacing: 12,
             runSpacing: 8,
@@ -408,13 +397,7 @@ class _InvoicesPageState extends State<InvoicesPage>
                 width: 180,
                 child: DropdownButtonFormField<String?>(
                   value: statusFilter,
-                  decoration: const InputDecoration(
-                    labelText: 'الحالة',
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    isDense: true,
-                  ),
+                  decoration: _dec('الحالة'),
                   items: _statusMap.entries
                       .map((e) => DropdownMenuItem(
                           value: e.key, child: Text(e.value)))
@@ -423,14 +406,14 @@ class _InvoicesPageState extends State<InvoicesPage>
                 ),
               ),
               ActionChip(
-                avatar: const Icon(Icons.date_range, size: 18),
+                avatar: const Icon(Icons.date_range, size: 18, color: SdColors.primary),
                 label: Text(dateFrom != null
                     ? 'من: ${_formatDate(dateFrom)}'
                     : 'من تاريخ'),
                 onPressed: () => _pickDate(true, isSales: isSales),
               ),
               ActionChip(
-                avatar: const Icon(Icons.date_range, size: 18),
+                avatar: const Icon(Icons.date_range, size: 18, color: SdColors.primary),
                 label: Text(dateTo != null
                     ? 'إلى: ${_formatDate(dateTo)}'
                     : 'إلى تاريخ'),
@@ -445,7 +428,6 @@ class _InvoicesPageState extends State<InvoicesPage>
             ],
           ),
         ),
-        const Divider(height: 1),
         // Body
         Expanded(
           child: _buildTabBody(
@@ -470,60 +452,68 @@ class _InvoicesPageState extends State<InvoicesPage>
     required bool isSales,
   }) {
     if (loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (error != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-            const SizedBox(height: 12),
-            Text(error, style: TextStyle(color: Colors.red.shade700)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: onReload,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل الفواتير',
+          message: error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(label: 'إعادة المحاولة', icon: Icons.refresh_rounded, kind: SdButtonKind.secondary, onPressed: onReload),
         ),
       );
     }
     if (invoices.isEmpty) {
       return const Center(
-        child: Text('لا توجد فواتير',
-            style: TextStyle(fontSize: 16, color: Colors.grey)),
+        child: SdEmptyState(title: 'لا توجد فواتير', icon: Icons.receipt_long_outlined),
+      );
+    }
+
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: invoices.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _buildInvoiceCard(invoices[i], counterpartLabel, isSales),
       );
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        child: Table(
-          border: TableBorder.all(color: Colors.black, width: 1),
-          defaultColumnWidth: const IntrinsicColumnWidth(),
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          children: [
-            // Header row
-            TableRow(
-              decoration: BoxDecoration(color: Colors.grey.shade200),
-              children: [
-                _headerCell('رقم الفاتورة'),
-                _headerCell(counterpartLabel),
-                _headerCell('التاريخ'),
-                _headerCell('المبلغ'),
-                _headerCell('المدفوع'),
-                _headerCell('المتبقي'),
-                _headerCell('نوع الدفع'),
-                _headerCell('الحالة'),
-                _headerCell('إجراءات'),
-              ],
-            ),
-            // Data rows
-            for (var i = 0; i < invoices.length; i++)
-              _buildDataRow(invoices[i], i, counterpartLabel, isSales),
-          ],
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Table(
+            defaultColumnWidth: const IntrinsicColumnWidth(),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [
+              // Header row
+              TableRow(
+                decoration: const BoxDecoration(color: SdColors.primary),
+                children: [
+                  _headerCell('رقم الفاتورة'),
+                  _headerCell(counterpartLabel),
+                  _headerCell('التاريخ'),
+                  _headerCell('المبلغ'),
+                  _headerCell('المدفوع'),
+                  _headerCell('المتبقي'),
+                  _headerCell('نوع الدفع'),
+                  _headerCell('الحالة'),
+                  _headerCell('إجراءات'),
+                ],
+              ),
+              // Data rows
+              for (var i = 0; i < invoices.length; i++)
+                _buildDataRow(invoices[i], i, counterpartLabel, isSales),
+            ],
+          ),
         ),
       ),
     );
@@ -535,15 +525,9 @@ class _InvoicesPageState extends State<InvoicesPage>
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        style: const TextStyle(
+            fontFamily: SdText.family, fontWeight: FontWeight.w800, fontSize: 12.5, color: Colors.white),
       ),
-    );
-  }
-
-  Widget _dataCell(Widget child) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: Center(child: child),
     );
   }
 
@@ -567,53 +551,17 @@ class _InvoicesPageState extends State<InvoicesPage>
 
     return TableRow(
       decoration: BoxDecoration(
-        color: index.isEven ? Colors.white : Colors.grey.shade50,
+        color: index.isEven ? SdColors.surface : SdColors.surfaceAlt,
       ),
       children: [
-        _tappableCell(
-          child: Text(invoiceNumber,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13)),
-          onTap: () => _navigateToDetails(id),
-        ),
-        _tappableCell(
-          child: Text(counterpart,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13)),
-          onTap: () => _navigateToDetails(id),
-        ),
-        _tappableCell(
-          child: Text(date,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13)),
-          onTap: () => _navigateToDetails(id),
-        ),
-        _tappableCell(
-          child: Text(amount,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13)),
-          onTap: () => _navigateToDetails(id),
-        ),
-        _tappableCell(
-          child: Text(paid,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13)),
-          onTap: () => _navigateToDetails(id),
-        ),
-        _tappableCell(
-          child: Text(remaining,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13)),
-          onTap: () => _navigateToDetails(id),
-        ),
-        _tappableCell(
-          child: _paymentChip(paymentType),
-          onTap: () => _navigateToDetails(id),
-        ),
-        _tappableCell(
-          child: _statusChip(status),
-          onTap: () => _navigateToDetails(id),
-        ),
+        _tappableCell(child: _text(invoiceNumber), onTap: () => _navigateToDetails(id)),
+        _tappableCell(child: _text(counterpart), onTap: () => _navigateToDetails(id)),
+        _tappableCell(child: _text(date), onTap: () => _navigateToDetails(id)),
+        _tappableCell(child: _text(amount), onTap: () => _navigateToDetails(id)),
+        _tappableCell(child: _text(paid), onTap: () => _navigateToDetails(id)),
+        _tappableCell(child: _text(remaining), onTap: () => _navigateToDetails(id)),
+        _tappableCell(child: _paymentChip(paymentType), onTap: () => _navigateToDetails(id)),
+        _tappableCell(child: _statusChip(status), onTap: () => _navigateToDetails(id)),
         // أزرار الإجراءات
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -626,12 +574,69 @@ class _InvoicesPageState extends State<InvoicesPage>
     );
   }
 
+  Widget _text(String value) => Text(value,
+      textAlign: TextAlign.center,
+      style: const TextStyle(fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w500, color: SdColors.ink));
+
+  Widget _buildInvoiceCard(Map<String, dynamic> inv, String counterpartLabel, bool isSales) {
+    final id = inv['Id']?.toString() ?? '';
+    final invoiceNumber = inv['InvoiceNumber']?.toString() ?? '-';
+    final counterpart = isSales
+        ? (inv['CustomerName']?.toString() ?? '-')
+        : (inv['SupplierName']?.toString() ?? '-');
+    final date = _formatDateStr(inv['InvoiceDate']?.toString());
+    final amount = fmtN(inv['TotalAmount']);
+    final paid = fmtN(inv['PaidAmount']);
+    final remaining = fmtN(inv['RemainingAmount']);
+    final paymentType = inv['PaymentType']?.toString();
+    final status = inv['Status']?.toString();
+
+    return GestureDetector(
+      onTap: () => _navigateToDetails(id),
+      child: SdCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text('#$invoiceNumber', style: SdText.label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                const SizedBox(width: 8),
+                _statusChip(status),
+              ],
+            ),
+            const SizedBox(height: 4),
+            SdInfoRow(label: counterpartLabel, value: counterpart),
+            SdInfoRow(label: 'التاريخ', value: date),
+            SdInfoRow(label: 'المبلغ', value: amount),
+            SdInfoRow(label: 'المدفوع', value: paid),
+            SdInfoRow(label: 'المتبقي', value: remaining),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Text('نوع الدفع', style: SdText.bodySm),
+                  const Spacer(),
+                  _paymentChip(paymentType),
+                ],
+              ),
+            ),
+            const Divider(color: SdColors.divider, height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: _buildInvoiceActions(id, status, isSales),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   List<Widget> _buildInvoiceActions(String id, String? status, bool isSales) {
     final actions = <Widget>[];
 
     // تعديل — فقط للمسودة
     if (status == 'Draft') {
-      actions.add(_invoiceActionBtn(Icons.edit_outlined, 'تعديل', Colors.blue.shade800, () {
+      actions.add(_invoiceActionBtn(Icons.edit_outlined, 'تعديل', SdColors.primary, () {
         Navigator.push(context, MaterialPageRoute(
           builder: (_) => InvoiceFormPage(companyId: widget.companyId, invoiceType: isSales ? 'Sales' : 'Purchase'),
         )).then((_) { _loadSales(); _loadPurchases(); });
@@ -640,16 +645,16 @@ class _InvoicesPageState extends State<InvoicesPage>
 
     // تأكيد — فقط للمسودة
     if (status == 'Draft') {
-      actions.add(_invoiceActionBtn(Icons.check_circle_outline, 'تأكيد', Colors.green.shade800, () => _confirmInvoice(id)));
+      actions.add(_invoiceActionBtn(Icons.check_circle_outline, 'تأكيد', SdColors.success, () => _confirmInvoice(id)));
     }
 
     // إلغاء — فقط للمسودة (الفواتير المؤكدة تحتاج مرتجع)
     if (status == 'Draft') {
-      actions.add(_invoiceActionBtn(Icons.cancel_outlined, 'إلغاء', Colors.red.shade800, () => _cancelInvoice(id)));
+      actions.add(_invoiceActionBtn(Icons.cancel_outlined, 'إلغاء', SdColors.danger, () => _cancelInvoice(id)));
     }
 
     // عرض التفاصيل — دائماً
-    actions.add(_invoiceActionBtn(Icons.visibility_outlined, 'عرض', Colors.grey.shade700, () => _navigateToDetails(id)));
+    actions.add(_invoiceActionBtn(Icons.visibility_outlined, 'عرض', SdColors.muted, () => _navigateToDetails(id)));
 
     return actions;
   }
@@ -668,44 +673,50 @@ class _InvoicesPageState extends State<InvoicesPage>
   Future<void> _confirmInvoice(String id) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد الفاتورة'),
-        content: const Text('هل تريد تأكيد هذه الفاتورة؟ سيتم خصم/إضافة المخزون تلقائياً.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
-        ],
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد الفاتورة'),
+          content: const Text('هل تريد تأكيد هذه الفاتورة؟ سيتم خصم/إضافة المخزون تلقائياً.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
+          ],
+        ),
       ),
     );
     if (ok != true) return;
     try {
       await _api.confirmInvoice(id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تأكيد الفاتورة بنجاح'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تأكيد الفاتورة بنجاح'), backgroundColor: SdColors.success));
       _loadSales(); _loadPurchases();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل التأكيد: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل التأكيد: $e'), backgroundColor: SdColors.danger));
     }
   }
 
   Future<void> _cancelInvoice(String id) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('إلغاء الفاتورة'),
-        content: const Text('هل تريد إلغاء هذه الفاتورة؟'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
-          FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء الفاتورة')),
-        ],
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('إلغاء الفاتورة'),
+          content: const Text('هل تريد إلغاء هذه الفاتورة؟'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء الفاتورة')),
+          ],
+        ),
       ),
     );
     if (ok != true) return;
     try {
       await _api.cancelInvoice(id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء الفاتورة'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء الفاتورة'), backgroundColor: SdColors.success));
       _loadSales(); _loadPurchases();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
   }
 

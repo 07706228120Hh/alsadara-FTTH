@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../permissions/permission_manager.dart';
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../models/sas_accounting.dart';
 import '../services/sas_agent_api_service.dart';
@@ -143,9 +142,9 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message,
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
         backgroundColor:
-            isError ? AppTheme.errorColor : AppTheme.successColor,
+            isError ? SdColors.danger : SdColors.success,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -160,28 +159,14 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Text(
-            widget.username ?? d?['username']?.toString() ?? 'تفاصيل المشترك',
-            style: GoogleFonts.cairo(
-                fontWeight: FontWeight.w800, color: Colors.white),
-          ),
+        appBar: SdAppBar(
+          title: widget.username ??
+              d?['username']?.toString() ??
+              'تفاصيل المشترك',
           actions: [
             if (_busy)
               const Padding(
-                padding: EdgeInsets.only(left: 16),
+                padding: EdgeInsetsDirectional.only(end: 10),
                 child: Center(
                   child: SizedBox(
                     width: 18,
@@ -192,9 +177,9 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                 ),
               )
             else
-              IconButton(
-                tooltip: 'تحديث',
-                icon: const Icon(Icons.refresh_rounded),
+              SdAppBarAction(
+                icon: Icons.refresh_rounded,
+                label: 'تحديث',
                 onPressed: _loadMain,
               ),
           ],
@@ -287,7 +272,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                       textDirection: TextDirection.ltr,
                       child: Text(
                         username,
-                        style: GoogleFonts.robotoMono(
+                        style: TextStyle(fontFamily: 'monospace', 
                             fontSize: 18.sp,
                             fontWeight: FontWeight.w800,
                             color: const Color(0xFF1A1A2E)),
@@ -296,7 +281,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                     if (fullName.isNotEmpty) ...[
                       SizedBox(height: 2.h),
                       Text(fullName,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 12.5.sp,
                               color: Colors.grey[600],
                               fontWeight: FontWeight.w500)),
@@ -315,7 +300,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
               _headerChip(Icons.account_circle_rounded, 'الوكيل', parent),
               _headerChip(Icons.account_balance_wallet_rounded, 'الرصيد',
                   balance,
-                  color: AppTheme.successColor),
+                  color: SdColors.success),
               _headerChip(Icons.event_busy_rounded, 'الانتهاء', expiration,
                   mono: true),
             ],
@@ -333,18 +318,18 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         Icon(icon, size: 15.sp, color: Colors.grey[500]),
         SizedBox(width: 4.w),
         Text('$label: ',
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 11.5.sp, color: Colors.grey[600])),
         mono
             ? Directionality(
                 textDirection: TextDirection.ltr,
                 child: Text(value,
-                    style: GoogleFonts.robotoMono(
+                    style: TextStyle(fontFamily: 'monospace', 
                         fontSize: 11.5.sp,
                         color: color ?? const Color(0xFF1A1A2E))),
               )
             : Text(value,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.5.sp,
                     fontWeight: FontWeight.w800,
                     color: color ?? const Color(0xFF1A1A2E))),
@@ -360,40 +345,40 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       children: [
         // عمليات الاشتراك.
         _actionGroup('عمليات الاشتراك', Icons.bolt_rounded,
-            AppTheme.blueGradient, [
-          _actionBtn('تفعيل', Icons.play_arrow_rounded, AppTheme.successColor,
+            SdColors.blueGradient, [
+          _actionBtn('تفعيل', Icons.play_arrow_rounded, SdColors.success,
               _busy ? null : _doActivate),
-          _actionBtn('تمديد', Icons.event_available_rounded, AppTheme.infoColor,
+          _actionBtn('تمديد', Icons.event_available_rounded, SdColors.info,
               _busy ? null : _doExtend),
           _actionBtn('تغيير الباقة', Icons.swap_horiz_rounded,
-              AppTheme.accentColor, _busy ? null : _doChangeProfile),
-          _actionBtn('إضافة ترافيك', Icons.speed_rounded, AppTheme.infoColor,
+              SdColors.info, _busy ? null : _doChangeProfile),
+          _actionBtn('إضافة ترافيك', Icons.speed_rounded, SdColors.info,
               _busy ? null : _doAddTraffic),
         ]),
         SizedBox(height: 12.h),
         // الرصيد.
         _actionGroup('الرصيد', Icons.account_balance_wallet_rounded,
-            AppTheme.greenGradient, [
+            SdColors.greenGradient, [
           _actionBtn('إيداع رصيد', Icons.add_card_rounded,
-              AppTheme.successColor,
+              SdColors.success,
               _busy ? null : () => _doBalance('deposit', 'إيداع رصيد')),
-          _actionBtn('سحب رصيد', Icons.money_off_rounded, AppTheme.warningColor,
+          _actionBtn('سحب رصيد', Icons.money_off_rounded, SdColors.warning,
               _busy ? null : () => _doBalance('withdraw', 'سحب رصيد')),
         ]),
         SizedBox(height: 12.h),
         // إدارة (تشمل الإجراءات الحسّاسة).
         _actionGroup('إدارة', Icons.settings_rounded,
-            AppTheme.orangeGradient, [
-          _actionBtn('تعديل', Icons.edit_rounded, AppTheme.primaryColor,
+            SdColors.orangeGradient, [
+          _actionBtn('تعديل', Icons.edit_rounded, SdColors.primary,
               _busy ? null : _doEdit),
           _actionBtn('إعادة تسمية', Icons.drive_file_rename_outline_rounded,
               Colors.blueGrey, _busy ? null : _doRename),
           _actionBtn('Ping', Icons.network_ping_rounded, Colors.blueGrey,
               _busy ? null : _doPing),
           _actionBtn('استرداد', Icons.receipt_long_rounded,
-              AppTheme.warningColor, _busy ? null : _doRefund,
+              SdColors.warning, _busy ? null : _doRefund,
               outlined: true),
-          _actionBtn('حذف', Icons.delete_outline_rounded, AppTheme.errorColor,
+          _actionBtn('حذف', Icons.delete_outline_rounded, SdColors.danger,
               _busy ? null : _doDelete,
               outlined: true, danger: true),
         ]),
@@ -423,12 +408,12 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
   Widget _actionBtn(String label, IconData icon, Color color,
       VoidCallback? onTap,
       {bool outlined = false, bool danger = false}) {
-    final labelStyle = GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 12.5);
+    final labelStyle = TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 12.5);
     if (outlined) {
       return OutlinedButton.icon(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          foregroundColor: danger ? AppTheme.errorColor : color,
+          foregroundColor: danger ? SdColors.danger : color,
           side: BorderSide(color: color.withValues(alpha: 0.5)),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           shape: RoundedRectangleBorder(
@@ -458,7 +443,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     final ov = _overview;
     return Column(
       children: [
-        _infoGrid('الهوية', Icons.badge_rounded, AppTheme.blueGradient, [
+        _infoGrid('الهوية', Icons.badge_rounded, SdColors.blueGradient, [
           _fv('المستخدم', d['username'], mono: true),
           _fv('الاسم الأول', d['firstname']),
           _fv('الاسم الأخير', d['lastname']),
@@ -466,7 +451,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           _fv('رقم العقد', d['contract_id'], mono: true),
         ]),
         SizedBox(height: 12.h),
-        _infoGrid('التواصل', Icons.phone_rounded, AppTheme.greenGradient, [
+        _infoGrid('التواصل', Icons.phone_rounded, SdColors.greenGradient, [
           _fv('الهاتف', d['phone'], mono: true),
           _fv('البريد الإلكتروني', d['email']),
           _fv('المدينة', d['city']),
@@ -475,7 +460,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           _fv('الدولة', d['country']),
         ]),
         SizedBox(height: 12.h),
-        _infoGrid('الاشتراك', Icons.wifi_rounded, AppTheme.orangeGradient, [
+        _infoGrid('الاشتراك', Icons.wifi_rounded, SdColors.orangeGradient, [
           _fv('الباقة', ov?['profile_name'] ?? d['profile_id']),
           _fv('الحالة', _statusLabel(d['status'] ?? ov?['status'])),
           _fv('تاريخ الانتهاء', d['expiration'], mono: true),
@@ -529,7 +514,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           SizedBox(height: 10.h),
           if (nonEmpty.isEmpty)
             Text('لا بيانات',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.sp, color: Colors.grey[500]))
           else
             LayoutBuilder(
@@ -569,7 +554,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(f.label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 10.5.sp,
                   color: Colors.grey[600],
                   fontWeight: FontWeight.w600)),
@@ -580,7 +565,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                   child: Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: Text(isEmpty ? '—' : strVal,
-                        style: GoogleFonts.robotoMono(
+                        style: TextStyle(fontFamily: 'monospace', 
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w700,
                             color: isEmpty
@@ -590,7 +575,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                   ),
                 )
               : Text(isEmpty ? '—' : strVal,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.5.sp,
                       color: isEmpty
                           ? Colors.grey[400]
@@ -612,7 +597,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         children: [
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.04),
+              color: SdColors.primary.withValues(alpha: 0.04),
               border: Border(
                 bottom:
                     BorderSide(color: Colors.grey.withValues(alpha: 0.12)),
@@ -625,15 +610,15 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               indicator: BoxDecoration(
-                gradient: const LinearGradient(colors: AppTheme.blueGradient),
+                gradient: const LinearGradient(colors: SdColors.blueGradient),
                 borderRadius: BorderRadius.circular(10),
               ),
               labelColor: Colors.white,
               unselectedLabelColor: const Color(0xFF64748B),
               labelStyle:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 12.5),
+                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 12.5),
               unselectedLabelStyle:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 12.5),
+                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600, fontSize: 12.5),
               tabs: const [
                 Tab(text: 'الإجراءات'),
                 Tab(text: 'معلومات المواطن'),
@@ -740,7 +725,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       operationType: 'تفعيل اشتراك',
       confirmText: 'تفعيل وتحصيل',
       needsMonths: true,
-      confirmColor: AppTheme.successColor,
+      confirmColor: SdColors.success,
     );
   }
 
@@ -750,7 +735,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       operationType: 'تمديد الخدمة',
       confirmText: 'تمديد وتحصيل',
       needsMonths: true,
-      confirmColor: AppTheme.infoColor,
+      confirmColor: SdColors.info,
     );
   }
 
@@ -769,13 +754,13 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         textDirection: TextDirection.rtl,
         child: SimpleDialog(
           title: Text('اختر الباقة الجديدة',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           children: [
             for (final p in profiles)
               SimpleDialogOption(
                 onPressed: () => Navigator.pop(ctx, p),
                 child: Text('${p['name'] ?? p['id']}',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
               ),
           ],
         ),
@@ -794,7 +779,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       confirmText: 'تغيير وتحصيل',
       profileId: profileId,
       profileNameHint: chosen['name']?.toString(),
-      confirmColor: AppTheme.accentColor,
+      confirmColor: SdColors.info,
     );
   }
 
@@ -809,7 +794,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     String confirmText = 'تأكيد وتحصيل',
     String? profileId,
     String? profileNameHint,
-    Color confirmColor = AppTheme.primaryColor,
+    Color confirmColor = SdColors.primary,
   }) async {
     // 1) جلب بيانات التفعيل (السعر + رصيد الوكيل + VAT + اسم الباقة) — خادمياً.
     setState(() => _busy = true);
@@ -990,8 +975,8 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       body: 'سيتم $title بمقدار $amount للمشترك «${_username ?? _uid}». تأكيد؟',
       confirmText: 'تأكيد',
       confirmColor: action == 'deposit'
-          ? AppTheme.successColor
-          : AppTheme.warningColor,
+          ? SdColors.success
+          : SdColors.warning,
     );
     if (ok != true) return;
     await _run(
@@ -1073,9 +1058,9 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('إلغاء الخدمة واسترداد الرصيد',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.warningColor)),
+                  color: SdColors.warning)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1086,20 +1071,20 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
               _refundRow('الباقة', data['profile_name']),
               const SizedBox(height: 12),
               Text('سيُلغى اشتراك المشترك ويُسترد المبلغ أعلاه. متابعة؟',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
             ],
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 child: Text('إلغاء',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700))),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700))),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.warningColor),
+                  backgroundColor: SdColors.warning),
               child: Text('تأكيد الاسترداد',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -1120,10 +1105,10 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(children: [
         Text('$label: ',
-            style: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 13)),
+            style: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 13)),
         Flexible(
             child: Text('$value',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800))),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800))),
       ]),
     );
   }
@@ -1136,14 +1121,14 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       body: 'سيُحذف المشترك «${_username ?? _uid}» نهائياً من نظام الساس. '
           'هذا الإجراء لا يمكن التراجع عنه.',
       confirmText: 'متابعة',
-      confirmColor: AppTheme.errorColor,
+      confirmColor: SdColors.danger,
     );
     if (first != true || !mounted) return;
     final second = await _confirm(
       title: 'تأكيد نهائي',
       body: 'هل أنت متأكد تماماً؟ الحذف دائم.',
       confirmText: 'نعم، احذف',
-      confirmColor: AppTheme.errorColor,
+      confirmColor: SdColors.danger,
     );
     if (second != true || !mounted) return;
 
@@ -1178,7 +1163,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     num? price,
     num? vat,
     num? managerBalance,
-    Color confirmColor = AppTheme.primaryColor,
+    Color confirmColor = SdColors.primary,
   }) {
     final monthsCtl = TextEditingController(text: '1');
     String collectionType = 'cash';
@@ -1274,7 +1259,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(operationType,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(fontFamily: 'Cairo', 
                             fontWeight: FontWeight.w800, color: confirmColor)),
                   ),
                 ],
@@ -1295,11 +1280,11 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           onChanged: (_) => setLocal(() {}),
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: 'Cairo', 
                               fontWeight: FontWeight.w700, fontSize: 14),
                           decoration: InputDecoration(
                             labelText: 'عدد الأشهر',
-                            labelStyle: GoogleFonts.cairo(
+                            labelStyle: TextStyle(fontFamily: 'Cairo', 
                                 color: Colors.grey[600], fontSize: 12),
                             isDense: true,
                             border: OutlineInputBorder(
@@ -1343,8 +1328,8 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                                   ? _money(managerBalance)
                                   : 'غير متاح',
                               color: enough
-                                  ? AppTheme.successColor
-                                  : AppTheme.errorColor,
+                                  ? SdColors.success
+                                  : SdColors.danger,
                               strong: true,
                             ),
                           ],
@@ -1352,7 +1337,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                       ),
                       const SizedBox(height: 14),
                       Text('نوع التحصيل',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: 'Cairo', 
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
                               color: Colors.grey[700])),
@@ -1427,13 +1412,13 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                         Row(
                           children: [
                             Icon(Icons.error_outline_rounded,
-                                color: AppTheme.errorColor, size: 18),
+                                color: SdColors.danger, size: 18),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
                                 'رصيد الوكيل لا يكفي لإتمام هذه العملية.',
-                                style: GoogleFonts.cairo(
-                                    color: AppTheme.errorColor,
+                                style: TextStyle(fontFamily: 'Cairo', 
+                                    color: SdColors.danger,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12.5),
                               ),
@@ -1449,7 +1434,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                 ),
                 FilledButton(
                   onPressed: canConfirm
@@ -1473,7 +1458,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                       : null,
                   style: FilledButton.styleFrom(backgroundColor: confirmColor),
                   child: Text(confirmText,
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                 ),
               ],
             );
@@ -1494,7 +1479,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       child: Row(
         children: [
           Text('$label: ',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   color: Colors.grey[600], fontSize: 12.5)),
           Expanded(
             child: mono
@@ -1502,14 +1487,14 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                     textDirection: TextDirection.ltr,
                     child: Text(value,
                         textAlign: TextAlign.start,
-                        style: GoogleFonts.robotoMono(
+                        style: TextStyle(fontFamily: 'monospace', 
                             fontSize: 12.5,
                             fontWeight:
                                 strong ? FontWeight.w800 : FontWeight.w600,
                             color: color ?? const Color(0xFF1A1A2E))),
                   )
                 : Text(value,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.5,
                         fontWeight:
                             strong ? FontWeight.w800 : FontWeight.w600,
@@ -1527,10 +1512,10 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       selected: active,
       onSelected: (_) => onPick(value),
       label: Text(label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(fontFamily: 'Cairo', 
               fontWeight: FontWeight.w700,
               color: active ? Colors.white : Colors.grey[700])),
-      selectedColor: AppTheme.primaryColor,
+      selectedColor: SdColors.primary,
       backgroundColor: Colors.grey.withValues(alpha: 0.10),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm)),
@@ -1554,11 +1539,11 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
             width: 16,
             height: 16,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: AppTheme.primaryColor),
+                strokeWidth: 2, color: SdColors.primary),
           ),
           const SizedBox(width: 10),
           Text('جارِ تحميل القائمة…',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 12.5, color: Colors.grey[700])),
         ],
       );
@@ -1567,14 +1552,14 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       return Row(
         children: [
           Icon(Icons.info_outline_rounded,
-              size: 18, color: AppTheme.warningColor),
+              size: 18, color: SdColors.warning),
           const SizedBox(width: 6),
           Expanded(
             child: Text(hint,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.warningColor)),
+                    color: SdColors.warning)),
           ),
         ],
       );
@@ -1587,11 +1572,11 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     return DropdownButtonFormField<String>(
       initialValue: value,
       isExpanded: true,
-      style: GoogleFonts.cairo(
+      style: TextStyle(fontFamily: 'Cairo', 
           fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black87),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 12),
+        labelStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 12),
         isDense: true,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm)),
@@ -1603,7 +1588,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
             child: Text(
               _assigneeLabel(e),
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700),
             ),
           ),
       ],
@@ -1629,10 +1614,10 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
       ],
       onChanged: onChanged,
-      style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 13),
+      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 13),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 11.5),
+        labelStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 11.5),
         isDense: true,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm)),
@@ -1659,7 +1644,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     required String title,
     required String body,
     required String confirmText,
-    Color confirmColor = AppTheme.primaryColor,
+    Color confirmColor = SdColors.primary,
   }) {
     return showDialog<bool>(
       context: context,
@@ -1667,20 +1652,20 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text(title,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontWeight: FontWeight.w800, color: confirmColor)),
           content: Text(body,
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 child: Text('إلغاء',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700))),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700))),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(backgroundColor: confirmColor),
               child: Text(confirmText,
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -1764,17 +1749,17 @@ class _InputDialog<T> extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         title: Text(title,
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
         content: TextField(
           controller: controller,
           autofocus: true,
           keyboardType: keyboard,
           inputFormatters:
               digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
-          style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: GoogleFonts.cairo(color: Colors.grey[600]),
+            labelStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600]),
             isDense: true,
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(SasUi.radiusSm)),
@@ -1784,13 +1769,13 @@ class _InputDialog<T> extends StatelessWidget {
           TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text('إلغاء',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700))),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700))),
           FilledButton(
             onPressed: () => Navigator.pop(context, parse(controller.text)),
             style:
-                FilledButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                FilledButton.styleFrom(backgroundColor: SdColors.primary),
             child: Text(confirmText,
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1863,17 +1848,17 @@ class _HistoryTabState extends State<_HistoryTab> {
         return ListTile(
           dense: true,
           leading: Icon(Icons.history_rounded,
-              size: 18, color: AppTheme.primaryColor),
+              size: 18, color: SdColors.primary),
           title: Text(event,
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           subtitle: desc.isEmpty
               ? null
               : Text(desc,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(fontSize: 11.5)),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5)),
           trailing: Text(date,
-              style: GoogleFonts.robotoMono(
+              style: TextStyle(fontFamily: 'monospace', 
                   fontSize: 10.5, color: Colors.grey[500])),
         );
       },
@@ -2018,16 +2003,16 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok ? 'تم حفظ معلومات المواطن' : 'تعذّر الحفظ',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor: ok ? AppTheme.successColor : AppTheme.errorColor,
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+        backgroundColor: ok ? SdColors.success : SdColors.danger,
         behavior: SnackBarBehavior.floating,
       ));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('فشل: ${_clean(e)}',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-          backgroundColor: AppTheme.errorColor,
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+          backgroundColor: SdColors.danger,
           behavior: SnackBarBehavior.floating,
         ));
       }
@@ -2050,7 +2035,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
           child: ListView(
             padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 12.h),
             children: [
-              _group('الهوية', Icons.badge_rounded, AppTheme.blueGradient, [
+              _group('الهوية', Icons.badge_rounded, SdColors.blueGradient, [
                 _field(_fullNameQuad, 'الاسم الرباعي'),
                 _field(_nationalId, 'الهوية الوطنية', mono: true),
                 _field(_birthDate, 'تاريخ الميلاد',
@@ -2058,7 +2043,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
                 _genderField(),
               ]),
               SizedBox(height: 12.h),
-              _group('التواصل', Icons.phone_rounded, AppTheme.greenGradient, [
+              _group('التواصل', Icons.phone_rounded, SdColors.greenGradient, [
                 _field(_altPhone, 'هاتف بديل',
                     mono: true, keyboard: TextInputType.phone),
                 _field(_whatsapp, 'رقم واتساب',
@@ -2068,7 +2053,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
               ]),
               SizedBox(height: 12.h),
               _group('الموقع / العقار', Icons.location_on_rounded,
-                  AppTheme.orangeGradient, [
+                  SdColors.orangeGradient, [
                 _regionField(),
                 _field(_address, 'تفاصيل العنوان'),
                 _field(_propertyType, 'نوع العقار'),
@@ -2135,13 +2120,13 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       enabled: _canManage,
       keyboardType: keyboard,
       style: mono
-          ? GoogleFonts.robotoMono(fontWeight: FontWeight.w700, fontSize: 13.sp)
-          : GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 13.sp),
+          ? TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700, fontSize: 13.sp)
+          : TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600, fontSize: 13.sp),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle:
-            GoogleFonts.cairo(color: Colors.grey[600], fontSize: 12.sp),
+            TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 12.sp),
         isDense: true,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -2157,7 +2142,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       decoration: InputDecoration(
         labelText: 'المنطقة (تحدّد أجور الصيانة تلقائياً)',
         labelStyle:
-            GoogleFonts.cairo(color: Colors.grey[600], fontSize: 12.sp),
+            TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 12.sp),
         isDense: true,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -2166,7 +2151,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
         DropdownMenuItem<String?>(
           value: null,
           child: Text('— بلا منطقة —',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontWeight: FontWeight.w600, fontSize: 13.sp)),
         ),
         for (final r in _regions)
@@ -2176,7 +2161,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
               r.maintenanceFee > 0
                   ? '${r.name}  ·  صيانة ${r.maintenanceFee}'
                   : r.name,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontWeight: FontWeight.w600, fontSize: 13.sp),
             ),
           ),
@@ -2189,7 +2174,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
     return Row(
       children: [
         Text('الجنس:',
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 12.5.sp,
                 fontWeight: FontWeight.w700,
                 color: Colors.grey[700])),
@@ -2207,10 +2192,10 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       selected: active,
       onSelected: _canManage ? (_) => setState(() => _gender = value) : null,
       label: Text(label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(fontFamily: 'Cairo', 
               fontWeight: FontWeight.w700,
               color: active ? Colors.white : Colors.grey[700])),
-      selectedColor: AppTheme.primaryColor,
+      selectedColor: SdColors.primary,
       backgroundColor: Colors.grey.withValues(alpha: 0.10),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -2231,7 +2216,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
           FilledButton.icon(
             onPressed: (!_canManage || _saving) ? null : _save,
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
+              backgroundColor: SdColors.primary,
               disabledBackgroundColor: Colors.grey.withValues(alpha: 0.30),
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 11.h),
             ),
@@ -2244,7 +2229,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
                   )
                 : const Icon(Icons.save_rounded),
             label: Text(_canManage ? 'حفظ' : 'لا صلاحية',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -2341,7 +2326,7 @@ class _IndexListTabState extends State<_IndexListTab> {
                       SizedBox(
                         width: 96.w,
                         child: Text(c.$2,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: 'Cairo', 
                                 color: Colors.grey[600],
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w600)),
@@ -2351,7 +2336,7 @@ class _IndexListTabState extends State<_IndexListTab> {
                           row[c.$1] == null || '${row[c.$1]}'.isEmpty
                               ? '—'
                               : '${row[c.$1]}',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                       ),
@@ -2471,7 +2456,7 @@ class _TrafficTabState extends State<_TrafficTab> {
         Container(
           padding: EdgeInsets.all(14.w),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: AppTheme.blueGradient),
+            gradient: const LinearGradient(colors: SdColors.blueGradient),
             borderRadius: BorderRadius.circular(SasUi.radius.r),
           ),
           child: Row(
@@ -2484,7 +2469,7 @@ class _TrafficTabState extends State<_TrafficTab> {
         ),
         SizedBox(height: 12.h),
         Text('استهلاك شهر $_month/$_year (لكل يوم)',
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontWeight: FontWeight.w700,
                 fontSize: 12.sp,
                 color: Colors.grey[700])),
@@ -2503,12 +2488,12 @@ class _TrafficTabState extends State<_TrafficTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 11.sp)),
             SizedBox(height: 3.h),
             Text(value,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 13.5.sp)),
@@ -2531,10 +2516,10 @@ class _TrafficTabState extends State<_TrafficTab> {
           SizedBox(
             width: 64.w,
             child: Text(isToday ? '$day (اليوم)' : 'يوم $day',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.sp,
                     fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-                    color: isToday ? AppTheme.primaryColor : Colors.grey[700])),
+                    color: isToday ? SdColors.primary : Colors.grey[700])),
           ),
           Expanded(
             child: ClipRRect(
@@ -2547,7 +2532,7 @@ class _TrafficTabState extends State<_TrafficTab> {
                     child: Container(
                       height: 18.h,
                       decoration: const BoxDecoration(
-                          gradient: LinearGradient(colors: AppTheme.blueGradient)),
+                          gradient: LinearGradient(colors: SdColors.blueGradient)),
                     ),
                   ),
                 ],
@@ -2559,7 +2544,7 @@ class _TrafficTabState extends State<_TrafficTab> {
             width: 92.w,
             child: Text(_fmtBytes(tot),
                 textAlign: TextAlign.end,
-                style: GoogleFonts.robotoMono(
+                style: TextStyle(fontFamily: 'monospace', 
                     fontSize: 10.5.sp, fontWeight: FontWeight.w700)),
           ),
         ],
@@ -2602,12 +2587,12 @@ Color _statusColor(dynamic status) {
   switch (label) {
     case 'نشط':
     case 'متصل':
-      return AppTheme.successColor;
+      return SdColors.success;
     case 'منتهٍ':
-      return AppTheme.warningColor;
+      return SdColors.warning;
     case 'متوقّف':
     case 'غير متصل':
-      return AppTheme.errorColor;
+      return SdColors.danger;
     default:
       return Colors.blueGrey;
   }

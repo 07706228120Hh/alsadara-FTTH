@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/zone_statistics_api_service.dart';
 import '../services/task_api_service.dart';
 
@@ -202,37 +203,13 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.red[800]!,
-                Colors.red[600]!,
-                Colors.red[400]!,
-              ],
-            ),
-          ),
-        ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: selectedZone ?? 'إحصائيات الزونات',
         leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              selectedZone != null
-                  ? Icons.arrow_back_ios
-                  : Icons.arrow_back_ios,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () {
             if (selectedZone != null) {
               setState(() {
@@ -243,531 +220,391 @@ class _StatisticsPageState extends State<StatisticsPage> {
             }
           },
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.bar_chart,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Flexible(
-              child: Text(
-                selectedZone ?? 'إحصائيات الزونات',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
         actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.refresh, color: Colors.white, size: 20),
-            ),
-            tooltip: 'تحديث',
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
             onPressed: fetchData,
           ),
         ],
-        centerTitle: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(20),
-          ),
-        ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.red[50]!,
-              Colors.white,
-            ],
-          ),
-        ),
-        child: _ResponsiveBodyShim(
-          child: isLoading
-              ? Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(30),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.red[600]!),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'جاري تحميل الإحصائيات...',
-                          style: TextStyle(
-                            color: Colors.red[600],
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
+      body: isLoading
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(SdSpace.xxl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: SdColors.primary),
+                    SizedBox(height: 20),
+                    Text('جاري تحميل الإحصائيات...', style: SdText.titleSm),
+                  ],
+                ),
+              ),
+            )
+          : errorMessage != null
+              ? SdEmptyState(
+                  icon: Icons.error_outline,
+                  status: SdStatus.danger,
+                  title: 'حدث خطأ',
+                  message: errorMessage!,
+                  action: SdButton(
+                    label: 'إعادة المحاولة',
+                    icon: Icons.refresh,
+                    onPressed: fetchData,
                   ),
                 )
-              : errorMessage != null
-                  ? Center(
-                      child: Container(
-                        margin: const EdgeInsets.all(20),
-                        padding: const EdgeInsets.all(30),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withValues(alpha: 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            )
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: Colors.red[600],
-                              size: 50,
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              'حدث خطأ',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red[600],
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              errorMessage!,
-                              style: TextStyle(
-                                color: Colors.red[400],
-                                fontSize: 16,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : selectedZone == null
-                      ? Column(
-                          children: [
-                            // شريط البحث والفلتر العصري
-                            Container(
-                              margin: const EdgeInsets.all(16),
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.red.withValues(alpha: 0.1),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.filter_list,
-                                        color: Colors.red[600],
-                                        size: 24,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        'البحث والفلترة',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red[700],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 2,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            border: Border.all(
-                                                color: Colors.red[300]!),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
+              : selectedZone == null
+                  ? Column(
+                      children: [
+                        // شريط البحث والفلتر
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: SdCard(
+                            title: 'البحث والفلترة',
+                            icon: Icons.filter_list,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border:
+                                          Border.all(color: SdColors.divider),
+                                      borderRadius:
+                                          BorderRadius.circular(SdRadius.sm),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: selectedFilter,
+                                        isExpanded: true,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            selectedFilter = value!;
+                                          });
+                                        },
+                                        items: const [
+                                          DropdownMenuItem(
+                                            value: "FBG",
+                                            child: Text("الزون"),
                                           ),
-                                          child: DropdownButtonHideUnderline(
-                                            child: DropdownButton<String>(
-                                              value: selectedFilter,
-                                              isExpanded: true,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 16),
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  selectedFilter = value!;
-                                                });
-                                              },
-                                              items: const [
-                                                DropdownMenuItem(
-                                                  value: "FBG",
-                                                  child: Text("الزون"),
-                                                ),
-                                                DropdownMenuItem(
-                                                  value: "region",
-                                                  child: Text("المنطقة"),
-                                                ),
-                                                DropdownMenuItem(
-                                                  value: "FATS",
-                                                  child: Text("FATS"),
-                                                ),
-                                                DropdownMenuItem(
-                                                  value: "total_users",
-                                                  child: Text("عدد الكلي"),
-                                                ),
-                                                DropdownMenuItem(
-                                                  value: "active_users",
-                                                  child: Text(" غير الفعالين"),
-                                                ),
-                                                DropdownMenuItem(
-                                                  value: "non_subscribed_users",
-                                                  child: Text("الفعالين"),
-                                                ),
-                                              ],
-                                            ),
+                                          DropdownMenuItem(
+                                            value: "region",
+                                            child: Text("المنطقة"),
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        flex: 3,
-                                        child: TextField(
-                                          controller: searchController,
-                                          decoration: InputDecoration(
-                                            labelText: 'بحث',
-                                            prefixIcon: Icon(Icons.search,
-                                                color: Colors.red[600]),
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            focusedBorder: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              borderSide: BorderSide(
-                                                  color: Colors.red[600]!,
-                                                  width: 2),
-                                            ),
+                                          DropdownMenuItem(
+                                            value: "FATS",
+                                            child: Text("FATS"),
                                           ),
-                                          onChanged: filterStatistics,
-                                        ),
+                                          DropdownMenuItem(
+                                            value: "total_users",
+                                            child: Text("عدد الكلي"),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: "active_users",
+                                            child: Text(" غير الفعالين"),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: "non_subscribed_users",
+                                            child: Text("الفعالين"),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ],
-                              ),
-                            ),
-
-                            // إحصائيات عامة
-                            Container(
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.red[600]!, Colors.red[400]!],
                                 ),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.red.withValues(alpha: 0.3),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.analytics,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'عدد الزونات الكلي: $totalZonesCount',
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  flex: 3,
+                                  child: TextField(
+                                    controller: searchController,
+                                    decoration: InputDecoration(
+                                      labelText: 'بحث',
+                                      prefixIcon: const Icon(Icons.search,
+                                          color: SdColors.primary),
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(SdRadius.sm),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(SdRadius.sm),
+                                        borderSide: const BorderSide(
+                                            color: SdColors.primary, width: 2),
+                                      ),
                                     ),
+                                    onChanged: filterStatistics,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
+                          ),
+                        ),
 
-                            const SizedBox(height: 16),
+                        // إحصائيات عامة
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 16),
+                          child: SdStatPedestal(
+                            value: totalZonesCount,
+                            label: 'عدد الزونات الكلي',
+                            tone: SdStatus.danger.tone,
+                          ),
+                        ),
 
-                            // جدول الإحصائيات
-                            Expanded(
-                              child: Container(
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.red.withValues(alpha: 0.1),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 5),
-                                    ),
+                        const SizedBox(height: 16),
+
+                        // جدول الإحصائيات — على الهاتف: بطاقات عمودية
+                        Expanded(
+                          child: context.sd.isPhone
+                              ? _buildZonesCardsMobile()
+                              : Container(
+                            margin:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: SdColors.surface,
+                              borderRadius: BorderRadius.circular(SdRadius.lg),
+                              boxShadow: SdDepth.raised(),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(SdRadius.lg),
+                              child: SingleChildScrollView(
+                                child: Table(
+                                  border: TableBorder.all(
+                                    color: SdColors.divider,
+                                    width: 1,
+                                  ),
+                                  columnWidths: const {
+                                    0: FlexColumnWidth(1.5),
+                                    1: FlexColumnWidth(1),
+                                    2: FlexColumnWidth(1),
+                                    3: FlexColumnWidth(1),
+                                    4: FlexColumnWidth(1),
+                                    5: FlexColumnWidth(1.5),
+                                  },
+                                  children: [
+                                    _buildHeaderRow(),
+                                    ...filteredStatistics.map((stat) {
+                                      return _buildDataRow(stat);
+                                    }),
                                   ],
                                 ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: SingleChildScrollView(
-                                    child: Table(
-                                      border: TableBorder.all(
-                                        color: Colors.grey.shade200,
-                                        width: 1,
-                                      ),
-                                      columnWidths: const {
-                                        0: FlexColumnWidth(1.5),
-                                        1: FlexColumnWidth(1),
-                                        2: FlexColumnWidth(1),
-                                        3: FlexColumnWidth(1),
-                                        4: FlexColumnWidth(1),
-                                        5: FlexColumnWidth(1.5),
-                                      },
-                                      children: [
-                                        _buildHeaderRow(),
-                                        ...filteredStatistics.map((stat) {
-                                          return _buildDataRow(stat);
-                                        }),
-                                      ],
-                                    ),
-                                  ),
-                                ),
                               ),
                             ),
-                            const SizedBox(height: 16),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            // عنوان الوكلاء
-                            Container(
-                              margin: const EdgeInsets.all(16),
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.red[600]!, Colors.red[400]!],
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.red.withValues(alpha: 0.3),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.people,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Flexible(
-                                    child: Text(
-                                      'الوكلاء في الزون: $selectedZone',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // قائمة الوكلاء
-                            Expanded(
-                              child: ListView.builder(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                itemCount: filteredAgents.length,
-                                itemBuilder: (context, index) {
-                                  final agent = filteredAgents[index];
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color:
-                                              Colors.red.withValues(alpha: 0.1),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      children: agent.entries
-                                          .where((entry) => entry.key != 'zone')
-                                          .map((entry) {
-                                        final agentInfo =
-                                            entry.value as Map<String, String>;
-                                        return Container(
-                                          padding: const EdgeInsets.all(16),
-                                          child: Row(
-                                            children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.all(12),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red[50],
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: Icon(
-                                                  Icons.person,
-                                                  color: Colors.red[600],
-                                                  size: 24,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 16),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      agentInfo['name']!,
-                                                      style: const TextStyle(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      agentInfo['phone']!,
-                                                      style: TextStyle(
-                                                        fontSize: 14,
-                                                        color: Colors.grey[600],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      Colors.green[600]!,
-                                                      Colors.green[400]!
-                                                    ],
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: IconButton(
-                                                  icon: const Icon(
-                                                    Icons.message,
-                                                    color: Colors.white,
-                                                  ),
-                                                  onPressed: () => sendMessage(
-                                                      agentInfo['phone']!),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
+                          ),
                         ),
-        ),
+                        const SizedBox(height: 16),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        // عنوان الوكلاء
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: SdCard(
+                            tone: SdGroup.field.tone,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.people,
+                                    color: SdColors.accent, size: 28),
+                                const SizedBox(width: 12),
+                                Flexible(
+                                  child: Text(
+                                    'الوكلاء في الزون: $selectedZone',
+                                    style: SdText.title,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // قائمة الوكلاء
+                        Expanded(
+                          child: ListView.builder(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: filteredAgents.length,
+                            itemBuilder: (context, index) {
+                              final agent = filteredAgents[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: SdCard(
+                                  padding: EdgeInsets.zero,
+                                  child: Column(
+                                    children: agent.entries
+                                        .where((entry) => entry.key != 'zone')
+                                        .map((entry) {
+                                      final agentInfo =
+                                          entry.value as Map<String, String>;
+                                      return Container(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: SdColors.primaryTint,
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                        SdRadius.sm),
+                                              ),
+                                              child: const Icon(
+                                                Icons.person,
+                                                color: SdColors.primary,
+                                                size: 24,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    agentInfo['name']!,
+                                                    style: SdText.titleSm,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    agentInfo['phone']!,
+                                                    style: SdText.bodySm,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                color: SdColors.whatsapp,
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                        SdRadius.sm),
+                                              ),
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.message,
+                                                  color: Colors.white,
+                                                ),
+                                                onPressed: () => sendMessage(
+                                                    agentInfo['phone']!),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+    );
+  }
+
+  // ═════════════════════════════
+  // عرض الهاتف: بطاقات بدل جدول الزونات العريض
+  // (نفس القيم والترتيب تماماً — إعادة تقديم بصري فقط)
+  // ═════════════════════════════
+  Widget _buildZonesCardsMobile() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: filteredStatistics.length,
+      itemBuilder: (context, index) {
+        final stat = filteredStatistics[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: SdCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // اسم الزون — قابل للنقر لعرض الوكلاء (نفس سلوك الجدول)
+                InkWell(
+                  onTap: () => filterAgents(stat['FBG']),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on,
+                          size: 18, color: SdColors.primary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          stat['FBG'].toString(),
+                          style: const TextStyle(
+                            fontFamily: SdText.family,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: SdColors.primary,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_left,
+                          size: 20, color: SdColors.faint),
+                    ],
+                  ),
+                ),
+                const Divider(height: 14, color: SdColors.divider),
+                _zRow('FATS', stat['FATS'].toString()),
+                _zRow('عدد الكلي', stat['total_users'].toString()),
+                _zRow('فعالين', stat['non_subscribed_users'].toString()),
+                _zRow('الغير فعالين', stat['active_users'].toString()),
+                _zRow('المنطقة', stat['region'].toString()),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _zRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: SdText.bodySm)),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            textAlign: TextAlign.end,
+            style: const TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: SdColors.ink,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   TableRow _buildHeaderRow() {
-    return TableRow(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.red[600]!, Colors.red[400]!],
-        ),
-      ),
-      children: const [
-        CenteredText(text: 'الزون', fontSize: 18, color: Colors.white),
-        CenteredText(text: 'FATS', fontSize: 18, color: Colors.white),
-        CenteredText(text: 'عدد الكلي', fontSize: 18, color: Colors.white),
-        CenteredText(text: 'فعالين', fontSize: 18, color: Colors.white),
-        CenteredText(text: 'الغير فعالين', fontSize: 18, color: Colors.white),
-        CenteredText(text: 'المنطقة', fontSize: 18, color: Colors.white),
+    return const TableRow(
+      decoration: BoxDecoration(color: SdColors.primary),
+      children: [
+        CenteredText(text: 'الزون', fontSize: 16, color: Colors.white),
+        CenteredText(text: 'FATS', fontSize: 16, color: Colors.white),
+        CenteredText(text: 'عدد الكلي', fontSize: 16, color: Colors.white),
+        CenteredText(text: 'فعالين', fontSize: 16, color: Colors.white),
+        CenteredText(text: 'الغير فعالين', fontSize: 16, color: Colors.white),
+        CenteredText(text: 'المنطقة', fontSize: 16, color: Colors.white),
       ],
     );
   }
 
   TableRow _buildDataRow(Map<String, dynamic> stat) {
     return TableRow(
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
         border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200),
+          bottom: BorderSide(color: SdColors.divider),
         ),
       ),
       children: [
@@ -780,7 +617,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
             child: CenteredText(
               text: stat['FBG'],
               fontSize: 16,
-              color: Colors.red[700],
+              color: SdColors.primary,
             ),
           ),
         ),
@@ -791,35 +628,6 @@ class _StatisticsPageState extends State<StatisticsPage> {
         CenteredText(text: stat['active_users'].toString(), fontSize: 16),
         CenteredText(text: stat['region'], fontSize: 16),
       ],
-    );
-  }
-}
-
-class _ResponsiveBodyShim extends StatelessWidget {
-  final Widget child;
-  const _ResponsiveBodyShim({required this.child});
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    double maxWidth;
-    if (width > 1440) {
-      maxWidth = 1200;
-    } else if (width > 1024) {
-      maxWidth = 1000;
-    } else if (width > 600) {
-      maxWidth = 800;
-    } else {
-      maxWidth = double.infinity;
-    }
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: child,
-        ),
-      ),
     );
   }
 }
@@ -846,9 +654,10 @@ class CenteredText extends StatelessWidget {
           text,
           textAlign: TextAlign.center,
           style: TextStyle(
+            fontFamily: SdText.family,
             fontSize: fontSize,
-            color: color ?? Colors.black,
-            fontWeight: color != null ? FontWeight.bold : FontWeight.normal,
+            color: color ?? SdColors.ink,
+            fontWeight: color != null ? FontWeight.bold : FontWeight.w600,
           ),
         ),
       ),

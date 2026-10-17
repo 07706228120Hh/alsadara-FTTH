@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
@@ -226,7 +227,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم حفظ الملف في: ${file.path}'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -241,52 +242,49 @@ class _HrReportsPageState extends State<HrReportsPage>
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      SnackBar(content: Text(msg), backgroundColor: SdColors.danger),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final r = context.responsive;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('تقارير الموارد البشرية',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: r.appBarTitleSize)),
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white,
-          bottom: TabBar(
-            controller: _tabController,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.amber,
-            tabs: const [
-              Tab(icon: Icon(Icons.dashboard), text: 'الداشبورد'),
-              Tab(icon: Icon(Icons.access_time), text: 'الحضور'),
-              Tab(icon: Icon(Icons.payments), text: 'الرواتب'),
-              Tab(icon: Icon(Icons.event_busy), text: 'الإجازات'),
-            ],
-          ),
-        ),
-        body: Column(
-          children: [
-            // Month/Year selector
-            _buildMonthYearSelector(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildDashboardTab(),
-                  _buildAttendanceTab(),
-                  _buildSalaryTab(),
-                  _buildLeavesTab(),
-                ],
-              ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: const SdAppBar(title: 'تقارير الموارد البشرية'),
+      body: Column(
+        children: [
+          Material(
+            color: SdColors.surface,
+            child: TabBar(
+              controller: _tabController,
+              labelColor: SdColors.primary,
+              unselectedLabelColor: SdColors.muted,
+              indicatorColor: SdColors.primary,
+              labelStyle: SdText.label,
+              tabs: const [
+                Tab(icon: Icon(Icons.dashboard), text: 'الداشبورد'),
+                Tab(icon: Icon(Icons.access_time), text: 'الحضور'),
+                Tab(icon: Icon(Icons.payments), text: 'الرواتب'),
+                Tab(icon: Icon(Icons.event_busy), text: 'الإجازات'),
+              ],
             ),
-          ],
-        ),
+          ),
+          // Month/Year selector
+          _buildMonthYearSelector(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildDashboardTab(),
+                _buildAttendanceTab(),
+                _buildSalaryTab(),
+                _buildLeavesTab(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -294,10 +292,10 @@ class _HrReportsPageState extends State<HrReportsPage>
   Widget _buildMonthYearSelector() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.grey.shade100,
+      color: SdColors.surfaceAlt,
       child: Row(
         children: [
-          const Icon(Icons.calendar_today, size: 20, color: Color(0xFF1A237E)),
+          const Icon(Icons.calendar_today, size: 20, color: SdColors.primary),
           const SizedBox(width: 8),
           const Text('الفترة:', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(width: 12),
@@ -336,7 +334,7 @@ class _HrReportsPageState extends State<HrReportsPage>
           const Spacer(),
           // Refresh button
           IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF1A237E)),
+            icon: const Icon(Icons.refresh, color: SdColors.primary),
             onPressed: _refreshCurrentTab,
             tooltip: 'تحديث',
           ),
@@ -349,10 +347,10 @@ class _HrReportsPageState extends State<HrReportsPage>
 
   Widget _buildDashboardTab() {
     if (_loadingDashboard) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (_dashboardData == null) {
-      return const Center(child: Text('لا توجد بيانات'));
+      return const SdEmptyState(icon: Icons.inbox_rounded, title: 'لا توجد بيانات');
     }
 
     final data = _dashboardData!;
@@ -379,7 +377,7 @@ class _HrReportsPageState extends State<HrReportsPage>
               _compactStat('غائبون', '${today['AbsentCount'] ?? 0}',
                   Icons.person_off, Colors.red),
               const SizedBox(width: 8),
-              Container(width: 1, height: 40, color: Colors.grey.shade300),
+              Container(width: 1, height: 40, color: SdColors.divider),
               const SizedBox(width: 8),
               _compactStat('حضور شهري', '${monthly['TotalPresent'] ?? 0}',
                   Icons.thumb_up, Colors.green),
@@ -421,7 +419,7 @@ class _HrReportsPageState extends State<HrReportsPage>
                 Expanded(
                   flex: 3,
                   child: _dashSection(
-                      'الرواتب', Icons.payments, const Color(0xFF1A237E), [
+                      'الرواتب', Icons.payments, SdColors.primary, [
                     _compactInfoRow('صافي (حسب الحضور)',
                         _formatNumber(salaries['TotalNet'])),
                     _compactInfoRow('الأساسي (مرجعي)',
@@ -513,7 +511,7 @@ class _HrReportsPageState extends State<HrReportsPage>
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold, color: color)),
             Text(label,
-                style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
+                style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700),
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis),
           ],
@@ -604,7 +602,7 @@ class _HrReportsPageState extends State<HrReportsPage>
           ),
           Text(detail,
               style: TextStyle(
-                  fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+                  fontSize: 11.5, color: color, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -635,9 +633,9 @@ class _HrReportsPageState extends State<HrReportsPage>
         ),
         Expanded(
           child: _loadingAttendance
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
               : _attendanceReport.isEmpty
-                  ? const Center(child: Text('لا توجد بيانات'))
+                  ? const SdEmptyState(icon: Icons.inbox_rounded, title: 'لا توجد بيانات')
                   : _buildAttendanceDataTable(),
         ),
       ],
@@ -652,7 +650,7 @@ class _HrReportsPageState extends State<HrReportsPage>
           child: ConstrainedBox(
             constraints: BoxConstraints(minWidth: constraints.maxWidth),
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(const Color(0xFFE8EAF6)),
+              headingRowColor: WidgetStateProperty.all(SdColors.primaryTint),
               columnSpacing: isPhone ? 10 : 20,
               columns: const [
                 DataColumn(
@@ -691,7 +689,7 @@ class _HrReportsPageState extends State<HrReportsPage>
                       child: Text(
                         emp['EmployeeName'] ?? '',
                         style: const TextStyle(
-                          color: Color(0xFF1A237E),
+                          color: SdColors.primary,
                           fontWeight: FontWeight.bold,
                           decoration: TextDecoration.underline,
                         ),
@@ -765,9 +763,9 @@ class _HrReportsPageState extends State<HrReportsPage>
         ),
         Expanded(
           child: _loadingSalary
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
               : _salaryReport.isEmpty
-                  ? const Center(child: Text('لا توجد بيانات'))
+                  ? const SdEmptyState(icon: Icons.inbox_rounded, title: 'لا توجد بيانات')
                   : _buildSalaryDataTable(),
         ),
       ],
@@ -780,7 +778,7 @@ class _HrReportsPageState extends State<HrReportsPage>
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFE8EAF6)),
+          headingRowColor: WidgetStateProperty.all(SdColors.primaryTint),
           columnSpacing: isPhone ? 8 : 16,
           columns: const [
             DataColumn(
@@ -869,9 +867,9 @@ class _HrReportsPageState extends State<HrReportsPage>
         ),
         Expanded(
           child: _loadingLeaves
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
               : _leavesReport.isEmpty
-                  ? const Center(child: Text('لا توجد بيانات'))
+                  ? const SdEmptyState(icon: Icons.inbox_rounded, title: 'لا توجد بيانات')
                   : _buildLeavesDataTable(),
         ),
       ],
@@ -884,7 +882,7 @@ class _HrReportsPageState extends State<HrReportsPage>
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFE8EAF6)),
+          headingRowColor: WidgetStateProperty.all(SdColors.primaryTint),
           columnSpacing: isPhone ? 10 : 20,
           columns: const [
             DataColumn(
@@ -952,7 +950,7 @@ class _HrReportsPageState extends State<HrReportsPage>
       style: TextStyle(
         fontSize: r.scaled(14, 16, 18),
         fontWeight: FontWeight.bold,
-        color: const Color(0xFF1A237E),
+        color: SdColors.primary,
       ),
     );
   }
@@ -1024,7 +1022,7 @@ class _HrReportsPageState extends State<HrReportsPage>
       margin: const EdgeInsets.only(left: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8EAF6),
+        color: SdColors.primaryTint,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -1032,7 +1030,7 @@ class _HrReportsPageState extends State<HrReportsPage>
           Text(value,
               style:
                   const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          Text(label, style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
         ],
       ),
     );
@@ -1052,21 +1050,11 @@ class _HrReportsPageState extends State<HrReportsPage>
   }
 
   Widget _exportButton(String type) {
-    return ElevatedButton.icon(
+    return SdButton(
+      label: _exporting ? 'جارٍ التصدير...' : 'تصدير CSV',
+      icon: Icons.download,
+      height: 44,
       onPressed: _exporting ? null : () => _exportCsv(type),
-      icon: _exporting
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Colors.white))
-          : const Icon(Icons.download),
-      label: const Text('تصدير CSV'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF1A237E),
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
     );
   }
 
@@ -1222,7 +1210,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF1A237E),
+                  color: SdColors.primary,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
@@ -1255,7 +1243,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  color: Colors.grey.shade100,
+                  color: SdColors.surfaceAlt,
                   child: Row(
                     children: [
                       _summaryChip('حضور',
@@ -1280,7 +1268,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
               // الجدول اليومي
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
                     : _buildDailyTable(),
               ),
             ],
@@ -1304,7 +1292,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
             Text(value,
                 style: TextStyle(
                     fontSize: 14, fontWeight: FontWeight.bold, color: color)),
-            Text(label, style: const TextStyle(fontSize: 10)),
+            Text(label, style: const TextStyle(fontSize: 11.5)),
           ],
         ),
       ),
@@ -1324,7 +1312,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
       child: ConstrainedBox(
         constraints: BoxConstraints(minWidth: isPhone ? screenWidth : 960),
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFE8EAF6)),
+          headingRowColor: WidgetStateProperty.all(SdColors.primaryTint),
           columnSpacing: isPhone ? 6 : 10,
           dataRowMinHeight: 36,
           dataRowMaxHeight: 42,
@@ -1404,7 +1392,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                         child: Text(
                           _statusArabic(status),
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 11.5,
                               color: _statusColor(status),
                               fontWeight: FontWeight.bold),
                         ),
@@ -1412,7 +1400,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                     : Text(
                         isFriday ? 'عطلة' : 'لا بصمة',
                         style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 11.5,
                             color:
                                 isFriday ? Colors.grey : Colors.red.shade300),
                       )),
@@ -1758,7 +1746,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                                 content: Text(isEdit
                                     ? 'تم تعديل سجل الحضور بنجاح'
                                     : 'تم إضافة سجل الحضور بنجاح'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                           }
@@ -1768,7 +1756,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('خطأ'),
-                                backgroundColor: Colors.red,
+                                backgroundColor: SdColors.danger,
                               ),
                             );
                           }
@@ -1783,7 +1771,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                     : Icon(isEdit ? Icons.save : Icons.add),
                 label: Text(isEdit ? 'حفظ التعديلات' : 'إضافة'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isEdit ? Colors.blue : Colors.green,
+                  backgroundColor: isEdit ? SdColors.info : SdColors.success,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -1837,7 +1825,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('تم حذف سجل الحضور'),
-                        backgroundColor: Colors.green,
+                        backgroundColor: SdColors.success,
                       ),
                     );
                   }
@@ -1846,13 +1834,13 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('خطأ في الحذف'),
-                        backgroundColor: Colors.red,
+                        backgroundColor: SdColors.danger,
                       ),
                     );
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
               child: const Text('حذف', style: TextStyle(color: Colors.white)),
             ),
           ],

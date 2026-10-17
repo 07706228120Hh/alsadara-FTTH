@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show NumberFormat;
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_responsive.dart';
@@ -138,33 +139,28 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-              context.accR.isMobile
-                  ? 'المصاريف الثابتة'
-                  : 'المصاريف الثابتة الشهرية',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.accR.isMobile ? 14 : null)),
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: context.accR.isMobile
+              ? 'المصاريف الثابتة'
+              : 'المصاريف الثابتة الشهرية',
           actions: [
-            IconButton(
-              icon: const Icon(Icons.add_circle_outline),
+            SdAppBarAction(
+              icon: Icons.add_circle_outline,
+              label: 'إضافة مصروف ثابت',
               onPressed: _showAddDialog,
-              tooltip: 'إضافة مصروف ثابت',
             ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
               onPressed: _loadData,
-              tooltip: 'تحديث',
             ),
           ],
         ),
         body: SafeArea(
+          top: false,
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : Column(
@@ -194,7 +190,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       children: [
         Icon(Icons.calendar_today,
             size: isMobile ? 16 : context.accR.iconM,
-            color: const Color(0xFF1A237E)),
+            color: SdColors.primary),
         SizedBox(width: context.accR.spaceS),
         DropdownButton<int>(
           value: _selectedMonth,
@@ -232,11 +228,11 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       mainAxisAlignment:
           isMobile ? MainAxisAlignment.spaceEvenly : MainAxisAlignment.start,
       children: [
-        _headerStat('إجمالي', _formatNumber(total), Colors.blue),
+        _headerStat('إجمالي', _formatNumber(total), SdStatus.info.tone),
         SizedBox(width: isMobile ? 8 : context.accR.spaceXL),
-        _headerStat('مدفوع', _formatNumber(paid), Colors.green),
+        _headerStat('مدفوع', _formatNumber(paid), SdStatus.success.tone),
         SizedBox(width: isMobile ? 8 : context.accR.spaceXL),
-        _headerStat('غير مدفوع', _formatNumber(unpaid), Colors.red),
+        _headerStat('غير مدفوع', _formatNumber(unpaid), SdStatus.danger.tone),
       ],
     );
 
@@ -244,7 +240,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMobile ? 8 : context.accR.paddingH,
           vertical: isMobile ? 4 : context.accR.spaceM),
-      color: Colors.grey.shade100,
+      color: SdColors.groundAlt,
       child: isMobile
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -280,11 +276,11 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                 selected: _selectedCategoryFilter == null,
                 onSelected: (_) =>
                     setState(() => _selectedCategoryFilter = null),
-                selectedColor: const Color(0xFF1A237E).withValues(alpha: 0.15),
-                checkmarkColor: const Color(0xFF1A237E),
+                selectedColor: SdColors.primary.withValues(alpha: 0.15),
+                checkmarkColor: SdColors.primary,
                 labelStyle: TextStyle(
                   color: _selectedCategoryFilter == null
-                      ? const Color(0xFF1A237E)
+                      ? SdColors.primary
                       : Colors.grey.shade700,
                   fontWeight: _selectedCategoryFilter == null
                       ? FontWeight.bold
@@ -336,29 +332,33 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
     return map[value] ?? 'Other';
   }
 
-  Widget _headerStat(String label, String value, Color color) {
+  Widget _headerStat(String label, String value, SdTone tone) {
     final isMobile = context.accR.isMobile;
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: isMobile ? 6 : context.accR.spaceM,
           vertical: isMobile ? 2 : context.accR.spaceXS),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
               style: TextStyle(
-                  fontSize: isMobile ? 10 : context.accR.small, color: color)),
+                  fontFamily: SdText.family,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: tone.text)),
           SizedBox(width: isMobile ? 3 : context.accR.spaceXS),
           Text(value,
               style: TextStyle(
-                  fontSize: isMobile ? 11 : context.accR.body,
-                  fontWeight: FontWeight.bold,
-                  color: color)),
+                  fontFamily: SdText.family,
+                  fontSize: isMobile ? 12.5 : context.accR.body,
+                  fontWeight: FontWeight.w900,
+                  color: tone.text)),
         ],
       ),
     );
@@ -387,11 +387,11 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
         Container(
           padding: EdgeInsets.symmetric(
               horizontal: context.accR.paddingH, vertical: context.accR.spaceM),
-          color: Color(0xFFE8EAF6),
+          color: SdColors.primaryTint,
           child: Row(
             children: [
               Icon(Icons.receipt_long,
-                  size: context.accR.iconM, color: Color(0xFF1A237E)),
+                  size: context.accR.iconM, color: SdColors.primary),
               SizedBox(width: context.accR.spaceS),
               Text(
                 _selectedCategoryFilter == null
@@ -400,22 +400,21 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: context.accR.body,
-                    color: Color(0xFF1A237E)),
+                    color: SdColors.primary),
               ),
               Spacer(),
               Text('${filtered.length} مصروف',
-                  style: TextStyle(
-                      fontSize: context.accR.small,
-                      color: Colors.grey.shade600)),
+                  style: SdText.caption),
             ],
           ),
         ),
         Expanded(
           child: filtered.isEmpty
-              ? Center(
-                  child: Text('لا توجد مصاريف ثابتة مسجلة',
-                      style: TextStyle(
-                          color: Colors.grey, fontSize: context.accR.body)))
+              ? const SingleChildScrollView(
+                  child: SdEmptyState(
+                    title: 'لا توجد مصاريف ثابتة مسجلة',
+                    icon: Icons.receipt_long,
+                  ))
               : ListView.separated(
                   padding: EdgeInsets.all(context.accR.spaceM),
                   itemCount: filtered.length,
@@ -436,13 +435,13 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                             BorderRadius.circular(context.accR.cardRadius),
                         side: BorderSide(
                           color: isPaid
-                              ? Colors.green.withValues(alpha: 0.4)
-                              : Colors.red.withValues(alpha: 0.25),
+                              ? SdStatus.success.tone.tintEdge
+                              : SdStatus.danger.tone.tintEdge,
                           width: 1,
                         ),
                       ),
                       color:
-                          isPaid ? Colors.green.withValues(alpha: 0.03) : null,
+                          isPaid ? SdStatus.success.tone.tint : null,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
@@ -497,7 +496,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                         style: TextStyle(
                                           fontSize: context.accR.financialSmall,
                                           fontWeight: FontWeight.w600,
-                                          color: Color(0xFF1A237E),
+                                          color: SdColors.primary,
                                         ),
                                       ),
                                     ],
@@ -507,39 +506,16 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                             ),
                             // حالة الدفع + أزرار
                             if (isPaid) ...[
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(
-                                      context.accR.radiusL),
-                                  border: Border.all(
-                                      color:
-                                          Colors.green.withValues(alpha: 0.3)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.check_circle,
-                                        color: Colors.green,
-                                        size: context.accR.iconS),
-                                    SizedBox(width: 4),
-                                    Text('مدفوع',
-                                        style: TextStyle(
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: context.accR.small)),
-                                  ],
-                                ),
-                              ),
+                              const SdStatusChip('مدفوع',
+                                  status: SdStatus.success,
+                                  icon: Icons.check_circle),
                               SizedBox(width: context.accR.spaceXS),
                               IconButton(
                                 icon:
                                     Icon(Icons.undo, size: context.accR.iconM),
                                 tooltip: 'إلغاء الدفع',
                                 onPressed: () => _unpayExpense(payment!),
-                                color: Colors.orange,
+                                color: SdStatus.warning.tone.base,
                                 splashRadius: 20,
                               ),
                             ] else ...[
@@ -549,11 +525,10 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                     : null,
                                 icon: Icon(Icons.payment,
                                     size: context.accR.iconS),
-                                label: Text('تسديد',
-                                    style: TextStyle(
-                                        fontSize: context.accR.small)),
+                                label: const Text('تسديد',
+                                    style: TextStyle(fontSize: 12.5)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1A237E),
+                                  backgroundColor: SdColors.primary,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 14, vertical: 8),
@@ -712,7 +687,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A237E),
+                backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
               ),
               child: const Text('إضافة'),
@@ -884,7 +859,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A237E),
+                backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
               ),
               child: const Text('حفظ'),

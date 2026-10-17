@@ -26,6 +26,20 @@ class AppTheme {
       brightness: brightness,
     );
 
+    // الإطار الموحّد (كحلي رمادي ناعم 3D4466) للحقول والبطاقات والأزرار.
+    // في الوضع الداكن يُستخدم إطار فاتح حتى يبقى مرئياً.
+    final outline = BorderSide(
+      color: brightness == Brightness.light
+          ? const Color(0xFF3D4466)
+          : Colors.white54,
+      width: 1.2,
+    );
+    final outlineFocus = outline.copyWith(color: colorScheme.primary, width: 2.0);
+    RoundedRectangleBorder btnShape() => RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_radius12),
+          side: outline,
+        );
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
@@ -54,6 +68,7 @@ class AppTheme {
                 .withValues(alpha: brightness == Brightness.light ? 0.2 : 0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_radius16),
+          side: outline,
         ),
         margin: const EdgeInsets.all(8),
       ),
@@ -63,25 +78,20 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radius12),
-          ),
+          shape: btnShape(),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radius12),
-          ),
+          shape: btnShape(),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radius12),
-          ),
+          side: outline,
+          shape: btnShape(),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -128,19 +138,19 @@ class AppTheme {
             : const Color(0xFF2A2A2A),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_radius12),
-          borderSide: BorderSide.none,
+          borderSide: outline,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_radius12),
-          borderSide: BorderSide(
-            color: brightness == Brightness.light
-                ? Colors.grey.withValues(alpha: 0.2)
-                : Colors.white.withValues(alpha: 0.1),
-          ),
+          borderSide: outline,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_radius12),
-          borderSide: BorderSide(color: colorScheme.primary, width: 1.8),
+          borderSide: outlineFocus,
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radius12),
+          borderSide: outline.copyWith(color: outline.color.withValues(alpha: 0.3)),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

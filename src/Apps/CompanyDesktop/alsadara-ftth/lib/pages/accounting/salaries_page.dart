@@ -1,6 +1,6 @@
 ﻿import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/attendance_api_service.dart';
 import '../../services/period_closing_service.dart';
@@ -80,26 +80,52 @@ class _SalariesPageState extends State<SalariesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    final canAdd = PermissionManager.instance.canAdd('accounting.salaries');
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'الرواتب',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _loadData,
+            ),
+            if (canAdd)
+              SdAppBarAction(
+                icon: Icons.group,
+                label: 'كادر الرواتب',
+                onPressed: _showSalaryRosterDialog,
+              ),
+            if (canAdd)
+              SdAppBarAction(
+                icon: Icons.auto_fix_high,
+                label: 'توليد رواتب',
+                onPressed: _generateSalaries,
+              ),
+            if (canAdd)
+              SdAppBarAction(
+                icon: Icons.payment,
+                label: 'صرف الكل',
+                onPressed: _payAllSalaries,
+              ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildPageToolbar(),
               _buildMonthSelector(),
               _buildSummaryBar(),
               Expanded(
                 child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
+                    ? const Center(child: CircularProgressIndicator())
                     : _errorMessage != null
                         ? Center(
                             child: Text(_errorMessage!,
                                 style: const TextStyle(
-                                    color: AccountingTheme.danger)))
+                                    color: SdColors.danger)))
                         : _buildSalariesList(),
               ),
             ],
@@ -109,155 +135,15 @@ class _SalariesPageState extends State<SalariesPage> {
     );
   }
 
-  Widget _buildPageToolbar() {
-    final isMobile = context.accR.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : context.accR.spaceXL,
-          vertical: isMobile ? 6 : context.accR.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            iconSize: isMobile ? 20 : 24,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          if (!isMobile) SizedBox(width: context.accR.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMobile ? 4 : context.accR.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonPinkGradient,
-              borderRadius: BorderRadius.circular(isMobile ? 6 : 8),
-            ),
-            child: Icon(Icons.payments_rounded,
-                color: Colors.white, size: isMobile ? 16 : context.accR.iconM),
-          ),
-          SizedBox(width: isMobile ? 6 : context.accR.spaceM),
-          Expanded(
-            child: Text('الرواتب',
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
-                    fontSize: isMobile ? 14 : context.accR.headingMedium,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary)),
-          ),
-          IconButton(
-            onPressed: _loadData,
-            icon: Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          if (isMobile) ...[
-            if (PermissionManager.instance.canAdd('accounting.salaries'))
-            SizedBox(
-              height: 28,
-              child: OutlinedButton(
-                onPressed: _showSalaryRosterDialog,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AccountingTheme.info,
-                  side: const BorderSide(color: AccountingTheme.info),
-                  padding: EdgeInsets.symmetric(horizontal: 6),
-                  minimumSize: Size(28, 28),
-                ),
-                child: Icon(Icons.group, size: 14),
-              ),
-            ),
-            if (PermissionManager.instance.canAdd('accounting.salaries'))
-            SizedBox(width: 4),
-            if (PermissionManager.instance.canAdd('accounting.salaries'))
-            SizedBox(
-              height: 28,
-              child: OutlinedButton(
-                onPressed: _generateSalaries,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AccountingTheme.neonPink,
-                  side: const BorderSide(color: AccountingTheme.neonPink),
-                  padding: EdgeInsets.symmetric(horizontal: 6),
-                  minimumSize: Size(28, 28),
-                ),
-                child: Icon(Icons.auto_fix_high, size: 14),
-              ),
-            ),
-            if (PermissionManager.instance.canAdd('accounting.salaries'))
-            SizedBox(width: 4),
-            if (PermissionManager.instance.canAdd('accounting.salaries'))
-            SizedBox(
-              height: 28,
-              child: ElevatedButton(
-                onPressed: _payAllSalaries,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonPink,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 6),
-                  minimumSize: Size(28, 28),
-                ),
-                child: Icon(Icons.payment, size: 14),
-              ),
-            ),
-          ] else ...[
-            if (PermissionManager.instance.canAdd('accounting.salaries')) ...[
-            SizedBox(width: context.accR.spaceS),
-            OutlinedButton.icon(
-              onPressed: _showSalaryRosterDialog,
-              icon: Icon(Icons.group, size: context.accR.iconM),
-              label: const Text('كادر الرواتب'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AccountingTheme.info,
-                side: const BorderSide(color: AccountingTheme.info),
-              ),
-            ),
-            ],
-            if (PermissionManager.instance.canAdd('accounting.salaries')) ...[
-            SizedBox(width: context.accR.spaceS),
-            OutlinedButton.icon(
-              onPressed: _generateSalaries,
-              icon: Icon(Icons.auto_fix_high, size: context.accR.iconM),
-              label: const Text('توليد رواتب'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AccountingTheme.neonPink,
-                side: const BorderSide(color: AccountingTheme.neonPink),
-              ),
-            ),
-            ],
-            if (PermissionManager.instance.canAdd('accounting.salaries')) ...[
-            SizedBox(width: context.accR.spaceS),
-            ElevatedButton.icon(
-              onPressed: _payAllSalaries,
-              icon: Icon(Icons.payment, size: context.accR.iconM),
-              label: Text('صرف الكل'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AccountingTheme.neonPink,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                    horizontal: context.accR.paddingH,
-                    vertical: context.accR.spaceM),
-              ),
-            ),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildMonthSelector() {
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: context.accR.paddingH, vertical: context.accR.spaceM),
-      color: AccountingTheme.bgCard,
+      color: SdColors.surface,
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_right,
-                color: AccountingTheme.textSecondary),
+            icon: const Icon(Icons.chevron_right, color: SdColors.muted),
             onPressed: () {
               setState(() {
                 if (_selectedMonth == 12) {
@@ -273,16 +159,12 @@ class _SalariesPageState extends State<SalariesPage> {
           Expanded(
             child: Text(
               '${_months[_selectedMonth - 1]} $_selectedYear',
-              style: TextStyle(
-                  color: AccountingTheme.textPrimary,
-                  fontSize: context.accR.headingSmall,
-                  fontWeight: FontWeight.bold),
+              style: SdText.titleSm,
               textAlign: TextAlign.center,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_left,
-                color: AccountingTheme.textSecondary),
+            icon: const Icon(Icons.chevron_left, color: SdColors.muted),
             onPressed: () {
               setState(() {
                 if (_selectedMonth == 1) {
@@ -318,44 +200,46 @@ class _SalariesPageState extends State<SalariesPage> {
         children: [
           Expanded(
               child: _summaryChip(
-                  'إجمالي صافي', _fmt(totalNet), Color(0xFF2196F3))),
+                  'إجمالي صافي', _fmt(totalNet), SdStatus.info.tone)),
           SizedBox(width: context.accR.spaceS),
           Expanded(
               child: _summaryChip(
-                  'الخصومات', _fmt(totalDeductions), AccountingTheme.danger)),
+                  'الخصومات', _fmt(totalDeductions), SdStatus.danger.tone)),
           SizedBox(width: context.accR.spaceS),
           Expanded(
-              child: _summaryChip('مصروفة', '$paidCount', Color(0xFF4CAF50))),
+              child: _summaryChip('مصروفة', '$paidCount', SdStatus.success.tone)),
           SizedBox(width: context.accR.spaceS),
           Expanded(
-              child: _summaryChip(
-                  'معلقة', '$pendingCount', const Color(0xFFF39C12))),
+              child: _summaryChip('معلقة', '$pendingCount', SdStatus.warning.tone)),
         ],
       ),
     );
   }
 
-  Widget _summaryChip(String label, String value, Color color) {
+  Widget _summaryChip(String label, String value, SdTone tone) {
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: context.accR.spaceL, vertical: context.accR.spaceS),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
       ),
       child: Column(
         children: [
           Text(label,
               style: TextStyle(
-                  color: color.withValues(alpha: 0.8),
-                  fontSize: context.accR.small)),
-          SizedBox(height: 2),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5)),
+          const SizedBox(height: 2),
           Text(value,
               style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.accR.body)),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13.5)),
         ],
       ),
     );
@@ -363,47 +247,37 @@ class _SalariesPageState extends State<SalariesPage> {
 
   Widget _buildSalariesList() {
     if (_salaries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.payments_outlined,
-                color: AccountingTheme.textMuted, size: context.accR.iconEmpty),
-            SizedBox(height: context.accR.spaceXL),
-            Text('لا توجد رواتب لهذا الشهر',
-                style: TextStyle(color: AccountingTheme.textMuted)),
-            SizedBox(height: context.accR.spaceM),
-            ElevatedButton.icon(
-              onPressed: _generateSalaries,
-              icon: const Icon(Icons.auto_fix_high),
-              label: const Text('توليد رواتب الشهر'),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonGreen,
-                  foregroundColor: Colors.white),
-            ),
-          ],
+      return SingleChildScrollView(
+        child: SdEmptyState(
+          title: 'لا توجد رواتب لهذا الشهر',
+          icon: Icons.payments_outlined,
+          action: PermissionManager.instance.canAdd('accounting.salaries')
+              ? SdButton(
+                  label: 'توليد رواتب الشهر',
+                  icon: Icons.auto_fix_high,
+                  onPressed: _generateSalaries,
+                )
+              : null,
         ),
       );
     }
 
     return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
           constraints:
               BoxConstraints(minWidth: MediaQuery.of(context).size.width - 24),
           child: DataTable(
-            headingRowColor: WidgetStateProperty.all(const Color(0xFF1E293B)),
+            headingRowColor: WidgetStateProperty.all(SdColors.primary),
             dataRowColor: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.hovered)) {
-                return const Color(0xFF1E293B).withValues(alpha: 0.5);
+                return SdColors.surfaceAlt;
               }
-              return AccountingTheme.bgCard;
+              return SdColors.surface;
             }),
-            border: TableBorder.all(
-                color: AccountingTheme.borderColor.withValues(alpha: 0.3),
-                width: 0.5),
+            border: TableBorder.all(color: SdColors.divider, width: 0.5),
             columnSpacing: 12,
             horizontalMargin: 12,
             headingRowHeight: 42,
@@ -516,8 +390,6 @@ class _SalariesPageState extends State<SalariesPage> {
             ],
             rows: _salaries.map((s) {
               final status = s['Status'] ?? 'Pending';
-              final statusColor = AccountingTheme.salaryStatusColors[status] ??
-                  AccountingTheme.textMuted;
               final attendanceDays = (s['AttendanceDays'] ?? 0) as num;
               final expectedWorkDays = (s['ExpectedWorkDays'] ?? 26) as num;
               final baseSalary = (s['BaseSalary'] ?? 0) as num;
@@ -557,20 +429,9 @@ class _SalariesPageState extends State<SalariesPage> {
                           fontWeight: FontWeight.bold,
                           fontSize: context.accR.small))),
                   DataCell(_buildTechDuesCell(s)),
-                  DataCell(Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.15),
-                      borderRadius:
-                          BorderRadius.circular(context.accR.cardRadius),
-                    ),
-                    child: Text(
-                      _statusLabels[status] ?? status,
-                      style: TextStyle(
-                          color: statusColor,
-                          fontSize: context.accR.caption,
-                          fontWeight: FontWeight.bold),
-                    ),
+                  DataCell(SdStatusChip(
+                    _statusLabels[status] ?? status,
+                    status: _salaryStatusEnum(status),
                   )),
                   DataCell(Text('${s['AttendanceDays'] ?? 0}',
                       style: TextStyle(
@@ -1240,6 +1101,21 @@ class _SalariesPageState extends State<SalariesPage> {
         ),
       ),
     );
+  }
+
+  SdStatus _salaryStatusEnum(dynamic status) {
+    switch (status) {
+      case 'Paid':
+        return SdStatus.success;
+      case 'PartiallyPaid':
+        return SdStatus.info;
+      case 'Cancelled':
+        return SdStatus.danger;
+      case 'Pending':
+        return SdStatus.warning;
+      default:
+        return SdStatus.neutral;
+    }
   }
 
   void _snack(String msg, Color color) {

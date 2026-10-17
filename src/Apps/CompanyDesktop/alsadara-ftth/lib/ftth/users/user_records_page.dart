@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/subscription_logs_service.dart';
 import 'package:intl/intl.dart';
 import '../../models/filter_criteria.dart';
@@ -733,20 +734,18 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
     final totalAmount = _calculateTotalAmount();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('سجلات ${widget.userName}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: 'سجلات ${widget.userName}',
         actions: [
-          IconButton(
-            icon: Icon(showFilters ? Icons.filter_list_off : Icons.filter_list),
-            tooltip: showFilters ? 'إخفاء التصفية' : 'إظهار التصفية',
+          SdAppBarAction(
+            icon: showFilters ? Icons.filter_list_off : Icons.filter_list,
+            label: showFilters ? 'إخفاء التصفية' : 'إظهار التصفية',
             onPressed: () => setState(() => showFilters = !showFilters),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'تحديث البيانات',
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث البيانات',
             onPressed: _loadUserRecords,
           ),
         ],

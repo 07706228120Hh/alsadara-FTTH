@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'permissions_storage.dart';
 import '../pages/login/premium_login_page.dart';
+import '../frontend/frontend.dart';
 
 class PermissionsGate extends StatefulWidget {
   final Widget child;
@@ -49,22 +50,31 @@ class _PermissionsGateState extends State<PermissionsGate> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return const SdPage(
+        scrollable: false,
+        body: Center(
+          child: CircularProgressIndicator(color: SdColors.primary),
+        ),
       );
     }
     // إذا لم يُمنح الإذن، أظهر زر طلب الإذن
-    return Scaffold(
+    return SdPage(
+      scrollable: false,
+      maxWidth: SdSpace.formMax,
       body: Center(
-        child: ElevatedButton.icon(
-          icon: const Icon(Icons.location_on),
-          label: const Text('السماح للتطبيق بالوصول للموقع'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue[800],
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            textStyle: const TextStyle(fontSize: 18),
+        child: SdCard(
+          tone: SdGroup.field.tone,
+          child: SdEmptyState(
+            icon: Icons.location_on_rounded,
+            status: SdStatus.info,
+            title: 'إذن الموقع مطلوب',
+            message: 'يحتاج التطبيق إلى إذن الوصول إلى موقعك للمتابعة.',
+            action: SdButton(
+              label: 'السماح للتطبيق بالوصول للموقع',
+              icon: Icons.location_on,
+              onPressed: _requestLocationPermissionOnInstall,
+            ),
           ),
-          onPressed: _requestLocationPermissionOnInstall,
         ),
       ),
     );

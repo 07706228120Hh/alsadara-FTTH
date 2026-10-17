@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:path_provider/path_provider.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import 'ftth/fetch_server_data_page.dart';
 import '../services/agents_auth_service.dart';
 import '../services/auth_service.dart';
@@ -340,7 +341,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                   itemCount: _logs.length,
                   itemBuilder: (context, index) {
                     final log = _logs[index];
-                    Color bgColor = Colors.grey[100]!;
+                    Color bgColor = SdColors.surfaceAlt;
                     Color textColor = Colors.black87;
 
                     if (log.contains('✅') || log.contains('نجاح')) {
@@ -896,7 +897,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                         subtitle: Text(
                           '${chartInfo['description']} | ${columns.length} عمود | $rowCount سجل',
                           style:
-                              TextStyle(color: Colors.grey[600], fontSize: 12),
+                              TextStyle(color: SdColors.muted, fontSize: 12),
                         ),
                         children: [
                           if (columns.isNotEmpty)
@@ -932,7 +933,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                                       child: Text(
                                           '... و ${columns.length - 10} عمود آخر',
                                           style: TextStyle(
-                                              color: Colors.grey[600],
+                                              color: SdColors.muted,
                                               fontSize: 12)),
                                     ),
                                 ],
@@ -1017,7 +1018,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
               children: [
                 const Text(
                   'أدخل بيانات حساب Dashboard FTTH',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                  style: TextStyle(fontSize: 14, color: SdColors.faint),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -1519,7 +1520,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             style: GoogleFonts.cairo(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[700])),
+                color: SdColors.muted)),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -1561,7 +1562,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             style: GoogleFonts.cairo(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[700])),
+                color: SdColors.muted)),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -1901,7 +1902,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
               const CircularProgressIndicator(),
               const SizedBox(height: 12),
               Text('جاري تحميل تحليلات Superset...',
-                  style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey)),
+                  style: GoogleFonts.cairo(fontSize: 13, color: SdColors.faint)),
             ],
           ),
         ),
@@ -1920,11 +1921,11 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.cloud_off, color: Colors.grey),
+                  const Icon(Icons.cloud_off, color: SdColors.faint),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text('لم يتم تحميل بيانات Superset',
-                        style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey)),
+                        style: GoogleFonts.cairo(fontSize: 13, color: SdColors.faint)),
                   ),
                   TextButton.icon(
                     icon: const Icon(Icons.refresh, size: 18),
@@ -1961,7 +1962,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: SdColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -2139,7 +2140,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text('لا توجد بيانات إحصائيات المناطق',
-              style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey)),
+              style: GoogleFonts.cairo(fontSize: 13, color: SdColors.faint)),
         ),
       );
     }
@@ -2166,7 +2167,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 const Spacer(),
                 Text('${rows.length} منطقة',
                     style: GoogleFonts.cairo(
-                        fontSize: 11, color: Colors.grey)),
+                        fontSize: 11, color: SdColors.faint)),
               ],
             ),
             const SizedBox(height: 16),
@@ -2321,7 +2322,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text('لا توجد بيانات تفاصيل المناطق',
-              style: GoogleFonts.cairo(fontSize: 13, color: Colors.grey)),
+              style: GoogleFonts.cairo(fontSize: 13, color: SdColors.faint)),
         ),
       );
     }
@@ -2371,7 +2372,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           // إحصائيات رئيسية/فرعية
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.grey[100],
+            color: SdColors.surfaceAlt,
             child: Row(
               children: [
                 const Icon(Icons.home, color: Color(0xFF00695C), size: 16),
@@ -2562,7 +2563,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             const SizedBox(height: 4),
             Text('أكبر ${top5.length} مناطق',
                 style: GoogleFonts.cairo(
-                    fontSize: 11, color: Colors.grey[600])),
+                    fontSize: 11, color: SdColors.muted)),
             const SizedBox(height: 12),
             SizedBox(
               height: 300,
@@ -2613,7 +2614,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                   drawVerticalLine: false,
                   horizontalInterval: maxY > 0 ? maxY / 4 : 1,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey[300]!,
+                    color: SdColors.divider,
                     strokeWidth: 0.5,
                   ),
                 ),
@@ -2708,7 +2709,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             const SizedBox(height: 4),
             Text('مجموع كل المناطق — Active vs Inactive',
                 style: GoogleFonts.cairo(
-                    fontSize: 11, color: Colors.grey[600])),
+                    fontSize: 11, color: SdColors.muted)),
             const SizedBox(height: 12),
             SizedBox(
               height: 300,
@@ -2784,7 +2785,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                   drawVerticalLine: false,
                   horizontalInterval: maxY > 0 ? maxY / 4 : 1,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey[300]!,
+                    color: SdColors.divider,
                     strokeWidth: 0.5,
                   ),
                 ),
@@ -2891,7 +2892,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 children: [
                   Text(title,
                       style: GoogleFonts.cairo(
-                          fontSize: 10, color: Colors.grey[600]),
+                          fontSize: 10, color: SdColors.muted),
                       overflow: TextOverflow.ellipsis),
                   Text(
                     _numFmt.format(value is num ? value : 0),
@@ -2950,29 +2951,22 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('تحليلات Dashboard'),
-          backgroundColor: Colors.indigo[800],
-          foregroundColor: Colors.white,
-          elevation: 0,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'تحليلات Dashboard',
           actions: [
             // 📋 زر عرض السجلات
-            IconButton(
-              icon: Badge(
-                isLabelVisible: _logs.isNotEmpty,
-                label: Text('${_logs.length}',
-                    style: const TextStyle(fontSize: 10)),
-                child: const Icon(Icons.article_outlined),
-              ),
-              tooltip: 'عرض السجلات',
+            SdAppBarAction(
+              icon: Icons.article_outlined,
+              label: 'عرض السجلات',
+              badge: _logs.isNotEmpty ? _logs.length : null,
               onPressed: _showLogs,
             ),
-            IconButton(
-              icon: const Icon(Icons.language),
-              tooltip: 'جلب من الموقع',
+            SdAppBarAction(
+              icon: Icons.language,
+              label: 'جلب من الموقع',
               onPressed: () async {
                 await Navigator.push(
                   context,
@@ -2984,14 +2978,14 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 await _loadSupersetDataLocally();
               },
             ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'تحديث البيانات',
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث البيانات',
               onPressed: _fetchLiveDashboard,
             ),
           ],
         ),
-        body: _buildLiveDashboard(),
+        body: SafeArea(top: false, child: _buildLiveDashboard()),
       ),
     );
   }
@@ -3006,11 +3000,11 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.folder_off, size: 48, color: Colors.grey[400]),
+            Icon(Icons.folder_off, size: 48, color: SdColors.faint),
             const SizedBox(height: 8),
             Text(
               'لا توجد ملفات',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: SdColors.muted),
             ),
           ],
         ),
@@ -3035,7 +3029,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           ),
           subtitle: Text(
             '${category.value.length} ملف',
-            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 11, color: SdColors.muted),
           ),
           children: category.value.map((file) {
             final fileName = file.path.split('\\').last;
@@ -3048,7 +3042,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
               leading: Icon(
                 Icons.description,
                 size: 18,
-                color: isSelected ? Colors.indigo[700] : Colors.grey[500],
+                color: isSelected ? Colors.indigo[700] : SdColors.faint,
               ),
               title: Text(
                 fileName,
@@ -3098,7 +3092,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
     if (category.contains('رسوم')) return Colors.blue;
     if (category.contains('مناطق')) return Colors.green;
     if (category.contains('مستخدمين')) return Colors.orange;
-    return Colors.grey;
+    return SdColors.faint;
   }
 
   Widget _buildMainContent() {
@@ -3414,7 +3408,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                   return DataRow(
                     color: WidgetStateProperty.resolveWith((states) {
                       if (index % 2 == 0) {
-                        return isMain ? Colors.blue[50] : Colors.grey[50];
+                        return isMain ? Colors.blue[50] : SdColors.groundAlt;
                       }
                       return isMain ? Colors.blue[100] : null;
                     }),
@@ -3569,10 +3563,10 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         // شريط معلومات
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.grey[200],
+          color: SdColors.divider,
           child: Row(
             children: [
-              const Icon(Icons.code, color: Colors.grey),
+              const Icon(Icons.code, color: SdColors.faint),
               const SizedBox(width: 8),
               const Text(
                 'عرض البيانات الخام (JSON)',
@@ -3701,7 +3695,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            color: Colors.grey[100],
+            color: SdColors.surfaceAlt,
             child: SelectableText(
               const JsonEncoder.withIndent('  ').convert(chart),
               style: const TextStyle(fontFamily: 'monospace', fontSize: 10),
@@ -3726,7 +3720,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       return Container(
         margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: SdColors.divider),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
@@ -3755,7 +3749,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
               return Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: Colors.grey[200]!)),
+                  border: Border(top: BorderSide(color: SdColors.divider)),
                 ),
                 child: Row(
                   children: cols.map((c) {
@@ -3768,7 +3762,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       display = '${d.month}/${d.day}';
                     } else if (val == null) {
                       display = '-';
-                      color = Colors.grey;
+                      color = SdColors.faint;
                     } else if (c.toString().contains('Active')) {
                       display = val.toString();
                       color = Colors.green;
@@ -3796,7 +3790,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 padding: const EdgeInsets.all(8),
                 child: Text(
                   '... و ${data.length - 10} صفوف أخرى',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                  style: TextStyle(color: SdColors.muted, fontSize: 11),
                 ),
               ),
           ],
@@ -3902,8 +3896,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: index.isEven ? Colors.white : Colors.grey[50],
-                  border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+                  color: index.isEven ? Colors.white : SdColors.groundAlt,
+                  border: Border(bottom: BorderSide(color: SdColors.divider)),
                 ),
                 child: Row(
                   children: columns.map((col) {
@@ -3917,7 +3911,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       displayValue = '${date.year}/${date.month}/${date.day}';
                     } else if (value == null) {
                       displayValue = '-';
-                      textColor = Colors.grey;
+                      textColor = SdColors.faint;
                     } else if (col.contains('Active')) {
                       displayValue = value.toString();
                       textColor = Colors.green[700];
@@ -3983,7 +3977,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              color: Colors.grey[50],
+              color: SdColors.groundAlt,
               child: SelectableText(
                 const JsonEncoder.withIndent('  ').convert(item),
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
@@ -4028,7 +4022,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: SelectableText(

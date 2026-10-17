@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../../utils/responsive_helper.dart';
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
@@ -17,7 +16,7 @@ final List<SasReportDef> kSasReports = [
     title: 'التفعيلات',
     path: 'index/activations',
     icon: Icons.bolt_rounded,
-    gradient: AppTheme.orangeGradient,
+    gradient: SdColors.orangeGradient,
     cols: const [
       SasReportCol('created_at', 'التاريخ'),
       SasReportCol('user_details.username', 'المشترك'),
@@ -49,7 +48,7 @@ final List<SasReportDef> kSasReports = [
     title: 'فواتير المشتركين',
     path: 'index/UserInvoices',
     icon: Icons.receipt_long_rounded,
-    gradient: AppTheme.greenGradient,
+    gradient: SdColors.greenGradient,
     cols: const [
       SasReportCol('invoice_number', 'رقم الفاتورة'),
       SasReportCol('created_at', 'التاريخ'),
@@ -77,7 +76,7 @@ final List<SasReportDef> kSasReports = [
     title: 'السجل المالي',
     path: 'index/ManagerJournal',
     icon: Icons.menu_book_rounded,
-    gradient: AppTheme.greenGradient,
+    gradient: SdColors.greenGradient,
     cols: const [
       SasReportCol('created_at', 'التاريخ'),
       SasReportCol('operation', 'العملية'),
@@ -103,7 +102,7 @@ final List<SasReportDef> kSasReports = [
     title: 'انتقال الأموال',
     path: 'report/depodrawal',
     icon: Icons.swap_horiz_rounded,
-    gradient: AppTheme.orangeGradient,
+    gradient: SdColors.orangeGradient,
     cols: const [
       SasReportCol('created_at', 'التاريخ'),
       SasReportCol('operation', 'العملية'),
@@ -117,7 +116,7 @@ final List<SasReportDef> kSasReports = [
     title: 'سجل الديون',
     path: 'index/ManagerDebtsJournal',
     icon: Icons.balance_rounded,
-    gradient: AppTheme.orangeGradient,
+    gradient: SdColors.orangeGradient,
     cols: const [
       SasReportCol('created_at', 'التاريخ'),
       SasReportCol('operation', 'العملية'),
@@ -182,7 +181,7 @@ class SasReportsPage extends StatelessWidget {
                   title: 'التقارير المجمّعة',
                   subtitle: 'ملخّص المشتركين + حسب الباقة + حسب المدير + التفعيلات',
                   icon: Icons.insights_rounded,
-                  gradient: AppTheme.blueGradient,
+                  gradient: SdColors.blueGradient,
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => SasAggregateReportsPage(account: account),
                   )),
@@ -212,7 +211,7 @@ class SasReportsPage extends StatelessWidget {
 
   Widget _hint(String text) => Text(
         text,
-        style: GoogleFonts.cairo(fontSize: 12.sp, color: Colors.grey[600]),
+        style: TextStyle(fontFamily: 'Cairo', fontSize: 12.sp, color: Colors.grey[600]),
       );
 
   Widget _tile(
@@ -242,7 +241,7 @@ class SasReportsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(fontFamily: 'Cairo', 
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w800,
                             color: const Color(0xFF1A1A2E))),
@@ -251,7 +250,7 @@ class SasReportsPage extends StatelessWidget {
                       Text(subtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 11.sp, color: Colors.grey[600])),
                     ],
                   ],
@@ -474,7 +473,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
                         const SasSectionHeader(
                           title: 'توزيع الباقات',
                           icon: Icons.inventory_2_rounded,
-                          gradient: AppTheme.greenGradient,
+                          gradient: SdColors.greenGradient,
                         ),
                         SizedBox(height: 10.h),
                         _distTable(_perProfile, _profileError, nameKeys: const [
@@ -485,7 +484,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
                         const SasSectionHeader(
                           title: 'توزيع الوكلاء الفرعيين',
                           icon: Icons.account_tree_rounded,
-                          gradient: AppTheme.orangeGradient,
+                          gradient: SdColors.orangeGradient,
                         ),
                         SizedBox(height: 10.h),
                         _distTable(_perManager, _managerError, nameKeys: const [
@@ -496,7 +495,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
                         SasSectionHeader(
                           title: 'التفعيلات',
                           icon: Icons.bolt_rounded,
-                          gradient: AppTheme.orangeGradient,
+                          gradient: SdColors.orangeGradient,
                           trailingText: '${_arMonths[_month - 1]} $_year',
                         ),
                         SizedBox(height: 10.h),
@@ -519,17 +518,17 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
         SasStatCard(
             label: 'الإجمالي',
             value: '$_total',
-            color: AppTheme.primaryColor,
+            color: SdColors.primary,
             icon: Icons.people_rounded),
         SasStatCard(
             label: 'نشط',
             value: '$_active',
-            color: AppTheme.successColor,
+            color: SdColors.success,
             icon: Icons.check_circle_rounded),
         SasStatCard(
             label: 'منتهٍ',
             value: '$_expired',
-            color: AppTheme.errorColor,
+            color: SdColors.danger,
             icon: Icons.cancel_rounded),
       ],
     );
@@ -545,7 +544,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
         SizedBox(height: 6.h),
         Text('ملاحظة: التصفية الزمنية تخصّ «التفعيلات» فقط.',
             style:
-                GoogleFonts.cairo(fontSize: 10.5.sp, color: Colors.grey[600])),
+                TextStyle(fontFamily: 'Cairo', fontSize: 10.5.sp, color: Colors.grey[600])),
         SizedBox(height: 10.h),
         if (_activationsLoading)
           Padding(
@@ -555,7 +554,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
                 width: 24.w,
                 height: 24.w,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2.4, color: AppTheme.primaryColor),
+                    strokeWidth: 2.4, color: SdColors.primary),
               ),
             ),
           )
@@ -567,7 +566,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
             child: SasStatCard(
                 label: 'إجمالي تفعيلات ${_arMonths[_month - 1]} $_year',
                 value: '$_activationsTotal',
-                color: AppTheme.warningColor,
+                color: SdColors.warning,
                 icon: Icons.bolt_rounded),
           ),
           SizedBox(height: 10.h),
@@ -595,7 +594,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
             visualDensity: VisualDensity.compact,
             onPressed: _activationsLoading ? null : () => _shiftMonth(-1),
             icon: const Icon(Icons.chevron_right_rounded),
-            color: AppTheme.primaryColor,
+            color: SdColors.primary,
           ),
           Expanded(
             child: Row(
@@ -613,7 +612,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
             onPressed:
                 (_activationsLoading || atCurrent) ? null : () => _shiftMonth(1),
             icon: const Icon(Icons.chevron_left_rounded),
-            color: atCurrent ? Colors.grey[350] : AppTheme.primaryColor,
+            color: atCurrent ? Colors.grey[350] : SdColors.primary,
           ),
         ],
       ),
@@ -626,7 +625,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
       value: _month,
       underline: const SizedBox.shrink(),
       borderRadius: BorderRadius.circular(10.r),
-      style: GoogleFonts.cairo(
+      style: TextStyle(fontFamily: 'Cairo', 
           fontSize: 12.5.sp,
           fontWeight: FontWeight.w700,
           color: const Color(0xFF1A1A2E)),
@@ -657,7 +656,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
       value: _year,
       underline: const SizedBox.shrink(),
       borderRadius: BorderRadius.circular(10.r),
-      style: GoogleFonts.cairo(
+      style: TextStyle(fontFamily: 'Cairo', 
           fontSize: 12.5.sp,
           fontWeight: FontWeight.w700,
           color: const Color(0xFF1A1A2E)),
@@ -694,13 +693,13 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
           dataRowMinHeight: 38,
           dataRowMaxHeight: 48,
           headingRowColor: WidgetStatePropertyAll(
-              AppTheme.primaryColor.withValues(alpha: 0.06)),
-          headingTextStyle: GoogleFonts.cairo(
+              SdColors.primary.withValues(alpha: 0.06)),
+          headingTextStyle: TextStyle(fontFamily: 'Cairo', 
               fontSize: 12.sp,
               fontWeight: FontWeight.w800,
-              color: AppTheme.primaryColor),
+              color: SdColors.primary),
           dataTextStyle:
-              GoogleFonts.cairo(fontSize: 12.sp, color: Colors.black87),
+              TextStyle(fontFamily: 'Cairo', fontSize: 12.sp, color: Colors.black87),
           columns: const [
             DataColumn(label: Text('اليوم')),
             DataColumn(label: Text('عدد التفعيلات'), numeric: true),
@@ -710,8 +709,8 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
               DataRow(cells: [
                 DataCell(Text('${e.key} ${_arMonths[_month - 1]}')),
                 DataCell(Text('${e.value}',
-                    style: GoogleFonts.cairo(
-                        color: AppTheme.warningColor,
+                    style: TextStyle(fontFamily: 'Cairo', 
+                        color: SdColors.warning,
                         fontWeight: FontWeight.w700))),
               ]),
           ],
@@ -741,13 +740,13 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
           dataRowMinHeight: 38,
           dataRowMaxHeight: 48,
           headingRowColor: WidgetStatePropertyAll(
-              AppTheme.primaryColor.withValues(alpha: 0.06)),
-          headingTextStyle: GoogleFonts.cairo(
+              SdColors.primary.withValues(alpha: 0.06)),
+          headingTextStyle: TextStyle(fontFamily: 'Cairo', 
               fontSize: 12.sp,
               fontWeight: FontWeight.w800,
-              color: AppTheme.primaryColor),
+              color: SdColors.primary),
           dataTextStyle:
-              GoogleFonts.cairo(fontSize: 12.sp, color: Colors.black87),
+              TextStyle(fontFamily: 'Cairo', fontSize: 12.sp, color: Colors.black87),
           columns: [
             DataColumn(label: Text(firstLabel)),
             const DataColumn(label: Text('الكلي'), numeric: true),
@@ -760,12 +759,12 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
                 DataCell(Text(_firstNonEmpty(row, nameKeys))),
                 DataCell(Text('${sasInt(row['c'])}')),
                 DataCell(Text('${sasInt(row['active'])}',
-                    style: GoogleFonts.cairo(
-                        color: AppTheme.successColor,
+                    style: TextStyle(fontFamily: 'Cairo', 
+                        color: SdColors.success,
                         fontWeight: FontWeight.w700))),
                 DataCell(Text('${sasInt(row['expired'])}',
-                    style: GoogleFonts.cairo(
-                        color: AppTheme.errorColor,
+                    style: TextStyle(fontFamily: 'Cairo', 
+                        color: SdColors.danger,
                         fontWeight: FontWeight.w700))),
               ]),
           ],
@@ -785,19 +784,19 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
   Widget _inlineError(String msg) => Container(
         padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
-          color: AppTheme.errorColor.withValues(alpha: 0.06),
+          color: SdColors.danger.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12.r),
           border:
-              Border.all(color: AppTheme.errorColor.withValues(alpha: 0.28)),
+              Border.all(color: SdColors.danger.withValues(alpha: 0.28)),
         ),
         child: Row(
           children: [
             Icon(Icons.error_outline_rounded,
-                color: AppTheme.errorColor, size: 20.sp),
+                color: SdColors.danger, size: 20.sp),
             SizedBox(width: 8.w),
             Expanded(
                 child: Text(msg,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.5.sp, color: Colors.grey[800]))),
           ],
         ),
@@ -816,7 +815,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
             SizedBox(width: 8.w),
             Expanded(
                 child: Text(msg,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.5.sp, color: Colors.grey[600]))),
           ],
         ),
@@ -826,25 +825,15 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
 /// شريط علوي متدرّج موحّد لصفحات التقارير/الترخيص.
 PreferredSizeWidget _bar(BuildContext context, String title,
     {VoidCallback? onRefresh}) {
-  return AppBar(
-    elevation: 0,
-    toolbarHeight: 56,
-    backgroundColor: AppTheme.primaryColor,
-    flexibleSpace: const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: AppTheme.blueGradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-    ),
-    title: Text(title,
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 17)),
+  return SdAppBar(
+    title: title,
     actions: [
       if (onRefresh != null)
-        IconButton(
-            onPressed: onRefresh, icon: const Icon(Icons.refresh_rounded)),
+        SdAppBarAction(
+          icon: Icons.refresh_rounded,
+          label: 'تحديث',
+          onPressed: onRefresh,
+        ),
     ],
   );
 }

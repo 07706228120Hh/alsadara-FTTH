@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -76,6 +77,32 @@ class _MaterialsPageState extends State<MaterialsPage> {
   void _onSearch() { _page = 1; _loadData(); }
   int get _totalPages => (_total / _pageSize).ceil().clamp(1, 99999);
 
+  InputDecoration _dec(String label, {Widget? suffixIcon, Widget? prefixIcon, String? hint}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      labelStyle: SdText.bodySm,
+      hintStyle: SdText.bodySm,
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: SdColors.surface,
+      isDense: true,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.cardEdge),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.cardEdge),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+      ),
+    );
+  }
+
   // ═══════════════════════════════════════════
   //  إدارة الأصناف (Categories)
   // ═══════════════════════════════════════════
@@ -99,53 +126,57 @@ class _MaterialsPageState extends State<MaterialsPage> {
       context: context,
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setD) {
-          return AlertDialog(
-            title: const Text('إضافة تصنيف سريع'),
-            content: SizedBox(
-              width: 350,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: 'اسم التصنيف *', border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<int?>(
-                    value: parentId,
-                    decoration: const InputDecoration(labelText: 'تصنيف أب (اختياري)', border: OutlineInputBorder()),
-                    items: [
-                      const DropdownMenuItem(value: null, child: Text('بدون')),
-                      ..._categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
-                    ],
-                    onChanged: (v) => setD(() => parentId = v),
-                  ),
-                ],
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: const Text('إضافة تصنيف سريع'),
+              content: SizedBox(
+                width: 350,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: _dec('اسم التصنيف *'),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<int?>(
+                      value: parentId,
+                      decoration: _dec('تصنيف أب (اختياري)'),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('بدون')),
+                        ..._categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                      ],
+                      onChanged: (v) => setD(() => parentId = v),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-              FilledButton(
-                onPressed: () async {
-                  if (nameCtrl.text.trim().isEmpty) return;
-                  try {
-                    final res = await _api.createCategory(data: {
-                      'name': nameCtrl.text.trim(),
-                      'parentCategoryId': parentId,
-                      'companyId': widget.companyId,
-                    });
-                    await _loadCategories();
-                    final newId = res['data']?['Id'] ?? res['data']?['id'];
-                    if (ctx.mounted) Navigator.pop(ctx, newId is int ? newId : int.tryParse('$newId'));
-                  } catch (e) {
-                    if (ctx.mounted) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                  onPressed: () async {
+                    if (nameCtrl.text.trim().isEmpty) return;
+                    try {
+                      final res = await _api.createCategory(data: {
+                        'name': nameCtrl.text.trim(),
+                        'parentCategoryId': parentId,
+                        'companyId': widget.companyId,
+                      });
+                      await _loadCategories();
+                      final newId = res['data']?['Id'] ?? res['data']?['id'];
+                      if (ctx.mounted) Navigator.pop(ctx, newId is int ? newId : int.tryParse('$newId'));
+                    } catch (e) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
+                      }
                     }
-                  }
-                },
-                child: const Text('إضافة'),
-              ),
-            ],
+                  },
+                  child: const Text('إضافة'),
+                ),
+              ],
+            ),
           );
         });
       },
@@ -180,88 +211,95 @@ class _MaterialsPageState extends State<MaterialsPage> {
       context: context,
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setD) {
-          return AlertDialog(
-            title: Text(item == null || item.id.isEmpty ? 'إضافة مادة' : 'تعديل مادة'),
-            content: SizedBox(
-              width: 500,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم المادة *', border: OutlineInputBorder())),
-                    const SizedBox(height: 10),
-                    // التصنيف مع زر إضافة سريع
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<int?>(
-                            value: catId,
-                            decoration: const InputDecoration(labelText: 'التصنيف', border: OutlineInputBorder()),
-                            items: [
-                              const DropdownMenuItem(value: null, child: Text('بدون تصنيف')),
-                              ..._categories.map((c) {
-                                final prefix = c.parentCategoryId != null ? '  ↳ ' : '';
-                                return DropdownMenuItem(value: c.id, child: Text('$prefix${c.name}'));
-                              }),
-                            ],
-                            onChanged: (v) => setD(() => catId = v),
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: Text(item == null || item.id.isEmpty ? 'إضافة مادة' : 'تعديل مادة'),
+              content: SizedBox(
+                width: 500,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(controller: nameCtrl, decoration: _dec('اسم المادة *')),
+                      const SizedBox(height: 10),
+                      // التصنيف مع زر إضافة سريع
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<int?>(
+                              value: catId,
+                              decoration: _dec('التصنيف'),
+                              items: [
+                                const DropdownMenuItem(value: null, child: Text('بدون تصنيف')),
+                                ..._categories.map((c) {
+                                  final prefix = c.parentCategoryId != null ? '  ↳ ' : '';
+                                  return DropdownMenuItem(value: c.id, child: Text('$prefix${c.name}'));
+                                }),
+                              ],
+                              onChanged: (v) => setD(() => catId = v),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle, color: Colors.blue),
-                          tooltip: 'إضافة تصنيف جديد',
-                          onPressed: () async {
-                            final newId = await _quickAddCategory();
-                            if (newId != null) setD(() => catId = newId);
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.account_tree_rounded, color: Colors.teal, size: 20),
-                          tooltip: 'إدارة شجرة الأصناف',
-                          onPressed: () async {
-                            await _showCategoriesDialog();
-                            setD(() {}); // refresh dropdown
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      value: unit,
-                      decoration: const InputDecoration(labelText: 'الوحدة', border: OutlineInputBorder()),
-                      items: _unitMap.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                      onChanged: (v) => setD(() => unit = v ?? 'Piece'),
-                    ),
-                    const SizedBox(height: 10),
-                    // الأسعار: 3 حقول
-                    Row(
-                      children: [
-                        Expanded(child: TextField(controller: costCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'سعر التكلفة', border: OutlineInputBorder()))),
-                        const SizedBox(width: 8),
-                        Expanded(child: TextField(controller: sellCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'سعر البيع', border: OutlineInputBorder()))),
-                        const SizedBox(width: 8),
-                        Expanded(child: TextField(controller: wholesaleCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'سعر الجملة', border: OutlineInputBorder()))),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: TextField(controller: minCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'الحد الأدنى', border: OutlineInputBorder()))),
-                        const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: maxCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'الحد الأقصى', border: OutlineInputBorder()))),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(controller: descCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'الوصف', border: OutlineInputBorder())),
-                  ],
+                          const SizedBox(width: 6),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle, color: SdColors.primary),
+                            tooltip: 'إضافة تصنيف جديد',
+                            onPressed: () async {
+                              final newId = await _quickAddCategory();
+                              if (newId != null) setD(() => catId = newId);
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.account_tree_rounded, color: SdColors.accent, size: 20),
+                            tooltip: 'إدارة شجرة الأصناف',
+                            onPressed: () async {
+                              await _showCategoriesDialog();
+                              setD(() {}); // refresh dropdown
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: unit,
+                        decoration: _dec('الوحدة'),
+                        items: _unitMap.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                        onChanged: (v) => setD(() => unit = v ?? 'Piece'),
+                      ),
+                      const SizedBox(height: 10),
+                      // الأسعار: 3 حقول
+                      Row(
+                        children: [
+                          Expanded(child: TextField(controller: costCtrl, keyboardType: TextInputType.number, decoration: _dec('سعر التكلفة'))),
+                          const SizedBox(width: 8),
+                          Expanded(child: TextField(controller: sellCtrl, keyboardType: TextInputType.number, decoration: _dec('سعر البيع'))),
+                          const SizedBox(width: 8),
+                          Expanded(child: TextField(controller: wholesaleCtrl, keyboardType: TextInputType.number, decoration: _dec('سعر الجملة'))),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: TextField(controller: minCtrl, keyboardType: TextInputType.number, decoration: _dec('الحد الأدنى'))),
+                          const SizedBox(width: 10),
+                          Expanded(child: TextField(controller: maxCtrl, keyboardType: TextInputType.number, decoration: _dec('الحد الأقصى'))),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(controller: descCtrl, maxLines: 2, decoration: _dec('الوصف')),
+                    ],
+                  ),
                 ),
               ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('حفظ'),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
-            ],
           );
         });
       },
@@ -289,10 +327,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
       } else {
         await _api.updateItem(item.id, data: data);
       }
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحفظ'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحفظ'), backgroundColor: SdColors.success));
       _loadData();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
   }
 
@@ -321,13 +359,16 @@ class _MaterialsPageState extends State<MaterialsPage> {
   Future<void> _confirmDelete(InventoryItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: Text('هل تريد حذف "${item.name}"؟'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
-        ],
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد الحذف'),
+          content: Text('هل تريد حذف "${item.name}"؟'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+          ],
+        ),
       ),
     );
     if (confirmed != true) return;
@@ -345,130 +386,235 @@ class _MaterialsPageState extends State<MaterialsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
-          title: const Text('المواد والأصناف'),
-          actions: [
-            IconButton(icon: const Icon(Icons.account_tree_rounded), tooltip: 'إدارة الأصناف', onPressed: _showCategoriesDialog),
-            IconButton(icon: const Icon(Icons.add), tooltip: 'إضافة مادة', onPressed: () => _showAddEditDialog()),
-            IconButton(icon: const Icon(Icons.refresh), tooltip: 'تحديث', onPressed: _loadData),
-          ],
-        ),
-        body: Column(
-          children: [
-            _buildFilters(),
-            const Divider(height: 1),
-            Expanded(child: _buildBody()),
-            if (!_loading && _error == null && _items.isNotEmpty) _buildPagination(),
-          ],
-        ),
+    final showPagination = !_loading && _error == null && _items.isNotEmpty;
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'المواد والأصناف',
+        actions: [
+          SdAppBarAction(icon: Icons.account_tree_rounded, label: 'إدارة الأصناف', onPressed: _showCategoriesDialog),
+          SdAppBarAction(icon: Icons.add_rounded, label: 'إضافة مادة', onPressed: () => _showAddEditDialog()),
+          SdAppBarAction(icon: Icons.refresh_rounded, label: 'تحديث', onPressed: _loadData),
+        ],
       ),
-    );
-  }
-
-  Widget _buildFilters() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(flex: 3, child: TextField(
-            controller: _searchCtrl,
-            decoration: InputDecoration(
-              hintText: 'بحث بالاسم...', prefixIcon: const Icon(Icons.search),
-              border: const OutlineInputBorder(), isDense: true,
-              suffixIcon: _searchCtrl.text.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () { _searchCtrl.clear(); _onSearch(); }) : null,
-            ),
-            onSubmitted: (_) => _onSearch(),
-          )),
-          const SizedBox(width: 12),
-          Expanded(flex: 2, child: DropdownButtonFormField<int?>(
-            value: _selectedCategoryId,
-            decoration: const InputDecoration(labelText: 'التصنيف', border: OutlineInputBorder(), isDense: true),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('الكل')),
-              ..._categories.map((c) {
-                final prefix = c.parentCategoryId != null ? '  ↳ ' : '';
-                return DropdownMenuItem(value: c.id, child: Text('$prefix${c.name}'));
-              }),
-            ],
-            onChanged: (v) { _selectedCategoryId = v; _onSearch(); },
-          )),
-          const SizedBox(width: 12),
-          FilterChip(label: const Text('ناقص فقط'), selected: _lowStockOnly, onSelected: (v) { _lowStockOnly = v; _onSearch(); }),
+          _buildFilters(),
+          const SizedBox(height: SdSpace.sm),
+          Expanded(child: _buildBody()),
+          if (showPagination) _buildPagination(),
         ],
       ),
     );
   }
 
+  Widget _buildFilters() {
+    final search = TextField(
+      controller: _searchCtrl,
+      style: SdText.body,
+      decoration: _dec('', hint: 'بحث بالاسم...',
+          prefixIcon: const Icon(Icons.search, color: SdColors.faint),
+          suffixIcon: _searchCtrl.text.isNotEmpty
+              ? IconButton(icon: const Icon(Icons.clear, size: 18, color: SdColors.faint), onPressed: () { _searchCtrl.clear(); _onSearch(); })
+              : null),
+      onSubmitted: (_) => _onSearch(),
+    );
+
+    final categoryDropdown = DropdownButtonFormField<int?>(
+      value: _selectedCategoryId,
+      decoration: _dec('التصنيف'),
+      items: [
+        const DropdownMenuItem(value: null, child: Text('الكل')),
+        ..._categories.map((c) {
+          final prefix = c.parentCategoryId != null ? '  ↳ ' : '';
+          return DropdownMenuItem(value: c.id, child: Text('$prefix${c.name}'));
+        }),
+      ],
+      onChanged: (v) { _selectedCategoryId = v; _onSearch(); },
+    );
+
+    final lowStockToggle = SdRaised(
+      onTap: () { _lowStockOnly = !_lowStockOnly; _onSearch(); },
+      toggled: _lowStockOnly,
+      semanticLabel: 'ناقص فقط',
+      radius: SdRadius.pill,
+      depth: 4,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: _lowStockOnly ? SdColors.warning : SdColors.surface,
+      edgeColor: _lowStockOnly ? SdColors.warningEdge : SdColors.cardEdge,
+      child: Text('ناقص فقط',
+          style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: _lowStockOnly ? Colors.white : SdColors.ink)),
+    );
+
+    if (context.sd.isPhone) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          search,
+          const SizedBox(height: SdSpace.sm),
+          Row(
+            children: [
+              Expanded(child: categoryDropdown),
+              const SizedBox(width: 10),
+              lowStockToggle,
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(flex: 3, child: search),
+        const SizedBox(width: 12),
+        Expanded(flex: 2, child: categoryDropdown),
+        const SizedBox(width: 12),
+        lowStockToggle,
+      ],
+    );
+  }
+
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Text(_error!, style: const TextStyle(color: Colors.red)),
-      const SizedBox(height: 12),
-      FilledButton.icon(onPressed: _loadData, icon: const Icon(Icons.refresh), label: const Text('إعادة المحاولة')),
-    ]));
-    if (_items.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade400),
-      const SizedBox(height: 12),
-      const Text('لا توجد مواد', style: TextStyle(fontSize: 16, color: Colors.grey)),
-    ]));
+    if (_loading) return const Center(child: CircularProgressIndicator(color: SdColors.primary));
+    if (_error != null) {
+      return Center(
+        child: SdEmptyState(
+          title: 'تعذّر تحميل المواد',
+          message: _error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(label: 'إعادة المحاولة', icon: Icons.refresh_rounded, kind: SdButtonKind.secondary, onPressed: _loadData),
+        ),
+      );
+    }
+    if (_items.isEmpty) {
+      return const Center(
+        child: SdEmptyState(title: 'لا توجد مواد', icon: Icons.inventory_2_outlined),
+      );
+    }
+
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: _items.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _buildItemCard(_items[i]),
+      );
+    }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-          columns: const [
-            DataColumn(label: Text('الاسم')),
-            DataColumn(label: Text('التصنيف')),
-            DataColumn(label: Text('الوحدة')),
-            DataColumn(label: Text('التكلفة'), numeric: true),
-            DataColumn(label: Text('البيع'), numeric: true),
-            DataColumn(label: Text('الجملة'), numeric: true),
-            DataColumn(label: Text('الرصيد'), numeric: true),
-            DataColumn(label: Text('إجراءات')),
-          ],
-          rows: _items.map((item) {
-            final stock = item.totalStock ?? 0;
-            final isLow = stock < item.minStockLevel && item.minStockLevel > 0;
-            return DataRow(cells: [
-              DataCell(Text(item.name)),
-              DataCell(Text(item.categoryName ?? '-')),
-              DataCell(Text(_unitMap[item.unit] ?? item.unit)),
-              DataCell(Text(fmtN(item.costPrice))),
-              DataCell(Text(fmtNullable(item.sellingPrice))),
-              DataCell(Text(fmtNullable(item.wholesalePrice))),
-              DataCell(Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: isLow ? BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)) : null,
-                child: Text('$stock', style: TextStyle(color: isLow ? Colors.red.shade800 : null, fontWeight: isLow ? FontWeight.bold : null)),
-              )),
-              DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-                IconButton(icon: const Icon(Icons.copy_rounded, size: 20, color: Colors.blue), tooltip: 'نسخ وتكرار', onPressed: () => _duplicateItem(item)),
-                IconButton(icon: const Icon(Icons.edit, size: 20), tooltip: 'تعديل', onPressed: () => _showAddEditDialog(item)),
-                IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), tooltip: 'حذف', onPressed: () => _confirmDelete(item)),
-              ])),
-            ]);
-          }).toList(),
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: DataTable(
+            headingRowColor: WidgetStateProperty.all(SdColors.primary),
+            headingTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white),
+            dataTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w500, color: SdColors.ink),
+            columns: const [
+              DataColumn(label: Text('الاسم')),
+              DataColumn(label: Text('التصنيف')),
+              DataColumn(label: Text('الوحدة')),
+              DataColumn(label: Text('التكلفة'), numeric: true),
+              DataColumn(label: Text('البيع'), numeric: true),
+              DataColumn(label: Text('الجملة'), numeric: true),
+              DataColumn(label: Text('الرصيد'), numeric: true),
+              DataColumn(label: Text('إجراءات')),
+            ],
+            rows: [
+              for (int i = 0; i < _items.length; i++)
+                _buildDataRow(_items[i], i),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  DataRow _buildDataRow(InventoryItem item, int index) {
+    final stock = item.totalStock ?? 0;
+    final isLow = stock < item.minStockLevel && item.minStockLevel > 0;
+    return DataRow(
+      color: WidgetStateProperty.all(index.isEven ? SdColors.surface : SdColors.surfaceAlt),
+      cells: [
+        DataCell(Text(item.name)),
+        DataCell(Text(item.categoryName ?? '-')),
+        DataCell(Text(_unitMap[item.unit] ?? item.unit)),
+        DataCell(Text(fmtN(item.costPrice))),
+        DataCell(Text(fmtNullable(item.sellingPrice))),
+        DataCell(Text(fmtNullable(item.wholesalePrice))),
+        DataCell(Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: isLow ? BoxDecoration(color: SdColors.dangerTint, borderRadius: BorderRadius.circular(SdRadius.xs)) : null,
+          child: Text('$stock', style: TextStyle(color: isLow ? SdColors.danger : SdColors.ink, fontWeight: isLow ? FontWeight.w800 : FontWeight.w500)),
+        )),
+        DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+          IconButton(icon: const Icon(Icons.copy_rounded, size: 20, color: SdColors.primary), tooltip: 'نسخ وتكرار', onPressed: () => _duplicateItem(item)),
+          IconButton(icon: const Icon(Icons.edit, size: 20, color: SdColors.primary), tooltip: 'تعديل', onPressed: () => _showAddEditDialog(item)),
+          IconButton(icon: const Icon(Icons.delete, size: 20, color: SdColors.danger), tooltip: 'حذف', onPressed: () => _confirmDelete(item)),
+        ])),
+      ],
+    );
+  }
+
+  Widget _buildItemCard(InventoryItem item) {
+    final stock = item.totalStock ?? 0;
+    final isLow = stock < item.minStockLevel && item.minStockLevel > 0;
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(item.name, style: SdText.label, maxLines: 2, overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 8),
+              SdStatusChip('الرصيد: $stock', status: isLow ? SdStatus.danger : SdStatus.success),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SdInfoRow(label: 'التصنيف', value: item.categoryName ?? '-'),
+          SdInfoRow(label: 'الوحدة', value: _unitMap[item.unit] ?? item.unit),
+          SdInfoRow(label: 'سعر التكلفة', value: fmtN(item.costPrice)),
+          SdInfoRow(label: 'سعر البيع', value: fmtNullable(item.sellingPrice)),
+          SdInfoRow(label: 'سعر الجملة', value: fmtNullable(item.wholesalePrice)),
+          const Divider(color: SdColors.divider, height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(icon: const Icon(Icons.copy_rounded, size: 20, color: SdColors.primary), tooltip: 'نسخ وتكرار', onPressed: () => _duplicateItem(item)),
+              IconButton(icon: const Icon(Icons.edit, size: 20, color: SdColors.primary), tooltip: 'تعديل', onPressed: () => _showAddEditDialog(item)),
+              IconButton(icon: const Icon(Icons.delete, size: 20, color: SdColors.danger), tooltip: 'حذف', onPressed: () => _confirmDelete(item)),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildPagination() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.only(top: SdSpace.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(icon: const Icon(Icons.chevron_right), onPressed: _page > 1 ? () { _page--; _loadData(); } : null),
-          Text('صفحة $_page من $_totalPages'),
-          IconButton(icon: const Icon(Icons.chevron_left), onPressed: _page < _totalPages ? () { _page++; _loadData(); } : null),
+          IconButton(icon: const Icon(Icons.chevron_right, color: SdColors.primary), onPressed: _page > 1 ? () { _page--; _loadData(); } : null),
+          Text('صفحة $_page من $_totalPages', style: SdText.label),
+          IconButton(icon: const Icon(Icons.chevron_left, color: SdColors.primary), onPressed: _page < _totalPages ? () { _page++; _loadData(); } : null),
           const SizedBox(width: 16),
-          Text('الإجمالي: $_total', style: const TextStyle(color: Colors.grey)),
+          Text('الإجمالي: $_total', style: SdText.bodySm),
         ],
       ),
     );
@@ -509,6 +655,24 @@ class _CategoriesManagerDialogState extends State<_CategoriesManagerDialog> {
     if (mounted) setState(() => _loading = false);
   }
 
+  InputDecoration _dec(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: SdText.bodySm,
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+      );
+
   // بناء الشجرة
   List<InventoryCategory> _getRoots() => _cats.where((c) => c.parentCategoryId == null).toList();
   List<InventoryCategory> _getChildren(int parentId) => _cats.where((c) => c.parentCategoryId == parentId).toList();
@@ -520,27 +684,30 @@ class _CategoriesManagerDialogState extends State<_CategoriesManagerDialog> {
 
     final saved = await showDialog<bool>(
       context: context,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
-        title: Text(cat == null ? 'إضافة تصنيف' : 'تعديل تصنيف'),
-        content: SizedBox(width: 380, child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم التصنيف *', border: OutlineInputBorder())),
-          const SizedBox(height: 10),
-          TextField(controller: nameEnCtrl, decoration: const InputDecoration(labelText: 'الاسم بالإنجليزية', border: OutlineInputBorder())),
-          const SizedBox(height: 10),
-          DropdownButtonFormField<int?>(
-            value: parentId,
-            decoration: const InputDecoration(labelText: 'تصنيف أب', border: OutlineInputBorder()),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('رئيسي (بدون أب)')),
-              ..._cats.where((c) => c.id != cat?.id).map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
-            ],
-            onChanged: (v) => setD(() => parentId = v),
-          ),
-        ])),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
-        ],
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text(cat == null ? 'إضافة تصنيف' : 'تعديل تصنيف'),
+          content: SizedBox(width: 380, child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: nameCtrl, decoration: _dec('اسم التصنيف *')),
+            const SizedBox(height: 10),
+            TextField(controller: nameEnCtrl, decoration: _dec('الاسم بالإنجليزية')),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<int?>(
+              value: parentId,
+              decoration: _dec('تصنيف أب'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('رئيسي (بدون أب)')),
+                ..._cats.where((c) => c.id != cat?.id).map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+              ],
+              onChanged: (v) => setD(() => parentId = v),
+            ),
+          ])),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
+          ],
+        ),
       )),
     );
 
@@ -563,18 +730,21 @@ class _CategoriesManagerDialogState extends State<_CategoriesManagerDialog> {
       widget.onChanged();
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
   }
 
   Future<void> _delete(InventoryCategory cat) async {
-    final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('حذف تصنيف'),
-      content: Text('هل تريد حذف "${cat.name}"؟'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-        FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
-      ],
+    final ok = await showDialog<bool>(context: context, builder: (ctx) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: const Text('حذف تصنيف'),
+        content: Text('هل تريد حذف "${cat.name}"؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+        ],
+      ),
     ));
     if (ok != true) return;
     try {
@@ -582,7 +752,7 @@ class _CategoriesManagerDialogState extends State<_CategoriesManagerDialog> {
       widget.onChanged();
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
   }
 
@@ -592,18 +762,18 @@ class _CategoriesManagerDialogState extends State<_CategoriesManagerDialog> {
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         title: Row(children: [
-          const Icon(Icons.account_tree_rounded, color: Colors.teal),
+          const Icon(Icons.account_tree_rounded, color: SdColors.accent),
           const SizedBox(width: 8),
           const Expanded(child: Text('شجرة الأصناف')),
-          IconButton(icon: const Icon(Icons.add_circle, color: Colors.blue), tooltip: 'إضافة تصنيف', onPressed: () => _addEdit()),
+          IconButton(icon: const Icon(Icons.add_circle, color: SdColors.primary), tooltip: 'إضافة تصنيف', onPressed: () => _addEdit()),
         ]),
         content: SizedBox(
           width: 500,
           height: 400,
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
               : _cats.isEmpty
-                  ? const Center(child: Text('لا توجد أصناف', style: TextStyle(color: Colors.grey)))
+                  ? const Center(child: SdEmptyState(title: 'لا توجد أصناف', icon: Icons.account_tree_rounded))
                   : ListView(children: _getRoots().map((root) => _buildTreeNode(root, 0)).toList()),
         ),
         actions: [
@@ -622,29 +792,29 @@ class _CategoriesManagerDialogState extends State<_CategoriesManagerDialog> {
           margin: EdgeInsets.only(right: depth * 24.0, bottom: 4),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: depth == 0 ? Colors.teal.shade50 : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: depth == 0 ? Colors.teal.shade200 : Colors.grey.shade200),
+            color: depth == 0 ? SdColors.accentTint : SdColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(SdRadius.xs),
+            border: Border.all(color: depth == 0 ? SdColors.accentTintEdge : SdColors.divider),
           ),
           child: Row(
             children: [
               Icon(
                 children.isNotEmpty ? Icons.folder_rounded : Icons.label_rounded,
                 size: 18,
-                color: depth == 0 ? Colors.teal : Colors.grey.shade600,
+                color: depth == 0 ? SdColors.accent : SdColors.muted,
               ),
               const SizedBox(width: 8),
-              Expanded(child: Text(cat.name, style: TextStyle(fontSize: 13, fontWeight: depth == 0 ? FontWeight.w600 : FontWeight.normal))),
+              Expanded(child: Text(cat.name, style: TextStyle(fontFamily: SdText.family, fontSize: 13, fontWeight: depth == 0 ? FontWeight.w700 : FontWeight.w500, color: SdColors.ink))),
               if (cat.nameEn != null && cat.nameEn!.isNotEmpty)
-                Text(cat.nameEn!, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                Text(cat.nameEn!, style: SdText.caption),
               const SizedBox(width: 8),
-              InkWell(onTap: () => _addEdit(cat), child: const Icon(Icons.edit, size: 16, color: Colors.blue)),
+              InkWell(onTap: () => _addEdit(cat), child: const Icon(Icons.edit, size: 16, color: SdColors.primary)),
               const SizedBox(width: 6),
-              InkWell(onTap: () => _delete(cat), child: const Icon(Icons.delete, size: 16, color: Colors.red)),
+              InkWell(onTap: () => _delete(cat), child: const Icon(Icons.delete, size: 16, color: SdColors.danger)),
               const SizedBox(width: 6),
               InkWell(
                 onTap: () => _addEdit()..toString(), // opens add with no parent preselected
-                child: Tooltip(message: 'إضافة فرعي', child: Icon(Icons.add, size: 16, color: Colors.green.shade700)),
+                child: const Tooltip(message: 'إضافة فرعي', child: Icon(Icons.add, size: 16, color: SdColors.success)),
               ),
             ],
           ),

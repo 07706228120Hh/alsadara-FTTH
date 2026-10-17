@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/company_settings_service.dart';
 import '../../services/ftth_cf_clearance.dart';
 import '../../services/custom_auth_service.dart';
@@ -199,53 +200,51 @@ class _FtthCompanyPageState extends State<FtthCompanyPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white,
-          toolbarHeight: 44,
-          titleSpacing: 0,
-          title: const Text('صفحة الشركة',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'صفحة الشركة',
           actions: [
             // فصل في نافذة مستقلة (Windows فقط)
             if (Platform.isWindows)
-              IconButton(
-                icon: const Icon(Icons.open_in_new, size: 20),
-                tooltip: 'فتح في نافذة مستقلة',
+              SdAppBarAction(
+                icon: Icons.open_in_new,
+                label: 'فتح في نافذة مستقلة',
                 onPressed: _openInSeparateWindow,
               ),
-            IconButton(
-              icon: const Icon(Icons.refresh, size: 20),
-              tooltip: 'تحديث',
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
               onPressed: () {
                 if (_isInitialized) _controller.reload();
               },
             ),
-            IconButton(
-              icon: const Icon(Icons.home, size: 20),
-              tooltip: 'الصفحة الرئيسية',
+            SdAppBarAction(
+              icon: Icons.home,
+              label: 'الصفحة الرئيسية',
               onPressed: () {
                 if (_isInitialized) {
                   _controller.loadUrl('https://admin.ftth.iq/');
                 }
               },
             ),
-            const SizedBox(width: 4),
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _extractAndCreateTask,
-          backgroundColor: const Color(0xFF1A237E),
+          backgroundColor: SdColors.primary,
           icon: const Icon(Icons.add_task, color: Colors.white),
-          label: const Text('إنشاء مهمة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          label: const Text('إنشاء مهمة',
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800)),
         ),
         body: Column(
           children: [
             if (_isLoading)
-              const LinearProgressIndicator(color: Color(0xFF1A237E)),
+              const LinearProgressIndicator(color: SdColors.primary),
             Expanded(
               child: _isInitialized
                   ? Webview(_controller)
@@ -352,7 +351,7 @@ class _FtthCompanyPageState extends State<FtthCompanyPage> {
       debugPrint('❌ خطأ في استخراج البيانات: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('فشل استخراج البيانات من الصفحة'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('فشل استخراج البيانات من الصفحة'), backgroundColor: SdColors.danger),
         );
       }
     }

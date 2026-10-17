@@ -6,6 +6,7 @@ import '../services/whatsapp_conversation_service.dart';
 import '../services/vps_auth_service.dart';
 import '../services/auth_service.dart';
 import '../ftth/core/home_page.dart';
+import '../frontend/frontend.dart';
 import 'whatsapp_chat_page.dart';
 
 /// صفحة عرض جميع محادثات WhatsApp
@@ -100,40 +101,12 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmall = screenWidth < 600;
 
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        toolbarHeight: isSmall ? 48 : null,
-        titleSpacing: isSmall ? 4 : null,
-        title: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(isSmall ? 5 : 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(isSmall ? 8 : 12),
-              ),
-              child: Icon(Icons.chat_bubble, size: isSmall ? 16 : 20),
-            ),
-            SizedBox(width: isSmall ? 6 : 12),
-            Text(
-              'محادثات WhatsApp',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: isSmall ? 14 : 20,
-              ),
-            ),
-          ],
-        ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF25D366), Color(0xFF128C7E)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'محادثات WhatsApp',
         actions: [
           // زر تنظيف المحادثات القديمة
           IconButton(
@@ -149,24 +122,24 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                   content: const Text('سيتم حذف المحادثات الأقدم من 3 أيام.\nهل تريد المتابعة؟'),
                   actions: [
                     TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-                    ElevatedButton(
+                    SdButton(
+                      label: 'حذف',
+                      kind: SdButtonKind.danger,
                       onPressed: () => Navigator.pop(ctx, true),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                      child: const Text('حذف', style: TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),
               );
               if (confirm == true && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('جاري التنظيف...'), backgroundColor: Colors.blue),
+                  const SnackBar(content: Text('جاري التنظيف...'), backgroundColor: SdColors.info),
                 );
                 final result = await WhatsAppConversationService.cleanupOldConversations(days: 3);
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('تم حذف ${result['conversations']} محادثة و ${result['messages']} رسالة'),
-                      backgroundColor: Colors.green,
+                      backgroundColor: SdColors.success,
                     ),
                   );
                 }
@@ -188,11 +161,11 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                     vertical: isSmall ? 3 : 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.red,
+                    color: SdColors.danger,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.red.withValues(alpha: 0.4),
+                        color: SdColors.danger.withValues(alpha: 0.4),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -225,14 +198,14 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
               avatar: Icon(
                 _showUnreadOnly ? Icons.mark_email_unread : Icons.mark_email_unread_outlined,
                 size: isSmall ? 14 : 16,
-                color: _showUnreadOnly ? Colors.white : const Color(0xFF128C7E),
+                color: _showUnreadOnly ? Colors.white : SdColors.warning,
               ),
               label: Text(isSmall ? 'جديد' : 'غير مقروءة', style: TextStyle(
                 fontSize: isSmall ? 10 : 12,
-                color: _showUnreadOnly ? Colors.white : const Color(0xFF128C7E),
+                color: _showUnreadOnly ? Colors.white : SdColors.warning,
                 fontWeight: FontWeight.bold,
               )),
-              backgroundColor: _showUnreadOnly ? const Color(0xFF128C7E) : Colors.white,
+              backgroundColor: _showUnreadOnly ? SdColors.warning : Colors.white,
               side: BorderSide.none,
               onPressed: () => setState(() => _showUnreadOnly = !_showUnreadOnly),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -254,28 +227,15 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
           // شريط البحث
           Container(
             padding: EdgeInsets.all(isSmall ? 8 : 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.grey[50]!, Colors.white],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
+            color: SdColors.surface,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: SdColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(isSmall ? 24 : 30),
                 border: Border.all(
-                  color: const Color(0xFF25D366).withValues(alpha: 0.3),
+                  color: SdColors.cardEdge,
                   width: isSmall ? 1.5 : 2,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF25D366).withValues(alpha: 0.15),
-                    blurRadius: isSmall ? 8 : 15,
-                    spreadRadius: isSmall ? 1 : 2,
-                  ),
-                ],
               ),
               child: TextField(
                 controller: _searchController,
@@ -283,24 +243,24 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                 decoration: InputDecoration(
                   hintText: 'البحث في المحادثات والأسماء...',
                   hintStyle: TextStyle(
-                    color: Colors.grey[400],
+                    color: SdColors.faint,
                     fontSize: isSmall ? 12 : 14,
                   ),
                   prefixIcon: Container(
                     padding: EdgeInsets.all(isSmall ? 6 : 10),
                     child: Icon(Icons.search_rounded,
-                        color: const Color(0xFF25D366), size: isSmall ? 20 : 26),
+                        color: SdColors.warning, size: isSmall ? 20 : 26),
                   ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? Container(
                           decoration: BoxDecoration(
-                            color: Colors.grey[200],
+                            color: SdColors.surfaceAlt,
                             shape: BoxShape.circle,
                           ),
                           margin: EdgeInsets.all(isSmall ? 4 : 8),
                           child: IconButton(
                             icon: Icon(Icons.clear_rounded, size: isSmall ? 16 : 18),
-                            color: Colors.grey[700],
+                            color: SdColors.muted,
                             onPressed: () {
                               _searchController.clear();
                               setState(() => _searchQuery = '');
@@ -313,7 +273,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: SdColors.surfaceAlt,
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: isSmall ? 12 : 20,
                     vertical: isSmall ? 10 : 15,
@@ -331,21 +291,16 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline,
-                            size: isSmall ? 40 : 64, color: Colors.red),
-                        SizedBox(height: isSmall ? 8 : 16),
-                        Text('حدث خطأ: ${snapshot.error}',
-                            style: TextStyle(fontSize: isSmall ? 12 : 14)),
-                        SizedBox(height: isSmall ? 8 : 16),
-                        ElevatedButton.icon(
-                          onPressed: () => setState(() {}),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('إعادة المحاولة'),
-                        ),
-                      ],
+                    child: SdEmptyState(
+                      icon: Icons.error_outline,
+                      status: SdStatus.danger,
+                      title: 'حدث خطأ',
+                      message: '${snapshot.error}',
+                      action: SdButton(
+                        label: 'إعادة المحاولة',
+                        icon: Icons.refresh,
+                        onPressed: () => setState(() {}),
+                      ),
                     ),
                   );
                 }
@@ -380,38 +335,16 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
 
                 if (conversations.isEmpty) {
                   return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _searchQuery.isEmpty
-                              ? Icons.chat_bubble_outline
-                              : Icons.search_off,
-                          size: isSmall ? 50 : 80,
-                          color: Colors.grey[400],
-                        ),
-                        SizedBox(height: isSmall ? 8 : 16),
-                        Text(
-                          _searchQuery.isEmpty
-                              ? 'لا توجد محادثات بعد'
-                              : 'لم يتم العثور على نتائج',
-                          style: TextStyle(
-                            fontSize: isSmall ? 14 : 18,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        if (_searchQuery.isEmpty) ...[
-                          SizedBox(height: isSmall ? 4 : 8),
-                          Text(
-                            'عندما يرد العملاء على رسائلك،\nستظهر محادثاتهم هنا',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: isSmall ? 12 : 14,
-                            ),
-                          ),
-                        ],
-                      ],
+                    child: SdEmptyState(
+                      icon: _searchQuery.isEmpty
+                          ? Icons.chat_bubble_outline
+                          : Icons.search_off,
+                      title: _searchQuery.isEmpty
+                          ? 'لا توجد محادثات بعد'
+                          : 'لم يتم العثور على نتائج',
+                      message: _searchQuery.isEmpty
+                          ? 'عندما يرد العملاء على رسائلك،\nستظهر محادثاتهم هنا'
+                          : null,
                     ),
                   );
                 }
@@ -446,16 +379,14 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
       margin: EdgeInsets.symmetric(horizontal: isSmall ? 4 : 8, vertical: isSmall ? 2 : 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(isSmall ? 12 : 16),
-        color: Colors.white,
+        color: SdColors.surface,
         border: Border.all(
-          color: Colors.black,
+          color: conversation.unreadCount > 0 ? SdColors.warningTintEdge : SdColors.divider,
           width: conversation.unreadCount > 0 ? (isSmall ? 1.5 : 2.5) : (isSmall ? 1 : 1.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: conversation.unreadCount > 0
-                ? const Color(0xFF25D366).withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.08),
+            color: SdColors.cardEdge,
             blurRadius: conversation.unreadCount > 0 ? (isSmall ? 6 : 12) : (isSmall ? 4 : 8),
             offset: Offset(0, isSmall ? 1 : 3),
           ),
@@ -468,18 +399,13 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
           vertical: isSmall ? 4 : 8,
         ),
         leading: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [Color(0xFF25D366), Color(0xFF128C7E)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: SdColors.whatsapp,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF25D366).withValues(alpha: 0.4),
-                blurRadius: isSmall ? 4 : 8,
-                offset: Offset(0, isSmall ? 1 : 3),
+                color: SdColors.whatsappEdge,
+                offset: Offset(0, 3),
               ),
             ],
           ),
@@ -532,14 +458,14 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                               : (isSmall ? 13 : 16),
                           color: conversation.userName != null &&
                                   conversation.userName!.isNotEmpty
-                              ? Colors.grey[600]
+                              ? SdColors.muted
                               : null,
                         ),
                       ),
                       if (zone != null)
                         Text(
                           '📍 $zone',
-                          style: TextStyle(fontSize: isSmall ? 9 : 11, color: Colors.blue[700]),
+                          style: TextStyle(fontSize: isSmall ? 9 : 11, color: SdColors.info),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -553,8 +479,8 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
               style: TextStyle(
                 fontSize: isSmall ? 10 : 12,
                 color: conversation.unreadCount > 0
-                    ? const Color(0xFF25D366)
-                    : Colors.grey[600],
+                    ? SdColors.warningText
+                    : SdColors.muted,
               ),
             ),
           ],
@@ -567,7 +493,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
               Icon(
                 Icons.done_all,
                 size: isSmall ? 13 : 16,
-                color: Colors.grey[600],
+                color: SdColors.muted,
               ),
             if (!conversation.isIncoming) SizedBox(width: isSmall ? 2 : 4),
             Expanded(
@@ -578,8 +504,8 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                 style: TextStyle(
                   fontSize: isSmall ? 11 : 14,
                   color: conversation.unreadCount > 0
-                      ? Colors.black87
-                      : Colors.grey[600],
+                      ? SdColors.ink
+                      : SdColors.muted,
                   fontWeight: conversation.unreadCount > 0
                       ? FontWeight.w600
                       : FontWeight.normal,
@@ -592,37 +518,12 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (conversation.unreadCount > 0)
-              Container(
-                padding: EdgeInsets.all(isSmall ? 5 : 8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF25D366), Color(0xFF128C7E)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF25D366).withValues(alpha: 0.5),
-                      blurRadius: isSmall ? 4 : 8,
-                      spreadRadius: isSmall ? 0 : 1,
-                    ),
-                  ],
-                ),
-                child: Text(
-                  '${conversation.unreadCount}',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isSmall ? 10 : 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              SdBadge(count: conversation.unreadCount),
             if (conversation.unreadCount > 0) SizedBox(width: isSmall ? 4 : 8),
             // زر تعليم كغير مقروءة
             if (conversation.unreadCount == 0)
               IconButton(
-                icon: Icon(Icons.mark_email_unread_outlined, color: const Color(0xFF128C7E), size: isSmall ? 18 : 22),
+                icon: Icon(Icons.mark_email_unread_outlined, color: SdColors.warning, size: isSmall ? 18 : 22),
                 tooltip: 'غير مقروءة',
                 constraints: isSmall ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
                 padding: isSmall ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
@@ -632,7 +533,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
               ),
             // زر البحث عن المشترك
             IconButton(
-              icon: Icon(Icons.person_search, color: const Color(0xFF1A237E), size: isSmall ? 18 : 22),
+              icon: Icon(Icons.person_search, color: SdColors.primary, size: isSmall ? 18 : 22),
               tooltip: 'بحث عن المشترك',
               constraints: isSmall ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
               padding: isSmall ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
@@ -648,7 +549,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                 debugPrint('🔍 عرض زر الحذف: _isAdmin = $_isAdmin');
                 if (!_isAdmin) return const SizedBox.shrink();
                 return IconButton(
-                  icon: Icon(Icons.delete_outline, color: Colors.red, size: isSmall ? 18 : 24),
+                  icon: Icon(Icons.delete_outline, color: SdColors.danger, size: isSmall ? 18 : 24),
                   tooltip: 'حذف المحادثة',
                   constraints: isSmall ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
                   padding: isSmall ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
@@ -669,12 +570,10 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                                 Navigator.pop(dialogContext, false),
                             child: const Text('إلغاء'),
                           ),
-                          TextButton(
+                          SdButton(
+                            label: 'حذف',
+                            kind: SdButtonKind.danger,
                             onPressed: () => Navigator.pop(dialogContext, true),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.red,
-                            ),
-                            child: const Text('حذف'),
                           ),
                         ],
                       ),
@@ -691,7 +590,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                           scaffoldMessenger.showSnackBar(
                             const SnackBar(
                               content: Text('تم حذف المحادثة بنجاح'),
-                              backgroundColor: Colors.green,
+                              backgroundColor: SdColors.success,
                             ),
                           );
                         }
@@ -701,7 +600,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                           scaffoldMessenger.showSnackBar(
                             SnackBar(
                               content: Text('حدث خطأ أثناء حذف المحادثة'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }
@@ -741,7 +640,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.done_all, color: Color(0xFF25D366)),
+              leading: const Icon(Icons.done_all, color: SdColors.success),
               title: const Text('تعليم كمقروء'),
               onTap: () async {
                 Navigator.pop(bottomSheetContext);
@@ -751,7 +650,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
             ),
             if (conversation.unreadCount == 0)
               ListTile(
-                leading: const Icon(Icons.mark_email_unread, color: Color(0xFF128C7E)),
+                leading: const Icon(Icons.mark_email_unread, color: SdColors.warning),
                 title: const Text('تعليم كغير مقروءة'),
                 onTap: () async {
                   Navigator.pop(bottomSheetContext);
@@ -761,7 +660,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
               ),
             if (_isAdmin)
               ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
+                leading: const Icon(Icons.delete, color: SdColors.danger),
                 title: const Text('حذف المحادثة'),
                 onTap: () async {
                   Navigator.pop(bottomSheetContext);
@@ -779,12 +678,10 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                           onPressed: () => Navigator.pop(dialogContext, false),
                           child: const Text('إلغاء'),
                         ),
-                        TextButton(
+                        SdButton(
+                          label: 'حذف',
+                          kind: SdButtonKind.danger,
                           onPressed: () => Navigator.pop(dialogContext, true),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
-                          ),
-                          child: const Text('حذف'),
                         ),
                       ],
                     ),
@@ -801,7 +698,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                         scaffoldMessenger.showSnackBar(
                           const SnackBar(
                             content: Text('تم حذف المحادثة بنجاح'),
-                            backgroundColor: Colors.green,
+                            backgroundColor: SdColors.success,
                           ),
                         );
                       }
@@ -811,7 +708,7 @@ class _WhatsAppConversationsPageState extends State<WhatsAppConversationsPage> {
                         scaffoldMessenger.showSnackBar(
                           SnackBar(
                             content: Text('حدث خطأ أثناء حذف المحادثة'),
-                            backgroundColor: Colors.red,
+                            backgroundColor: SdColors.danger,
                           ),
                         );
                       }

@@ -7,6 +7,7 @@ library;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../frontend/frontend.dart';
 import '../models/quality_models.dart';
 import '../services/scan_history_service.dart';
 import '../widgets/depth_3d.dart';
@@ -59,13 +60,18 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
           title: const Text('مسح السجلّ'),
           content: const Text('هل تريد حذف كل الفحوص المحفوظة؟ لا يمكن التراجع.'),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء')),
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('مسح',
-                    style: TextStyle(color: Color(0xFFC62828)))),
+            SdButton(
+              label: 'إلغاء',
+              kind: SdButtonKind.secondary,
+              height: 44,
+              onPressed: () => Navigator.pop(ctx, false),
+            ),
+            SdButton(
+              label: 'مسح',
+              kind: SdButtonKind.danger,
+              height: 44,
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
           ],
         ),
       ),
@@ -80,39 +86,41 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
   @override
   Widget build(BuildContext context) {
     final items = _items ?? const [];
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Nq3d.ground,
-        appBar: nq3dAppBar('السجلّ والاتجاه', actions: [
+    return SdPage(
+      padding: EdgeInsets.zero,
+      scrollable: false,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'السجلّ والاتجاه',
+        actions: [
           if (items.isNotEmpty)
-            IconButton(
-              tooltip: 'مسح السجلّ',
-              icon: const Icon(Icons.delete_outline_rounded,
-                  color: Colors.white),
+            SdAppBarAction(
+              icon: Icons.delete_outline_rounded,
+              label: 'مسح السجلّ',
+              danger: true,
               onPressed: _confirmClear,
             ),
-        ]),
-        body: LayoutBuilder(
-          builder: (ctx, c) {
-            final w = c.maxWidth;
-            final isPhone = w < 600;
-            final maxContentWidth = isPhone ? w : (w >= 1024 ? 720.0 : 600.0);
-            return Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxContentWidth),
-                  child: _loading
-                      ? _loadingView()
-                      : items.isEmpty
-                          ? _emptyView()
-                          : _body(items, isPhone),
-                ),
+        ],
+      ),
+      body: LayoutBuilder(
+        builder: (ctx, c) {
+          final w = c.maxWidth;
+          final isPhone = w < 600;
+          final maxContentWidth = isPhone ? w : (w >= 1024 ? 720.0 : 600.0);
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                child: _loading
+                    ? _loadingView()
+                    : items.isEmpty
+                        ? _emptyView()
+                        : _body(items, isPhone),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -124,28 +132,17 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
             width: 32,
             height: 32,
             child: CircularProgressIndicator(
-                strokeWidth: 3, color: Nq3d.indigo),
+                strokeWidth: 3, color: SdColors.primary),
           ),
         ),
       );
 
-  Widget _emptyView() => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 10),
-        child: Column(
-          children: [
-            const Icon(Icons.timeline_rounded, size: 56, color: Nq3d.faint),
-            const SizedBox(height: 14),
-            const Text('لا سجلّ بعد — شغّل فحصاً',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Nq3d.ink)),
-            const SizedBox(height: 6),
-            Text('تُحفظ ملخّصات الفحوص تلقائياً هنا بعد كل فحص.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Nq3d.muted)),
-          ],
+  Widget _emptyView() => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: SdEmptyState(
+          icon: Icons.timeline_rounded,
+          title: 'لا سجلّ بعد — شغّل فحصاً',
+          message: 'تُحفظ ملخّصات الفحوص تلقائياً هنا بعد كل فحص.',
         ),
       );
 
@@ -160,7 +157,7 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
         const SizedBox(height: 14),
         Row(
           children: [
-            Icon(Icons.history_rounded, size: 15, color: Colors.grey.shade500),
+            const Icon(Icons.history_rounded, size: 15, color: SdColors.faint),
             const SizedBox(width: 6),
             Text('الفحوص السابقة (${items.length})',
                 style:
@@ -195,7 +192,7 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
                 style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
-                    color: selected ? Colors.white : Nq3d.muted)),
+                    color: selected ? Colors.white : SdColors.muted)),
           ),
         ),
       );
@@ -210,7 +207,7 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
       ),
       child: Row(
         children: [
-          tab(_Metric.score, 'الدرجة', Nq3d.indigo),
+          tab(_Metric.score, 'الدرجة', SdColors.primary),
           tab(_Metric.download, 'تنزيل', const Color(0xFF26A69A)),
           tab(_Metric.upload, 'رفع', const Color(0xFFEF6C00)),
           tab(_Metric.ping, 'الاستجابة', const Color(0xFF6A1B9A)),
@@ -223,7 +220,7 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
     switch (_metric) {
       case _Metric.score:
         return (
-          color: Nq3d.indigo,
+          color: SdColors.primary,
           unit: '',
           pick: (s) => s.overallScore
         );
@@ -287,7 +284,9 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
         children: [
           Text('اتجاه ${_metricLabel()} عبر الوقت',
               style: const TextStyle(
-                  fontSize: 12.5, fontWeight: FontWeight.w800, color: Nq3d.ink)),
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: SdColors.ink)),
           const SizedBox(height: 10),
           SizedBox(
             height: isPhone ? 160 : 200,
@@ -324,7 +323,7 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
                             getTitlesWidget: (v, meta) => Text(
                                 v.toStringAsFixed(0),
                                 style: const TextStyle(
-                                    fontSize: 9, color: Nq3d.faint)),
+                                    fontSize: 9, color: SdColors.faint)),
                           ),
                         ),
                       ),
@@ -394,14 +393,16 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
           const SizedBox(height: 4),
           Text(_metricLabel(),
               style: const TextStyle(
-                  fontSize: 12.5, fontWeight: FontWeight.w700, color: Nq3d.ink)),
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: SdColors.ink)),
           const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               'سجّل فحصاً آخر لعرض الاتجاه — تحتاج نقطتين على الأقل.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11.5, color: Nq3d.muted, height: 1.4),
+              style: TextStyle(fontSize: 11.5, color: SdColors.muted, height: 1.4),
             ),
           ),
         ],
@@ -428,9 +429,9 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FA),
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Row(
         children: [
@@ -464,9 +465,9 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
                 Text(
                   '↓ ${_v(s.downloadMbps)} · ↑ ${_v(s.uploadMbps)} Mbps · ${_v(s.pingMs)} ms',
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(
-                      fontSize: 10.5,
-                      color: Colors.grey.shade600,
+                  style: const TextStyle(
+                      fontSize: 11.5,
+                      color: SdColors.muted,
                       fontFamily: 'monospace'),
                 ),
               ],

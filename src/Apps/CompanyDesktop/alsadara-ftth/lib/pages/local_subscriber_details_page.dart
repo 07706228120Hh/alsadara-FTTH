@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/local_database_service.dart';
 
 class LocalSubscriberDetailsPage extends StatefulWidget {
@@ -60,7 +61,7 @@ class _LocalSubscriberDetailsPageState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('تم نسخ $label'),
-        backgroundColor: Colors.green,
+        backgroundColor: SdColors.success,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -69,15 +70,15 @@ class _LocalSubscriberDetailsPageState
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
       case 'active':
-        return Colors.green;
+        return SdColors.success;
       case 'inactive':
-        return Colors.orange;
+        return SdColors.warning;
       case 'expired':
-        return Colors.red;
+        return SdColors.danger;
       case 'suspended':
-        return Colors.grey;
+        return SdColors.faint;
       default:
-        return Colors.blue;
+        return SdColors.primary;
     }
   }
 
@@ -102,22 +103,24 @@ class _LocalSubscriberDetailsPageState
     final displayName = sub['display_name'] ?? sub['username'] ?? 'غير معروف';
     final status = sub['status']?.toString();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(displayName),
-        backgroundColor: const Color(0xFF1A237E),
-        foregroundColor: Colors.white,
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: displayName,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.copy_all),
+          SdAppBarAction(
+            icon: Icons.copy_all,
+            label: 'نسخ الكل',
             onPressed: () => _copyAllInfo(),
-            tooltip: 'نسخ الكل',
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+          : SafeArea(
+              top: false,
+              child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,23 +157,24 @@ class _LocalSubscriberDetailsPageState
                 ],
               ),
             ),
+            ),
+      ),
     );
   }
 
   Widget _buildHeaderCard(String name, String? status) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            colors: [
-              _getStatusColor(status),
-              _getStatusColor(status).withValues(alpha: 0.7),
-            ],
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        gradient: LinearGradient(
+          colors: [
+            _getStatusColor(status),
+            _getStatusColor(status).withValues(alpha: 0.7),
+          ],
         ),
+        boxShadow: SdDepth.raised(),
+      ),
+      child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
@@ -575,7 +579,8 @@ class _LocalSubscriberDetailsPageState
         _buildInfoRow(
           'موقوف',
           sub['is_suspended'] == true ? 'نعم' : 'لا',
-          valueColor: sub['is_suspended'] == true ? Colors.red : Colors.green,
+          valueColor:
+              sub['is_suspended'] == true ? SdColors.danger : SdColors.success,
         ),
         if (sub['is_suspended'] == true &&
             sub['suspension_reason']?.toString().isNotEmpty == true)
@@ -596,18 +601,18 @@ class _LocalSubscriberDetailsPageState
         _buildInfoRow(
           'تجريبي',
           sub['is_trial'] == true ? 'نعم' : 'لا',
-          valueColor: sub['is_trial'] == true ? Colors.orange : null,
+          valueColor: sub['is_trial'] == true ? SdColors.warning : null,
         ),
         _buildInfoRow(
           'معلق',
           sub['is_pending'] == true ? 'نعم' : 'لا',
-          valueColor: sub['is_pending'] == true ? Colors.orange : null,
+          valueColor: sub['is_pending'] == true ? SdColors.warning : null,
         ),
         if (sub['has_different_billing'] == true)
           _buildInfoRow(
             'فوترة مختلفة',
             'نعم',
-            valueColor: Colors.purple,
+            valueColor: SdColors.platformBase,
           ),
       ],
     );
@@ -700,31 +705,15 @@ class _LocalSubscriberDetailsPageState
     required IconData icon,
     required List<Widget> children,
   }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: const Color(0xFF1A237E)),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(),
-            ...children,
-          ],
-        ),
+    return SdCard(
+      title: title,
+      icon: icon,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(),
+          ...children,
+        ],
       ),
     );
   }
@@ -742,17 +731,14 @@ class _LocalSubscriberDetailsPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 18, color: Colors.grey[600]),
+            Icon(icon, size: 18, color: SdColors.faint),
             const SizedBox(width: 8),
           ],
           SizedBox(
             width: icon != null ? 94 : 120,
             child: Text(
               label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
+              style: SdText.bodySm,
             ),
           ),
           Expanded(
@@ -761,10 +747,7 @@ class _LocalSubscriberDetailsPageState
                 Expanded(
                   child: Text(
                     value,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: valueColor,
-                    ),
+                    style: SdText.label.copyWith(color: valueColor),
                   ),
                 ),
                 if (canCopy &&
@@ -776,7 +759,7 @@ class _LocalSubscriberDetailsPageState
                     onPressed: () => _copyToClipboard(value, label),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    color: Colors.grey[600],
+                    color: SdColors.faint,
                   ),
               ],
             ),
@@ -824,11 +807,11 @@ class _LocalSubscriberDetailsPageState
       final diff = date.difference(now);
 
       if (diff.isNegative) {
-        return Colors.red;
+        return SdColors.danger;
       } else if (diff.inDays <= 7) {
-        return Colors.orange;
+        return SdColors.warning;
       }
-      return Colors.green;
+      return SdColors.success;
     } catch (e) {
       return null;
     }
@@ -865,7 +848,7 @@ class _LocalSubscriberDetailsPageState
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('تم نسخ جميع المعلومات'),
-        backgroundColor: Colors.green,
+        backgroundColor: SdColors.success,
       ),
     );
   }

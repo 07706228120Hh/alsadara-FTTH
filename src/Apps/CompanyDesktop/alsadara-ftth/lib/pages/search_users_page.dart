@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'dart:math';
 import '../services/isp_subscribers_api_service.dart';
+import '../frontend/frontend.dart';
 
 class SearchUsersPage extends StatefulWidget {
   const SearchUsersPage({super.key});
@@ -750,7 +751,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
             return AlertDialog(
               title: const Row(
                 children: [
-                  Icon(Icons.settings, color: Colors.blue),
+                  Icon(Icons.settings, color: SdColors.primary),
                   SizedBox(width: 8),
                   Text('إعدادات البحث'),
                 ],
@@ -761,7 +762,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Card(
-                      color: Colors.blue.shade50,
+                      color: SdColors.primaryTint,
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
                         child: Column(
@@ -811,7 +812,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
                             const Divider(),
                             ListTile(
                               leading: const Icon(Icons.info_outline,
-                                  color: Colors.blue),
+                                  color: SdColors.primary),
                               title: const Text('معلومة مهمة'),
                               subtitle: const Text(
                                 'يتم عرض النتائج بتشابه 75% وما فوق فقط لضمان جودة النتائج',
@@ -836,7 +837,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('تم حفظ الإعدادات'),
-                        backgroundColor: Colors.green,
+                        backgroundColor: SdColors.success,
                         duration: Duration(seconds: 2),
                       ),
                     );
@@ -853,7 +854,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: Text(message), backgroundColor: SdColors.danger),
     );
   }
 
@@ -873,7 +874,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
           SnackBar(
             content:
                 Text('الاتصال ناجح! تم العثور على ${regions.length} منطقة'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       } else {
@@ -881,7 +882,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم الاتصال ولكن لا توجد مناطق'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -890,7 +891,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('فشل الاتصال'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
     }
@@ -898,60 +899,56 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
-            ),
-          ),
-        ),
-        title: const Text(' البحث عن المستخدمين '),
-        centerTitle: true,
+    return SdPage(
+      scrollable: false,
+      padding: const EdgeInsets.all(16.0),
+      appBar: SdAppBar(
+        title: 'البحث عن المستخدمين',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'إعدادات البحث',
+          SdAppBarAction(
+            icon: Icons.settings,
+            label: 'إعدادات البحث',
             onPressed: _showSearchSettings,
           ),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    if (hasError)
-                      Card(
-                        color: Colors.red[100],
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            errorMessage,
-                            style: const TextStyle(color: Colors.red),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
+          ? const Center(child: Padding(
+              padding: EdgeInsets.all(SdSpace.xxl),
+              child: CircularProgressIndicator(color: SdColors.primary)))
+          : Form(
+              key: _formKey,
+              child: ListView(
+                children: [
+                  if (hasError)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: SdColors.dangerTint,
+                        borderRadius: BorderRadius.circular(SdRadius.sm),
+                        border: Border.all(color: SdColors.dangerTintEdge),
                       ),
-                    _buildRegionDropdown(),
-                    const SizedBox(height: 16),
-                    _buildNameField(),
-                    const SizedBox(height: 16),
-                    _buildMotherNameField(),
-                    const SizedBox(height: 24),
-                    _buildSearchButton(),
-                    const SizedBox(height: 24),
-                    if (matches.isNotEmpty) _buildMatchesList(),
-                  ],
-                ),
+                      child: Text(
+                        errorMessage,
+                        style: const TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.dangerEdge,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  _buildRegionDropdown(),
+                  const SizedBox(height: 16),
+                  _buildNameField(),
+                  const SizedBox(height: 16),
+                  _buildMotherNameField(),
+                  const SizedBox(height: 24),
+                  _buildSearchButton(),
+                  const SizedBox(height: 24),
+                  if (matches.isNotEmpty) _buildMatchesList(),
+                ],
               ),
             ),
     );
@@ -1022,18 +1019,12 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
   }
 
   Widget _buildSearchButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: isLoading ? null : searchInSheetDirectly,
-        icon: const Icon(Icons.search),
-        label: const Text('بحث عن الأقارب'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
-      ),
+    return SdButton(
+      label: 'بحث عن الأقارب',
+      icon: Icons.search,
+      kind: SdButtonKind.accent,
+      expand: true,
+      onPressed: isLoading ? null : searchInSheetDirectly,
     );
   }
 
@@ -1041,13 +1032,13 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
     if (matches.length == 1 &&
         (matches[0]['relation'] ?? '').contains('لا يوجد مستخدم')) {
       return Card(
-        color: Colors.blue[100],
+        color: SdColors.infoTint,
         elevation: 2,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              const Icon(Icons.info_outline, size: 48, color: Colors.blue),
+              const Icon(Icons.info_outline, size: 48, color: SdColors.info),
               const SizedBox(height: 8),
               Text(
                 matches[0]['relation']!,
@@ -1058,7 +1049,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
               const SizedBox(height: 8),
               const Text(
                 'جرب:\n• تغيير المنطقة\n• استخدام المطابقة الذكية\n• تقليل عدد أحرف الاسم',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: SdColors.muted),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -1072,7 +1063,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
       children: [
         // معلومات البحث
         Card(
-          color: Colors.green.shade50,
+          color: SdColors.successTint,
           child: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Column(
@@ -1080,7 +1071,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.green),
+                    const Icon(Icons.check_circle, color: SdColors.success),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1093,7 +1084,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
                 const SizedBox(height: 4),
                 const Text(
                   '📊 يتم عرض النتائج بتشابه 75% وما فوق فقط لضمان الجودة',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                  style: TextStyle(fontSize: 11, color: SdColors.muted),
                 ),
               ],
             ),
@@ -1157,7 +1148,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
                             relation.indexOf('(') + 1, relation.indexOf(')')),
                         style: const TextStyle(fontSize: 12),
                       ),
-                      backgroundColor: Colors.blue.shade100,
+                      backgroundColor: SdColors.primaryTint,
                     )
                   : null,
             ),
@@ -1182,16 +1173,16 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
     String qualityText;
 
     if (percentage >= 95) {
-      indicatorColor = Colors.green;
+      indicatorColor = SdColors.success;
       qualityText = 'ممتاز';
     } else if (percentage >= 85) {
-      indicatorColor = Colors.lightGreen;
+      indicatorColor = SdColors.accentLight;
       qualityText = 'جيد جداً';
     } else if (percentage >= 75) {
-      indicatorColor = Colors.orange;
+      indicatorColor = SdColors.warning;
       qualityText = 'جيد';
     } else {
-      indicatorColor = Colors.red;
+      indicatorColor = SdColors.danger;
       qualityText = 'ضعيف';
     }
 
@@ -1225,7 +1216,7 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
             height: 4,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(2),
-              color: Colors.grey.shade300,
+              color: SdColors.divider,
             ),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
@@ -1245,26 +1236,26 @@ class _SearchUsersPageState extends State<SearchUsersPage> {
 
   Color _getRelationCardColor(String relation) {
     if (relation.contains('تطابق مباشر') || relation.contains('الشخص نفسه')) {
-      return Colors.green.shade50;
+      return SdColors.successTint;
     }
-    if (relation.contains('أخو')) return Colors.blue.shade50;
-    if (relation.contains('الأب')) return Colors.orange.shade50;
-    if (relation.contains('العم')) return Colors.purple.shade50;
-    if (relation.contains('الجد')) return Colors.brown.shade50;
-    if (relation.contains('تشابه')) return Colors.amber.shade50;
-    return Colors.grey.shade50;
+    if (relation.contains('أخو')) return SdColors.infoTint;
+    if (relation.contains('الأب')) return SdColors.warningTint;
+    if (relation.contains('العم')) return SdGroup.platform.tone.tint;
+    if (relation.contains('الجد')) return SdColors.accentTint;
+    if (relation.contains('تشابه')) return SdColors.primaryTint;
+    return SdColors.groundAlt;
   }
 
   Color _getRelationColor(String relation) {
     if (relation.contains('تطابق مباشر') || relation.contains('الشخص نفسه')) {
-      return Colors.green;
+      return SdColors.success;
     }
-    if (relation.contains('أخو')) return Colors.blue;
-    if (relation.contains('الأب')) return Colors.orange;
-    if (relation.contains('العم')) return Colors.purple;
-    if (relation.contains('الجد')) return Colors.brown;
-    if (relation.contains('تشابه')) return Colors.amber;
-    return Colors.grey;
+    if (relation.contains('أخو')) return SdColors.info;
+    if (relation.contains('الأب')) return SdColors.warning;
+    if (relation.contains('العم')) return SdGroup.platform.tone.base;
+    if (relation.contains('الجد')) return SdColors.accent;
+    if (relation.contains('تشابه')) return SdColors.primaryLight;
+    return SdColors.faint;
   }
 
   IconData _getRelationIcon(String relation) {

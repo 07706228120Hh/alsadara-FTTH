@@ -78,8 +78,8 @@ class _SdRaisedState extends State<SdRaised> {
         gradient: widget.gradient,
         borderRadius: r,
         border: _focus
-            ? Border.all(color: SdColors.accentGlow, width: 2)
-            : null,
+            ? Border.all(color: SdColors.accentGlow, width: SdOutline.focusWidth)
+            : SdOutline.all,
         boxShadow: [
           BoxShadow(color: widget.edgeColor, offset: Offset(0, d)),
           BoxShadow(
@@ -133,6 +133,7 @@ class SdButton extends StatelessWidget {
     this.kind = SdButtonKind.primary,
     this.expand = false,
     this.height = 52,
+    this.isLoading = false,
   });
 
   final String label;
@@ -141,6 +142,9 @@ class SdButton extends StatelessWidget {
   final SdButtonKind kind;
   final bool expand;
   final double height;
+
+  /// أثناء التحميل: يعرض مؤشّراً دائرياً بدل التسمية ويعطّل الضغط.
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -177,36 +181,51 @@ class SdButton extends StatelessWidget {
         color = SdColors.dangerTint;
         break;
     }
-    final disabled = onPressed == null;
+    final disabled = onPressed == null || isLoading;
     final content = SizedBox(
       height: height,
-      child: Row(
-        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, color: fg, size: 20),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                color: fg,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-              ),
+      child: isLoading
+          ? Row(
+              mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(fg),
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, color: fg, size: 20),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: fg,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
     return Opacity(
       opacity: disabled ? .5 : 1,
       child: SdRaised(
-        onTap: onPressed,
+        onTap: isLoading ? null : onPressed,
         radius: SdRadius.md,
         depth: kind == SdButtonKind.secondary || kind == SdButtonKind.danger
             ? SdDepth.card

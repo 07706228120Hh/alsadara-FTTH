@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart';
@@ -880,11 +881,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         context,
         MaterialPageRoute(
           builder: (_) => Scaffold(
-            appBar: AppBar(
-              title: const Text('إرسال واتساب جماعي'),
-              backgroundColor: Colors.green.shade700,
-              foregroundColor: Colors.white,
-            ),
+            appBar: const SdAppBar(title: 'إرسال واتساب جماعي'),
             body: _BulkWhatsAppDialog(
               authToken: widget.authToken,
               phoneNumberId: phoneNumberId,
@@ -1591,8 +1588,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // تحديد ألوان التدرج للـ AppBar
-    final gradientColors = [Colors.blue.shade600, Colors.blue.shade800];
+    // الشريط العلوي الموحّد: نيلي الصدارة (sd) بدل الأزرق الخاص بالقسم
+    final gradientColors = [SdColors.primary, SdColors.primaryEdge];
 
     // تحديد لون النص والأيقونات بطريقة ذكية
     final smartTextColor =
@@ -1637,7 +1634,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         icon: const Icon(Icons.map, size: 14),
                         label: const Text('المناطق', style: TextStyle(fontSize: 11)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: selectedZoneIds.isNotEmpty ? Colors.blue.shade700 : Colors.white.withValues(alpha: 0.2),
+                          backgroundColor: selectedZoneIds.isNotEmpty ? SdColors.primaryMid : Colors.white.withValues(alpha: 0.2),
                           foregroundColor: selectedZoneIds.isNotEmpty ? Colors.white : smartIconColor,
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           minimumSize: Size.zero,
@@ -1733,7 +1730,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                               const SizedBox(width: 8),
                               ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade600,
+                                  backgroundColor: SdColors.success,
                                   foregroundColor: Colors.white,
                                   padding: EdgeInsets.symmetric(
                                       horizontal: _isPhone(context) ? 10 : 16, vertical: 12),
@@ -1984,29 +1981,31 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(_isPhone(context) ? 10 : 16),
-              color: Colors.blue.shade50,
+              color: SdColors.infoTint,
               child: Column(
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.file_download, color: Colors.blue.shade700),
+                      const Icon(Icons.file_download, color: SdColors.info),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           progressMessage.isNotEmpty
                               ? progressMessage
                               : 'جاري التصدير...',
-                          style: TextStyle(
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.w500,
+                          style: const TextStyle(
+                            fontFamily: SdText.family,
+                            color: SdColors.infoEdge,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                       Text(
                         '${(exportProgress * 100).toInt()}%',
-                        style: TextStyle(
-                          color: Colors.blue.shade700,
-                          fontWeight: FontWeight.bold,
+                        style: const TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.infoEdge,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ],
@@ -2014,18 +2013,19 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
                     value: exportProgress,
-                    backgroundColor: Colors.blue.shade100,
+                    backgroundColor: SdColors.infoTintEdge,
                     valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
+                        const AlwaysStoppedAnimation<Color>(SdColors.info),
                   ),
                   if (totalItemsToExport > 0)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         '$exportedItemsCount من $totalItemsToExport',
-                        style: TextStyle(
+                        style: const TextStyle(
+                          fontFamily: SdText.family,
                           fontSize: 12,
-                          color: Colors.blue.shade600,
+                          color: SdColors.info,
                         ),
                       ),
                     ),
@@ -2040,8 +2040,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         label: Text(
                             _cancelRequested ? 'جارٍ الإلغاء...' : 'إلغاء'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red.shade700,
-                          side: BorderSide(color: Colors.red.shade300),
+                          foregroundColor: SdColors.danger,
+                          side: const BorderSide(color: SdColors.dangerTintEdge),
                         ),
                       ),
                     ],
@@ -2060,42 +2060,28 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   Widget _buildMainContent() {
     return isLoading && !isExporting
-        ? const Center(
+        ? Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('جاري تحميل البيانات...'),
+                const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(SdColors.primary)),
+                const SizedBox(height: 16),
+                Text('جاري تحميل البيانات...', style: SdText.bodySm),
               ],
             ),
           )
         : errorMessage.isNotEmpty && !isExporting
             ? Center(
-                child: Container(
-                  padding: EdgeInsets.all(_isPhone(context) ? 14 : 20),
-                  margin: EdgeInsets.all(_isPhone(context) ? 10 : 16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.shade200),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.error, color: Colors.red, size: 48),
-                      const SizedBox(height: 12),
-                      Text(
-                        "خطأ: $errorMessage",
-                        style: TextStyle(fontSize: _fs(context, 16)),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: fetchSubscriptions,
-                        child: const Text('إعادة المحاولة'),
-                      ),
-                    ],
+                child: SdEmptyState(
+                  icon: Icons.error,
+                  status: SdStatus.danger,
+                  title: 'حدث خطأ',
+                  message: errorMessage,
+                  action: SdButton(
+                    label: 'إعادة المحاولة',
+                    icon: Icons.refresh,
+                    onPressed: fetchSubscriptions,
                   ),
                 ),
               )
@@ -3193,32 +3179,11 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     }
 
     if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inbox,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'لا توجد اشتراكات للعرض',
-              style: TextStyle(
-                fontSize: _fs(context, 18),
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'جرب تغيير المرشحات أو إعادة تحميل البيانات',
-              style: TextStyle(
-                color: Colors.grey.shade500,
-              ),
-            ),
-          ],
+      return const Center(
+        child: SdEmptyState(
+          icon: Icons.inbox,
+          title: 'لا توجد اشتراكات للعرض',
+          message: 'جرب تغيير المرشحات أو إعادة تحميل البيانات',
         ),
       );
     }
@@ -3230,26 +3195,22 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         final customer = subscription['customer'] ?? {};
         final status = subscription['status'] ?? 'غير معروف';
         final bgColor = status == 'Active'
-            ? Colors.green.shade50
+            ? SdColors.successTint
             : status == 'Expired'
-                ? Colors.red.shade50
-                : Colors.white;
+                ? SdColors.dangerTint
+                : SdColors.surface;
+        final edgeColor = status == 'Active'
+            ? SdColors.successTintEdge
+            : status == 'Expired'
+                ? SdColors.dangerTintEdge
+                : SdColors.cardEdge;
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.shade200,
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
-            border: Border.all(
-              color: Colors.black87,
-              width: 2,
-            ),
+            borderRadius: BorderRadius.circular(SdRadius.md),
+            boxShadow: SdDepth.raised(edge: edgeColor),
+            border: Border.all(color: edgeColor, width: 1),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

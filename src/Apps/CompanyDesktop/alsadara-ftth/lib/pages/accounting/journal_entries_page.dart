@@ -8,6 +8,7 @@ import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
 import '../../permissions/permissions.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة القيود المحاسبية
 class JournalEntriesPage extends StatefulWidget {
@@ -221,42 +222,129 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(),
-              _buildSearchHeader(),
-              Expanded(
-                child: !_hasSearched
-                    ? _buildEmptyHint()
-                    : _isLoading
-                        ? const AccountingSkeleton(rows: 8, columns: 4)
-                        : _errorMessage != null
-                            ? Center(
-                                child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.error_outline,
-                                      color: AccountingTheme.textMuted
-                                          .withOpacity(0.3),
-                                      size: context.accR.iconXL),
-                                  SizedBox(height: context.accR.spaceM),
-                                  Text(_errorMessage!,
-                                      style: GoogleFonts.cairo(
-                                          color: AccountingTheme.textSecondary,
-                                          fontSize: context.accR.body)),
-                                ],
-                              ))
-                            : _buildList(),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'القيود المحاسبية',
+        actions: [
+          // ── أزرار العمليات الجماعية ──
+          if (_isSelectionMode && _selectedIds.isNotEmpty) ...[
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AccountingTheme.neonPink.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text('محدد: ${_selectedIds.length}',
+                    style: GoogleFonts.cairo(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AccountingTheme.neonPink)),
               ),
-              if (_hasSearched) _buildPaginationBar(),
+            ),
+            const SizedBox(width: 4),
+            _bulkBtn(
+              icon: Icons.select_all,
+              label: 'تحديد الكل',
+              color: AccountingTheme.neonBlue,
+              onTap: () {
+                setState(() {
+                  final filtered = _filteredEntries;
+                  for (final e in filtered) {
+                    final id = e['Id']?.toString() ?? '';
+                    if (id.isNotEmpty) _selectedIds.add(id);
+                  }
+                });
+              },
+            ),
+            if (PermissionManager.instance.canEdit('accounting.journals')) ...[
+              _bulkBtn(
+                icon: Icons.check_circle,
+                label: 'ترحيل',
+                color: AccountingTheme.success,
+                onTap: _bulkPost,
+              ),
+              _bulkBtn(
+                icon: Icons.cancel,
+                label: 'إلغاء',
+                color: AccountingTheme.warning,
+                onTap: _bulkVoid,
+              ),
             ],
+            if (VpsAuthService.instance.currentUser?.isAdmin == true)
+              _bulkBtn(
+                icon: Icons.delete_outline,
+                label: 'حذف',
+                color: AccountingTheme.danger,
+                onTap: _bulkDelete,
+              ),
+            const SizedBox(width: 4),
+          ],
+          if (_hasSearched)
+            SdAppBarAction(
+              icon: Icons.home_rounded,
+              label: 'الشاشة الرئيسية',
+              onPressed: () {
+                setState(() {
+                  _hasSearched = false;
+                  _searchQuery = '';
+                  _searchCtrl.clear();
+                  _refTypeFilter = 'all';
+                  _dateFrom = null;
+                  _dateTo = null;
+                  _amountMin = null;
+                  _amountMax = null;
+                  _selectedIds.clear();
+                  _isSelectionMode = false;
+                });
+                // إعادة تحميل قيود اليوم بشكل صامت
+                _loadData();
+              },
+            ),
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
+            onPressed: () => _loadData(showResults: _hasSearched),
           ),
-        ),
+          if (PermissionManager.instance.canAdd('accounting.journals'))
+            SdAppBarAction(
+              icon: Icons.add,
+              label: 'إنشاء قيد',
+              onPressed: _showCreateDialog,
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildSearchHeader(),
+          Expanded(
+            child: !_hasSearched
+                ? _buildEmptyHint()
+                : _isLoading
+                    ? const AccountingSkeleton(rows: 8, columns: 4)
+                    : _errorMessage != null
+                        ? Center(
+                            child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.error_outline,
+                                  color: AccountingTheme.textMuted
+                                      .withOpacity(0.3),
+                                  size: context.accR.iconXL),
+                              SizedBox(height: context.accR.spaceM),
+                              Text(_errorMessage!,
+                                  style: GoogleFonts.cairo(
+                                      color: AccountingTheme.textSecondary,
+                                      fontSize: context.accR.body)),
+                            ],
+                          ))
+                        : _buildList(),
+          ),
+          if (_hasSearched) _buildPaginationBar(),
+        ],
       ),
     );
   }
@@ -615,169 +703,6 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                     color: isActive ? color : AccountingTheme.textSecondary)),
           ],
         ),
-      ),
-    );
-  }
-
-
-  Widget _buildToolbar() {
-    final isMobile = context.accR.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : context.accR.spaceXL,
-          vertical: isMobile ? 6 : context.accR.spaceL),
-      decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            iconSize: isMobile ? 20 : 24,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          if (!isMobile) SizedBox(width: context.accR.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMobile ? 4 : context.accR.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonGreenGradient,
-              borderRadius: BorderRadius.circular(isMobile ? 6 : 8),
-            ),
-            child: Icon(Icons.menu_book_rounded,
-                color: Colors.white, size: isMobile ? 16 : context.accR.iconM),
-          ),
-          SizedBox(width: isMobile ? 6 : context.accR.spaceM),
-          Expanded(
-            child: Text('القيود المحاسبية',
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
-                  fontSize: isMobile ? 14 : context.accR.headingMedium,
-                  fontWeight: FontWeight.bold,
-                  color: AccountingTheme.textPrimary,
-                )),
-          ),
-          if (!isMobile) const Spacer(),
-          // ── أزرار العمليات الجماعية ──
-          if (_isSelectionMode && _selectedIds.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AccountingTheme.neonPink.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text('محدد: ${_selectedIds.length}',
-                  style: GoogleFonts.cairo(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AccountingTheme.neonPink)),
-            ),
-            const SizedBox(width: 4),
-            _bulkBtn(
-              icon: Icons.select_all,
-              label: 'تحديد الكل',
-              color: AccountingTheme.neonBlue,
-              onTap: () {
-                setState(() {
-                  final filtered = _filteredEntries;
-                  for (final e in filtered) {
-                    final id = e['Id']?.toString() ?? '';
-                    if (id.isNotEmpty) _selectedIds.add(id);
-                  }
-                });
-              },
-            ),
-            if (PermissionManager.instance.canEdit('accounting.journals')) ...[
-              _bulkBtn(
-                icon: Icons.check_circle,
-                label: 'ترحيل',
-                color: AccountingTheme.success,
-                onTap: _bulkPost,
-              ),
-              _bulkBtn(
-                icon: Icons.cancel,
-                label: 'إلغاء',
-                color: AccountingTheme.warning,
-                onTap: _bulkVoid,
-              ),
-            ],
-            if (VpsAuthService.instance.currentUser?.isAdmin == true)
-              _bulkBtn(
-                icon: Icons.delete_outline,
-                label: 'حذف',
-                color: AccountingTheme.danger,
-                onTap: _bulkDelete,
-              ),
-            const SizedBox(width: 4),
-          ],
-          if (_hasSearched)
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  _hasSearched = false;
-                  _searchQuery = '';
-                  _searchCtrl.clear();
-                  _refTypeFilter = 'all';
-                  _dateFrom = null;
-                  _dateTo = null;
-                  _amountMin = null;
-                  _amountMax = null;
-                  _selectedIds.clear();
-                  _isSelectionMode = false;
-                });
-                // إعادة تحميل قيود اليوم بشكل صامت
-                _loadData();
-              },
-              icon: Icon(Icons.home_rounded, size: isMobile ? 18 : context.accR.iconM),
-              tooltip: 'الشاشة الرئيسية',
-              style: IconButton.styleFrom(
-                  foregroundColor: AccountingTheme.neonBlue),
-            ),
-          IconButton(
-            onPressed: () => _loadData(showResults: _hasSearched),
-            icon: Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMobile ? 0 : context.accR.spaceXS),
-          if (PermissionManager.instance.canAdd('accounting.journals'))
-            isMobile
-                ? SizedBox(
-                    height: 30,
-                    child: ElevatedButton(
-                      onPressed: _showCreateDialog,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AccountingTheme.neonGreen,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        minimumSize: Size(30, 30),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6)),
-                      ),
-                      child: Icon(Icons.add, size: 16),
-                    ),
-                  )
-                : ElevatedButton.icon(
-                    onPressed: _showCreateDialog,
-                    icon: Icon(Icons.add, size: context.accR.iconS),
-                    label: Text('إنشاء قيد',
-                        style: GoogleFonts.cairo(
-                            fontSize: context.accR.financialSmall)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AccountingTheme.neonGreen,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                          horizontal: context.accR.spaceL,
-                          vertical: context.accR.spaceS),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-        ],
       ),
     );
   }

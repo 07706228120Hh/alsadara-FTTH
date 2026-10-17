@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/whatsapp_bulk_sender_service.dart';
 import '../services/whatsapp_business_service.dart';
 import '../services/bulk_messaging_service.dart';
@@ -40,21 +41,21 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
       'label': '⚠️ تذكير قبل الانتهاء',
       'description': 'للمشتركين الذين سينتهي اشتراكهم قريباً',
       'icon': Icons.warning_amber_rounded,
-      'color': Colors.orange,
+      'color': SdColors.warning,
     },
     {
       'value': 'sadara_renewed',
       'label': '✅ تم التجديد',
       'description': 'إشعار بعد تجديد الاشتراك بنجاح',
       'icon': Icons.check_circle_rounded,
-      'color': Colors.green,
+      'color': SdColors.success,
     },
     {
       'value': 'sadara_expired',
       'label': '📢 اشتراك منتهي + عرض',
       'description': 'للمشتركين المنتهية اشتراكاتهم مع عرض خاص',
       'icon': Icons.campaign_rounded,
-      'color': Colors.red,
+      'color': SdColors.danger,
     },
   ];
 
@@ -250,7 +251,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
       ),
     );
   }
@@ -259,7 +260,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.green,
+        backgroundColor: SdColors.success,
       ),
     );
   }
@@ -268,7 +269,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.orange,
+        backgroundColor: SdColors.warning,
         duration: const Duration(seconds: 5),
       ),
     );
@@ -278,7 +279,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.blue,
+        backgroundColor: SdColors.info,
       ),
     );
   }
@@ -426,7 +427,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('يرجى إدخال الاسم ورقم الهاتف'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: SdColors.danger,
                   ),
                 );
                 return;
@@ -446,7 +447,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
               _showSuccess('تمت إضافة المستلم بنجاح');
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange[700],
+              backgroundColor: SdColors.warningText,
               foregroundColor: Colors.white,
             ),
             child: const Text('إضافة'),
@@ -476,7 +477,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
               _showSuccess('تم حذف المستلم');
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
               foregroundColor: Colors.white,
             ),
             child: const Text('حذف'),
@@ -508,7 +509,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
             const SizedBox(height: 4),
             const Text(
               'تأكد من أن الـ workflow مفعّل في n8n',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: SdColors.faint),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -534,7 +535,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('يرجى إدخال رابط webhook'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: SdColors.danger,
                   ),
                 );
                 return;
@@ -545,7 +546,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                   const SnackBar(
                     content: Text(
                         'يرجى إدخال رابط صحيح يبدأ بـ http:// أو https://'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: SdColors.danger,
                   ),
                 );
                 return;
@@ -557,7 +558,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
               _showSuccess('تم حفظ رابط webhook بنجاح');
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF25D366),
+              backgroundColor: SdColors.whatsapp,
               foregroundColor: Colors.white,
             ),
             child: const Text('حفظ'),
@@ -569,15 +570,16 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('إرسال رسائل WhatsApp جماعية'),
-        backgroundColor: const Color(0xFF25D366),
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: 'إرسال رسائل WhatsApp جماعية',
         actions: [
           // زر إعدادات WhatsApp Business API
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'إعدادات WhatsApp API',
+          SdAppBarAction(
+            icon: Icons.settings,
+            label: 'إعدادات WhatsApp API',
             onPressed: () {
               Navigator.push(
                 context,
@@ -588,16 +590,16 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
             },
           ),
           // زر إرسال من Excel
-          IconButton(
-            icon: const Icon(Icons.table_chart),
-            tooltip: 'إرسال من Excel',
+          SdAppBarAction(
+            icon: Icons.table_chart,
+            label: 'إرسال من Excel',
             onPressed: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const WhatsAppExcelSenderPage())),
           ),
           // زر تقارير الإرسال
-          IconButton(
-            icon: const Icon(Icons.analytics_rounded),
-            tooltip: 'تقارير الإرسال',
+          SdAppBarAction(
+            icon: Icons.analytics_rounded,
+            label: 'تقارير الإرسال',
             onPressed: () {
               Navigator.push(
                 context,
@@ -609,14 +611,16 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // مؤشر النظام المستخدم
             Card(
-              color: Colors.blue[50],
+              color: SdColors.infoTint,
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
@@ -625,7 +629,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                       _bulkSystem == WhatsAppSystem.server
                           ? Icons.dns_rounded
                           : Icons.api_rounded,
-                      color: Colors.blue[700],
+                      color: SdColors.infoEdge,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -634,13 +638,13 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue[900],
+                          color: SdColors.infoEdge,
                         ),
                       ),
                     ),
                     Text(
                       'يمكن تغييره من إعدادات الناظم',
-                      style: TextStyle(fontSize: 11, color: Colors.blue[600]),
+                      style: TextStyle(fontSize: 11, color: SdColors.infoEdge),
                     ),
                   ],
                 ),
@@ -650,7 +654,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
 
             // حالة الإعداد
             Card(
-              color: _isConfigured ? Colors.green[50] : Colors.orange[50],
+              color: _isConfigured ? SdColors.successTint : SdColors.warningTint,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -658,8 +662,8 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                     Icon(
                       _isConfigured ? Icons.check_circle : Icons.warning,
                       color: _isConfigured
-                          ? Colors.green[700]
-                          : Colors.orange[700],
+                          ? SdColors.successEdge
+                          : SdColors.warningText,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -678,8 +682,8 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: _isConfigured
-                                  ? Colors.green[900]
-                                  : Colors.orange[900],
+                                  ? SdColors.successEdge
+                                  : SdColors.warningEdge,
                             ),
                           ),
                           if (!_isConfigured) ...[
@@ -703,7 +707,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
             // حالة الإعداد - n8n Webhook (يظهر فقط في وضع API)
             if (_bulkSystem == WhatsAppSystem.api) Card(
               color:
-                  _isWebhookConfigured ? Colors.green[50] : Colors.orange[50],
+                  _isWebhookConfigured ? SdColors.successTint : SdColors.warningTint,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -711,8 +715,8 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                     Icon(
                       _isWebhookConfigured ? Icons.check_circle : Icons.warning,
                       color: _isWebhookConfigured
-                          ? Colors.green[700]
-                          : Colors.orange[700],
+                          ? SdColors.successEdge
+                          : SdColors.warningText,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -727,8 +731,8 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: _isWebhookConfigured
-                                  ? Colors.green[900]
-                                  : Colors.orange[900],
+                                  ? SdColors.successEdge
+                                  : SdColors.warningEdge,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -759,7 +763,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.description, color: Colors.blue[700]),
+                        Icon(Icons.description, color: SdColors.infoEdge),
                         const SizedBox(width: 8),
                         const Text(
                           'نوع الرسالة',
@@ -806,7 +810,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
             // حقل العرض (يظهر فقط عند اختيار قالب المنتهي)
             if (_selectedTemplateType == 'sadara_expired') ...[
               Card(
-                color: Colors.red[50],
+                color: SdColors.dangerTint,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -814,7 +818,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.local_offer, color: Colors.red[700]),
+                          Icon(Icons.local_offer, color: SdColors.dangerEdge),
                           const SizedBox(width: 8),
                           const Text(
                             'نص العرض',
@@ -828,7 +832,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                       const SizedBox(height: 8),
                       const Text(
                         'سيظهر هذا النص في رسالة العرض للمشتركين المنتهية اشتراكاتهم',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        style: TextStyle(fontSize: 12, color: SdColors.faint),
                       ),
                       const SizedBox(height: 12),
                       TextField(
@@ -855,7 +859,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.people, color: Colors.orange[700]),
+                        Icon(Icons.people, color: SdColors.warningText),
                         const SizedBox(width: 8),
                         Text(
                           'المستلمون (${_recipients.length})',
@@ -870,7 +874,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                           icon: const Icon(Icons.add, size: 20),
                           label: const Text('إضافة'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange[700],
+                            backgroundColor: SdColors.warningText,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -888,7 +892,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                           child: Text(
                             'لا يوجد مستلمين. اضغط "إضافة" لإضافة مستلم جديد',
                             style: TextStyle(
-                              color: Colors.grey,
+                              color: SdColors.faint,
                               fontSize: 14,
                             ),
                             textAlign: TextAlign.center,
@@ -909,7 +913,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                             title: Text(recipient['name'] ?? ''),
                             subtitle: Text(recipient['phoneNumber'] ?? ''),
                             trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
+                              icon: const Icon(Icons.delete, color: SdColors.danger),
                               onPressed: () => _removeRecipient(index),
                             ),
                           );
@@ -936,7 +940,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                   : const Icon(Icons.send),
               label: Text(_isPolling ? 'جاري متابعة النتائج...' : _isSending ? 'جاري الإرسال...' : 'إرسال الرسائل'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
+                backgroundColor: SdColors.whatsapp,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.all(16),
                 textStyle: const TextStyle(fontSize: 16),
@@ -947,7 +951,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
             // حالة المتابعة
             if (_isPolling) ...[
               Card(
-                color: Colors.orange[50],
+                color: SdColors.warningTint,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -955,7 +959,7 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                       const SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: SdColors.warning),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
@@ -974,8 +978,8 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
             if (_lastResult != null) ...[
               Card(
                 color: _lastResult!['success'] == true
-                    ? Colors.green[50]
-                    : Colors.red[50],
+                    ? SdColors.successTint
+                    : SdColors.dangerTint,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -988,8 +992,8 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
                                 ? Icons.check_circle
                                 : Icons.error,
                             color: _lastResult!['success'] == true
-                                ? Colors.green[700]
-                                : Colors.red[700],
+                                ? SdColors.successEdge
+                                : SdColors.dangerEdge,
                           ),
                           const SizedBox(width: 8),
                           Text(
@@ -1030,6 +1034,8 @@ class _WhatsAppBulkSenderPageState extends State<WhatsAppBulkSenderPage> {
             ],
           ],
         ),
+      ),
+      ),
       ),
     );
   }

@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../frontend/frontend.dart';
 
 class SettingsPage extends StatefulWidget {
   final String currentUserRole;
@@ -22,10 +23,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // ─── responsive helpers ───
-  bool get _isPhone => MediaQuery.of(context).size.width < 500;
-  double _fs(double base) => _isPhone ? base * 0.85 : base;
-
   final TextEditingController _rasoulPhoneController = TextEditingController();
   bool _isLoading = false;
 
@@ -98,7 +95,7 @@ class _SettingsPageState extends State<SettingsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
         duration: Duration(seconds: isError ? 4 : 3),
       ),
     );
@@ -106,190 +103,109 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('الإعدادات'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
+    return SdPage(
+      maxWidth: SdSpace.formMax,
+      scrollable: !_isLoading,
+      appBar: const SdAppBar(title: 'الإعدادات'),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(_isPhone ? 10 : 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // معلومات المستخدم
-                  Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(_isPhone ? 10 : 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'معلومات المستخدم',
-                            style: TextStyle(
-                              fontSize: _fs(18),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Icon(Icons.person, color: Colors.blue, size: _isPhone ? 20 : 24),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'المستخدم: ${widget.currentUsername}',
-                                  style: TextStyle(fontSize: _fs(16)),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.admin_panel_settings,
-                                  color: Colors.orange, size: _isPhone ? 20 : 24),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'الدور: ${widget.currentUserRole}',
-                                  style: TextStyle(fontSize: _fs(16)),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // معلومات المستخدم
+                SdCard(
+                  title: 'معلومات المستخدم',
+                  icon: Icons.person,
+                  tone: SdGroup.admin.tone,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SdInfoRow(
+                        label: 'المستخدم',
+                        value: widget.currentUsername,
+                        icon: Icons.person,
                       ),
-                    ),
+                      SdInfoRow(
+                        label: 'الدور',
+                        value: widget.currentUserRole,
+                        icon: Icons.admin_panel_settings,
+                      ),
+                    ],
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // إعدادات الإشعارات
-                  Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(_isPhone ? 10 : 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.notifications, color: Colors.green, size: _isPhone ? 20 : 24),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'إعدادات الإشعارات',
-                                  style: TextStyle(
-                                    fontSize: _fs(18),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
+                ),
+                const SizedBox(height: SdSpace.lg),
+                // إعدادات الإشعارات
+                SdCard(
+                  title: 'إعدادات الإشعارات',
+                  icon: Icons.notifications,
+                  tone: SdStatus.success.tone,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'رقم هاتف القائد رسول للإشعارات:',
+                        style: SdText.label,
+                      ),
+                      const SizedBox(height: SdSpace.xs),
+                      TextFormField(
+                        controller: _rasoulPhoneController,
+                        decoration: InputDecoration(
+                          labelText: 'رقم هاتف رسول *',
+                          hintText: '07xxxxxxxx أو 964xxxxxxxxxx',
+                          border: const OutlineInputBorder(),
+                          prefixIcon:
+                              const Icon(Icons.phone, color: SdColors.success),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.save, color: SdColors.primary),
+                            onPressed: _saveRasoulPhone,
+                            tooltip: 'حفظ الرقم',
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'رقم هاتف القائد رسول للإشعارات:',
-                            style: TextStyle(
-                              fontSize: _fs(16),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _rasoulPhoneController,
-                            decoration: InputDecoration(
-                              labelText: 'رقم هاتف رسول *',
-                              hintText: '07xxxxxxxx أو 964xxxxxxxxxx',
-                              border: const OutlineInputBorder(),
-                              prefixIcon:
-                                  const Icon(Icons.phone, color: Colors.green),
-                              suffixIcon: IconButton(
-                                icon:
-                                    const Icon(Icons.save, color: Colors.blue),
-                                onPressed: _saveRasoulPhone,
-                                tooltip: 'حفظ الرقم',
-                              ),
-                            ),
-                            keyboardType: TextInputType.phone,
-                            maxLength: 15,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.info_outline,
-                                  size: _isPhone ? 14 : 16, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  'سيتم إرسال إشعارات المهام الجديدة لهذا الرقم',
-                                  style: TextStyle(
-                                    fontSize: _fs(12),
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: _saveRasoulPhone,
-                              icon: const Icon(Icons.save),
-                              label: const Text('حفظ الإعدادات'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                              ),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        maxLength: 15,
+                      ),
+                      const SizedBox(height: SdSpace.xs),
+                      Row(
+                        children: const [
+                          Icon(Icons.info_outline, size: 16, color: SdColors.faint),
+                          SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'سيتم إرسال إشعارات المهام الجديدة لهذا الرقم',
+                              style: SdText.caption,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // معلومات إضافية
-                  Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(_isPhone ? 10 : 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.info, color: Colors.orange, size: _isPhone ? 20 : 24),
-                              const SizedBox(width: 8),
-                              Text(
-                                'معلومات مهمة',
-                                style: TextStyle(
-                                  fontSize: _fs(18),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          _buildInfoRow('إشعارات المهام:',
-                              'سيتم إرسال إشعار واتساب للقائد رسول عند إضافة أي مهمة جديدة'),
-                          _buildInfoRow('صلاحية التعديل:',
-                              'فقط المدير والقائد يمكنهم تعديل هذه الإعدادات'),
-                          _buildInfoRow('رقم الهاتف:',
-                              'يجب أن يكون رقم هاتف عراقي صحيح مُسجل في واتساب'),
-                        ],
+                      const SizedBox(height: SdSpace.sm),
+                      SdButton(
+                        label: 'حفظ الإعدادات',
+                        icon: Icons.save,
+                        expand: true,
+                        onPressed: _saveRasoulPhone,
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: SdSpace.lg),
+                // معلومات إضافية
+                SdCard(
+                  title: 'معلومات مهمة',
+                  icon: Icons.info,
+                  tone: SdStatus.warning.tone,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildInfoRow('إشعارات المهام:',
+                          'سيتم إرسال إشعار واتساب للقائد رسول عند إضافة أي مهمة جديدة'),
+                      _buildInfoRow('صلاحية التعديل:',
+                          'فقط المدير والقائد يمكنهم تعديل هذه الإعدادات'),
+                      _buildInfoRow('رقم الهاتف:',
+                          'يجب أن يكون رقم هاتف عراقي صحيح مُسجل في واتساب'),
+                    ],
+                  ),
+                ),
+              ],
             ),
     );
   }
@@ -300,25 +216,15 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '• ',
-            style: TextStyle(
-              fontSize: _fs(16),
-              color: Colors.grey[700],
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          const Text('• ', style: SdText.label),
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: TextStyle(
-                  fontSize: _fs(14),
-                  color: Colors.grey[700],
-                ),
+                style: SdText.body,
                 children: [
                   TextSpan(
                     text: title,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                   TextSpan(text: ' $description'),
                 ],

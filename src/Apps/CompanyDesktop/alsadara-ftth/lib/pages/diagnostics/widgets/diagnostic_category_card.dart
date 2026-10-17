@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/diagnostic_result.dart';
 
 /// بطاقة فئة التشخيص
@@ -32,32 +33,28 @@ class DiagnosticCategoryCard extends StatelessWidget {
     String statusText;
 
     if (completedTests == 0) {
-      statusColor = Colors.grey;
+      statusColor = SdColors.faint;
       statusIcon = Icons.pending_outlined;
       statusText = 'في انتظار التشغيل';
     } else if (failedTests > 0) {
-      statusColor = Colors.red;
+      statusColor = SdColors.danger;
       statusIcon = Icons.error_outline;
       statusText = '$failedTests اختبار فاشل';
     } else if (passedTests == completedTests) {
-      statusColor = Colors.green;
+      statusColor = SdColors.success;
       statusIcon = Icons.check_circle_outline;
       statusText = 'جميع الاختبارات ناجحة';
     } else {
-      statusColor = Colors.orange;
+      statusColor = SdColors.warning;
       statusIcon = Icons.warning_amber_outlined;
       statusText = 'بعض التحذيرات';
     }
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onRunTests,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
+    return SdRaised(
+      onTap: onRunTests,
+      radius: SdRadius.md,
+      padding: const EdgeInsets.all(20),
+      child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
@@ -67,7 +64,7 @@ class DiagnosticCategoryCard extends StatelessWidget {
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
@@ -92,9 +89,9 @@ class DiagnosticCategoryCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           category.description,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[600],
+                            color: SdColors.muted,
                           ),
                         ),
                       ],
@@ -119,7 +116,7 @@ class DiagnosticCategoryCard extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: progress,
                   minHeight: 8,
-                  backgroundColor: Colors.grey[200],
+                  backgroundColor: SdColors.divider,
                   valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                 ),
               ),
@@ -130,9 +127,9 @@ class DiagnosticCategoryCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildStat('الإجمالي', totalTests.toString(), Colors.blue),
-                  _buildStat('نجح', passedTests.toString(), Colors.green),
-                  _buildStat('فشل', failedTests.toString(), Colors.red),
+                  _buildStat('الإجمالي', totalTests.toString(), SdColors.info),
+                  _buildStat('نجح', passedTests.toString(), SdColors.success),
+                  _buildStat('فشل', failedTests.toString(), SdColors.danger),
                   _buildStat(
                     'النسبة',
                     '${(successRate * 100).toStringAsFixed(0)}%',
@@ -149,7 +146,7 @@ class DiagnosticCategoryCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -169,8 +166,6 @@ class DiagnosticCategoryCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 
@@ -187,9 +182,9 @@ class DiagnosticCategoryCard extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 11,
-            color: Colors.grey[600],
+            color: SdColors.muted,
           ),
         ),
       ],

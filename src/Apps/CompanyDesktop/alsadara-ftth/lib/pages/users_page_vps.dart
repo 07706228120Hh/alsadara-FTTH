@@ -8,7 +8,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../frontend/frontend.dart';
 import '../utils/responsive_helper.dart';
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
@@ -154,179 +154,36 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
 
   bool get _hasActiveFilters => _filterDepartment != null || _filterRole != null || _filterCenter != null;
 
-  // ═══════════════ ألوان التصميم الفاتح ═══════════════
-  static const _dark1 = Color(0xFFF5F6FA); // خلفية فاتحة رئيسية
-  static const _dark2 = Color(0xFFFFFFFF); // بطاقات بيضاء
-  static const _dark3 = Color(0xFFF0F1F5); // بطاقات ثانوية
-  static const _accent = Color(0xFF6C63FF); // أرجواني عصري
-  static const _accentLight = Color(0xFF8B83FF);
-  static const _gold = Color(0xFFD4AF37); // ذهبي فخم
-  static const _goldLight = Color(0xFFE8D48B);
-  static const _textWhite = Color(0xFF2D3250); // نص داكن على خلفية فاتحة
-  static const _textGray = Color(0xFF6B7280);
-  static const _success = Color(0xFF22C55E);
-  static const _danger = Color(0xFFEF4444);
+  // ═══════════════ ألوان موحّدة عبر نظام تصميم الصدارة ═══════════════
+  static const _dark1 = SdColors.ground; // خلفية الصفحة
+  static const _dark2 = SdColors.surface; // بطاقات بيضاء
+  static const _dark3 = SdColors.surfaceAlt; // بطاقات ثانوية
+  static const _accent = SdColors.primary; // نيلي الإدارة
+  static const _accentLight = SdColors.primaryLight;
+  static const _textWhite = SdColors.ink; // النص الأساسي
+  static const _textGray = SdColors.muted;
+  static const _success = SdColors.success;
+  static const _danger = SdColors.danger;
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _dark1,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildPremiumHeader(),
-              Expanded(child: _buildBody()),
-            ],
-          ),
-        ),
-        floatingActionButton: _buildFAB(),
-      ),
-    );
-  }
-
-  /// شريط علوي فخم بتدرج لوني
-  Widget _buildPremiumHeader() {
-    final r = context.responsive;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'إدارة الموظفين',
+        subtitle: '${widget.companyName} · ${_employees.length}/${widget.maxUsers}',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loadEmployees,
           ),
         ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(r.contentPaddingH, 10, 8, 12),
-          child: Row(
-            children: [
-              // زر الرجوع
-              _glassButton(
-                icon: Icons.arrow_forward_rounded,
-                onTap: () => Navigator.of(context).pop(),
-                size: r.isMobile ? 32 : 38,
-              ),
-              const SizedBox(width: 16),
-              // أيقونة فخمة
-              Container(
-                width: r.isMobile ? 36 : 44,
-                height: r.isMobile ? 36 : 44,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [_accent, _accentLight],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _accent.withOpacity(0.25),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Icon(Icons.groups_rounded,
-                    color: Colors.white, size: r.isMobile ? 20 : 24),
-              ),
-              const SizedBox(width: 14),
-              // العنوان
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'إدارة الموظفين',
-                      style: GoogleFonts.cairo(
-                        color: _textWhite,
-                        fontSize: r.titleSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      widget.companyName,
-                      style: GoogleFonts.cairo(
-                        color: _textGray,
-                        fontSize: r.captionSize,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // عداد الموظفين
-              Container(
-                padding: EdgeInsets.symmetric(
-                    horizontal: r.isMobile ? 8 : 14, vertical: r.isMobile ? 4 : 6),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _accent.withOpacity(0.2),
-                      _accent.withOpacity(0.08)
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _accent.withOpacity(0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.people_alt_rounded,
-                        size: r.isMobile ? 12 : 15, color: _accentLight),
-                    SizedBox(width: r.isMobile ? 4 : 6),
-                    Text(
-                      '${_employees.length} / ${widget.maxUsers}',
-                      style: GoogleFonts.cairo(
-                        color: _accentLight,
-                        fontSize: r.isMobile ? 10 : 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _glassButton(
-                icon: Icons.refresh_rounded,
-                onTap: _loadEmployees,
-                size: r.isMobile ? 32 : 38,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// زر زجاجي شفاف
-  Widget _glassButton(
-      {required IconData icon, required VoidCallback onTap, double size = 36}) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: Icon(icon, color: _textGray, size: 18),
-        ),
-      ),
+      floatingActionButton: _buildFAB(),
+      body: _buildBody(),
     );
   }
 
@@ -389,7 +246,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                 const SizedBox(width: 6),
                 Text(
                   allVisibleSelected ? 'إلغاء تحديد الكل' : 'تحديد الكل (${_filteredEmployees.length})',
-                  style: GoogleFonts.cairo(fontSize: 12, color: _accent, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontFamily: SdText.family,fontSize: 12, color: _accent, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -397,7 +254,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           const Spacer(),
           Text(
             '${_selectedIds.length} محدد',
-            style: GoogleFonts.cairo(fontSize: 12, color: _textWhite, fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: SdText.family,fontSize: 12, color: _textWhite, fontWeight: FontWeight.bold),
           ),
           const SizedBox(width: 12),
           InkWell(
@@ -412,7 +269,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                 color: _danger.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text('إلغاء', style: GoogleFonts.cairo(fontSize: 11, color: _danger, fontWeight: FontWeight.w600)),
+              child: Text('إلغاء', style: TextStyle(fontFamily: SdText.family,fontSize: 11.5, color: _danger, fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -424,8 +281,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, -3))],
+        color: SdColors.surface,
+        boxShadow: [BoxShadow(color: SdColors.ink.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, -3))],
         border: Border(top: BorderSide(color: _accent.withOpacity(0.2))),
       ),
       child: Column(
@@ -437,7 +294,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
               const SizedBox(width: 8),
               Text(
                 'تعيين صلاحيات لـ ${_selectedIds.length} موظف',
-                style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: _textWhite),
+                style: TextStyle(fontFamily: SdText.family,fontSize: 13, fontWeight: FontWeight.bold, color: _textWhite),
               ),
               if (_isBulkApplying) ...[
                 const SizedBox(width: 12),
@@ -467,7 +324,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                       children: [
                         Icon(PermissionRegistry.templateIcons[t.key], size: 18, color: _accent),
                         const SizedBox(width: 6),
-                        Text(t.value, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: _textWhite)),
+                        Text(t.value, style: TextStyle(fontFamily: SdText.family,fontSize: 12, fontWeight: FontWeight.w600, color: _textWhite)),
                       ],
                     ),
                   ),
@@ -487,18 +344,14 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: Text('تأكيد التعيين الجماعي', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+          title: Text('تأكيد التعيين الجماعي', style: SdText.titleSm),
           content: Text(
             'سيتم تطبيق قالب "$templateName" على ${_selectedIds.length} موظف.\n\nسيتم استبدال صلاحياتهم الحالية. هل تريد المتابعة؟',
-            style: GoogleFonts.cairo(),
+            style: SdText.body,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.cairo())),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: _accent),
-              child: Text('تطبيق', style: GoogleFonts.cairo()),
-            ),
+            SdButton(label: 'إلغاء', kind: SdButtonKind.secondary, height: 44, onPressed: () => Navigator.pop(ctx, false)),
+            SdButton(label: 'تطبيق', height: 44, onPressed: () => Navigator.pop(ctx, true)),
           ],
         ),
       ),
@@ -570,9 +423,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           failCount == 0
               ? 'تم تطبيق "$templateName" على $successCount موظف بنجاح'
               : 'نجح: $successCount | فشل: $failCount',
-          style: GoogleFonts.cairo(),
+          style: TextStyle(fontFamily: SdText.family,),
         ),
-        backgroundColor: failCount == 0 ? const Color(0xFF27AE60) : const Color(0xFFF39C12),
+        backgroundColor: failCount == 0 ? SdColors.success : SdColors.warning,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -648,9 +501,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _selectionMode ? _accent.withValues(alpha: 0.15) : Colors.white,
+                      color: _selectionMode ? _accent.withValues(alpha: 0.15) : SdColors.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: _selectionMode ? _accent : Colors.grey.shade300),
+                      border: Border.all(color: _selectionMode ? _accent : SdColors.edge),
                     ),
                     child: Icon(Icons.checklist_rounded,
                         color: _selectionMode ? _accent : _textGray, size: 20),
@@ -664,7 +517,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                 '${_filteredEmployees.length} من ${_employees.length} موظف',
-                style: GoogleFonts.cairo(fontSize: 11, color: _textGray),
+                style: TextStyle(fontFamily: SdText.family,fontSize: 11.5, color: _textGray),
               ),
             ),
           const SizedBox(height: 6),
@@ -679,9 +532,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
     return Container(
       height: r.isMobile ? 32 : 38,
       decoration: BoxDecoration(
-        color: selected != null ? _accent.withValues(alpha: 0.1) : Colors.white,
+        color: selected != null ? _accent.withValues(alpha: 0.1) : SdColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: selected != null ? _accent : Colors.grey.shade300),
+        border: Border.all(color: selected != null ? _accent : SdColors.edge),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -690,7 +543,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           isDense: true,
           hint: Padding(
             padding: EdgeInsets.symmetric(horizontal: r.isMobile ? 4 : 10),
-            child: Text(label, style: GoogleFonts.cairo(fontSize: r.captionSize, color: _textGray)),
+            child: Text(label, style: TextStyle(fontFamily: SdText.family,fontSize: r.captionSize, color: _textGray)),
           ),
           icon: Padding(
             padding: EdgeInsets.only(left: r.isMobile ? 2 : 6),
@@ -699,13 +552,13 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           ),
           padding: EdgeInsets.symmetric(horizontal: r.isMobile ? 4 : 10),
           borderRadius: BorderRadius.circular(10),
-          style: GoogleFonts.cairo(fontSize: r.captionSize, color: _textWhite),
+          style: TextStyle(fontFamily: SdText.family,fontSize: r.captionSize, color: _textWhite),
           onTap: selected != null ? () {
             onChanged(null);
           } : null,
           items: options.map((o) => DropdownMenuItem(
             value: o,
-            child: Text(displayName(o), style: GoogleFonts.cairo(fontSize: 12)),
+            child: Text(displayName(o), style: TextStyle(fontFamily: SdText.family,fontSize: 12)),
           )).toList(),
           onChanged: onChanged,
         ),
@@ -719,12 +572,12 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       padding: EdgeInsets.fromLTRB(r.contentPaddingH, r.isMobile ? 8 : 14, r.contentPaddingH, r.isMobile ? 6 : 10),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: SdColors.surface,
           borderRadius: BorderRadius.circular(r.isMobile ? 10 : 14),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: SdColors.edge),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: SdColors.ink.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -733,10 +586,10 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
         child: TextField(
           controller: _searchController,
           onChanged: _filterEmployees,
-          style: GoogleFonts.cairo(color: _textWhite, fontSize: r.bodySize),
+          style: TextStyle(fontFamily: SdText.family,color: _textWhite, fontSize: r.bodySize),
           decoration: InputDecoration(
             hintText: 'بحث بالاسم، الهاتف، أو الدور...',
-            hintStyle: GoogleFonts.cairo(color: _textGray, fontSize: r.captionSize + 1),
+            hintStyle: TextStyle(fontFamily: SdText.family,color: _textGray, fontSize: r.captionSize + 1),
             prefixIcon:
                 Icon(Icons.search_rounded, color: _accent, size: r.iconSizeSmall),
             suffixIcon: _searchQuery.isNotEmpty
@@ -762,82 +615,36 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
 
   Widget _buildErrorWidget() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: _danger.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child:
-                const Icon(Icons.cloud_off_rounded, size: 40, color: _danger),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _error!,
-            style: GoogleFonts.cairo(color: _danger, fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: _loadEmployees,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-          ),
-        ],
+      child: SdEmptyState(
+        title: _error!,
+        icon: Icons.cloud_off_rounded,
+        status: SdStatus.danger,
+        action: SdButton(
+          label: 'إعادة المحاولة',
+          icon: Icons.refresh_rounded,
+          onPressed: _loadEmployees,
+        ),
       ),
     );
   }
 
   Widget _buildEmptyWidget() {
+    final canAdd =
+        _searchQuery.isEmpty && PermissionManager.instance.canAdd('users');
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: _accent.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.person_search_rounded,
-                size: 40, color: _accent),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _searchQuery.isNotEmpty
-                ? 'لا توجد نتائج للبحث "$_searchQuery"'
-                : 'لا يوجد موظفين بعد',
-            style: GoogleFonts.cairo(color: _textGray, fontSize: 14),
-          ),
-          const SizedBox(height: 20),
-          if (_searchQuery.isEmpty &&
-              PermissionManager.instance.canAdd('users'))
-            ElevatedButton.icon(
-              onPressed: () => _showAddEmployeeDialog(),
-              icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-              label: Text('إضافة أول موظف', style: GoogleFonts.cairo()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _accent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-            ),
-        ],
+      child: SdEmptyState(
+        title: _searchQuery.isNotEmpty
+            ? 'لا توجد نتائج للبحث "$_searchQuery"'
+            : 'لا يوجد موظفين بعد',
+        icon: Icons.person_search_rounded,
+        status: SdStatus.info,
+        action: canAdd
+            ? SdButton(
+                label: 'إضافة أول موظف',
+                icon: Icons.person_add_alt_1_rounded,
+                onPressed: () => _showAddEmployeeDialog(),
+              )
+            : null,
       ),
     );
   }
@@ -879,19 +686,19 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           borderRadius: BorderRadius.circular(16),
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected ? _accent.withOpacity(0.04) : Colors.white,
+              color: isSelected ? _accent.withOpacity(0.04) : SdColors.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isSelected
                     ? _accent
                     : employee.isActive
                         ? roleColor.withOpacity(0.2)
-                        : Colors.grey.shade300,
+                        : SdColors.edge,
                 width: isSelected ? 1.5 : 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: SdColors.ink.withOpacity(0.04),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -911,9 +718,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                               roleColor.withOpacity(0.6)
                             ]
                           : [
-                              Colors.grey.shade300,
-                              Colors.grey.shade400,
-                              Colors.grey.shade300,
+                              SdColors.edge,
+                              SdColors.sideShade,
+                              SdColors.edge,
                             ],
                     ),
                     borderRadius:
@@ -950,8 +757,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                     roleColor.withOpacity(0.1)
                                   ]
                                 : [
-                                    Colors.grey.withOpacity(0.2),
-                                    Colors.grey.withOpacity(0.05)
+                                    SdColors.muted.withOpacity(0.2),
+                                    SdColors.muted.withOpacity(0.05)
                                   ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -960,7 +767,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                           border: Border.all(
                             color: employee.isActive
                                 ? roleColor.withOpacity(0.4)
-                                : Colors.grey.withOpacity(0.2),
+                                : SdColors.muted.withOpacity(0.2),
                             width: 1.5,
                           ),
                           boxShadow: employee.isActive
@@ -978,7 +785,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                             employee.fullName.isNotEmpty
                                 ? employee.fullName[0].toUpperCase()
                                 : '?',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: SdText.family,
                               fontSize: r.isMobile ? 16 : 22,
                               fontWeight: FontWeight.bold,
                               color: employee.isActive ? roleColor : _textGray,
@@ -995,7 +802,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                             // الاسم
                             Text(
                               employee.fullName,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(fontFamily: SdText.family,
                                 color: _textWhite,
                                 fontSize: r.bodySize + 1,
                                 fontWeight: FontWeight.bold,
@@ -1023,7 +830,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                   ),
                                   child: Text(
                                     roleLabel,
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(fontFamily: SdText.family,
                                       fontSize: r.captionSize - 1,
                                       color: roleColor,
                                       fontWeight: FontWeight.bold,
@@ -1039,7 +846,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                   Flexible(
                                     child: Text(
                                       employee.employeeCode!,
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(fontFamily: SdText.family,
                                         fontSize: r.captionSize - 1,
                                         color: _textGray,
                                       ),
@@ -1058,7 +865,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                                 SizedBox(width: r.isMobile ? 3 : 5),
                                 Text(
                                   employee.phoneNumber,
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(fontFamily: SdText.family,
                                       fontSize: r.captionSize, color: _textGray),
                                 ),
                               ],
@@ -1072,53 +879,11 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           // شارة الحالة
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: r.isMobile ? 6 : 10, vertical: r.isMobile ? 2 : 3),
-                            decoration: BoxDecoration(
-                              color: employee.isActive
-                                  ? _success.withOpacity(0.12)
-                                  : _danger.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: employee.isActive
-                                    ? _success.withOpacity(0.3)
-                                    : _danger.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        employee.isActive ? _success : _danger,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: (employee.isActive
-                                                ? _success
-                                                : _danger)
-                                            .withOpacity(0.5),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  employee.isActive ? 'نشط' : 'معطل',
-                                  style: GoogleFonts.cairo(
-                                    fontSize: r.captionSize - 1,
-                                    fontWeight: FontWeight.bold,
-                                    color:
-                                        employee.isActive ? _success : _danger,
-                                  ),
-                                ),
-                              ],
-                            ),
+                          SdStatusChip(
+                            employee.isActive ? 'نشط' : 'معطل',
+                            status: employee.isActive
+                                ? SdStatus.success
+                                : SdStatus.danger,
                           ),
                           SizedBox(height: r.isMobile ? 6 : 12),
                           // سهم للدخول
@@ -1187,7 +952,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: const LinearGradient(
-          colors: [_accent, Color(0xFF8B83FF)],
+          colors: [_accent, _accentLight],
         ),
         boxShadow: [
           BoxShadow(
@@ -1200,11 +965,11 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       child: FloatingActionButton.extended(
         onPressed: () => _showAddEmployeeDialog(),
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+        foregroundColor: SdColors.surface,
         elevation: 0,
         icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
         label: Text('إضافة موظف',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            style: TextStyle(fontFamily: SdText.family,fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -1283,21 +1048,24 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.warning_rounded, color: Colors.red.shade400),
+            const Icon(Icons.warning_rounded, color: SdColors.danger),
             const SizedBox(width: 8),
-            const Text('تأكيد الحذف'),
+            Text('تأكيد الحذف', style: SdText.titleSm),
           ],
         ),
-        content: Text('هل أنت متأكد من حذف الموظف "${employee.fullName}"؟'),
+        content: Text('هل أنت متأكد من حذف الموظف "${employee.fullName}"؟', style: SdText.body),
         actions: [
-          TextButton(
+          SdButton(
+            label: 'إلغاء',
+            kind: SdButtonKind.secondary,
+            height: 44,
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
           ),
-          ElevatedButton(
+          SdButton(
+            label: 'حذف',
+            kind: SdButtonKind.danger,
+            height: 44,
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('حذف', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -1315,7 +1083,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم حذف الموظف بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
           _loadEmployees();
@@ -1323,7 +1091,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(response.message ?? 'فشل في حذف الموظف'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -1332,7 +1100,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('خطأ'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -1352,12 +1120,13 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
         builder: (context, setDialogState) => AlertDialog(
           title: Row(
             children: [
-              const Icon(Icons.key_rounded, color: Color(0xFFFF9800)),
+              const Icon(Icons.key_rounded, color: SdColors.warning),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'كلمة مرور ${employee.fullName}',
                   overflow: TextOverflow.ellipsis,
+                  style: SdText.titleSm,
                 ),
               ),
             ],
@@ -1371,14 +1140,14 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3E0),
+                    color: SdColors.warningTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFFFE0B2)),
+                    border: Border.all(color: SdColors.warningTintEdge),
                   ),
                   child: Row(
                     children: [
                       const Icon(Icons.info_outline,
-                          color: Color(0xFFFF9800), size: 20),
+                          color: SdColors.warning, size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -1387,7 +1156,8 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                             const Text(
                               'كلمة المرور الحالية:',
                               style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF795548)),
+                                  fontFamily: SdText.family,
+                                  fontSize: 12, color: SdColors.warningText),
                             ),
                             const SizedBox(height: 4),
                             SelectableText(
@@ -1419,9 +1189,9 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                   ),
                 ),
               // تغيير كلمة المرور
-              const Text(
+              Text(
                 'تغيير كلمة المرور:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: SdText.label,
               ),
               const SizedBox(height: 8),
               TextField(
@@ -1444,11 +1214,16 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
             ],
           ),
           actions: [
-            TextButton(
+            SdButton(
+              label: 'إغلاق',
+              kind: SdButtonKind.secondary,
+              height: 44,
               onPressed: () => Navigator.pop(context),
-              child: const Text('إغلاق'),
             ),
-            ElevatedButton.icon(
+            SdButton(
+              label: 'حفظ',
+              icon: Icons.save_rounded,
+              height: 44,
               onPressed: isSaving || passwordController.text.isEmpty
                   ? null
                   : () async {
@@ -1469,7 +1244,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('تم تغيير كلمة المرور بنجاح'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                             _loadEmployees();
@@ -1481,7 +1256,7 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                               SnackBar(
                                 content: Text(response.message ??
                                     'فشل في تغيير كلمة المرور'),
-                                backgroundColor: Colors.red,
+                                backgroundColor: SdColors.danger,
                               ),
                             );
                           }
@@ -1492,25 +1267,12 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('خطأ'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }
                       }
                     },
-              icon: isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.save_rounded),
-              label: const Text('حفظ'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
-                foregroundColor: Colors.white,
-              ),
             ),
           ],
         ),
@@ -1522,19 +1284,19 @@ class _UsersPageVPSState extends State<UsersPageVPS> {
   Color _getRoleColor(String? role) {
     switch (role?.toLowerCase()) {
       case 'companyadmin':
-        return const Color(0xFFE040FB); // بنفسجي متوهج
+        return SdGroup.platform.tone.base; // بنفسجي
       case 'manager':
-        return const Color(0xFF448AFF); // أزرق
+        return SdColors.info; // أزرق
       case 'technicalleader':
-        return const Color(0xFF00E5FF); // سماوي
+        return SdColors.accent; // تركوازي
       case 'technician':
-        return const Color(0xFF69F0AE); // أخضر فاتح
+        return SdColors.success; // أخضر
       case 'viewer':
-        return const Color(0xFF90A4AE); // رمادي
+        return SdColors.muted; // رمادي
       case 'employee':
-        return const Color(0xFF7C4DFF); // أرجواني
+        return SdColors.primary; // نيلي
       default:
-        return const Color(0xFFFFAB40); // برتقالي
+        return SdColors.warning; // برتقالي
     }
   }
 
@@ -1815,7 +1577,7 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
               content: Text(isEditing
                   ? 'تم تحديث الموظف بنجاح'
                   : 'تم إضافة الموظف بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -1826,7 +1588,7 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
             SnackBar(
               content: Text(response.message ??
                   'فشل في ${isEditing ? 'تحديث' : 'إضافة'} الموظف'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -1837,7 +1599,7 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -1861,8 +1623,8 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: isEditing
-                    ? const Color(0xFF2196F3)
-                    : const Color(0xFF4CAF50),
+                    ? SdColors.info
+                    : SdColors.success,
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(20)),
               ),
@@ -1870,21 +1632,22 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                 children: [
                   Icon(
                     isEditing ? Icons.edit_rounded : Icons.person_add_rounded,
-                    color: Colors.white,
+                    color: SdColors.surface,
                   ),
                   const SizedBox(width: 12),
                   Text(
                     isEditing ? 'تعديل موظف' : 'إضافة موظف جديد',
                     style: const TextStyle(
+                      fontFamily: SdText.family,
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      color: SdColors.surface,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+                    icon: const Icon(Icons.close_rounded, color: SdColors.surface),
                   ),
                 ],
               ),
@@ -1969,7 +1732,7 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                         onChanged: (v) => setState(() => _isActive = v),
                         secondary: Icon(
                           _isActive ? Icons.check_circle : Icons.block,
-                          color: _isActive ? Colors.green : Colors.red,
+                          color: _isActive ? SdColors.success : SdColors.danger,
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -1994,9 +1757,9 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                                         ..._selectedDepartments.map((d) => Chip(
                                           label: Text(
                                             d == _primaryDepartment ? '$d (رئيسي)' : d,
-                                            style: TextStyle(fontSize: 11, color: d == _primaryDepartment ? Colors.white : null),
+                                            style: TextStyle(fontSize: 11.5, color: d == _primaryDepartment ? SdColors.surface : null),
                                           ),
-                                          backgroundColor: d == _primaryDepartment ? Colors.blue : null,
+                                          backgroundColor: d == _primaryDepartment ? SdColors.info : null,
                                           deleteIcon: const Icon(Icons.close, size: 14),
                                           onDeleted: () => setState(() {
                                             _selectedDepartments.remove(d);
@@ -2009,7 +1772,7 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                                         )),
                                         // زر إضافة قسم
                                         ActionChip(
-                                          label: const Text('+ إضافة', style: TextStyle(fontSize: 11)),
+                                          label: const Text('+ إضافة', style: TextStyle(fontSize: 11.5)),
                                           visualDensity: VisualDensity.compact,
                                           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                           onPressed: () {
@@ -2036,8 +1799,8 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                                         // زر تعيين رئيسي
                                         if (_selectedDepartments.length > 1)
                                           ActionChip(
-                                            avatar: const Icon(Icons.star, size: 14, color: Colors.amber),
-                                            label: const Text('رئيسي', style: TextStyle(fontSize: 10)),
+                                            avatar: const Icon(Icons.star, size: 14, color: SdColors.warning),
+                                            label: const Text('رئيسي', style: TextStyle(fontSize: 11.5)),
                                             visualDensity: VisualDensity.compact,
                                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                             onPressed: () {
@@ -2051,7 +1814,7 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
                                                       setState(() => _primaryDepartment = d);
                                                     },
                                                     child: Row(children: [
-                                                      if (d == _primaryDepartment) const Icon(Icons.star, size: 16, color: Colors.amber),
+                                                      if (d == _primaryDepartment) const Icon(Icons.star, size: 16, color: SdColors.warning),
                                                       if (d == _primaryDepartment) const SizedBox(width: 6),
                                                       Text(d),
                                                     ]),
@@ -2119,42 +1882,34 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
             // الأزرار
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+              decoration: const BoxDecoration(
+                color: SdColors.surfaceAlt,
                 borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(20)),
+                    BorderRadius.vertical(bottom: Radius.circular(20)),
               ),
               child: Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: SdButton(
+                      label: 'إلغاء',
+                      kind: SdButtonKind.secondary,
+                      expand: true,
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('إلغاء'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
-                    child: ElevatedButton.icon(
+                    child: SdButton(
+                      label: isEditing ? 'حفظ التغييرات' : 'إضافة الموظف',
+                      icon: isEditing
+                          ? Icons.save_rounded
+                          : Icons.person_add_rounded,
+                      kind: isEditing
+                          ? SdButtonKind.primary
+                          : SdButtonKind.accent,
+                      expand: true,
                       onPressed: _isSaving ? null : _save,
-                      icon: _isSaving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
-                            )
-                          : Icon(isEditing
-                              ? Icons.save_rounded
-                              : Icons.person_add_rounded),
-                      label: Text(isEditing ? 'حفظ التغييرات' : 'إضافة الموظف'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isEditing
-                            ? const Color(0xFF2196F3)
-                            : const Color(0xFF4CAF50),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
                     ),
                   ),
                 ],
@@ -2178,13 +1933,15 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
   Widget _buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF1976D2)),
+        Icon(icon, size: 18, color: SdColors.primary),
         const SizedBox(width: 8),
         Text(
           title,
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1976D2),
+            fontFamily: SdText.family,
+            fontWeight: FontWeight.w900,
+            fontSize: 14,
+            color: SdColors.primary,
           ),
         ),
       ],
@@ -2197,7 +1954,7 @@ class _AddEditEmployeeDialogState extends State<_AddEditEmployeeDialog> {
       prefixIcon: Icon(icon),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       filled: true,
-      fillColor: Colors.grey.shade50,
+      fillColor: SdColors.surfaceAlt,
     );
   }
 }

@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/local_database_service.dart';
 import '../services/sync_service.dart';
 import '../services/sync_settings_service.dart';
@@ -1062,7 +1063,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: SelectableText(
@@ -1144,7 +1145,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: SdColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -1229,7 +1230,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'يتم عرض أول 100 سجل فقط من ${allSubscribers.length}',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    style: TextStyle(color: SdColors.muted, fontSize: 12),
                   ),
                 ),
             ],
@@ -1459,7 +1460,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           Text(
                             'القيمة الأعلى = سرعة أكبر (قد تستهلك موارد أكثر)',
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey[600]),
+                                fontSize: 11, color: SdColors.muted),
                           ),
                         ],
                       ),
@@ -1697,125 +1698,57 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
   }
 
   /// بناء القائمة الجانبية
+  /// قائمة الخيارات الإضافية — المكوّن الموحّد SdSideNav داخل endDrawer.
   Widget _buildEndDrawer() {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            // رأس القائمة
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
-                ),
+    final canExport = !_isSyncing &&
+        _subscribersCount > 0 &&
+        PermissionManager.instance.canExport('local_storage');
+    final canRaw = !_isSyncing && _subscribersCount > 0;
+    final canSettings = !_isSyncing;
+    final lastSync =
+        _lastSyncTime != null ? _formatDate(_lastSyncTime!) : 'لم يتم';
+    return SdSideNav.drawer(
+      context,
+      SdSideNav(
+        inDrawer: true,
+        title: 'خيارات إضافية',
+        subtitle: '$_subscribersCount مشترك محفوظ · آخر تحديث: $lastSync',
+        sections: [
+          SdNavSection(
+            items: [
+              // تصدير Excel
+              SdNavItem(
+                id: 'export_excel',
+                icon: Icons.file_download,
+                label: 'تصدير إلى Excel',
+                hint: 'تصدير جميع البيانات لملف Excel',
+                group: SdGroup.comms,
+                enabled: canExport,
+                onTap: canExport ? _exportToExcel : null,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.menu, color: Colors.white, size: 32),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'خيارات إضافية',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '$_subscribersCount مشترك محفوظ',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
+              // عرض البيانات الخام
+              SdNavItem(
+                id: 'raw_data',
+                icon: Icons.data_object,
+                label: 'عرض البيانات الخام',
+                hint: 'عرض جميع الحقول المخزنة',
+                group: SdGroup.platform,
+                enabled: canRaw,
+                onTap: canRaw ? _showRawDataDialog : null,
               ),
-            ),
-            // العناصر
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  // تصدير Excel
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.file_download,
-                          color: Colors.orange.shade700),
-                    ),
-                    title: const Text('تصدير إلى Excel'),
-                    subtitle: const Text('تصدير جميع البيانات لملف Excel'),
-                    enabled: !_isSyncing &&
-                        _subscribersCount > 0 &&
-                        PermissionManager.instance.canExport('local_storage'),
-                    onTap: () {
-                      Navigator.pop(context); // إغلاق القائمة
-                      _exportToExcel();
-                    },
-                  ),
-                  const Divider(),
-                  // عرض البيانات الخام
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.data_object,
-                          color: Colors.purple.shade700),
-                    ),
-                    title: const Text('عرض البيانات الخام'),
-                    subtitle: const Text('عرض جميع الحقول المخزنة'),
-                    enabled: !_isSyncing && _subscribersCount > 0,
-                    onTap: () {
-                      Navigator.pop(context); // إغلاق القائمة
-                      _showRawDataDialog();
-                    },
-                  ),
-                  const Divider(),
-                  // الإعدادات
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blueGrey.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child:
-                          Icon(Icons.settings, color: Colors.blueGrey.shade700),
-                    ),
-                    title: const Text('إعدادات المزامنة'),
-                    subtitle: const Text('تعديل سرعة الجلب والإعدادات'),
-                    enabled: !_isSyncing,
-                    onTap: () {
-                      Navigator.pop(context); // إغلاق القائمة
-                      _showSettingsDialog();
-                    },
-                  ),
-                ],
+              // الإعدادات
+              SdNavItem(
+                id: 'sync_settings',
+                icon: Icons.settings,
+                label: 'إعدادات المزامنة',
+                hint: 'تعديل سرعة الجلب والإعدادات',
+                group: SdGroup.neutral,
+                enabled: canSettings,
+                onTap: canSettings ? _showSettingsDialog : null,
               ),
-            ),
-            // تذييل
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'آخر تحديث: ${_lastSyncTime != null ? _formatDate(_lastSyncTime!) : "لم يتم"}',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1854,9 +1787,9 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: SdColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(color: SdColors.divider),
               ),
               constraints: const BoxConstraints(maxHeight: 200),
               child: SingleChildScrollView(
@@ -1897,7 +1830,9 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2089,6 +2024,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                 ),
               ],
             ),
+      ),
     );
   }
 
@@ -2123,7 +2059,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: _syncTotal > 0 ? _syncCurrent / _syncTotal : null,
-            backgroundColor: Colors.grey[300],
+            backgroundColor: SdColors.divider,
             valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1A237E)),
           ),
           const SizedBox(height: 4),
@@ -2132,11 +2068,11 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             children: [
               Text(
                 _getStageName(_syncStage),
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(color: SdColors.muted, fontSize: 12),
               ),
               Text(
                 '${percentage.toStringAsFixed(0)}%',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(color: SdColors.muted, fontSize: 12),
               ),
             ],
           ),
@@ -2360,7 +2296,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal.shade700,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey,
+                    disabledBackgroundColor: SdColors.faint,
                     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                   ),
                 ),
@@ -2381,7 +2317,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               tilePadding: EdgeInsets.zero,
               title: Text(
                 'استيراد مباشر من FTTH (متقدم)',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 12, color: SdColors.muted),
               ),
               children: [
                 Row(
@@ -2394,7 +2330,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1A237E),
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey,
+                          disabledBackgroundColor: SdColors.faint,
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
@@ -2410,7 +2346,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.purple,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey,
+                          disabledBackgroundColor: SdColors.faint,
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
@@ -2426,7 +2362,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey,
+                          disabledBackgroundColor: SdColors.faint,
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
@@ -2485,7 +2421,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1A237E),
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey,
+                            disabledBackgroundColor: SdColors.faint,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
@@ -2506,7 +2442,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.purple,
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey,
+                            disabledBackgroundColor: SdColors.faint,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
@@ -2526,7 +2462,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey,
+                            disabledBackgroundColor: SdColors.faint,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
@@ -2758,7 +2694,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       case 'expired':
         return Colors.red;
       case 'suspended':
-        return Colors.grey;
+        return SdColors.faint;
       default:
         return Colors.blue;
     }
@@ -2888,7 +2824,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: SdColors.surfaceAlt,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                   color: const Color(0xFF1A237E).withValues(alpha: 0.3),
@@ -2948,7 +2884,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   'عدد النتائج: ',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade700,
+                    color: SdColors.muted,
                   ),
                 ),
                 Text(
@@ -2964,7 +2900,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     ' من ${_subscribers.length}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade600,
+                      color: SdColors.muted,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -3024,13 +2960,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                               SizedBox(height: 16),
                               Text(
                                 'جاري جلب البيانات...',
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(color: SdColors.faint),
                               ),
                             ],
                           )
                         : const Text(
                             'لا توجد نتائج',
-                            style: TextStyle(color: Colors.grey),
+                            style: TextStyle(color: SdColors.faint),
                           ),
                   )
                 : ListView.builder(
@@ -3134,7 +3070,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             style: const TextStyle(fontSize: 12, color: Colors.black),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              hintStyle: TextStyle(fontSize: 11, color: SdColors.faint),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
               isDense: true,
@@ -3166,7 +3102,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         _loadSubscribers();
                       },
                     )
-                  : const Icon(Icons.search, size: 16, color: Colors.grey),
+                  : const Icon(Icons.search, size: 16, color: SdColors.faint),
             ),
             onChanged: (value) {
               _loadSubscribers();
@@ -3325,7 +3261,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   padding:
                       const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: SdColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -3474,7 +3410,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     )
                   else
                     Icon(Icons.arrow_drop_down,
-                        size: 18, color: Colors.grey.shade600),
+                        size: 18, color: SdColors.muted),
                 ],
               ),
             ),
@@ -3522,7 +3458,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     style: TextStyle(
                       color: tempFrom != null
                           ? const Color(0xFF1A237E)
-                          : Colors.grey,
+                          : SdColors.faint,
                       fontWeight: tempFrom != null
                           ? FontWeight.bold
                           : FontWeight.normal,
@@ -3570,7 +3506,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     style: TextStyle(
                       color: tempTo != null
                           ? const Color(0xFF1A237E)
-                          : Colors.grey,
+                          : SdColors.faint,
                       fontWeight:
                           tempTo != null ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -3693,7 +3629,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
     return ActionChip(
       label: Text(label, style: const TextStyle(fontSize: 11)),
       onPressed: onTap,
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: SdColors.surfaceAlt,
       padding: const EdgeInsets.symmetric(horizontal: 4),
       visualDensity: VisualDensity.compact,
     );
@@ -3718,7 +3654,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
     return Material(
       color: isSelected
           ? const Color(0xFF1A237E).withValues(alpha: 0.15)
-          : (index.isEven ? Colors.grey.shade50 : Colors.white),
+          : (index.isEven ? SdColors.groundAlt : Colors.white),
       child: InkWell(
         onTap: () {
           if (_isSelectionMode) {
@@ -3737,7 +3673,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           height: 56,
           decoration: BoxDecoration(
             border: Border(
-                bottom: BorderSide(color: Colors.grey.shade300, width: 1)),
+                bottom: BorderSide(color: SdColors.divider, width: 1)),
           ),
           child: Row(
             children: [
@@ -3778,16 +3714,16 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               _buildTableCell(displayName, flex: 3, isBold: true),
               // الهاتف
               _buildTableCell(phone.isNotEmpty ? phone : '-',
-                  flex: 2, color: phone.isEmpty ? Colors.grey : null),
+                  flex: 2, color: phone.isEmpty ? SdColors.faint : null),
               // المنطقة
               _buildTableCell(zoneName.isNotEmpty ? zoneName : '-',
                   flex: 2,
-                  color: zoneName.isEmpty ? Colors.grey : Colors.blue.shade700),
+                  color: zoneName.isEmpty ? SdColors.faint : Colors.blue.shade700),
               // FAT
               _buildTableCell(fatName.isNotEmpty ? fatName : '-',
                   flex: 2,
                   color:
-                      fatName.isEmpty ? Colors.grey : Colors.purple.shade700),
+                      fatName.isEmpty ? SdColors.faint : Colors.purple.shade700),
               // الحالة
               Expanded(
                 flex: 1,
@@ -3815,11 +3751,11 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   flex: 2, color: _getExpiryColor(expires)),
               // الباقة
               _buildTableCell(profileName.isNotEmpty ? profileName : '-',
-                  flex: 2, color: profileName.isEmpty ? Colors.grey : null),
+                  flex: 2, color: profileName.isEmpty ? SdColors.faint : null),
               // اسم المستخدم
               _buildTableCell(username.isNotEmpty ? username : '-',
                   flex: 2,
-                  color: username.isEmpty ? Colors.grey : Colors.teal.shade700),
+                  color: username.isEmpty ? SdColors.faint : Colors.teal.shade700),
             ],
           ),
         ),
@@ -3893,7 +3829,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
 
   /// لون تاريخ الانتهاء
   Color _getExpiryColor(String? expires) {
-    if (expires == null || expires.isEmpty) return Colors.grey;
+    if (expires == null || expires.isEmpty) return SdColors.faint;
     try {
       final date = DateTime.parse(expires);
       final now = DateTime.now();
@@ -3904,7 +3840,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       if (diff <= 7) return Colors.amber.shade700; // قريب
       return Colors.green.shade700; // آمن
     } catch (e) {
-      return Colors.grey;
+      return SdColors.faint;
     }
   }
 
@@ -3946,14 +3882,14 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             Icon(
               Icons.cloud_download,
               size: 80,
-              color: Colors.grey[300],
+              color: SdColors.divider,
             ),
             const SizedBox(height: 16),
             Text(
               'لا توجد بيانات محفوظة',
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.grey[600],
+                color: SdColors.muted,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -3962,7 +3898,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               'اضغط على "جلب البيانات" في الأعلى',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: SdColors.faint,
               ),
             ),
           ],

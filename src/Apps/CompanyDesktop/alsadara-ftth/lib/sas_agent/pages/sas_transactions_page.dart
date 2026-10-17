@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_account.dart';
 import '../models/sas_transaction.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 
 /// شاشة «سجل الحركات» — حركات العمليات المفوترة (تفعيل/تمديد/تغيير باقة) للحساب
@@ -58,7 +56,8 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
       _error = null;
     });
     try {
-      final page = await _api.getTransactions(_aid, limit: _pageSize, offset: 0);
+      final page =
+          await _api.getTransactions(_aid, limit: _pageSize, offset: 0);
       if (!mounted) return;
       setState(() {
         _rows
@@ -100,44 +99,30 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
       setState(() => _loadingMore = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('تعذّر تحميل المزيد: ${_clean(e)}',
-            style: GoogleFonts.cairo()),
-        backgroundColor: AppTheme.errorColor,
+            style: const TextStyle(fontFamily: SdText.family)),
+        backgroundColor: SdColors.danger,
       ));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+    final hasList = !_loading && _error == null && _rows.isNotEmpty;
+    return SdPage(
+      maxWidth: 980,
+      scrollable: false,
+      padding: hasList ? EdgeInsets.zero : null,
+      appBar: SdAppBar(
+        title: 'سجل الحركات',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loading ? null : _refresh,
           ),
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Text('سجل الحركات',
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800, color: Colors.white)),
-          actions: [
-            IconButton(
-              tooltip: 'تحديث',
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _loading ? null : _refresh,
-            ),
-          ],
-        ),
-        body: _body(),
+        ],
       ),
+      body: _body(),
     );
   }
 
@@ -153,9 +138,9 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
         onRefresh: _refresh,
         child: ListView(
           children: const [
-            SizedBox(height: 120),
-            SasEmptyView(
-              message: 'لا حركات مفوترة مسجّلة بعد',
+            SizedBox(height: 100),
+            SdEmptyState(
+              title: 'لا حركات مفوترة مسجّلة بعد',
               icon: Icons.receipt_long_rounded,
             ),
           ],
@@ -165,21 +150,17 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
 
     return RefreshIndicator(
       onRefresh: _refresh,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 980),
-          child: ListView.separated(
-            padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 24.h),
-            // صف إضافي أخير = شريط العدّاد/«تحميل المزيد».
-            itemCount: _rows.length + 1,
-            separatorBuilder: (_, i) =>
-                i < _rows.length - 1 ? SizedBox(height: 8.h) : SizedBox(height: 14.h),
-            itemBuilder: (_, i) {
-              if (i == _rows.length) return _footer();
-              return _row(_rows[i]);
-            },
-          ),
-        ),
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(SdSpace.gutter, SdSpace.sm,
+            SdSpace.gutter, SdSpace.lg),
+        // صف إضافي أخير = شريط العدّاد/«تحميل المزيد».
+        itemCount: _rows.length + 1,
+        separatorBuilder: (_, i) => SizedBox(
+            height: i < _rows.length - 1 ? SdSpace.xs : SdSpace.sm),
+        itemBuilder: (_, i) {
+          if (i == _rows.length) return _footer();
+          return _row(_rows[i]);
+        },
       ),
     );
   }
@@ -187,45 +168,35 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
   Widget _footer() {
     return Column(
       children: [
-        Text(
-          'عرض ${_rows.length} من $_total',
-          style: GoogleFonts.cairo(
-              fontSize: 12.sp, color: Colors.grey[600], fontWeight: FontWeight.w600),
-        ),
+        Text('عرض ${_rows.length} من $_total', style: SdText.caption),
         if (_hasMore) ...[
-          SizedBox(height: 10.h),
-          FilledButton.tonalIcon(
-            onPressed: _loadingMore ? null : _loadMore,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.10),
-              foregroundColor: AppTheme.primaryColor,
-              padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 12.h),
+          const SizedBox(height: SdSpace.sm),
+          if (_loadingMore)
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2.4, color: SdColors.primary),
+            )
+          else
+            SdButton(
+              label: 'تحميل المزيد',
+              icon: Icons.expand_more_rounded,
+              kind: SdButtonKind.secondary,
+              onPressed: _loadMore,
             ),
-            icon: _loadingMore
-                ? SizedBox(
-                    width: 16.w,
-                    height: 16.w,
-                    child: const CircularProgressIndicator(
-                        strokeWidth: 2, color: AppTheme.primaryColor),
-                  )
-                : const Icon(Icons.expand_more_rounded),
-            label: Text('تحميل المزيد',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
-          ),
         ],
       ],
     );
   }
 
   Widget _row(SasTransaction t) {
-    final actionColor = _actionColor(t.action);
+    final actionTone = _actionTone(t.action);
     final ok = t.isSuccess;
-    final statusColor = ok ? AppTheme.successColor : AppTheme.errorColor;
     final amount = t.collectedAmount;
 
-    return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: SasUi.card(),
+    return SdCard(
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -233,32 +204,38 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
           Row(
             children: [
               Container(
-                width: 38.w,
-                height: 38.w,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: actionColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(11.r),
+                  color: actionTone.tint,
+                  borderRadius: BorderRadius.circular(11),
+                  boxShadow: [
+                    BoxShadow(
+                        color: actionTone.tintEdge, offset: const Offset(0, 3))
+                  ],
                 ),
                 child: Icon(_actionIcon(t.action),
-                    color: actionColor, size: 20.sp),
+                    color: actionTone.base, size: 20),
               ),
-              SizedBox(width: 10.w),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Text(t.actionAr,
-                            style: GoogleFonts.cairo(
-                                fontSize: 13.5.sp,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF1A1A2E))),
-                        SizedBox(width: 8.w),
-                        SasStatusBadge(label: t.statusAr, color: statusColor),
+                        Flexible(
+                          child: Text(t.actionAr,
+                              overflow: TextOverflow.ellipsis,
+                              style: SdText.label),
+                        ),
+                        const SizedBox(width: 8),
+                        SdStatusChip(t.statusAr,
+                            status:
+                                ok ? SdStatus.success : SdStatus.danger),
                       ],
                     ),
-                    SizedBox(height: 2.h),
+                    const SizedBox(height: 2),
                     Directionality(
                       textDirection: TextDirection.ltr,
                       child: Text(
@@ -267,8 +244,10 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
                             : t.subscriberUsername,
                         textAlign: TextAlign.start,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.robotoMono(
-                            fontSize: 12.sp, color: Colors.grey[700]),
+                        style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            color: SdColors.muted),
                       ),
                     ),
                   ],
@@ -279,29 +258,33 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
                 children: [
                   Text(
                     amount != null ? _money(amount) : '—',
-                    style: GoogleFonts.cairo(
-                        fontSize: 14.sp,
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 14,
                         fontWeight: FontWeight.w900,
-                        color: AppTheme.successColor),
+                        color: SdColors.success),
                   ),
                   Text(t.currency,
-                      style: GoogleFonts.cairo(
-                          fontSize: 10.sp, color: Colors.grey[500])),
+                      style: const TextStyle(
+                          fontFamily: SdText.family,
+                          fontSize: 11.5,
+                          color: SdColors.faint)),
                 ],
               ),
             ],
           ),
-          SizedBox(height: 10.h),
-          Divider(height: 1, color: Colors.grey.withValues(alpha: 0.12)),
-          SizedBox(height: 8.h),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: SdColors.divider),
+          const SizedBox(height: 8),
           // السطر السفلي: الباقة · نوع التحصيل · على مَن · المُنفِّذ · التاريخ.
           Wrap(
-            spacing: 16.w,
-            runSpacing: 6.h,
+            spacing: 16,
+            runSpacing: 6,
             children: [
               _chip(Icons.wifi_rounded, 'الباقة',
                   t.planName.isEmpty ? '—' : t.planName),
-              _chip(Icons.point_of_sale_rounded, 'التحصيل', t.collectionTypeAr),
+              _chip(Icons.point_of_sale_rounded, 'التحصيل',
+                  t.collectionTypeAr),
               // «على مَن»: اسم الفنّي/الوكيل أو «المواطن» (يظهر فقط عند وجود إسناد).
               if (t.assigneeAr.isNotEmpty)
                 _chip(_assigneeIcon(t.collectionType), 'على مَن', t.assigneeAr),
@@ -318,27 +301,29 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
     );
   }
 
-  Widget _chip(IconData icon, String label, String value, {bool mono = false}) {
+  Widget _chip(IconData icon, String label, String value,
+      {bool mono = false}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14.sp, color: Colors.grey[500]),
-        SizedBox(width: 4.w),
-        Text('$label: ',
-            style:
-                GoogleFonts.cairo(fontSize: 11.5.sp, color: Colors.grey[600])),
+        Icon(icon, size: 14, color: SdColors.faint),
+        const SizedBox(width: 4),
+        Text('$label: ', style: SdText.caption),
         mono
             ? Directionality(
                 textDirection: TextDirection.ltr,
                 child: Text(value,
-                    style: GoogleFonts.robotoMono(
-                        fontSize: 11.sp, color: const Color(0xFF1A1A2E))),
+                    style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11.5,
+                        color: SdColors.ink)),
               )
             : Text(value,
-                style: GoogleFonts.cairo(
-                    fontSize: 11.5.sp,
+                style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1A2E))),
+                    color: SdColors.ink)),
       ],
     );
   }
@@ -357,16 +342,16 @@ class _SasTransactionsPageState extends State<SasTransactionsPage> {
     }
   }
 
-  Color _actionColor(String action) {
+  SdTone _actionTone(String action) {
     switch (action) {
       case 'activate':
-        return AppTheme.successColor;
+        return SdStatus.success.tone;
       case 'extend':
-        return AppTheme.infoColor;
+        return SdStatus.info.tone;
       case 'changeProfile':
-        return AppTheme.accentColor;
+        return SdGroup.field.tone;
       default:
-        return Colors.blueGrey;
+        return SdGroup.neutral.tone;
     }
   }
 

@@ -4,7 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../utils/responsive_helper.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/attendance_api_service.dart';
 
 class WorkSchedulesPage extends StatefulWidget {
@@ -338,59 +338,50 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final r = context.responsive;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('جداول الدوام',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: r.appBarTitleSize)),
-          centerTitle: true,
-          backgroundColor: Colors.teal[700],
-          foregroundColor: Colors.white,
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'تحديث',
-              onPressed: _loadSchedules,
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _showAddEditDialog(),
-          icon: const Icon(Icons.add),
-          label: const Text('إضافة جدول'),
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _schedules.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.schedule, size: 80, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          'لا توجد جداول دوام',
-                          style:
-                              TextStyle(fontSize: 18, color: Colors.grey[600]),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'قم بإضافة جدول دوام لتفعيل نظام التأخير والوقت الإضافي',
-                          style: TextStyle(color: Colors.grey[500]),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _schedules.length,
-                    itemBuilder: (ctx, i) => _buildScheduleCard(_schedules[i]),
-                  ),
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'جداول الدوام',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
+            onPressed: _loadSchedules,
+          ),
+        ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddEditDialog(),
+        backgroundColor: SdColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('إضافة جدول',
+            style: TextStyle(fontFamily: SdText.family, fontWeight: FontWeight.w800)),
+      ),
+      body: _loading
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(SdSpace.xxl),
+                child: CircularProgressIndicator(color: SdColors.primary),
+              ),
+            )
+          : _schedules.isEmpty
+              ? SdEmptyState(
+                  icon: Icons.schedule,
+                  title: 'لا توجد جداول دوام',
+                  message:
+                      'قم بإضافة جدول دوام لتفعيل نظام التأخير والوقت الإضافي',
+                  action: SdButton(
+                    label: 'إضافة جدول',
+                    icon: Icons.add,
+                    onPressed: () => _showAddEditDialog(),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: SdSpace.xs),
+                  itemCount: _schedules.length,
+                  itemBuilder: (ctx, i) => _buildScheduleCard(_schedules[i]),
+                ),
     );
   }
 
@@ -413,54 +404,37 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
       return t;
     }
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: SdSpace.sm),
+      child: SdCard(
+        tone: SdGroup.field.tone,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.schedule, color: Colors.blue[700]),
+                const Icon(Icons.schedule, color: SdColors.accent),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  child: Text(name, style: SdText.titleSm),
                 ),
-                if (isDefault)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text('افتراضي',
-                        style: TextStyle(
-                            color: Colors.green[800],
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold)),
-                  ),
-                const SizedBox(width: 8),
+                if (isDefault) ...[
+                  const SdStatusChip('افتراضي', status: SdStatus.success),
+                  const SizedBox(width: 8),
+                ],
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blue),
+                  icon: const Icon(Icons.edit, color: SdColors.primary),
                   tooltip: 'تعديل',
                   onPressed: () => _showAddEditDialog(existing: s),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                  icon: const Icon(Icons.delete, color: SdColors.danger),
                   tooltip: 'حذف',
                   onPressed: () => _deleteSchedule(s),
                 ),
               ],
             ),
-            const Divider(),
+            const Divider(color: SdColors.divider),
             Wrap(
               spacing: 24,
               runSpacing: 8,
@@ -485,12 +459,11 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
+        Icon(icon, size: 16, color: SdColors.faint),
         const SizedBox(width: 4),
-        Text('$label: ',
-            style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+        Text('$label: ', style: SdText.caption),
         Text(value,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            style: SdText.label.copyWith(fontSize: 13)),
       ],
     );
   }

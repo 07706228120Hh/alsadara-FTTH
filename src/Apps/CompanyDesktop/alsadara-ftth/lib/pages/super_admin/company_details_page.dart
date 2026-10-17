@@ -13,6 +13,7 @@ import '../../services/departments_data_service.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import 'edit_company_page.dart';
 import '../../theme/energy_dashboard_theme.dart';
+import '../../frontend/frontend.dart';
 import '../home_page.dart';
 import '../../multi_tenant.dart';
 import 'permissions_management_v2_page.dart';
@@ -138,8 +139,9 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     final screenHeight = MediaQuery.of(context).size.height;
     final isCompact = screenHeight < 800;
 
-    return Scaffold(
-      backgroundColor: EnergyDashboardTheme.bgLight,
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
       appBar: _buildPremiumAppBar(statusColor, statusText, isCompact),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isCompact ? 16 : 24),
@@ -172,6 +174,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           ],
         ),
       ),
+    ),
     );
   }
 

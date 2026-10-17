@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../permissions/permissions.dart';
 import '../../services/vps_auth_service.dart';
 
@@ -13,24 +14,20 @@ class PermissionsDiagnosticsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        appBar: AppBar(
-          title: Text('تشخيص الصلاحيات',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-          centerTitle: true,
-          backgroundColor: Colors.indigo,
-          foregroundColor: Colors.white,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'تشخيص الصلاحيات',
           actions: [
-            IconButton(
-              icon: const Icon(Icons.copy_all),
+            SdAppBarAction(
+              icon: Icons.copy_all,
+              label: 'نسخ الكل',
               onPressed: () => _copyAllDiagnostics(context),
-              tooltip: 'نسخ الكل',
             ),
           ],
         ),
-        body: const _DiagnosticsBody(),
+        body: const SafeArea(top: false, child: _DiagnosticsBody()),
       ),
     );
   }
@@ -96,7 +93,7 @@ class PermissionsDiagnosticsPage extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('تم نسخ تقرير التشخيص الكامل'),
-        backgroundColor: Colors.green,
+        backgroundColor: SdColors.success,
         duration: Duration(seconds: 2),
       ),
     );
@@ -229,19 +226,19 @@ class _DiagnosticsBody extends StatelessWidget {
           context: context,
           title: 'ملخص عام',
           icon: Icons.dashboard_rounded,
-          color: Colors.indigo,
+          color: SdColors.primary,
           children: [
             _buildInfoTile(context, 'إجمالي الصلاحيات في Registry',
                 '$totalRegistry', Icons.inventory_2_rounded),
             _buildInfoTile(context, 'صلاحيات ممنوحة (view)',
                 '$totalGranted', Icons.check_circle_rounded,
-                valueColor: Colors.green),
+                valueColor: SdColors.success),
             _buildInfoTile(context, 'صلاحيات محجوبة',
                 '$totalDenied', Icons.block_rounded,
-                valueColor: Colors.red),
+                valueColor: SdColors.danger),
             _buildInfoTile(context, 'نسبة التغطية',
                 '${coverage.toStringAsFixed(1)}%', Icons.pie_chart_rounded,
-                valueColor: coverage > 70 ? Colors.green : Colors.orange),
+                valueColor: coverage > 70 ? SdColors.success : SdColors.warning),
             const Divider(),
             _buildInfoTile(context, 'المستخدم', user?.fullName ?? 'غير معروف',
                 Icons.person_rounded),
@@ -250,7 +247,7 @@ class _DiagnosticsBody extends StatelessWidget {
             _buildInfoTile(context, 'مدير شركة',
                 user?.isAdmin == true ? 'نعم' : 'لا',
                 Icons.admin_panel_settings_rounded,
-                valueColor: user?.isAdmin == true ? Colors.green : Colors.grey),
+                valueColor: user?.isAdmin == true ? SdColors.success : SdColors.faint),
           ],
         ),
         const SizedBox(height: 16),
@@ -260,7 +257,7 @@ class _DiagnosticsBody extends StatelessWidget {
           context: context,
           title: 'خريطة النظام الأول (الرئيسي)',
           icon: Icons.apps_rounded,
-          color: Colors.blue,
+          color: SdColors.info,
           entries: PermissionRegistry.firstSystem,
           permissions: firstPerms,
         ),
@@ -271,7 +268,7 @@ class _DiagnosticsBody extends StatelessWidget {
           context: context,
           title: 'خريطة النظام الثاني (FTTH)',
           icon: Icons.cable_rounded,
-          color: Colors.teal,
+          color: SdColors.accent,
           entries: PermissionRegistry.secondSystem,
           permissions: secondPerms,
         ),
@@ -316,7 +313,7 @@ class _DiagnosticsBody extends StatelessWidget {
         // رأس الجدول
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: Colors.grey[100],
+          color: SdColors.surfaceAlt,
           child: Row(
             children: [
               const Expanded(flex: 3, child: Text('العنصر',
@@ -388,9 +385,9 @@ class _DiagnosticsBody extends StatelessWidget {
     bool hasIssue = false,
   }) {
     final bgColor = hasIssue
-        ? Colors.red.withValues(alpha: 0.08)
+        ? SdColors.danger.withValues(alpha: 0.08)
         : inherited
-            ? Colors.orange.withValues(alpha: 0.05)
+            ? SdColors.warning.withValues(alpha: 0.05)
             : null;
 
     return Container(
@@ -403,7 +400,7 @@ class _DiagnosticsBody extends StatelessWidget {
             child: Row(
               children: [
                 Icon(icon, size: 16,
-                    color: isParent ? Colors.blueGrey[700] : Colors.blueGrey[400]),
+                    color: isParent ? SdColors.muted : SdColors.faint),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Tooltip(
@@ -413,7 +410,7 @@ class _DiagnosticsBody extends StatelessWidget {
                       style: TextStyle(
                         fontSize: isParent ? 13 : 12,
                         fontWeight: isParent ? FontWeight.bold : FontWeight.normal,
-                        color: isParent ? Colors.black87 : Colors.black54,
+                        color: isParent ? SdColors.ink : SdColors.muted,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -423,13 +420,13 @@ class _DiagnosticsBody extends StatelessWidget {
                   Tooltip(
                     message: 'وارث من الأب',
                     child: Icon(Icons.subdirectory_arrow_left_rounded,
-                        size: 14, color: Colors.orange[700]),
+                        size: 14, color: SdColors.warningText),
                   ),
                 if (hasIssue)
                   Tooltip(
                     message: 'تناقض: الأب ممنوع لكن الابن مسموح',
                     child: Icon(Icons.warning_rounded,
-                        size: 14, color: Colors.red[700]),
+                        size: 14, color: SdColors.danger),
                   ),
               ],
             ),
@@ -446,9 +443,9 @@ class _DiagnosticsBody extends StatelessWidget {
                     ? Icon(
                         allowed ? Icons.check_circle_rounded : Icons.cancel_rounded,
                         size: 16,
-                        color: allowed ? Colors.green : Colors.red[300],
+                        color: allowed ? SdColors.success : SdColors.dangerTintEdge,
                       )
-                    : Icon(Icons.remove_rounded, size: 14, color: Colors.grey[300]),
+                    : Icon(Icons.remove_rounded, size: 14, color: SdColors.divider),
               ),
             );
           }),
@@ -550,21 +547,21 @@ class _DiagnosticsBody extends StatelessWidget {
       context: context,
       title: 'عناصر بدون حماية صلاحيات مباشرة',
       icon: Icons.shield_outlined,
-      color: Colors.orange,
+      color: SdColors.warning,
       children: [
         if (highSeverity.isNotEmpty) ...[
-          _buildSeverityHeader('خطورة عالية — بدون أي حماية', Colors.red),
+          _buildSeverityHeader('خطورة عالية — بدون أي حماية', SdColors.danger),
           ...highSeverity.map((i) => _buildUnprotectedRow(i)),
           const Divider(),
         ],
         if (mediumSeverity.isNotEmpty) ...[
-          _buildSeverityHeader('خطورة متوسطة', Colors.orange),
+          _buildSeverityHeader('خطورة متوسطة', SdColors.warning),
           ...mediumSeverity.map((i) => _buildUnprotectedRow(i)),
           const Divider(),
         ],
         _buildSeverityHeader(
             'خطورة منخفضة — محمية ضمنياً (${lowSeverity.length})',
-            Colors.green),
+            SdColors.success),
         ...lowSeverity.map((i) => _buildUnprotectedRow(i)),
       ],
     );
@@ -583,9 +580,9 @@ class _DiagnosticsBody extends StatelessWidget {
 
   Widget _buildUnprotectedRow(_UnprotectedItem item) {
     final severityColor = switch (item.severity) {
-      _Severity.high => Colors.red,
-      _Severity.medium => Colors.orange,
-      _Severity.low => Colors.green,
+      _Severity.high => SdColors.danger,
+      _Severity.medium => SdColors.warning,
+      _Severity.low => SdColors.success,
     };
 
     return ListTile(
@@ -601,7 +598,7 @@ class _DiagnosticsBody extends StatelessWidget {
       ),
       title: Text(item.name, style: const TextStyle(fontSize: 13)),
       subtitle: Text(item.reason,
-          style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          style: TextStyle(fontSize: 11, color: SdColors.muted)),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
@@ -732,28 +729,28 @@ class _DiagnosticsBody extends StatelessWidget {
       title: 'مشاكل محتملة (${issues.length})',
       icon: Icons.bug_report_rounded,
       color: issues.isEmpty
-          ? Colors.green
+          ? SdColors.success
           : errors.isNotEmpty
-              ? Colors.red
-              : Colors.orange,
+              ? SdColors.danger
+              : SdColors.warning,
       children: [
         if (issues.isEmpty)
           const ListTile(
-            leading: Icon(Icons.check_circle_rounded, color: Colors.green, size: 32),
+            leading: Icon(Icons.check_circle_rounded, color: SdColors.success, size: 32),
             title: Text('لا توجد مشاكل'),
             subtitle: Text('جميع الصلاحيات متسقة ومتوافقة'),
           )
         else ...[
           if (errors.isNotEmpty) ...[
-            _buildSeverityHeader('أخطاء (${errors.length})', Colors.red),
+            _buildSeverityHeader('أخطاء (${errors.length})', SdColors.danger),
             ...errors.map((i) => _buildIssueRow(i)),
           ],
           if (warnings.isNotEmpty) ...[
-            _buildSeverityHeader('تحذيرات (${warnings.length})', Colors.orange),
+            _buildSeverityHeader('تحذيرات (${warnings.length})', SdColors.warning),
             ...warnings.map((i) => _buildIssueRow(i)),
           ],
           if (infos.isNotEmpty) ...[
-            _buildSeverityHeader('معلومات (${infos.length})', Colors.blue),
+            _buildSeverityHeader('معلومات (${infos.length})', SdColors.info),
             ...infos.map((i) => _buildIssueRow(i)),
           ],
         ],
@@ -763,9 +760,9 @@ class _DiagnosticsBody extends StatelessWidget {
 
   Widget _buildIssueRow(_DiagIssue issue) {
     final (iconData, color) = switch (issue.type) {
-      _IssueType.error => (Icons.error_rounded, Colors.red),
-      _IssueType.warning => (Icons.warning_rounded, Colors.orange),
-      _IssueType.info => (Icons.info_rounded, Colors.blue),
+      _IssueType.error => (Icons.error_rounded, SdColors.danger),
+      _IssueType.warning => (Icons.warning_rounded, SdColors.warning),
+      _IssueType.info => (Icons.info_rounded, SdColors.info),
     };
 
     return ExpansionTile(
@@ -800,9 +797,13 @@ class _DiagnosticsBody extends StatelessWidget {
     required Color color,
     required List<Widget> children,
   }) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -839,7 +840,7 @@ class _DiagnosticsBody extends StatelessWidget {
   Widget _buildInfoTile(BuildContext context, String label, String value,
       IconData icon, {Color? valueColor}) {
     return ListTile(
-      leading: Icon(icon, size: 20, color: Colors.grey[600]),
+      leading: Icon(icon, size: 20, color: SdColors.muted),
       title:
           Text(label, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
       subtitle: SelectableText(value,

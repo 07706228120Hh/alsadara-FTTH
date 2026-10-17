@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة شجرة الحسابات
 class ChartOfAccountsPage extends StatefulWidget {
@@ -171,29 +172,60 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
   @override
   Widget build(BuildContext context) {
     try {
-      return Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: AccountingTheme.bgPrimary,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildToolbar(),
-                _buildStatsBar(),
-                Expanded(
-                  child: _isLoading
-                      ? Center(
-                          child: CircularProgressIndicator(
-                              color: AccountingTheme.neonGreen))
-                      : _errorMessage != null
-                          ? _buildError()
-                          : _showTree
-                              ? _buildTreeView()
-                              : _buildListView(),
-                ),
-              ],
+      return SdPage(
+        scrollable: false,
+        padding: EdgeInsets.zero,
+        maxWidth: double.infinity,
+        appBar: SdAppBar(
+          title: 'شجرة الحسابات',
+          subtitle: '${_accounts.length} حساب',
+          actions: [
+            SdAppBarAction(
+              icon: _showTree ? Icons.list : Icons.account_tree,
+              label: _showTree ? 'عرض قائمة' : 'عرض شجري',
+              onPressed: () => setState(() => _showTree = !_showTree),
             ),
-          ),
+            if (_showTree) ...[
+              SdAppBarAction(
+                icon: Icons.unfold_more,
+                label: 'توسيع الكل',
+                onPressed: () => setState(
+                    () => _collectAllNodeIds(_treeData, _expandedNodes)),
+              ),
+              SdAppBarAction(
+                icon: Icons.unfold_less,
+                label: 'طي الكل',
+                onPressed: () => setState(() => _expandedNodes.clear()),
+              ),
+            ],
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _loadData,
+            ),
+            SdAppBarAction(
+              icon: Icons.add,
+              label: 'حساب جديد',
+              onPressed: _showAddAccountDialog,
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            _buildSearchBar(),
+            _buildStatsBar(),
+            Expanded(
+              child: _isLoading
+                  ? Center(
+                      child: CircularProgressIndicator(
+                          color: AccountingTheme.neonGreen))
+                  : _errorMessage != null
+                      ? _buildError()
+                      : _showTree
+                          ? _buildTreeView()
+                          : _buildListView(),
+            ),
+          ],
         ),
       );
     } catch (e) {
@@ -203,282 +235,46 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
     }
   }
 
-  Widget _buildToolbar() {
+  Widget _buildSearchBar() {
     final isMobile = context.accR.isMobile;
-    return Container(
+    return Padding(
       padding: EdgeInsets.symmetric(
           horizontal: isMobile ? 8 : context.accR.spaceXL,
-          vertical: isMobile ? 6 : context.accR.spaceL),
-      decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: isMobile
-          ? Column(
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_forward_rounded),
-                      tooltip: 'رجوع',
-                      iconSize: 20,
-                      style: IconButton.styleFrom(
-                          foregroundColor: AccountingTheme.textSecondary),
-                    ),
-                    Container(
-                      padding: EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        gradient: AccountingTheme.neonBlueGradient,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(Icons.account_tree_rounded,
-                          color: Colors.white, size: 16),
-                    ),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: Text('شجرة الحسابات',
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.cairo(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AccountingTheme.textPrimary,
-                          )),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: AccountingTheme.neonPink.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('${_accounts.length}',
-                          style: GoogleFonts.cairo(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AccountingTheme.neonPink)),
-                    ),
-                    SizedBox(width: 4),
-                    InkWell(
-                      onTap: () => setState(() => _showTree = !_showTree),
-                      child: Icon(_showTree ? Icons.list : Icons.account_tree,
-                          size: 18, color: AccountingTheme.textMuted),
-                    ),
-                    IconButton(
-                      onPressed: _loadData,
-                      icon: Icon(Icons.refresh, size: 18),
-                      tooltip: 'تحديث',
-                      style: IconButton.styleFrom(
-                          foregroundColor: AccountingTheme.textSecondary),
-                    ),
-                    SizedBox(
-                      height: 30,
-                      child: ElevatedButton(
-                        onPressed: _showAddAccountDialog,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AccountingTheme.neonGreen,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          minimumSize: Size(30, 30),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6)),
-                        ),
-                        child: Icon(Icons.add, size: 16),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6),
-                SizedBox(
-                  height: 32,
-                  child: TextField(
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    textDirection: TextDirection.rtl,
-                    style: GoogleFonts.cairo(
-                        fontSize: 12, color: AccountingTheme.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'بحث...',
-                      hintStyle: GoogleFonts.cairo(
-                          fontSize: 12, color: AccountingTheme.textMuted),
-                      prefixIcon: Icon(Icons.search,
-                          size: 16, color: AccountingTheme.textMuted),
-                      filled: true,
-                      fillColor: AccountingTheme.bgPrimary,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide:
-                            BorderSide(color: AccountingTheme.borderColor),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide:
-                            BorderSide(color: AccountingTheme.borderColor),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: BorderSide(color: AccountingTheme.neonBlue),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  tooltip: 'رجوع',
-                  style: IconButton.styleFrom(
-                      foregroundColor: AccountingTheme.textSecondary),
-                ),
-                SizedBox(width: context.accR.spaceS),
-                Container(
-                  padding: EdgeInsets.all(context.accR.spaceS),
-                  decoration: BoxDecoration(
-                    gradient: AccountingTheme.neonBlueGradient,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.account_tree_rounded,
-                      color: Colors.white, size: context.accR.iconM),
-                ),
-                SizedBox(width: context.accR.spaceM),
-                Text('شجرة الحسابات',
-                    style: GoogleFonts.cairo(
-                      fontSize: context.accR.headingMedium,
-                      fontWeight: FontWeight.bold,
-                      color: AccountingTheme.textPrimary,
-                    )),
-                SizedBox(width: context.accR.spaceS),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AccountingTheme.neonPink.withOpacity(0.2),
-                    borderRadius:
-                        BorderRadius.circular(context.accR.cardRadius),
-                  ),
-                  child: Text('${_accounts.length}',
-                      style: GoogleFonts.cairo(
-                        fontSize: context.accR.small,
-                        fontWeight: FontWeight.bold,
-                        color: AccountingTheme.neonPink,
-                      )),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: 220,
-                  height: 36,
-                  child: TextField(
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    textDirection: TextDirection.rtl,
-                    style: GoogleFonts.cairo(
-                        fontSize: context.accR.financialSmall,
-                        color: AccountingTheme.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'بحث في الحسابات...',
-                      hintStyle: GoogleFonts.cairo(
-                          fontSize: context.accR.financialSmall,
-                          color: AccountingTheme.textMuted),
-                      prefixIcon: Icon(Icons.search,
-                          size: context.accR.iconM,
-                          color: AccountingTheme.textMuted),
-                      filled: true,
-                      fillColor: AccountingTheme.bgPrimary,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            BorderSide(color: AccountingTheme.borderColor),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            BorderSide(color: AccountingTheme.borderColor),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: AccountingTheme.neonBlue),
-                      ),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: context.accR.spaceM),
-                    ),
-                  ),
-                ),
-                SizedBox(width: context.accR.spaceS),
-                InkWell(
-                  onTap: () => setState(() => _showTree = !_showTree),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: context.accR.spaceM,
-                        vertical: context.accR.spaceXS),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AccountingTheme.borderColor),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_showTree ? Icons.list : Icons.account_tree,
-                            size: context.accR.iconS,
-                            color: AccountingTheme.textMuted),
-                        SizedBox(width: context.accR.spaceXS),
-                        Text(_showTree ? 'قائمة' : 'شجري',
-                            style: GoogleFonts.cairo(
-                                fontSize: context.accR.small,
-                                color: AccountingTheme.textSecondary)),
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(width: context.accR.spaceS),
-                if (_showTree) ...[
-                  IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _collectAllNodeIds(_treeData, _expandedNodes);
-                      });
-                    },
-                    icon: Icon(Icons.unfold_more, size: context.accR.iconM),
-                    tooltip: 'توسيع الكل',
-                    style: IconButton.styleFrom(
-                        foregroundColor: AccountingTheme.textSecondary),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      setState(() => _expandedNodes.clear());
-                    },
-                    icon: Icon(Icons.unfold_less, size: context.accR.iconM),
-                    tooltip: 'طي الكل',
-                    style: IconButton.styleFrom(
-                        foregroundColor: AccountingTheme.textSecondary),
-                  ),
-                ],
-                IconButton(
-                  onPressed: _loadData,
-                  icon: Icon(Icons.refresh, size: context.accR.iconM),
-                  tooltip: 'تحديث',
-                  style: IconButton.styleFrom(
-                      foregroundColor: AccountingTheme.textSecondary),
-                ),
-                SizedBox(width: context.accR.spaceXS),
-                ElevatedButton.icon(
-                  onPressed: _showAddAccountDialog,
-                  icon: Icon(Icons.add, size: context.accR.iconS),
-                  label: Text('حساب جديد',
-                      style: GoogleFonts.cairo(
-                          fontSize: context.accR.financialSmall)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.neonGreen,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(
-                        horizontal: context.accR.spaceL,
-                        vertical: context.accR.spaceS),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ],
+          vertical: isMobile ? 6 : context.accR.spaceS),
+      child: SizedBox(
+        height: isMobile ? 36 : 40,
+        child: TextField(
+          onChanged: (v) => setState(() => _searchQuery = v),
+          textDirection: TextDirection.rtl,
+          style: GoogleFonts.cairo(
+              fontSize: context.accR.financialSmall,
+              color: AccountingTheme.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'بحث في الحسابات...',
+            hintStyle: GoogleFonts.cairo(
+                fontSize: context.accR.financialSmall,
+                color: AccountingTheme.textMuted),
+            prefixIcon: Icon(Icons.search,
+                size: context.accR.iconM, color: AccountingTheme.textMuted),
+            filled: true,
+            fillColor: AccountingTheme.bgCard,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AccountingTheme.borderColor),
             ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AccountingTheme.borderColor),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AccountingTheme.neonBlue),
+            ),
+            contentPadding:
+                EdgeInsets.symmetric(horizontal: context.accR.spaceM),
+          ),
+        ),
+      ),
     );
   }
 

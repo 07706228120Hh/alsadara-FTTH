@@ -11,6 +11,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/energy_dashboard_theme.dart';
 import '../../config/app_secrets.dart';
 import '../../services/api/api_config.dart';
+import '../../frontend/frontend.dart';
 
 class VpsDataManagerPage extends StatefulWidget {
   const VpsDataManagerPage({super.key});
@@ -174,12 +175,12 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('فشل الحذف: ${response.statusCode}'),
-              backgroundColor: Colors.red),
+              backgroundColor: SdColors.danger),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+        SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
       );
     }
   }
@@ -211,12 +212,12 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('فشل التحديث: ${response.statusCode}'),
-              backgroundColor: Colors.red),
+              backgroundColor: SdColors.danger),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+        SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
       );
     }
   }
@@ -249,20 +250,21 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('فشل الإضافة: $responseBody'),
-              backgroundColor: Colors.red),
+              backgroundColor: SdColors.danger),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+        SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: EnergyDashboardTheme.bgLight,
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
       appBar: AppBar(
         backgroundColor: EnergyDashboardTheme.bgLightCard,
         elevation: 0,
@@ -528,6 +530,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
             ),
         ],
       ),
+    ),
     );
   }
 

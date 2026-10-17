@@ -6,6 +6,7 @@ import '../../theme/accounting_theme.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
+import '../../frontend/frontend.dart';
 import 'chart_of_accounts_page.dart';
 
 /// صفحة الإحصائيات - داشبورد محاسبي بمخططات بيانية (شاشة واحدة بدون تمرير)
@@ -123,111 +124,54 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(),
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonBlue))
-                    : _errorMessage != null
-                        ? _buildErrorView()
-                        : _buildDashboard(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ══════════════════════ TOOLBAR ══════════════════════
-
-  Widget _buildToolbar() {
-    final isMobile = context.accR.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : context.accR.paddingH,
-          vertical: isMobile ? 4 : context.accR.spaceS),
-      decoration: AccountingTheme.toolbar,
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_forward_rounded,
-                size: isMobile ? 20 : context.accR.iconM),
-            tooltip: 'رجوع',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textOnDarkSecondary),
-          ),
-          SizedBox(width: context.accR.spaceXS),
-          Icon(Icons.dashboard_rounded,
-              color: AccountingTheme.textOnDarkSecondary,
-              size: isMobile ? 16 : context.accR.iconM),
-          SizedBox(width: context.accR.spaceS),
-          Expanded(
-            child: Text(
-                isMobile ? 'الإحصائيات' : 'لوحة الإحصائيات المالية',
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
-                    fontSize: isMobile ? 14 : context.accR.headingSmall,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textOnDark)),
-          ),
-          if (!isMobile)
-            _toolbarBtn(Icons.account_tree_rounded, 'شجرة الحسابات', () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) =>
-                    ChartOfAccountsPage(companyId: widget.companyId),
-              ));
-            }),
-          SizedBox(width: context.accR.spaceXS),
-          IconButton(
-            onPressed: _loadAllData,
-            icon:
-                Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textOnDarkSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _toolbarBtn(IconData icon, String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-            horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white24),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                color: AccountingTheme.textOnDarkSecondary,
-                size: context.accR.iconXS),
-            SizedBox(width: context.accR.spaceXS),
-            Text(label,
-                style: GoogleFonts.cairo(
-                    fontSize: context.accR.small,
-                    color: AccountingTheme.textOnDarkSecondary)),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'لوحة الإحصائيات المالية',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.account_tree_rounded,
+              label: 'شجرة الحسابات',
+              onPressed: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) =>
+                      ChartOfAccountsPage(companyId: widget.companyId),
+                ));
+              },
+            ),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _isLoading ? null : _loadAllData,
+            ),
           ],
+        ),
+        body: SafeArea(
+          top: false,
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                      color: AccountingTheme.neonBlue))
+              : _errorMessage != null
+                  ? _buildErrorView()
+                  : _buildDashboard(),
         ),
       ),
     );
   }
 
   Widget _buildErrorView() {
-    return AccountingTheme.errorView(_errorMessage!, _loadAllData);
+    return Center(
+      child: SdEmptyState(
+        title: _errorMessage!,
+        icon: Icons.error_outline,
+        status: SdStatus.danger,
+        action: SdButton(
+          label: 'إعادة المحاولة',
+          icon: Icons.refresh,
+          onPressed: _loadAllData,
+        ),
+      ),
+    );
   }
 
   // ══════════════════════ DASHBOARD BODY ══════════════════════

@@ -1,9 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../models/sas_subscriber.dart';
 import '../models/sas_subscriber_summary.dart';
@@ -18,10 +17,10 @@ import 'sas_subscriber_detail_page.dart';
 // ثوابت لون خاصّة بهذه اللوحة فقط — **لا تمسّ ثيم التطبيق العام** (AppTheme).
 // تعتمد لوحة الصدارة المطلوبة: أزرق مضيء للأزرار/التحديد، نص كحلي داكن، نص
 // ثانوي رمادي، وخلفية صفحة فاتحة هادئة.
-const Color _kAccent = Color(0xFF3563F6); // أزرق الصدارة المضيء (أزرار/تحديد)
-const Color _kInk = Color(0xFF14213D); // النص الرئيسي
-const Color _kMuted = Color(0xFF64748B); // النص الثانوي
-const Color _kPageBg = Color(0xFFF5F7FA); // خلفية الصفحة
+const Color _kAccent = SdColors.primary; // نيلي الصدارة (أزرار/تحديد)
+const Color _kInk = SdColors.ink; // النص الرئيسي
+const Color _kMuted = SdColors.muted; // النص الثانوي
+const Color _kPageBg = SdColors.ground; // خلفية الصفحة
 
 /// تبويب «لوحة» — لوحة الوكيل المبسّطة للحساب المحدد بثيم منصّة الصدارة.
 ///
@@ -231,8 +230,8 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content:
-          Text(msg, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+          Text(msg, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -503,7 +502,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
         // النسبة = active/total (حماية من القسمة على صفر).
         max: total > 0 ? total : null,
         showPercent: total > 0,
-        color: AppTheme.successColor, // أخضر.
+        color: SdColors.success, // أخضر.
         icon: Icons.check_circle_rounded,
       ),
       _RingCounterDef(
@@ -512,7 +511,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
         // النسبة = online/total — مستقلّة عن النشط.
         max: total > 0 ? total : null,
         showPercent: total > 0,
-        color: AppTheme.infoColor, // أزرق فاتح.
+        color: SdColors.info, // أزرق فاتح.
         icon: Icons.wifi_rounded,
       ),
       _RingCounterDef(
@@ -521,7 +520,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
         // النسبة = expired/total.
         max: total > 0 ? total : null,
         showPercent: total > 0,
-        color: AppTheme.errorColor, // أحمر.
+        color: SdColors.danger, // أحمر.
         icon: Icons.timer_off_rounded,
       ),
     ];
@@ -629,7 +628,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
-      style: GoogleFonts.cairo(
+      style: TextStyle(fontFamily: 'Cairo', 
         fontSize: 13.sp,
         fontWeight: FontWeight.w800,
         color: _kInk,
@@ -702,14 +701,14 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
         onChanged: _onSearchChanged,
         onSubmitted: (_) => _runSearch(),
         textInputAction: TextInputAction.search,
-        style: GoogleFonts.cairo(
+        style: TextStyle(fontFamily: 'Cairo', 
           fontWeight: FontWeight.w600,
           fontSize: 13.sp,
           color: _kInk,
         ),
         decoration: InputDecoration(
           hintText: 'ابحث عن مشترك بأي معلومة: اسم، اسم مستخدم، هاتف، باقة…',
-          hintStyle: GoogleFonts.cairo(
+          hintStyle: TextStyle(fontFamily: 'Cairo', 
             color: _kMuted,
             fontSize: 12.5.sp,
             fontWeight: FontWeight.w600,
@@ -783,7 +782,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
           ),
           child: Text(
             label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 12.sp,
               fontWeight: FontWeight.w800,
               color: selected ? Colors.white : _kInk,
@@ -834,7 +833,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
               value: null,
               child: Text(
                 'كل الباقات',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 12.sp,
                   fontWeight: FontWeight.w700,
                   color: _kInk,
@@ -846,7 +845,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
                 value: p,
                 child: Text(
                   p,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w700,
                     color: _kInk,
@@ -860,7 +859,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
                     text,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w800,
                       color: _profileFilter != null ? Colors.white : _kInk,
@@ -900,7 +899,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
             SizedBox(height: 14.h),
             Text(
               'جاري البحث…',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 12.5.sp,
                 fontWeight: FontWeight.w700,
                 color: _kMuted,
@@ -938,7 +937,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
           SizedBox(height: 16.h),
           Text(
             'اكتب للبحث عن مشترك',
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 15.sp,
               fontWeight: FontWeight.w800,
               color: _kInk,
@@ -950,7 +949,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
             child: Text(
               'ابحث بالاسم أو اسم المستخدم أو الهاتف — تظهر النتائج هنا فوراً',
               textAlign: TextAlign.center,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w600,
                 color: _kMuted,
@@ -981,7 +980,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
           SizedBox(height: 16.h),
           Text(
             'لا مشتركون مطابقون للبحث/الفلتر',
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 14.sp,
               fontWeight: FontWeight.w800,
               color: _kInk,
@@ -991,7 +990,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
           Text(
             'جرّب كلمة بحث أخرى أو عدّل فلتر الحالة/الباقة',
             textAlign: TextAlign.center,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 12.sp,
               fontWeight: FontWeight.w600,
               color: _kMuted,
@@ -1011,7 +1010,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
           padding: EdgeInsets.only(bottom: 8.h, right: 2.w, left: 2.w),
           child: Text(
             'نتائج مطابقة: ${_searchResults.length}',
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 11.5.sp,
               fontWeight: FontWeight.w700,
               color: _kMuted,
@@ -1035,7 +1034,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
   /// صفحة التفاصيل.
   Widget _resultCard(SasSubscriber s) {
     final statusColor =
-        s.isActive ? AppTheme.successColor : AppTheme.errorColor;
+        s.isActive ? SdColors.success : SdColors.danger;
     final phone = _phoneOf(s);
     return Material(
       color: Colors.transparent,
@@ -1093,7 +1092,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
                             width: 12.w,
                             height: 12.w,
                             decoration: BoxDecoration(
-                              color: AppTheme.successColor,
+                              color: SdColors.success,
                               shape: BoxShape.circle,
                               border:
                                   Border.all(color: Colors.white, width: 2.2),
@@ -1110,7 +1109,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
                         Text(
                           s.username.isEmpty ? '-' : s.username,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.robotoMono(
+                          style: TextStyle(fontFamily: 'monospace', 
                             fontSize: 13.sp,
                             fontWeight: FontWeight.w800,
                             color: _kInk,
@@ -1122,7 +1121,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
                             s.fullName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 12.sp,
                               color: _kMuted,
                               fontWeight: FontWeight.w700,
@@ -1145,17 +1144,17 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
                 runSpacing: 6.h,
                 children: [
                   _infoChip(Icons.inventory_2_rounded, s.profileLabel,
-                      AppTheme.infoColor),
+                      SdColors.info),
                   if (s.expiration != null && s.expiration!.trim().isNotEmpty)
                     _infoChip(Icons.event_busy_rounded, s.expiration!,
-                        AppTheme.warningColor),
+                        SdColors.warning),
                   if (phone.isNotEmpty)
                     _infoChip(Icons.phone_rounded, phone,
-                        AppTheme.successColor,
+                        SdColors.success,
                         ltr: true),
                   if (s.online)
                     _infoChip(
-                        Icons.wifi_rounded, 'متصل', AppTheme.successColor),
+                        Icons.wifi_rounded, 'متصل', SdColors.success),
                 ],
               ),
             ],
@@ -1179,7 +1178,7 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
       text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.cairo(
+      style: TextStyle(fontFamily: 'Cairo', 
           fontSize: 10.5.sp, fontWeight: FontWeight.w700, color: color),
     );
     return Container(

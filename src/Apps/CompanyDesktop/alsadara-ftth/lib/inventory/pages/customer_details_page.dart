@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import 'customer_form_page.dart';
 
@@ -139,12 +140,13 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
     return _formatDate(d);
   }
 
+  // ignore: unused_element
   void _showSnackBar(String msg, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -174,51 +176,54 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F6FA),
-          foregroundColor: const Color(0xFF1A1A2E),
-          iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
-          titleTextStyle: const TextStyle(
-            color: Color(0xFF1A1A2E),
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-          elevation: 0,
-          title: Text(_customerLoading ? 'تفاصيل العميل' : _customerName),
-          bottom: TabBar(
-            controller: _tabController,
-            labelColor: const Color(0xFF1A1A2E),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: const Color(0xFF1A1A2E),
-            tabs: const [
-              Tab(text: 'كشف الحساب'),
-              Tab(text: 'معلومات العميل'),
-            ],
-          ),
-        ),
-        body: Column(
-          children: [
-            // Summary cards
-            _buildSummaryCards(),
-            const SizedBox(height: 4),
-            // Quick actions
-            _buildQuickActions(),
-            const Divider(height: 1),
-            // Tab content
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildStatementTab(),
-                  _buildInfoTab(),
-                ],
-              ),
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(title: _customerLoading ? 'تفاصيل العميل' : _customerName),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Summary cards
+          _buildSummaryCards(),
+          const SizedBox(height: SdSpace.sm),
+          // Quick actions
+          _buildQuickActions(),
+          const SizedBox(height: SdSpace.sm),
+          // Tabs
+          _buildTabBar(),
+          const SizedBox(height: SdSpace.sm),
+          // Tab content
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildStatementTab(),
+                _buildInfoTab(),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        labelColor: SdColors.primary,
+        unselectedLabelColor: SdColors.muted,
+        indicatorColor: SdColors.primary,
+        labelStyle: SdText.label,
+        unselectedLabelStyle: SdText.label.copyWith(fontWeight: FontWeight.w600),
+        tabs: const [
+          Tab(text: 'كشف الحساب'),
+          Tab(text: 'معلومات العميل'),
+        ],
       ),
     );
   }
@@ -231,69 +236,60 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
     if (_customerLoading) {
       return const Padding(
         padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: CircularProgressIndicator(color: SdColors.primary)),
       );
     }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: _summaryCard(
-              'اجمالي المبيعات',
-              fmtN(_totalSales),
-              Colors.blue,
-              Icons.shopping_cart_outlined,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _summaryCard(
-              'اجمالي المدفوعات',
-              fmtN(_totalPayments),
-              Colors.green,
-              Icons.payments_outlined,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _summaryCard(
-              'الرصيد',
-              fmtN(_balance),
-              _balance > 0 ? Colors.red : Colors.green,
-              Icons.account_balance_wallet_outlined,
-            ),
-          ),
-        ],
-      ),
+    return SdTileGrid(
+      minTileWidth: 170,
+      maxColumns: 3,
+      phoneColumns: 1,
+      children: [
+        _summaryCard('اجمالي المبيعات', fmtN(_totalSales), SdStatus.info.tone,
+            Icons.shopping_cart_outlined),
+        _summaryCard('اجمالي المدفوعات', fmtN(_totalPayments), SdStatus.success.tone,
+            Icons.payments_outlined),
+        _summaryCard('الرصيد', fmtN(_balance),
+            _balance > 0 ? SdStatus.danger.tone : SdStatus.success.tone,
+            Icons.account_balance_wallet_outlined),
+      ],
     );
   }
 
-  Widget _summaryCard(String label, String value, Color color, IconData icon) {
+  Widget _summaryCard(String label, String value, SdTone tone, IconData icon) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.25)),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: SdDepth.raised(),
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 28),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: tone.tint,
+              borderRadius: BorderRadius.circular(SdRadius.sm),
+              boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, 3))],
+            ),
+            child: Icon(icon, color: tone.base, size: 24),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey.shade700)),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: SdText.caption),
                 const SizedBox(height: 4),
-                Text(value,
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: color)),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(value,
+                      maxLines: 1,
+                      style: SdText.numberSm.copyWith(fontSize: 18, color: tone.edge)),
+                ),
               ],
             ),
           ),
@@ -307,63 +303,64 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
   // ---------------------------------------------------------------
 
   Widget _buildQuickActions() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          _quickActionBtn(
-            'فاتورة جديدة',
-            Icons.receipt_long_outlined,
-            Colors.blue,
-            () {
-              // TODO: navigate to invoice_form_page (will be created later)
-            },
-          ),
-          const SizedBox(width: 12),
-          _quickActionBtn(
-            'سند قبض',
-            Icons.money_outlined,
-            Colors.green,
-            () {
-              // TODO: navigate to voucher_form_page (will be created later)
-            },
-          ),
-          const SizedBox(width: 12),
-          _quickActionBtn(
-            'تعديل العميل',
-            Icons.edit_outlined,
-            Colors.orange,
-            () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => CustomerFormPage(
-                    companyId: widget.companyId,
-                    customerId: widget.customerId,
-                  ),
-                ),
-              ).then((_) {
-                _loadCustomer();
-                _loadStatement();
-              });
-            },
-          ),
-        ],
+    final buttons = [
+      SdButton(
+        label: 'فاتورة جديدة',
+        icon: Icons.receipt_long_outlined,
+        kind: SdButtonKind.secondary,
+        expand: true,
+        onPressed: () {
+          // TODO: navigate to invoice_form_page (will be created later)
+        },
       ),
-    );
-  }
+      SdButton(
+        label: 'سند قبض',
+        icon: Icons.money_outlined,
+        kind: SdButtonKind.secondary,
+        expand: true,
+        onPressed: () {
+          // TODO: navigate to voucher_form_page (will be created later)
+        },
+      ),
+      SdButton(
+        label: 'تعديل العميل',
+        icon: Icons.edit_outlined,
+        kind: SdButtonKind.secondary,
+        expand: true,
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CustomerFormPage(
+                companyId: widget.companyId,
+                customerId: widget.customerId,
+              ),
+            ),
+          ).then((_) {
+            _loadCustomer();
+            _loadStatement();
+          });
+        },
+      ),
+    ];
 
-  Widget _quickActionBtn(
-      String label, IconData icon, Color color, VoidCallback onTap) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18, color: color),
-      label: Text(label, style: TextStyle(color: color)),
-      style: OutlinedButton.styleFrom(
-        side: BorderSide(color: color.withOpacity(0.5)),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
+    if (context.sd.isPhone) {
+      return Column(
+        children: [
+          for (var i = 0; i < buttons.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            buttons[i],
+          ],
+        ],
+      );
+    }
+    return Row(
+      children: [
+        for (var i = 0; i < buttons.length; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(child: buttons[i]),
+        ],
+      ],
     );
   }
 
@@ -375,26 +372,26 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
     return Column(
       children: [
         _buildDateFilter(),
-        const Divider(height: 1),
+        const SizedBox(height: SdSpace.xs),
         Expanded(child: _buildStatementBody()),
       ],
     );
   }
 
   Widget _buildDateFilter() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: Row(
         children: [
           ActionChip(
-            avatar: const Icon(Icons.date_range, size: 18),
+            avatar: const Icon(Icons.date_range, size: 18, color: SdColors.primary),
             label: Text(
                 _dateFrom != null ? 'من: ${_formatDate(_dateFrom!)}' : 'من تاريخ'),
             onPressed: () => _pickDate(true),
           ),
           const SizedBox(width: 12),
           ActionChip(
-            avatar: const Icon(Icons.date_range, size: 18),
+            avatar: const Icon(Icons.date_range, size: 18, color: SdColors.primary),
             label: Text(
                 _dateTo != null ? 'الى: ${_formatDate(_dateTo!)}' : 'الى تاريخ'),
             onPressed: () => _pickDate(false),
@@ -412,9 +409,9 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
                 _loadStatement();
               },
             ),
-          const Spacer(),
+          const SizedBox(width: 12),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: SdColors.primary),
             tooltip: 'تحديث',
             onPressed: _loadStatement,
           ),
@@ -425,45 +422,46 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
 
   Widget _buildStatementBody() {
     if (_statementLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (_statementError != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-            const SizedBox(height: 12),
-            Text(_statementError!, style: TextStyle(color: Colors.red.shade700)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _loadStatement,
-              icon: const Icon(Icons.refresh),
-              label: const Text('اعادة المحاولة'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل كشف الحساب',
+          message: _statementError,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(
+            label: 'اعادة المحاولة',
+            icon: Icons.refresh_rounded,
+            kind: SdButtonKind.secondary,
+            onPressed: _loadStatement,
+          ),
         ),
       );
     }
     if (_statementRows.isEmpty) {
       return const Center(
-        child: Text('لا توجد حركات',
-            style: TextStyle(fontSize: 16, color: Colors.grey)),
+        child: SdEmptyState(title: 'لا توجد حركات', icon: Icons.inbox_rounded),
       );
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: Table(
-            border: TableBorder.all(color: Colors.black, width: 1),
             defaultColumnWidth: const IntrinsicColumnWidth(),
             children: [
               // Header
               TableRow(
-                decoration: BoxDecoration(color: Colors.grey.shade200),
+                decoration: const BoxDecoration(color: SdColors.primary),
                 children: [
                   _tableCell('التاريخ', isHeader: true),
                   _tableCell('المرجع', isHeader: true),
@@ -474,30 +472,30 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
                 ],
               ),
               // Data rows
-              for (final row in _statementRows)
+              for (int i = 0; i < _statementRows.length; i++)
                 TableRow(
+                  decoration: BoxDecoration(
+                    color: i.isEven ? SdColors.surface : SdColors.surfaceAlt,
+                  ),
                   children: [
-                    _tableCell(_formatDateStr(row['Date'])),
-                    _tableCell('${row['Reference'] ?? '-'}'),
-                    _tableCell('${row['Description'] ?? '-'}', minWidth: 200),
-                    _tableCell(fmtN(row['Debit']), align: TextAlign.center),
-                    _tableCell(fmtN(row['Credit']), align: TextAlign.center),
-                    _tableCell(fmtN(row['Balance']), align: TextAlign.center),
+                    _tableCell(_formatDateStr(_statementRows[i]['Date'])),
+                    _tableCell('${_statementRows[i]['Reference'] ?? '-'}'),
+                    _tableCell('${_statementRows[i]['Description'] ?? '-'}', minWidth: 200),
+                    _tableCell(fmtN(_statementRows[i]['Debit']), align: TextAlign.center),
+                    _tableCell(fmtN(_statementRows[i]['Credit']), align: TextAlign.center),
+                    _tableCell(fmtN(_statementRows[i]['Balance']), align: TextAlign.center),
                   ],
                 ),
               // Footer
               TableRow(
-                decoration: BoxDecoration(color: Colors.grey.shade300),
+                decoration: const BoxDecoration(color: SdColors.primaryTint),
                 children: [
-                  _tableCell('', isHeader: true),
-                  _tableCell('', isHeader: true),
-                  _tableCell('الاجمالي', isHeader: true, minWidth: 200),
-                  _tableCell(fmtN(_totalDebit),
-                      isHeader: true, align: TextAlign.center),
-                  _tableCell(fmtN(_totalCredit),
-                      isHeader: true, align: TextAlign.center),
-                  _tableCell(fmtN(_closingBalance),
-                      isHeader: true, align: TextAlign.center),
+                  _tableCell('', isFooter: true),
+                  _tableCell('', isFooter: true),
+                  _tableCell('الاجمالي', isFooter: true, minWidth: 200),
+                  _tableCell(fmtN(_totalDebit), isFooter: true, align: TextAlign.center),
+                  _tableCell(fmtN(_totalCredit), isFooter: true, align: TextAlign.center),
+                  _tableCell(fmtN(_closingBalance), isFooter: true, align: TextAlign.center),
                 ],
               ),
             ],
@@ -510,18 +508,26 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
   Widget _tableCell(
     String text, {
     bool isHeader = false,
+    bool isFooter = false,
     TextAlign align = TextAlign.start,
     double? minWidth,
   }) {
+    final Color color = isHeader
+        ? Colors.white
+        : isFooter
+            ? SdColors.primary
+            : SdColors.ink;
     return Container(
       constraints: BoxConstraints(minWidth: minWidth ?? 80),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       child: Text(
         text,
         textAlign: align,
         style: TextStyle(
-          fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-          fontSize: 13,
+          fontFamily: SdText.family,
+          fontWeight: (isHeader || isFooter) ? FontWeight.w800 : FontWeight.w500,
+          fontSize: 12.5,
+          color: color,
         ),
       ),
     );
@@ -533,54 +539,42 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
 
   Widget _buildInfoTab() {
     if (_customerLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (_customerError != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-            const SizedBox(height: 12),
-            Text(_customerError!,
-                style: TextStyle(color: Colors.red.shade700)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _loadCustomer,
-              icon: const Icon(Icons.refresh),
-              label: const Text('اعادة المحاولة'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل بيانات العميل',
+          message: _customerError,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(
+            label: 'اعادة المحاولة',
+            icon: Icons.refresh_rounded,
+            kind: SdButtonKind.secondary,
+            onPressed: _loadCustomer,
+          ),
         ),
       );
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
+      child: SdCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _infoRow('الكود', _customer['Code']),
             _infoRow('الاسم', _customer['Name']),
-            _infoRow('الهاتف', _customer['Phone']),
-            _infoRow('الهاتف2', _customer['Phone2']),
-            _infoRow('الايميل', _customer['Email']),
+            _infoRow('الهاتف', _customer['Phone'], ltr: true),
+            _infoRow('الهاتف2', _customer['Phone2'], ltr: true),
+            _infoRow('الايميل', _customer['Email'], ltr: true),
             _infoRow('المدينة', _customer['City']),
             _infoRow('المنطقة', _customer['Area']),
             _infoRow('العنوان', _customer['Address']),
             _infoRow('النوع', _customer['Type']),
-            _infoRow('سقف الائتمان', _customer['CreditLimit'] != null
-                ? fmtN(_customer['CreditLimit'])
-                : null),
-            _infoRow('الرقم الضريبي', _customer['TaxNumber']),
+            _infoRow('سقف الائتمان',
+                _customer['CreditLimit'] != null ? fmtN(_customer['CreditLimit']) : null),
+            _infoRow('الرقم الضريبي', _customer['TaxNumber'], ltr: true),
             _infoRow('ملاحظات', _customer['Notes']),
           ],
         ),
@@ -588,32 +582,8 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
     );
   }
 
-  Widget _infoRow(String label, dynamic value) {
+  Widget _infoRow(String label, dynamic value, {bool ltr = false}) {
     final text = (value == null || '$value'.trim().isEmpty) ? '-' : '$value';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
+    return SdInfoRow(label: label, value: text, ltrValue: ltr);
   }
 }

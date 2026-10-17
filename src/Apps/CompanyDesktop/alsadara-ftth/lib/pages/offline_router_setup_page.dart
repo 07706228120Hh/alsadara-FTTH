@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:webview_windows/webview_windows.dart' as wvwin;
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/router_adapter_service.dart';
 import '../services/pending_subscribers_service.dart';
 
@@ -442,7 +443,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
           ? SizedBox(width: _isPhone ? 14 : 16, height: _isPhone ? 14 : 16, child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
           : Icon(icon, size: _isPhone ? 16 : 18),
       label: Flexible(child: Text(label, style: TextStyle(fontWeight: FontWeight.w800, fontSize: _rfs(12)), overflow: TextOverflow.ellipsis)),
-      style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700, foregroundColor: Colors.white,
+      style: ElevatedButton.styleFrom(backgroundColor: SdColors.successEdge, foregroundColor: Colors.white,
         padding: EdgeInsets.symmetric(vertical: _isPhone ? 8 : 12, horizontal: _isPhone ? 10 : 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
       onPressed: _autoRunning ? null : onPressed,
@@ -682,7 +683,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
               onTap: () { Navigator.pop(context); _showAddSubscriberDialog(); },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: Colors.green.shade700, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: SdColors.successEdge, borderRadius: BorderRadius.circular(8)),
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.add, size: 14, color: Colors.white),
                   SizedBox(width: 2),
@@ -694,36 +695,36 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
         const PopupMenuDivider(),
         if (_pendingSubs.isEmpty)
           const PopupMenuItem(enabled: false, height: 50,
-            child: Center(child: Text('لا يوجد مشتركين — أضف من المهام أو يدوياً', style: TextStyle(fontSize: 11, color: Colors.grey)))),
+            child: Center(child: Text('لا يوجد مشتركين — أضف من المهام أو يدوياً', style: TextStyle(fontSize: 11, color: SdColors.faint)))),
         ..._pendingSubs.map((s) => PopupMenuItem<String>(
           value: s.phone,
           height: 60,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 4),
             decoration: BoxDecoration(
-              color: _selectedSub?.phone == s.phone ? _indigo.withOpacity(0.08) : null,
+              color: _selectedSub?.phone == s.phone ? _indigo.withValues(alpha: 0.08) : null,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(children: [
-              CircleAvatar(radius: 16, backgroundColor: _indigo.withOpacity(0.1),
+              CircleAvatar(radius: 16, backgroundColor: _indigo.withValues(alpha: 0.1),
                 child: Text(s.name.isNotEmpty ? s.name[0] : '?', style: TextStyle(fontWeight: FontWeight.w800, color: _indigo, fontSize: 14))),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                 Text(s.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
                 Row(children: [
-                  Text(s.phone, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontFamily: 'monospace')),
+                  Text(s.phone, style: TextStyle(fontSize: 11, color: SdColors.muted, fontFamily: 'monospace')),
                   const SizedBox(width: 4),
                   InkWell(
                     onTap: () { Clipboard.setData(ClipboardData(text: s.phone)); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الهاتف'), duration: Duration(seconds: 1))); },
-                    child: Icon(Icons.copy, size: 12, color: Colors.grey.shade400),
+                    child: Icon(Icons.copy, size: 12, color: SdColors.faint),
                   ),
                 ]),
                 if (s.pppoeUser.isNotEmpty) Row(children: [
-                  Text('PPPoE: ${s.pppoeUser}', style: TextStyle(fontSize: 10, color: Colors.teal.shade700)),
+                  Text('PPPoE: ${s.pppoeUser}', style: TextStyle(fontSize: 10, color: SdColors.accentEdge)),
                   const SizedBox(width: 4),
                   InkWell(
                     onTap: () { Clipboard.setData(ClipboardData(text: s.pppoeUser)); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ PPPoE'), duration: Duration(seconds: 1))); },
-                    child: Icon(Icons.copy, size: 12, color: Colors.grey.shade400),
+                    child: Icon(Icons.copy, size: 12, color: SdColors.faint),
                   ),
                 ]),
               ])),
@@ -807,9 +808,9 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
           height: 44,
           child: Row(
             children: [
-              SizedBox(width: 100, child: Text(f['label']!, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w600))),
+              SizedBox(width: 100, child: Text(f['label']!, style: TextStyle(fontSize: 11, color: SdColors.muted, fontWeight: FontWeight.w600))),
               Expanded(child: Text(f['value']!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'monospace'))),
-              const Icon(Icons.copy, size: 14, color: Colors.grey),
+              const Icon(Icons.copy, size: 14, color: SdColors.faint),
             ],
           ),
         )),
@@ -817,44 +818,44 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
         // بيانات الدخول إذا موجود profile
         if (_selectedDevice?.matchedProfile != null) ...[
           PopupMenuItem(enabled: false, height: 32,
-            child: Text('بيانات دخول ${_selectedDevice!.matchedProfile!.brand}', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.teal.shade700))),
+            child: Text('بيانات دخول ${_selectedDevice!.matchedProfile!.brand}', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: SdColors.accentEdge))),
           PopupMenuItem<String>(value: _selectedDevice!.matchedProfile!.defaultUser, height: 40,
             child: Row(children: [
-              const SizedBox(width: 100, child: Text('User', style: TextStyle(fontSize: 11, color: Colors.grey))),
+              const SizedBox(width: 100, child: Text('User', style: TextStyle(fontSize: 11, color: SdColors.faint))),
               Text(_selectedDevice!.matchedProfile!.defaultUser, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-              const Spacer(), const Icon(Icons.copy, size: 14, color: Colors.grey),
+              const Spacer(), const Icon(Icons.copy, size: 14, color: SdColors.faint),
             ])),
           PopupMenuItem<String>(value: _selectedDevice!.matchedProfile!.defaultPass, height: 40,
             child: Row(children: [
-              const SizedBox(width: 100, child: Text('Password', style: TextStyle(fontSize: 11, color: Colors.grey))),
+              const SizedBox(width: 100, child: Text('Password', style: TextStyle(fontSize: 11, color: SdColors.faint))),
               Text(_selectedDevice!.matchedProfile!.defaultPass.isEmpty ? '(فارغ)' : _selectedDevice!.matchedProfile!.defaultPass,
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-              const Spacer(), const Icon(Icons.copy, size: 14, color: Colors.grey),
+              const Spacer(), const Icon(Icons.copy, size: 14, color: SdColors.faint),
             ])),
           PopupMenuItem<String>(value: _selectedDevice!.matchedProfile!.tr069Path, height: 40,
             child: Row(children: [
-              const SizedBox(width: 100, child: Text('مسار TR-069', style: TextStyle(fontSize: 11, color: Colors.grey))),
+              const SizedBox(width: 100, child: Text('مسار TR-069', style: TextStyle(fontSize: 11, color: SdColors.faint))),
               Expanded(child: Text(_selectedDevice!.matchedProfile!.tr069Path, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
-              const Icon(Icons.copy, size: 14, color: Colors.grey),
+              const Icon(Icons.copy, size: 14, color: SdColors.faint),
             ])),
         ],
         // PPPoE إذا تم إدخاله
         if (_pppoeUserCtrl.text.trim().isNotEmpty) ...[
           const PopupMenuDivider(),
           PopupMenuItem(enabled: false, height: 32,
-            child: Text('بيانات PPPoE', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.orange.shade700))),
+            child: Text('بيانات PPPoE', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: SdColors.warningText))),
           PopupMenuItem<String>(value: _pppoeUserCtrl.text.trim(), height: 40,
             child: Row(children: [
-              const SizedBox(width: 100, child: Text('PPPoE User', style: TextStyle(fontSize: 11, color: Colors.grey))),
+              const SizedBox(width: 100, child: Text('PPPoE User', style: TextStyle(fontSize: 11, color: SdColors.faint))),
               Text(_pppoeUserCtrl.text.trim(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
-              const Spacer(), const Icon(Icons.copy, size: 14, color: Colors.grey),
+              const Spacer(), const Icon(Icons.copy, size: 14, color: SdColors.faint),
             ])),
           if (_pppoePassCtrl.text.trim().isNotEmpty)
             PopupMenuItem<String>(value: _pppoePassCtrl.text.trim(), height: 40,
               child: Row(children: [
-                const SizedBox(width: 100, child: Text('PPPoE Pass', style: TextStyle(fontSize: 11, color: Colors.grey))),
+                const SizedBox(width: 100, child: Text('PPPoE Pass', style: TextStyle(fontSize: 11, color: SdColors.faint))),
                 Text(_pppoePassCtrl.text.trim(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
-                const Spacer(), const Icon(Icons.copy, size: 14, color: Colors.grey),
+                const Spacer(), const Icon(Icons.copy, size: 14, color: SdColors.faint),
               ])),
         ],
         // WiFi إذا تم إدخاله
@@ -862,16 +863,16 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
           const PopupMenuDivider(),
           PopupMenuItem<String>(value: _wifiSsidCtrl.text.trim(), height: 40,
             child: Row(children: [
-              const SizedBox(width: 100, child: Text('WiFi SSID', style: TextStyle(fontSize: 11, color: Colors.grey))),
+              const SizedBox(width: 100, child: Text('WiFi SSID', style: TextStyle(fontSize: 11, color: SdColors.faint))),
               Text(_wifiSsidCtrl.text.trim(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-              const Spacer(), const Icon(Icons.copy, size: 14, color: Colors.grey),
+              const Spacer(), const Icon(Icons.copy, size: 14, color: SdColors.faint),
             ])),
           if (_wifiPassCtrl.text.trim().isNotEmpty)
             PopupMenuItem<String>(value: _wifiPassCtrl.text.trim(), height: 40,
               child: Row(children: [
-                const SizedBox(width: 100, child: Text('WiFi Pass', style: TextStyle(fontSize: 11, color: Colors.grey))),
+                const SizedBox(width: 100, child: Text('WiFi Pass', style: TextStyle(fontSize: 11, color: SdColors.faint))),
                 Text(_wifiPassCtrl.text.trim(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                const Spacer(), const Icon(Icons.copy, size: 14, color: Colors.grey),
+                const Spacer(), const Icon(Icons.copy, size: 14, color: SdColors.faint),
               ])),
         ],
       ],
@@ -884,10 +885,9 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
+        backgroundColor: SdColors.ground,
         appBar: AppBar(
           title: Text(
             _step == 1 ? 'واجهة الراوتر' : 'إعداد الراوتر',
@@ -931,7 +931,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
               padding: EdgeInsets.symmetric(vertical: _isMobile ? 8 : 12, horizontal: _isMobile ? 8 : 20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
               ),
               child: Row(
                 children: List.generate(_steps.length * 2 - 1, (i) {
@@ -940,7 +940,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
                     final done = (i ~/ 2) < _step;
                     return Expanded(child: Container(height: 3, margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
-                        color: done ? const Color(0xFF00C853) : Colors.grey.shade200,
+                        color: done ? const Color(0xFF2E7D32) : SdColors.divider,
                         borderRadius: BorderRadius.circular(2),
                       )));
                   }
@@ -957,18 +957,18 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: active ? const LinearGradient(colors: [Color(0xFF1a237e), Color(0xFF3949ab)]) : null,
-                          color: active ? null : (done ? const Color(0xFF00C853) : Colors.grey.shade200),
-                          boxShadow: active ? [BoxShadow(color: _indigo.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
+                          color: active ? null : (done ? const Color(0xFF2E7D32) : SdColors.divider),
+                          boxShadow: active ? [BoxShadow(color: _indigo.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
                         ),
                         child: Center(
                           child: done
                               ? Icon(Icons.check_rounded, size: _isMobile ? 13 : 16, color: Colors.white)
-                              : Text('${idx + 1}', style: TextStyle(fontSize: _isMobile ? 10 : 12, fontWeight: FontWeight.w800, color: active ? Colors.white : Colors.grey.shade500)),
+                              : Text('${idx + 1}', style: TextStyle(fontSize: _isMobile ? 10 : 12, fontWeight: FontWeight.w800, color: active ? Colors.white : SdColors.faint)),
                         ),
                       ),
                       const SizedBox(height: 5),
                       Text(_steps[idx], style: TextStyle(fontSize: _isMobile ? 8 : 10, fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-                          color: active ? _indigo : (done ? const Color(0xFF00C853) : Colors.grey.shade500)),
+                          color: active ? _indigo : (done ? const Color(0xFF2E7D32) : SdColors.faint)),
                         overflow: TextOverflow.ellipsis),
                     ]),
                   );
@@ -1008,13 +1008,13 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
           // ═══ Hero section ═══
           if (_results.isEmpty && !_scanning) ...[
             SizedBox(height: mob ? 10 : 20),
-            Icon(Icons.router_outlined, size: mob ? 44 : 64, color: _indigo.withOpacity(0.15)),
+            Icon(Icons.router_outlined, size: mob ? 44 : 64, color: _indigo.withValues(alpha: 0.15)),
             SizedBox(height: mob ? 8 : 12),
             Text('كشف الراوتر وإعداده', textAlign: TextAlign.center,
                 style: TextStyle(fontSize: _rfs(mob ? 18 : 22), fontWeight: FontWeight.w900, color: _indigo)),
             const SizedBox(height: 6),
             Text('وصّل جهازك بشبكة WiFi الراوتر أو عبر كيبل LAN', textAlign: TextAlign.center,
-                style: TextStyle(fontSize: mob ? 11 : 13, color: Colors.grey.shade600)),
+                style: TextStyle(fontSize: mob ? 11 : 13, color: SdColors.muted)),
             SizedBox(height: mob ? 14 : 24),
           ],
 
@@ -1025,13 +1025,13 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2))],
               ),
               child: Column(children: [
                 Row(children: [
                   Container(
                     padding: EdgeInsets.all(_isPhone ? 6 : 8),
-                    decoration: BoxDecoration(color: _indigo.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: _indigo.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
                     child: Icon(Icons.person_search, size: _isPhone ? 16 : 20, color: _indigo),
                   ),
                   const SizedBox(width: 10),
@@ -1042,14 +1042,14 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
                   controller: _phoneSearchCtrl,
                   decoration: InputDecoration(
                     hintText: 'بحث برقم الهاتف...',
-                    hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-                    filled: true, fillColor: Colors.grey.shade50,
+                    hintStyle: TextStyle(fontSize: 12, color: SdColors.faint),
+                    filled: true, fillColor: SdColors.groundAlt,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: SdColors.divider)),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _indigo, width: 2)),
-                    prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey.shade500),
-                    suffixIcon: _selectedSub != null ? IconButton(icon: Icon(Icons.clear, size: 18, color: Colors.grey.shade400),
+                    prefixIcon: Icon(Icons.search, size: 20, color: SdColors.faint),
+                    suffixIcon: _selectedSub != null ? IconButton(icon: Icon(Icons.clear, size: 18, color: SdColors.faint),
                       onPressed: () => setState(() { _selectedSub = null; _phoneSearchCtrl.clear(); _pppoeUserCtrl.clear(); _pppoePassCtrl.clear(); })) : null,
                   ),
                   keyboardType: TextInputType.phone,
@@ -1067,20 +1067,20 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [const Color(0xFF00C853).withOpacity(0.08), const Color(0xFF00C853).withOpacity(0.03)]),
+                      gradient: LinearGradient(colors: [const Color(0xFF2E7D32).withValues(alpha: 0.08), const Color(0xFF2E7D32).withValues(alpha: 0.03)]),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF00C853).withOpacity(0.3)),
+                      border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.3)),
                     ),
                     child: Row(children: [
-                      CircleAvatar(radius: _isPhone ? 14 : 18, backgroundColor: const Color(0xFF00C853).withOpacity(0.15),
-                        child: Text(_selectedSub!.name.isNotEmpty ? _selectedSub!.name[0] : '?', style: TextStyle(fontWeight: FontWeight.w800, color: const Color(0xFF00C853), fontSize: _rfs(16)))),
+                      CircleAvatar(radius: _isPhone ? 14 : 18, backgroundColor: const Color(0xFF2E7D32).withValues(alpha: 0.15),
+                        child: Text(_selectedSub!.name.isNotEmpty ? _selectedSub!.name[0] : '?', style: TextStyle(fontWeight: FontWeight.w800, color: const Color(0xFF2E7D32), fontSize: _rfs(16)))),
                       const SizedBox(width: 10),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(_selectedSub!.name, style: TextStyle(fontWeight: FontWeight.w800, fontSize: _rfs(14), color: const Color(0xFF1B5E20))),
                         Text('${_selectedSub!.phone}${_selectedSub!.pppoeUser.isNotEmpty ? "  •  ${_selectedSub!.pppoeUser}" : ""}',
-                            style: TextStyle(fontSize: 11, color: Colors.green.shade700, fontFamily: 'monospace')),
+                            style: TextStyle(fontSize: 11, color: SdColors.successEdge, fontFamily: 'monospace')),
                       ])),
-                      const Icon(Icons.check_circle_rounded, size: 22, color: Color(0xFF00C853)),
+                      const Icon(Icons.check_circle_rounded, size: 22, color: Color(0xFF2E7D32)),
                     ]),
                   ),
                 ],
@@ -1095,7 +1095,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2))],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2))],
             ),
             child: Column(children: [
               SizedBox(
@@ -1120,11 +1120,11 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
                   controller: _customIpCtrl,
                   decoration: InputDecoration(
                     hintText: 'أو أدخل IP يدوياً',
-                    hintStyle: TextStyle(fontSize: mob ? 11 : 12, color: Colors.grey.shade400),
-                    filled: true, fillColor: Colors.grey.shade50,
+                    hintStyle: TextStyle(fontSize: mob ? 11 : 12, color: SdColors.faint),
+                    filled: true, fillColor: SdColors.groundAlt,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: SdColors.divider)),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _indigo, width: 2)),
                     suffixIcon: IconButton(icon: Icon(Icons.arrow_circle_left_outlined, size: mob ? 20 : 22, color: _indigo), onPressed: _scanning ? null : _scanCustomIp),
                   ),
@@ -1133,7 +1133,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
               ),
               if (_scanStatus.isNotEmpty) Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text(_scanStatus, style: TextStyle(fontSize: mob ? 10 : 12, color: Colors.grey.shade600), textAlign: TextAlign.center),
+                child: Text(_scanStatus, style: TextStyle(fontSize: mob ? 10 : 12, color: SdColors.muted), textAlign: TextAlign.center),
               ),
             ]),
           ),
@@ -1150,12 +1150,12 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 14, vertical: _isPhone ? 8 : 10),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [const Color(0xFF00C853).withOpacity(0.08), const Color(0xFF00C853).withOpacity(0.02)]),
+                  gradient: LinearGradient(colors: [const Color(0xFF2E7D32).withValues(alpha: 0.08), const Color(0xFF2E7D32).withValues(alpha: 0.02)]),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF00C853).withOpacity(0.3)),
+                  border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.3)),
                 ),
                 child: Row(children: [
-                  Icon(Icons.auto_fix_high, size: _isPhone ? 16 : 18, color: const Color(0xFF00C853)),
+                  Icon(Icons.auto_fix_high, size: _isPhone ? 16 : 18, color: const Color(0xFF2E7D32)),
                   const SizedBox(width: 8),
                   Expanded(child: Text('${_selectedDevice!.matchedProfile!.brand} — يدعم الإعداد التلقائي',
                       style: TextStyle(fontSize: _rfs(13), fontWeight: FontWeight.w700, color: const Color(0xFF1B5E20)))),
@@ -1165,15 +1165,15 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 14, vertical: _isPhone ? 8 : 10),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: SdColors.warningTint,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.shade200),
+                  border: Border.all(color: SdColors.warningTintEdge),
                 ),
                 child: Row(children: [
-                  Icon(Icons.info_outline, size: _isPhone ? 16 : 18, color: Colors.orange.shade700),
+                  Icon(Icons.info_outline, size: _isPhone ? 16 : 18, color: SdColors.warningText),
                   const SizedBox(width: 8),
                   Expanded(child: Text('${_selectedDevice!.matchedProfile!.brand} — إعداد يدوي عبر WebView',
-                      style: TextStyle(fontSize: _rfs(13), fontWeight: FontWeight.w600, color: Colors.orange.shade800))),
+                      style: TextStyle(fontSize: _rfs(13), fontWeight: FontWeight.w600, color: SdColors.warningEdge))),
                 ]),
               ),
             const SizedBox(height: 16),
@@ -1194,19 +1194,19 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? _indigo.withOpacity(0.06) : Colors.white,
+          color: selected ? _indigo.withValues(alpha: 0.06) : Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? _indigo : Colors.grey.shade200, width: selected ? 2 : 1),
+          border: Border.all(color: selected ? _indigo : SdColors.divider, width: selected ? 2 : 1),
           boxShadow: [
-            if (selected) BoxShadow(color: _indigo.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 3))
-            else BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2)),
+            if (selected) BoxShadow(color: _indigo.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 3))
+            else BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2)),
           ],
         ),
         child: Row(children: [
           Container(
             width: _isPhone ? 36 : 44, height: _isPhone ? 36 : 44,
             decoration: BoxDecoration(
-              color: selected ? _indigo.withOpacity(0.1) : Colors.grey.shade100,
+              color: selected ? _indigo.withValues(alpha: 0.1) : SdColors.surfaceAlt,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(child: Text(p?.icon ?? '❓', style: TextStyle(fontSize: _isPhone ? 18 : 22))),
@@ -1216,15 +1216,15 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
             Text(p?.brand ?? 'غير معروف', style: TextStyle(fontWeight: FontWeight.w800, fontSize: _rfs(14), color: selected ? _indigo : Colors.black87)),
             const SizedBox(height: 2),
             Row(children: [
-              Flexible(child: Text(r.ip, style: TextStyle(fontSize: _rfs(12), fontFamily: 'monospace', color: Colors.grey.shade600), overflow: TextOverflow.ellipsis)),
+              Flexible(child: Text(r.ip, style: TextStyle(fontSize: _rfs(12), fontFamily: 'monospace', color: SdColors.muted), overflow: TextOverflow.ellipsis)),
               if (r.pageTitle.isNotEmpty && !_isPhone) ...[
-                Text('  •  ', style: TextStyle(color: Colors.grey.shade400)),
-                Flexible(child: Text(r.pageTitle, style: TextStyle(fontSize: _rfs(11), color: Colors.grey.shade500), overflow: TextOverflow.ellipsis)),
+                Text('  •  ', style: TextStyle(color: SdColors.faint)),
+                Flexible(child: Text(r.pageTitle, style: TextStyle(fontSize: _rfs(11), color: SdColors.faint), overflow: TextOverflow.ellipsis)),
               ],
             ]),
           ])),
           if (p != null && !p.supportsTr069)
-            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.orange.shade600, borderRadius: BorderRadius.circular(20)),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: SdColors.warning, borderRadius: BorderRadius.circular(20)),
               child: const Text('لا يدعم', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700))),
           if (selected)
             Container(
@@ -1266,11 +1266,11 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
       Container(
         padding: EdgeInsets.symmetric(horizontal: mob ? 8 : 12, vertical: 6),
         decoration: BoxDecoration(
-          color: _loggedIn ? const Color(0xFF00C853).withOpacity(0.08) : Colors.amber.shade50,
-          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+          color: _loggedIn ? const Color(0xFF2E7D32).withValues(alpha: 0.08) : SdColors.warningTint,
+          border: Border(bottom: BorderSide(color: SdColors.divider)),
         ),
         child: Row(children: [
-          Icon(_loggedIn ? Icons.lock_open : Icons.info_outline, size: 14, color: _loggedIn ? const Color(0xFF00C853) : Colors.orange),
+          Icon(_loggedIn ? Icons.lock_open : Icons.info_outline, size: 14, color: _loggedIn ? const Color(0xFF2E7D32) : SdColors.warning),
           const SizedBox(width: 6),
           Expanded(child: Text(
             _loggedIn
@@ -1318,31 +1318,31 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
         _stepTitle('اختبار الاتصال بعد الإعداد'),
         const SizedBox(height: 16),
         // اختبار الإنترنت
-        _testCard('اختبار الإنترنت', 'Ping → Google', Icons.language, Colors.blue,
+        _testCard('اختبار الإنترنت', 'Ping → Google', Icons.language, SdColors.info,
           _testingInternet, _internetResult, _testInternet),
         const SizedBox(height: 10),
         // اختبار GenieACS
-        _testCard('اختبار GenieACS', 'هل الراوتر سيظهر في النظام؟', Icons.settings_remote, Colors.teal,
+        _testCard('اختبار GenieACS', 'هل الراوتر سيظهر في النظام؟', Icons.settings_remote, SdColors.accent,
           _testingGenieacs, _genieacsResult, _testGenieacs),
         const SizedBox(height: 10),
         // Ping للراوتر
-        _testCard('اختبار الراوتر', 'Ping → ${_selectedDevice?.ip ?? "الراوتر"}', Icons.router, Colors.indigo,
+        _testCard('اختبار الراوتر', 'Ping → ${_selectedDevice?.ip ?? "الراوتر"}', Icons.router, SdColors.primary,
           false, '', () async {
             try {
               final r = await http.get(Uri.parse('http://${_selectedDevice?.ip ?? "192.168.1.1"}/')).timeout(const Duration(seconds: 3));
-              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('الراوتر يستجيب — HTTP ${r.statusCode}'), backgroundColor: Colors.green));
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('الراوتر يستجيب — HTTP ${r.statusCode}'), backgroundColor: SdColors.success));
             } catch (_) {
-              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الراوتر لا يستجيب'), backgroundColor: Colors.red));
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الراوتر لا يستجيب'), backgroundColor: SdColors.danger));
             }
           }),
         const SizedBox(height: 20),
         // سجل الإعدادات
         if (_setupLog.isNotEmpty) ...[
-          Text('سجل الإعدادات:', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.grey.shade800)),
+          Text('سجل الإعدادات:', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: SdColors.ink)),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: SdColors.surfaceAlt, borderRadius: BorderRadius.circular(8)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _setupLog.map((l) => Text(l, style: const TextStyle(fontSize: 10, fontFamily: 'monospace'))).toList()),
           ),
         ],
@@ -1353,7 +1353,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
           Expanded(child: ElevatedButton.icon(
             icon: Icon(Icons.check_circle, size: _isPhone ? 18 : 20),
             label: Text('إنهاء', style: TextStyle(fontWeight: FontWeight.w800, fontSize: _rfs(15))),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700, foregroundColor: Colors.white, padding: EdgeInsets.symmetric(vertical: _isPhone ? 10 : 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.successEdge, foregroundColor: Colors.white, padding: EdgeInsets.symmetric(vertical: _isPhone ? 10 : 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () {
               _log('تم إنهاء الإعداد — ${_selectedDevice?.matchedProfile?.brand ?? "راوتر"} (${_selectedDevice?.ip})');
               Navigator.pop(context);
@@ -1368,18 +1368,18 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
     final mob = _isMobile;
     return Container(
       padding: EdgeInsets.all(mob ? 10 : 12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: SdColors.divider),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))]),
       child: Row(children: [
         Icon(icon, size: mob ? 22 : 28, color: color),
         SizedBox(width: mob ? 8 : 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: mob ? 12 : 13, color: color)),
-          Text(subtitle, style: TextStyle(fontSize: mob ? 9 : 10, color: Colors.grey.shade600)),
+          Text(subtitle, style: TextStyle(fontSize: mob ? 9 : 10, color: SdColors.muted)),
           if (result.isNotEmpty)
             Padding(padding: const EdgeInsets.only(top: 4),
               child: Text(result, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                  color: result.contains('متصل') ? Colors.green.shade700 : Colors.orange.shade800))),
+                  color: result.contains('متصل') ? SdColors.successEdge : SdColors.warningEdge))),
         ])),
         loading
             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
@@ -1391,11 +1391,11 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
   // ═══════ مشتركات ═══════
   Widget _stepTitle(String text) => Container(
     padding: EdgeInsets.all(_isPhone ? 8 : 12),
-    decoration: BoxDecoration(color: _indigo.withOpacity(0.06), borderRadius: BorderRadius.circular(10), border: Border.all(color: _indigo.withOpacity(0.12))),
+    decoration: BoxDecoration(color: _indigo.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10), border: Border.all(color: _indigo.withValues(alpha: 0.12))),
     child: Row(children: [
       Icon(Icons.info_outline, size: _isPhone ? 16 : 18, color: _indigo),
       const SizedBox(width: 8),
-      Expanded(child: Text(text, style: TextStyle(fontSize: _rfs(12), color: Colors.grey.shade800))),
+      Expanded(child: Text(text, style: TextStyle(fontSize: _rfs(12), color: SdColors.ink))),
     ]),
   );
 
@@ -1426,7 +1426,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
       ? IconButton(
           icon: Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: SdColors.divider, borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
           ),
           onPressed: () => setState(() => _step = (_step - 1).clamp(0, 2)),
@@ -1435,13 +1435,13 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
           style: OutlinedButton.styleFrom(
             padding: EdgeInsets.symmetric(vertical: _isPhone ? 10 : 14, horizontal: _isPhone ? 12 : 20),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            side: BorderSide(color: Colors.grey.shade300),
+            side: BorderSide(color: SdColors.divider),
           ),
           onPressed: () => setState(() => _step = (_step - 1).clamp(0, 2)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.arrow_forward_ios_rounded, size: _isPhone ? 12 : 14),
             const SizedBox(width: 6),
-            Text('السابق', style: TextStyle(fontWeight: FontWeight.w700, fontSize: _rfs(14), color: Colors.grey.shade700)),
+            Text('السابق', style: TextStyle(fontWeight: FontWeight.w700, fontSize: _rfs(14), color: SdColors.muted)),
           ]),
         );
 
@@ -1465,16 +1465,16 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
         Expanded(child: ListView.builder(padding: EdgeInsets.all(mob ? 8 : 12), itemCount: _routerProfiles.length, itemBuilder: (_, i) {
           final p = _routerProfiles[i];
           return Container(margin: const EdgeInsets.only(bottom: 8), padding: EdgeInsets.all(mob ? 8 : 12),
-            decoration: BoxDecoration(color: p.supportsTr069 ? Colors.grey.shade50 : Colors.orange.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: p.supportsTr069 ? Colors.grey.shade200 : Colors.orange.shade200)),
+            decoration: BoxDecoration(color: p.supportsTr069 ? SdColors.groundAlt : SdColors.warningTint, borderRadius: BorderRadius.circular(10), border: Border.all(color: p.supportsTr069 ? SdColors.divider : SdColors.warningTintEdge)),
             child: Row(children: [
               Text(p.icon, style: TextStyle(fontSize: mob ? 18 : 22)), SizedBox(width: mob ? 8 : 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [Text(p.brand, style: TextStyle(fontWeight: FontWeight.w800, fontSize: _rfs(13))),
-                  if (!p.supportsTr069) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.orange.shade700, borderRadius: BorderRadius.circular(8)), child: const Text('لا يدعم TR-069', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)))]),
+                  if (!p.supportsTr069) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: SdColors.warningText, borderRadius: BorderRadius.circular(8)), child: const Text('لا يدعم TR-069', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)))]),
                 const SizedBox(height: 4),
-                Text('IP: ${p.defaultIp}  |  User: ${p.defaultUser}  |  Pass: ${p.defaultPass.isEmpty ? "(فارغ)" : p.defaultPass}', style: TextStyle(fontSize: _rfs(11), color: Colors.grey.shade700, fontFamily: 'monospace')),
-                if (p.altUsers.isNotEmpty || p.altPasswords.isNotEmpty) Text('بديل: ${[...p.altUsers, ...p.altPasswords.map((x) => x.isEmpty ? "(فارغ)" : x)].join(" / ")}', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                if (p.supportsTr069) Text('TR-069: ${p.tr069Path}', style: TextStyle(fontSize: 11, color: Colors.indigo.shade700, fontWeight: FontWeight.w600)),
+                Text('IP: ${p.defaultIp}  |  User: ${p.defaultUser}  |  Pass: ${p.defaultPass.isEmpty ? "(فارغ)" : p.defaultPass}', style: TextStyle(fontSize: _rfs(11), color: SdColors.muted, fontFamily: 'monospace')),
+                if (p.altUsers.isNotEmpty || p.altPasswords.isNotEmpty) Text('بديل: ${[...p.altUsers, ...p.altPasswords.map((x) => x.isEmpty ? "(فارغ)" : x)].join(" / ")}', style: TextStyle(fontSize: 10, color: SdColors.faint)),
+                if (p.supportsTr069) Text('TR-069: ${p.tr069Path}', style: TextStyle(fontSize: 11, color: SdColors.primaryEdge, fontWeight: FontWeight.w600)),
               ])),
             ]),
           );

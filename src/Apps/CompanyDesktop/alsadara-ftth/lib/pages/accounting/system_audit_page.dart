@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/accounting_theme.dart';
-import '../../theme/accounting_responsive.dart';
 
 class SystemAuditPage extends StatefulWidget {
   final String? companyId;
@@ -116,11 +114,11 @@ class _SystemAuditPageState extends State<SystemAuditPage>
   }
 
   Color _severityColor(String s) => switch (s) {
-        'critical' => const Color(0xFFE53935),
-        'high' => const Color(0xFFFF6F00),
-        'medium' => const Color(0xFFFFA726),
-        'warning' => const Color(0xFF42A5F5),
-        _ => Colors.grey,
+        'critical' => SdColors.danger,
+        'high' => SdColors.warning,
+        'medium' => SdStatus.warning.tone.light,
+        'warning' => SdColors.info,
+        _ => SdColors.faint,
       };
   IconData _severityIcon(String s) => switch (s) {
         'critical' => Icons.error,
@@ -206,9 +204,9 @@ class _SystemAuditPageState extends State<SystemAuditPage>
 
   void _copyText(BuildContext ctx, String text) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-        content: Text('تم النسخ', style: GoogleFonts.cairo()),
-        duration: const Duration(seconds: 1),
+    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+        content: Text('تم النسخ', style: TextStyle(fontFamily: SdText.family)),
+        duration: Duration(seconds: 1),
         behavior: SnackBarBehavior.floating));
   }
 
@@ -229,8 +227,9 @@ class _SystemAuditPageState extends State<SystemAuditPage>
         builder: (_) => Directionality(
               textDirection: TextDirection.rtl,
               child: Dialog(
+                backgroundColor: SdColors.surface,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                    borderRadius: BorderRadius.circular(SdRadius.md)),
                 child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 600),
                     child: Column(
@@ -238,14 +237,14 @@ class _SystemAuditPageState extends State<SystemAuditPage>
                       children: [
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(SdSpace.md),
                           decoration: BoxDecoration(
-                              color: color.withOpacity(0.08),
+                              color: color.withValues(alpha: 0.08),
                               borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(16)),
+                                  top: Radius.circular(SdRadius.md)),
                               border: Border(
                                   bottom: BorderSide(
-                                      color: color.withOpacity(0.2)))),
+                                      color: color.withValues(alpha: 0.2)))),
                           child: Row(children: [
                             Icon(_severityIcon(severity),
                                 color: color, size: 28),
@@ -257,18 +256,19 @@ class _SystemAuditPageState extends State<SystemAuditPage>
                                     children: [
                                   Row(children: [
                                     _badge(_severityLabel(severity),
-                                        color.withOpacity(0.15), color),
+                                        color.withValues(alpha: 0.15), color),
                                     const SizedBox(width: 6),
                                     _badge(
                                         _categoryLabel(category),
-                                        Colors.grey.shade100,
-                                        Colors.grey.shade600),
+                                        SdColors.surfaceAlt,
+                                        SdColors.muted),
                                   ]),
                                   const SizedBox(height: 6),
                                   Text(message,
-                                      style: GoogleFonts.cairo(
+                                      style: const TextStyle(
+                                          fontFamily: SdText.family,
                                           fontSize: 14,
-                                          color: Colors.grey.shade800)),
+                                          color: SdColors.ink)),
                                 ])),
                             IconButton(
                                 onPressed: () => Navigator.pop(ctx),
@@ -278,7 +278,7 @@ class _SystemAuditPageState extends State<SystemAuditPage>
                         if (details.isNotEmpty)
                           Flexible(
                               child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(SdSpace.md),
                             child: Column(
                                 children: details.map((e) {
                               final label = _fieldLabel(e.key);
@@ -292,33 +292,34 @@ class _SystemAuditPageState extends State<SystemAuditPage>
                                       SizedBox(
                                           width: 130,
                                           child: Text(label,
-                                              style: GoogleFonts.cairo(
+                                              style: const TextStyle(
+                                                  fontFamily: SdText.family,
                                                   fontSize: 12,
-                                                  color: Colors.grey.shade500,
+                                                  color: SdColors.faint,
                                                   fontWeight:
                                                       FontWeight.bold))),
                                       Expanded(
                                           child: SelectableText(val,
-                                              style: GoogleFonts.cairo(
+                                              style: const TextStyle(
+                                                  fontFamily: SdText.family,
                                                   fontSize: 13,
-                                                  color:
-                                                      Colors.grey.shade800))),
+                                                  color: SdColors.ink))),
                                       InkWell(
                                           onTap: () => _copyText(ctx, val),
                                           borderRadius:
                                               BorderRadius.circular(4),
-                                          child: Padding(
-                                              padding: const EdgeInsets.all(4),
+                                          child: const Padding(
+                                              padding: EdgeInsets.all(4),
                                               child: Icon(Icons.copy,
                                                   size: 16,
-                                                  color:
-                                                      Colors.grey.shade400))),
+                                                  color: SdColors.faint))),
                                     ],
                                   ));
                             }).toList()),
                           )),
                         Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 0, 16, 16),
                             child: SizedBox(
                               width: double.infinity,
                               child: OutlinedButton.icon(
@@ -330,8 +331,10 @@ class _SystemAuditPageState extends State<SystemAuditPage>
                                   _copyText(ctx, '$message\n$all');
                                 },
                                 icon: const Icon(Icons.copy_all, size: 18),
-                                label: Text('نسخ كل التفاصيل',
-                                    style: GoogleFonts.cairo(fontSize: 13)),
+                                label: const Text('نسخ كل التفاصيل',
+                                    style: TextStyle(
+                                        fontFamily: SdText.family,
+                                        fontSize: 13)),
                               ),
                             )),
                       ],
@@ -343,70 +346,51 @@ class _SystemAuditPageState extends State<SystemAuditPage>
   Widget _badge(String text, Color bg, Color fg) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration:
-            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(SdRadius.xs)),
         child: Text(text,
-            style: GoogleFonts.cairo(
-                fontSize: 11, color: fg, fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 11.5,
+                color: fg,
+                fontWeight: FontWeight.bold)),
       );
 
   @override
   Widget build(BuildContext context) {
-    final ar = context.accR;
-    final isMob = ar.isMobile;
-    return Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: AccountingTheme.bgPrimary,
-          body: SafeArea(
-              child: Column(children: [
-            // شريط العنوان
-            Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: isMob ? 12 : 20, vertical: isMob ? 8 : 12),
-              decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                      colors: [Color(0xFF1A237E), Color(0xFF283593)])),
-              child: Row(children: [
-                IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.arrow_back_rounded,
-                        color: Colors.white, size: isMob ? 20 : 24),
-                    tooltip: 'رجوع',
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 32, minHeight: 32)),
-                const SizedBox(width: 4),
-                Icon(Icons.verified_user,
-                    color: Colors.white, size: isMob ? 20 : 28),
-                const SizedBox(width: 8),
-                Text('التدقيق المحاسبي الشامل',
-                    style: GoogleFonts.cairo(
-                        color: Colors.white,
-                        fontSize: isMob ? 14 : 20,
-                        fontWeight: FontWeight.bold)),
-                const Spacer(),
-                if (!_isLoading)
-                  IconButton(
-                      onPressed: _runAudit,
-                      icon: Icon(Icons.refresh,
-                          color: Colors.white70, size: isMob ? 18 : 24),
-                      tooltip: 'إعادة التدقيق'),
-              ]),
-            ),
+    final isMob = context.sd.isPhone;
+    return SdTheme.scope(
+      child: Scaffold(
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'التدقيق المحاسبي الشامل',
+          actions: [
+            if (!_isLoading)
+              SdAppBarAction(
+                icon: Icons.refresh,
+                label: 'إعادة التدقيق',
+                onPressed: _runAudit,
+              ),
+          ],
+        ),
+        body: SafeArea(
+          top: false,
+          child: Column(children: [
             // تبويبات
             if (!_isLoading && _errorMessage == null)
               Container(
-                color: Colors.white,
+                color: SdColors.surface,
                 child: TabBar(
                   controller: _tabCtrl,
                   isScrollable: true,
-                  labelColor: const Color(0xFF1A237E),
-                  unselectedLabelColor: Colors.grey.shade500,
-                  indicatorColor: const Color(0xFF1A237E),
-                  labelStyle: GoogleFonts.cairo(
-                      fontSize: isMob ? 11 : 13, fontWeight: FontWeight.bold),
-                  unselectedLabelStyle:
-                      GoogleFonts.cairo(fontSize: isMob ? 11 : 13),
+                  labelColor: SdColors.primary,
+                  unselectedLabelColor: SdColors.faint,
+                  indicatorColor: SdColors.primary,
+                  labelStyle: const TextStyle(
+                      fontFamily: SdText.family,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold),
+                  unselectedLabelStyle: const TextStyle(
+                      fontFamily: SdText.family, fontSize: 13),
                   tabs: List.generate(_tabs.length, (i) {
                     final t = _tabs[i];
                     final cnt = _countForTab(i);
@@ -421,16 +405,13 @@ class _SystemAuditPageState extends State<SystemAuditPage>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
-                              color: cnt > 0
-                                  ? const Color(0xFFE53935).withOpacity(0.1)
-                                  : Colors.grey.shade200,
+                              color: SdColors.dangerTint,
                               borderRadius: BorderRadius.circular(10)),
                           child: Text('$cnt',
-                              style: GoogleFonts.cairo(
-                                  fontSize: 10,
-                                  color: cnt > 0
-                                      ? const Color(0xFFE53935)
-                                      : Colors.grey,
+                              style: const TextStyle(
+                                  fontFamily: SdText.family,
+                                  fontSize: 11.5,
+                                  color: SdColors.danger,
                                   fontWeight: FontWeight.bold)),
                         ),
                       ],
@@ -448,56 +429,61 @@ class _SystemAuditPageState extends State<SystemAuditPage>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                 const Icon(Icons.error_outline,
-                                    size: 48, color: Colors.red),
+                                    size: 48, color: SdColors.danger),
                                 const SizedBox(height: 8),
                                 Text(_errorMessage!,
-                                    style: GoogleFonts.cairo(
-                                        color: Colors.red, fontSize: 14)),
+                                    style: const TextStyle(
+                                        fontFamily: SdText.family,
+                                        color: SdColors.danger,
+                                        fontSize: 14)),
                                 const SizedBox(height: 16),
                                 ElevatedButton.icon(
                                     onPressed: _runAudit,
                                     icon: const Icon(Icons.refresh),
-                                    label: Text('إعادة المحاولة',
-                                        style: GoogleFonts.cairo())),
+                                    label: const Text('إعادة المحاولة',
+                                        style: TextStyle(
+                                            fontFamily: SdText.family))),
                               ]))
-                        : _buildContent(ar, isMob)),
-          ])),
-        ));
+                        : _buildContent(isMob)),
+          ]),
+        ),
+      ),
+    );
   }
 
-  Widget _buildContent(AccountingResponsive ar, bool isMob) {
+  Widget _buildContent(bool isMob) {
     final filtered = _filteredIssues;
     return SingleChildScrollView(
       padding: EdgeInsets.all(isMob ? 12 : 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _buildSummaryCards(ar, isMob),
+        _buildSummaryCards(isMob),
         SizedBox(height: isMob ? 8 : 12),
         if (filtered.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-                color: AccountingTheme.success.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AccountingTheme.success)),
-            child: Column(children: [
-              Icon(Icons.check_circle,
-                  size: 48, color: AccountingTheme.success),
-              const SizedBox(height: 8),
+                color: SdColors.successTint,
+                borderRadius: BorderRadius.circular(SdRadius.sm),
+                border: Border.all(color: SdColors.success)),
+            child: const Column(children: [
+              Icon(Icons.check_circle, size: 48, color: SdColors.success),
+              SizedBox(height: 8),
               Text('لا توجد مشاكل في هذا التبويب',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: SdText.family,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AccountingTheme.success)),
+                      color: SdColors.success)),
             ]),
           )
         else
-          ...filtered.map((issue) => _buildIssueCard(issue, ar, isMob)),
+          ...filtered.map((issue) => _buildIssueCard(issue, isMob)),
       ]),
     );
   }
 
-  Widget _buildSummaryCards(AccountingResponsive ar, bool isMob) {
+  Widget _buildSummaryCards(bool isMob) {
     final s = _summary ?? {};
     final total = (s['totalIssues'] ?? 0) as int;
     final critical = (s['critical'] ?? 0) as int;
@@ -506,18 +492,18 @@ class _SystemAuditPageState extends State<SystemAuditPage>
     final warning = (s['warning'] ?? 0) as int;
     return Wrap(spacing: isMob ? 8 : 12, runSpacing: isMob ? 8 : 12, children: [
       _summaryChip('الإجمالي', total,
-          total == 0 ? AccountingTheme.success : Colors.grey.shade700, isMob,
+          total == 0 ? SdColors.success : SdColors.muted, isMob,
           onTap: () => setState(() => _filterSeverity = 'all')),
-      _summaryChip('حرج', critical, const Color(0xFFE53935), isMob,
+      _summaryChip('حرج', critical, _severityColor('critical'), isMob,
           onTap: () => _filterBySeverity('critical'),
           active: _filterSeverity == 'critical'),
-      _summaryChip('عالي', high, const Color(0xFFFF6F00), isMob,
+      _summaryChip('عالي', high, _severityColor('high'), isMob,
           onTap: () => _filterBySeverity('high'),
           active: _filterSeverity == 'high'),
-      _summaryChip('متوسط', medium, const Color(0xFFFFA726), isMob,
+      _summaryChip('متوسط', medium, _severityColor('medium'), isMob,
           onTap: () => _filterBySeverity('medium'),
           active: _filterSeverity == 'medium'),
-      _summaryChip('تنبيه', warning, const Color(0xFF42A5F5), isMob,
+      _summaryChip('تنبيه', warning, _severityColor('warning'), isMob,
           onTap: () => _filterBySeverity('warning'),
           active: _filterSeverity == 'warning'),
     ]);
@@ -527,31 +513,36 @@ class _SystemAuditPageState extends State<SystemAuditPage>
       {VoidCallback? onTap, bool active = false}) {
     return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(SdRadius.sm),
         child: Container(
           padding: EdgeInsets.symmetric(
               horizontal: isMob ? 12 : 16, vertical: isMob ? 6 : 10),
           decoration: BoxDecoration(
-              color: active ? color.withOpacity(0.2) : color.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10),
+              color: active
+                  ? color.withValues(alpha: 0.2)
+                  : color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(SdRadius.sm),
               border: Border.all(
-                  color: active ? color : color.withOpacity(0.3),
+                  color: active ? color : color.withValues(alpha: 0.3),
                   width: active ? 2 : 1)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text('$count',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: isMob ? 18 : 24,
                     fontWeight: FontWeight.bold,
                     color: color)),
             const SizedBox(width: 6),
             Text(label,
-                style:
-                    GoogleFonts.cairo(fontSize: isMob ? 11 : 13, color: color)),
+                style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: isMob ? 12 : 13,
+                    color: color)),
           ]),
         ));
   }
 
-  Widget _buildIssueCard(dynamic issue, AccountingResponsive ar, bool isMob) {
+  Widget _buildIssueCard(dynamic issue, bool isMob) {
     final severity = (issue['severity'] ?? 'medium') as String;
     final category = (issue['category'] ?? '') as String;
     final message = (issue['message'] ?? '') as String;
@@ -561,20 +552,15 @@ class _SystemAuditPageState extends State<SystemAuditPage>
 
     return InkWell(
       onTap: () => _showDetail(context, issue),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(SdRadius.sm),
       child: Container(
         margin: EdgeInsets.only(bottom: isMob ? 8 : 10),
         padding: EdgeInsets.all(isMob ? 10 : 14),
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.sm),
             border: Border(right: BorderSide(color: color, width: 4)),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2))
-            ]),
+            boxShadow: SdDepth.raised(depth: SdDepth.small)),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(_severityIcon(severity), color: color, size: isMob ? 20 : 24),
           const SizedBox(width: 10),
@@ -583,34 +569,34 @@ class _SystemAuditPageState extends State<SystemAuditPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 Row(children: [
-                  _badge(
-                      _severityLabel(severity), color.withOpacity(0.1), color),
+                  _badge(_severityLabel(severity),
+                      color.withValues(alpha: 0.1), color),
                   const SizedBox(width: 6),
-                  _badge(_categoryLabel(category), Colors.grey.shade100,
-                      Colors.grey.shade600),
+                  _badge(_categoryLabel(category), SdColors.surfaceAlt,
+                      SdColors.muted),
                   if (entryNumber != null) ...[
                     const SizedBox(width: 6),
-                    _badge(
-                        entryNumber,
-                        const Color(0xFF1A237E).withOpacity(0.08),
-                        const Color(0xFF1A237E)),
+                    _badge(entryNumber, SdColors.primaryTint,
+                        SdColors.primary),
                   ],
                   const Spacer(),
                   if (amount != null)
                     Text((amount as num).toStringAsFixed(0),
-                        style: GoogleFonts.cairo(
-                            fontSize: isMob ? 11 : 13,
+                        style: TextStyle(
+                            fontFamily: SdText.family,
+                            fontSize: isMob ? 12 : 13,
                             color: color,
                             fontWeight: FontWeight.bold)),
                   const SizedBox(width: 4),
-                  Icon(Icons.chevron_left,
-                      size: 18, color: Colors.grey.shade400),
+                  const Icon(Icons.chevron_left,
+                      size: 18, color: SdColors.faint),
                 ]),
                 const SizedBox(height: 6),
                 Text(message,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: SdText.family,
                         fontSize: isMob ? 12 : 14,
-                        color: Colors.grey.shade800)),
+                        color: SdColors.ink)),
               ])),
         ]),
       ),

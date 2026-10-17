@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../frontend/frontend.dart';
 import '../widgets/depth_3d.dart';
 import 'dns_benchmark_page.dart';
 import 'history_trend_page.dart';
@@ -22,12 +23,12 @@ class AdvancedToolsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Nq3d.ground,
-        appBar: nq3dAppBar('فحص متقدم'),
-        body: LayoutBuilder(
+    return SdPage(
+      padding: EdgeInsets.zero,
+      scrollable: false,
+      maxWidth: double.infinity,
+      appBar: const SdAppBar(title: 'فحص متقدم'),
+      body: LayoutBuilder(
           builder: (ctx, c) {
             final w = c.maxWidth;
             final isPhone = w < 600;
@@ -113,13 +114,17 @@ class AdvancedToolsPage extends StatelessWidget {
                       const Text('أدوات تشخيص متقدّمة',
                           textAlign: TextAlign.center,
                           style: TextStyle(
+                              fontFamily: SdText.family,
                               fontWeight: FontWeight.w900,
                               fontSize: 22,
-                              color: Nq3d.ink)),
+                              color: SdColors.ink)),
                       const SizedBox(height: 2),
                       const Text('أدوات إضافية لتحليل الشبكة ومراقبة الاتصال',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 13, color: Nq3d.muted)),
+                          style: TextStyle(
+                              fontFamily: SdText.family,
+                              fontSize: 13,
+                              color: SdColors.muted)),
                       const SizedBox(height: 18),
                       if (twoCols)
                         _grid(cards)
@@ -135,7 +140,6 @@ class AdvancedToolsPage extends StatelessWidget {
             );
           },
         ),
-      ),
     );
   }
 

@@ -15,7 +15,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image/image.dart' as img;
 import 'package:zxing2/qrcode.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/tokens/sd_colors.dart';
 
 /// يفكّ تشفير رمز QR من بايتات صورة — يُشغَّل في isolate عبر [compute].
 /// يُعيد نصّ الرمز أو null إن لم يُعثر على رمز صالح.
@@ -171,7 +171,7 @@ class _PropertyQrScannerScreenState extends State<PropertyQrScannerScreen> {
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor),
+                    backgroundColor: SdColors.primary),
                 child: Text('رجوع',
                     style: GoogleFonts.cairo(
                         fontWeight: FontWeight.w800, color: Colors.white)),
@@ -192,7 +192,7 @@ class _PropertyQrScannerScreenState extends State<PropertyQrScannerScreen> {
             width: 240,
             height: 240,
             decoration: BoxDecoration(
-              border: Border.all(color: AppTheme.primaryColor, width: 3),
+              border: Border.all(color: SdColors.primary, width: 3),
               borderRadius: BorderRadius.circular(16),
             ),
           ),
@@ -221,7 +221,7 @@ class _PropertyQrScannerScreenState extends State<PropertyQrScannerScreen> {
               FilledButton.icon(
                 onPressed: _busy ? null : _scanTick,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
+                  backgroundColor: SdColors.primary,
                   foregroundColor: Colors.white,
                 ),
                 icon: const Icon(Icons.center_focus_strong_rounded,

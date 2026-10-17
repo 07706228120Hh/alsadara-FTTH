@@ -6,6 +6,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../theme/accounting_theme.dart';
+import '../../frontend/frontend.dart';
 
 /// 📡 صفحة «نظام الساس — الحسابات»
 /// تعرض ملخّص محاسبة عمليات الساس فقط (SubscriptionLog.Source == Sas) من الدفتر المحاسبي الموحّد.
@@ -184,28 +185,25 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        appBar: AppBar(
-          backgroundColor: AccountingTheme.bgSidebar,
-          foregroundColor: AccountingTheme.textOnDark,
-          title: Text(
-            'نظام الساس — الحسابات',
-            style: GoogleFonts.cairo(
-                fontWeight: FontWeight.bold, color: AccountingTheme.textOnDark),
-          ),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'نظام الساس — الحسابات',
           actions: [
-            IconButton(
-              tooltip: 'تحديث',
-              icon: const Icon(Icons.refresh),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
               onPressed: _isLoading ? null : _loadData,
             ),
           ],
         ),
-        body: Column(
-          children: [
-            _buildDateFilterBar(),
-            Expanded(child: _buildBody()),
-          ],
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              _buildDateFilterBar(),
+              Expanded(child: _buildBody()),
+            ],
+          ),
         ),
       ),
     );
@@ -254,12 +252,27 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
-      return AccountingTheme.errorView(_error!, _loadData);
+      return Center(
+        child: SdEmptyState(
+          title: _error!,
+          icon: Icons.error_outline,
+          status: SdStatus.danger,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh,
+            onPressed: _loadData,
+          ),
+        ),
+      );
     }
     if (_totalOperations == 0) {
-      return AccountingTheme.emptyState(
-        'لا توجد عمليات ساس محاسبية بعد\nستظهر الحركات هنا بعد أول تفعيل عبر نظام الساس',
-        icon: Icons.router,
+      return const Center(
+        child: SdEmptyState(
+          title: 'لا توجد عمليات ساس محاسبية بعد',
+          message:
+              'ستظهر الحركات هنا بعد أول تفعيل عبر نظام الساس',
+          icon: Icons.router,
+        ),
       );
     }
 

@@ -8,6 +8,7 @@ import '../../services/accounting_pdf_export_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة الميزانية العمومية - Balance Sheet
 /// أصول = التزامات + حقوق ملكية
@@ -134,105 +135,16 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
   @override
   Widget build(BuildContext context) {
     final ar = context.accR;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(ar),
-              Expanded(
-                child: _isLoading
-                    ? const AccountingSkeleton(rows: 8, columns: 4)
-                    : _errorMessage != null
-                        ? AccountingTheme.errorView(_errorMessage!, _loadData)
-                        : _buildContent(ar),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolbar(AccountingResponsive ar) {
-    final isMob = ar.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_forward_rounded, size: isMob ? 20 : 24),
-            tooltip: 'رجوع',
-            style:
-                IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonPurpleGradient,
-              borderRadius: BorderRadius.circular(isMob ? 6 : 8),
-            ),
-            child: Icon(Icons.account_balance_rounded,
-                color: Colors.white, size: isMob ? 16 : ar.iconM),
-          ),
-          SizedBox(width: isMob ? 6 : ar.spaceM),
-          Text('الميزانية العمومية',
-              style: GoogleFonts.cairo(
-                fontSize: isMob ? 14 : ar.headingMedium,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              )),
-          const Spacer(),
-          // حالة التوازن
-          Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: isMob ? 8 : 12, vertical: isMob ? 4 : 6),
-            decoration: BoxDecoration(
-              color: _isBalanced
-                  ? AccountingTheme.success.withOpacity(0.15)
-                  : AccountingTheme.danger.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: _isBalanced
-                    ? AccountingTheme.success
-                    : AccountingTheme.danger,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  _isBalanced ? Icons.check_circle : Icons.warning_rounded,
-                  size: isMob ? 14 : 18,
-                  color: _isBalanced
-                      ? AccountingTheme.success
-                      : AccountingTheme.danger,
-                ),
-                SizedBox(width: 4),
-                Text(
-                  _isBalanced ? 'متوازنة' : 'غير متوازنة',
-                  style: GoogleFonts.cairo(
-                    fontSize: isMob ? 10 : ar.small,
-                    fontWeight: FontWeight.bold,
-                    color: _isBalanced
-                        ? AccountingTheme.success
-                        : AccountingTheme.danger,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: isMob ? 4 : 8),
-          IconButton(
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'الميزانية العمومية',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.file_download_outlined,
+            label: 'تصدير Excel',
             onPressed: _isLoading
                 ? null
                 : () async {
@@ -260,33 +172,97 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                       }
                     }
                   },
-            icon: Icon(Icons.file_download_outlined, size: isMob ? 18 : 22),
-            tooltip: 'تصدير Excel',
-            style:
-                IconButton.styleFrom(foregroundColor: AccountingTheme.neonGreen),
           ),
-          IconButton(
-            onPressed: _isLoading ? null : () async {
-              await AccountingPdfExportService.exportBalanceSheet(
-                assets: _assets,
-                liabilities: _liabilities,
-                equity: _equity,
-                totalAssets: _totalAssets,
-                totalLiabilities: _totalLiabilities,
-                totalEquity: _totalEquity,
-              );
-            },
-            icon: const Icon(Icons.picture_as_pdf),
-            tooltip: 'تصدير PDF',
-            style: IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
+          SdAppBarAction(
+            icon: Icons.picture_as_pdf,
+            label: 'تصدير PDF',
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    await AccountingPdfExportService.exportBalanceSheet(
+                      assets: _assets,
+                      liabilities: _liabilities,
+                      equity: _equity,
+                      totalAssets: _totalAssets,
+                      totalLiabilities: _totalLiabilities,
+                      totalEquity: _totalEquity,
+                    );
+                  },
           ),
-          IconButton(
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
             onPressed: _loadData,
-            icon: Icon(Icons.refresh_rounded, size: isMob ? 18 : 22),
-            tooltip: 'تحديث',
-            style:
-                IconButton.styleFrom(foregroundColor: AccountingTheme.neonBlue),
           ),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildStatusBar(ar),
+          Expanded(
+            child: _isLoading
+                ? const AccountingSkeleton(rows: 8, columns: 4)
+                : _errorMessage != null
+                    ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                    : _buildContent(ar),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// شريط حالة التوازن (نُقل من شريط الأدوات القديم — نفس المنطق والقيم)
+  Widget _buildStatusBar(AccountingResponsive ar) {
+    final isMob = ar.isMobile;
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceS),
+      decoration: const BoxDecoration(
+        color: AccountingTheme.bgCard,
+        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+      ),
+      child: Row(
+        children: [
+          // حالة التوازن
+          Container(
+            padding: EdgeInsets.symmetric(
+                horizontal: isMob ? 8 : 12, vertical: isMob ? 4 : 6),
+            decoration: BoxDecoration(
+              color: _isBalanced
+                  ? AccountingTheme.success.withOpacity(0.15)
+                  : AccountingTheme.danger.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _isBalanced
+                    ? AccountingTheme.success
+                    : AccountingTheme.danger,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _isBalanced ? Icons.check_circle : Icons.warning_rounded,
+                  size: isMob ? 14 : 18,
+                  color: _isBalanced
+                      ? AccountingTheme.success
+                      : AccountingTheme.danger,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _isBalanced ? 'متوازنة' : 'غير متوازنة',
+                  style: GoogleFonts.cairo(
+                    fontSize: isMob ? 10 : ar.small,
+                    fontWeight: FontWeight.bold,
+                    color: _isBalanced
+                        ? AccountingTheme.success
+                        : AccountingTheme.danger,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
         ],
       ),
     );

@@ -7,9 +7,9 @@ import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../frontend/frontend.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
@@ -150,16 +150,6 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   late AnimationController _formAnimController;
   late Animation<double> _formSlideAnimation;
   late Animation<double> _formFadeAnimation;
-
-  // ألوان التصميم
-  static const _primaryGradient = [
-    Color(0xFF667eea),
-    Color(0xFF764ba2),
-  ];
-  static const _secondaryGradient = [
-    Color(0xFF11998e),
-    Color(0xFF38ef7d),
-  ];
 
   @override
   void initState() {
@@ -348,7 +338,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       );
 
       if (mounted) {
-        _showSnackBar('تم حذف بيانات الدخول', Colors.orange);
+        _showSnackBar('تم حذف بيانات الدخول', SdColors.warning);
       }
     } catch (e) {
       debugPrint('خطأ في حذف بيانات الدخول');
@@ -541,7 +531,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.cairo()),
+        content: Text(message, style: SdText.body.copyWith(color: Colors.white)),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -550,261 +540,104 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   // ============================================
+  // View helpers (عرض فقط — لا منطق مصادقة)
+  // ============================================
+
+  /// وضع «مدير النظام» مشتقّ من اختيار الشركة الحالية (code == '1').
+  bool get _isAdminMode => _selectedCompany?.code == '1';
+
+  /// التبديل إلى «موظف شركة»: إلغاء اختيار مدير النظام إن كان مفعّلاً.
+  void _selectEmployeeMode() {
+    if (_selectedCompany?.code == '1') {
+      setState(() {
+        _selectedCompany = null;
+        _selectedCredential = null;
+      });
+    }
+  }
+
+  /// التبديل إلى «مدير النظام»: ضبط الشركة على العنصر id=1 (نفس المنطق السابق).
+  void _selectAdminMode() {
+    setState(() {
+      _selectedCompany = CompanyListItem(id: '1', name: 'مدير النظام', code: '1');
+      _selectedCredential = null;
+    });
+  }
+
+  // ============================================
   // Build Methods
   // ============================================
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          // تحديد نوع الشاشة
-          final isDesktop = constraints.maxWidth >= 1024;
-          final isTablet =
-              constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
-          final isMobile = constraints.maxWidth < 600;
-
-          return Stack(
-            children: [
-              // خلفية متحركة
-              _buildAnimatedBackground(),
-
-              // المحتوى الرئيسي
-              SafeArea(
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isMobile ? 16 : 24,
-                      vertical: isMobile ? 16 : 32,
-                    ),
-                    child: AnimatedBuilder(
-                      animation: _formAnimController,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(0, _formSlideAnimation.value),
-                          child: Opacity(
-                            opacity: _formFadeAnimation.value,
-                            child: isDesktop
-                                ? _buildDesktopLayout(constraints)
-                                : isTablet
-                                    ? _buildTabletLayout(constraints)
-                                    : _buildMobileLayout(constraints),
-                          ),
-                        );
-                      },
-                    ),
+    return SdTheme.scope(
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0B1033),
+        body: Stack(
+          children: [
+            _buildBackground(),
+            SafeArea(
+              child: AnimatedBuilder(
+                animation: _formAnimController,
+                builder: (context, child) => Opacity(
+                  opacity: _formFadeAnimation.value,
+                  child: Transform.translate(
+                    offset: Offset(0, _formSlideAnimation.value),
+                    child: child,
                   ),
                 ),
-              ),
-
-              // شاشة تحميل جميلة أثناء تسجيل الدخول أو الانتقال
-              if (_isLoading || _isNavigating) _buildLoginLoadingOverlay(),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  /// شاشة تحميل جميلة تظهر أثناء تسجيل الدخول وعند الانتقال
-  Widget _buildLoginLoadingOverlay() {
-    final isAfterLogin = _isNavigating;
-    final title =
-        isAfterLogin ? 'جاري تحضير لوحة التحكم...' : 'جاري تسجيل الدخول...';
-    final subtitle =
-        isAfterLogin ? 'يرجى الانتظار لحظات' : 'جاري التحقق من بياناتك';
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOut,
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: child,
-        );
-      },
-      child: Container(
-        color: const Color(0xFF1a1535).withOpacity(0.97),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // أيقونة Lottie جميلة
-              Container(
-                width: MediaQuery.of(context).size.width < 400 ? 140 : 200,
-                height: MediaQuery.of(context).size.width < 400 ? 140 : 200,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: _primaryGradient[0].withOpacity(0.3),
-                      blurRadius: 40,
-                      spreadRadius: 10,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.security,
-                  size: 80,
-                  color: Colors.white,
+                child: SdAdaptive(
+                  phone: _buildPhoneLayout,
+                  tablet: _buildTabletLayout,
+                  desktop: _buildDesktopLayout,
                 ),
               ),
-              const SizedBox(height: 32),
-              // نص التحميل الرئيسي
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: Text(
-                  title,
-                  key: ValueKey(title),
-                  style: GoogleFonts.cairo(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              // نص فرعي
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: Text(
-                  subtitle,
-                  key: ValueKey(subtitle),
-                  style: GoogleFonts.cairo(
-                    fontSize: 15,
-                    color: Colors.white54,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 36),
-              // شريط تحميل متدرج
-              SizedBox(
-                width: MediaQuery.of(context).size.width < 400 ? 200 : 260,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    minHeight: 5,
-                    backgroundColor: Colors.white10,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _primaryGradient[0],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // نقاط متحركة
-              SizedBox(
-                width: 60,
-                child: _AnimatedDots(
-                  color: _primaryGradient[0].withOpacity(0.7),
-                ),
-              ),
-            ],
-          ),
+            ),
+            if (_isLoading || _isNavigating) _buildLoadingOverlay(),
+          ],
         ),
       ),
     );
   }
 
-  /// خلفية ثابتة فخمة (بدون تحريك لأداء أفضل)
-  Widget _buildAnimatedBackground() {
+  /// خلفية داكنة متدرّجة + توهّج تركوازي ناعم.
+  Widget _buildBackground() {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0f0c29),
-            Color(0xFF302b63),
-            Color(0xFF24243e),
-          ],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [Color(0xFF0B1033), Color(0xFF141C5A), Color(0xFF0A2A3A)],
         ),
       ),
       child: Stack(
         children: [
-          // Floating orbs (ثابتة)
-          ..._buildFloatingOrbs(),
-          // Overlay خفيف بدلاً من BackdropFilter (أداء أفضل على Windows)
-          Container(color: const Color(0xFF1a1535).withOpacity(0.6)),
+          Positioned(
+            top: -120,
+            right: -80,
+            child: _buildOrb(360, const Color(0xFF5C6BC0)),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.3,
+            left: -120,
+            child: _buildOrb(320, const Color(0xFF00ACC1)),
+          ),
         ],
       ),
     );
   }
 
-  List<Widget> _buildFloatingOrbs() {
-    return [
-      Positioned(
-        top: -100,
-        left: -100,
-        child: _buildOrb(300, _primaryGradient, 0.3),
-      ),
-      Positioned(
-        bottom: -150,
-        right: -150,
-        child: _buildOrb(400, _secondaryGradient, 0.2),
-      ),
-      Positioned(
-        top: MediaQuery.of(context).size.height * 0.3,
-        right: -50,
-        child: _buildOrb(200, _primaryGradient.reversed.toList(), 0.15),
-      ),
-    ];
-  }
-
-  Widget _buildOrb(double size, List<Color> colors, double opacity) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: colors.map((c) => c.withOpacity(opacity)).toList(),
-        ),
-      ),
-    );
-  }
-
-  /// تخطيط سطح المكتب (شاشة مقسومة)
-  Widget _buildDesktopLayout(BoxConstraints constraints) {
-    return Container(
-      constraints: BoxConstraints(
-        maxWidth: 1200,
-        maxHeight: constraints.maxHeight * 0.9,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF1a1535).withOpacity(0.85),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              // القسم الأيسر - الترحيب
-              Expanded(
-                flex: 5,
-                child: _buildWelcomeSection(isDesktop: true),
-              ),
-              // القسم الأيمن - النموذج
-              Expanded(
-                flex: 4,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.horizontal(
-                      right: Radius.circular(32),
-                    ),
-                  ),
-                  child: _buildLoginForm(isCompact: false),
-                ),
-              ),
+  Widget _buildOrb(double size, Color color) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              color.withValues(alpha: 0.30),
+              color.withValues(alpha: 0.0),
             ],
           ),
         ),
@@ -812,464 +645,285 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     );
   }
 
-  /// تخطيط التابلت
-  Widget _buildTabletLayout(BoxConstraints constraints) {
-    return Container(
-      constraints: BoxConstraints(maxWidth: constraints.maxWidth < 500 ? constraints.maxWidth - 16 : 500),
+  // ── التخطيطات ──
+
+  /// الهاتف: رأس بالشعار + مشهد مصغّر + بطاقة تتداخل فوقه.
+  Widget _buildPhoneLayout(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildCompactHeader(),
-          const SizedBox(height: 24),
-          _buildGlassCard(
-            child: _buildLoginForm(isCompact: true),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: _buildBrandHeader(logoSize: 42, titleSize: 20),
+          ),
+          const SizedBox(height: 6),
+          Center(
+            child: SdLoginScene(
+              maxWidth: math.min(340, MediaQuery.of(context).size.width - 40),
+            ),
+          ),
+          Transform.translate(
+            offset: const Offset(0, -26),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: _buildAuthCard(context),
+            ),
           ),
         ],
       ),
     );
   }
 
-  /// تخطيط الهاتف
-  Widget _buildMobileLayout(BoxConstraints constraints) {
-    final isSmall = constraints.maxWidth < 420;
-    return Column(
+  /// الآيباد العمودي: عمود واحد موسّط، المشهد فوق البطاقة.
+  Widget _buildTabletLayout(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildBrandHeader(logoSize: 48, titleSize: 24),
+              const SizedBox(height: 8),
+              Center(child: SdLoginScene(maxWidth: 420)),
+              const SizedBox(height: 8),
+              _buildAuthCard(context),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// سطح المكتب/الآيباد الأفقي: يمين البطاقة المرفوعة، يسار المشهد والميزات.
+  Widget _buildDesktopLayout(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // يمين (في RTL = أول عنصر): بطاقة الدخول.
+        SizedBox(
+          width: 540,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(60, 40, 40, 40),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: _buildAuthCard(context, tilt: true),
+              ),
+            ),
+          ),
+        ),
+        // يسار: المشهد + العنوان + الميزات.
+        Expanded(child: _buildBrandPane(context)),
+      ],
+    );
+  }
+
+  /// لوحة التعريف (المشهد + العنوان + الميزات) لسطح المكتب.
+  Widget _buildBrandPane(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(40, 44, 70, 36),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBrandHeader(logoSize: 54, titleSize: 30),
+          Expanded(
+            child: Center(
+              child: SdLoginScene(maxWidth: 540),
+            ),
+          ),
+          _buildBrandTitle(),
+          const SizedBox(height: 20),
+          _buildFeatureRow(),
+        ],
+      ),
+    );
+  }
+
+  /// رأس العلامة: مكعّب الشعار «ص» + اسم المنصّة + العنوان الفرعي الذهبي.
+  Widget _buildBrandHeader({required double logoSize, required double titleSize}) {
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildCompactHeader(),
-        SizedBox(height: isSmall ? 8 : 16),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: isSmall ? 4 : 12),
-          child: _buildGlassCard(
-            child: _buildLoginForm(isCompact: true),
-          ),
+        _buildLogoCube(logoSize),
+        const SizedBox(width: 14),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'منصة الصدارة',
+              style: TextStyle(
+                fontFamily: SdText.family,
+                fontSize: titleSize,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                height: 1.15,
+              ),
+            ),
+            Text(
+              'لإدارة شبكات الألياف والعمليات',
+              style: TextStyle(
+                fontFamily: SdText.family,
+                fontSize: titleSize * 0.42 + 1,
+                fontWeight: FontWeight.w700,
+                color: SdColors.gold,
+                height: 1.2,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  /// قسم الترحيب للسطح المكتب
-  Widget _buildWelcomeSection({required bool isDesktop}) {
-    return Container(
-      padding: EdgeInsets.all(isDesktop ? 48 : 20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // صورة الترحيب داخل بطاقة بإطار
-          _buildHeroPortrait(width: 260, radius: 24),
-          const SizedBox(height: 32),
-
-          // العنوان الرئيسي
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [Colors.white, Color(0xFF667eea)],
-            ).createShader(bounds),
-            child: Text(
-              'مرحباً بك في',
-              style: GoogleFonts.cairo(
-                fontSize: 24,
-                fontWeight: FontWeight.w300,
-                color: Colors.white,
-              ),
-            ),
+  /// مكعّب الشعار الأبيض «ص».
+  Widget _buildLogoCube(double size) {
+    return Transform(
+      alignment: Alignment.center,
+      transform: Matrix4.identity()
+        ..setEntry(3, 2, 0.002)
+        ..rotateX(0.18)
+        ..rotateY(0.22),
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(size * 0.28),
+          gradient: const LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [Colors.white, Color(0xFFE3E7F5)],
           ),
-          Text(
-            'منصة صدارة',
-            style: GoogleFonts.cairo(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
+          boxShadow: const [
+            BoxShadow(color: Color(0xFF9FA8DA), offset: Offset(-2, 2)),
+            BoxShadow(color: Color(0xFF7986CB), offset: Offset(-4, 4)),
+            BoxShadow(
+                color: Color(0x73000000), offset: Offset(-8, 12), blurRadius: 18),
+          ],
+        ),
+        child: Text(
+          'ص',
+          style: TextStyle(
+            fontFamily: SdText.family,
+            fontSize: size * 0.5,
+            fontWeight: FontWeight.w900,
+            color: SdColors.primary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// عنوان اللوحة اليسرى مع السطر الثاني بتدرّج تركوازي ← ذهبي.
+  Widget _buildBrandTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RichText(
+          text: const TextSpan(
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              height: 1.3,
+            ),
+            children: [
+              TextSpan(text: 'إدارة متكاملة لشبكتك\n'),
+            ],
+          ),
+        ),
+        ShaderMask(
+          shaderCallback: (rect) => const LinearGradient(
+            colors: [Color(0xFF4DD0E1), SdColors.gold],
+          ).createShader(rect),
+          child: const Text(
+            'من البرج إلى المشترك',
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
               color: Colors.white,
               height: 1.2,
             ),
           ),
-          const SizedBox(height: 16),
-
-          // الوصف
-          Text(
-            'نظام إدارة متكامل للشركات والمؤسسات\nمع أعلى معايير الأمان والموثوقية',
-            style: GoogleFonts.cairo(
-              fontSize: 16,
-              color: Colors.white70,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // الميزات
-          _buildFeaturesList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturesList() {
-    final features = [
-      {'icon': Icons.security, 'text': 'حماية متقدمة'},
-      {'icon': Icons.speed, 'text': 'أداء فائق السرعة'},
-      {'icon': Icons.cloud_sync, 'text': 'مزامنة سحابية'},
-    ];
-
-    return Row(
-      children: features.map((f) {
-        return Padding(
-          padding: const EdgeInsets.only(left: 24),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(f['icon'] as IconData,
-                    color: Colors.white70, size: 20),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                f['text'] as String,
-                style: GoogleFonts.cairo(
-                  color: Colors.white70,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  /// رأس مضغوط للتابلت والهاتف
-  Widget _buildCompactHeader() {
-    final w = MediaQuery.of(context).size.width;
-    final isSmall = w < 420;
-    return Column(
-      children: [
-        _buildHeroPortrait(width: isSmall ? 96 : 128, radius: isSmall ? 18 : 22),
-        SizedBox(height: isSmall ? 6 : 16),
-        Text(
-          'منصة صدارة',
-          style: GoogleFonts.cairo(
-            fontSize: isSmall ? 18 : 32,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
         ),
-        SizedBox(height: isSmall ? 2 : 4),
+        const SizedBox(height: 8),
         Text(
-          'تسجيل الدخول',
-          style: GoogleFonts.cairo(
-            fontSize: isSmall ? 13 : 16,
-            color: Colors.white70,
+          'نظام موحّد للشركات والوكلاء والفنيين بأعلى معايير الأمان والموثوقية.',
+          style: TextStyle(
+            fontFamily: SdText.family,
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.72),
+            height: 1.6,
           ),
         ),
       ],
     );
   }
 
-  /// بطاقة صورة الترحيب (hero) بإطار وحواف دائرية
-  /// تُعرض في قسم الترحيب (سطح المكتب) والرأس المضغوط (تابلت/هاتف)
-  Widget _buildHeroPortrait({required double width, required double radius}) {
-    return Container(
-      width: width,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: Colors.white.withOpacity(0.25), width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryGradient[0].withOpacity(0.4),
-            blurRadius: 30,
-            spreadRadius: 1,
-            offset: const Offset(0, 12),
-          ),
+  /// ثلاث ميزات بمكعبات أيقونات.
+  Widget _buildFeatureRow() {
+    const items = [
+      (Icons.shield_rounded, SdGroup.admin, 'حماية متقدمة', 'تشفير وصلاحيات دقيقة'),
+      (Icons.bolt_rounded, SdGroup.field, 'أداء فائق', 'استجابة لحظية'),
+      (Icons.cloud_rounded, SdGroup.platform, 'مزامنة سحابية', 'بياناتك على كل أجهزتك'),
+    ];
+    return Row(
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(child: _buildFeatureCard(items[i].$1, items[i].$2, items[i].$3, items[i].$4)),
         ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius - 2),
-        child: AspectRatio(
-          // الصورة مربّعة تقريباً — نعرضها كاملة دون قص
-          aspectRatio: 1,
-          child: Image.asset(
-            'assets/login_hero.jpg',
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            // احتياط: إن غابت الصورة نعرض تدرّجاً بأيقونة بدل شاشة مكسورة
-            errorBuilder: (context, error, stack) => Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: _primaryGradient,
-                ),
-              ),
-              child: const Icon(Icons.person_rounded,
-                  color: Colors.white54, size: 64),
-            ),
-          ),
-        ),
-      ),
+      ],
     );
   }
 
-  /// بطاقة زجاجية
-  Widget _buildGlassCard({required Widget child}) {
-    final r = MediaQuery.of(context).size.width < 500 ? 16.0 : 24.0;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(r),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
-          borderRadius: BorderRadius.circular(r),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              spreadRadius: 5,
-            ),
-          ],
-        ),
-        child: child,
-      ),
-    );
-  }
-
-  /// نموذج تسجيل الدخول
-  Widget _buildLoginForm({required bool isCompact}) {
-    final isMobile = MediaQuery.of(context).size.width < 500;
-    final pad = isMobile ? 14.0 : (isCompact ? 24.0 : 40.0);
-    final gap = isMobile ? 10.0 : 16.0;
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(pad),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!isCompact) ...[
-              Text(
-                'تسجيل الدخول',
-                style: GoogleFonts.cairo(
-                  fontSize: isMobile ? 20 : 28,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1a1a2e),
-                ),
-              ),
-              SizedBox(height: isMobile ? 4 : 8),
-              Text(
-                'أدخل بياناتك للوصول إلى حسابك',
-                style: GoogleFonts.cairo(
-                  fontSize: isMobile ? 12 : 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              SizedBox(height: isMobile ? 2 : 6),
-              Text(
-                'v$_appVersion',
-                style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[400]),
-              ),
-              SizedBox(height: isMobile ? 12 : 24),
-            ],
-
-            _buildApiStatusBadge(),
-            SizedBox(height: isMobile ? 10 : 20),
-
-            if (_errorMessage != null) ...[
-              _buildErrorMessage(),
-              SizedBox(height: gap),
-            ],
-
-            _buildCompanySelector(),
-            SizedBox(height: gap),
-            _buildUsernameField(),
-            SizedBox(height: gap),
-            _buildPasswordField(),
-            SizedBox(height: gap),
-            _buildRememberMeCheckbox(),
-            SizedBox(height: gap),
-            if (_savedCredentials.isNotEmpty) _buildSavedCredentialsDropdown(),
-            SizedBox(height: isMobile ? 14 : 24),
-            _buildLoginButton(),
-            SizedBox(height: gap),
-            _buildOfflineRouterSetupButton(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOfflineRouterSetupButton() {
-    final isSmall = MediaQuery.of(context).size.width < 420;
-    final h = isSmall ? 38.0 : 44.0;
-    final r = isSmall ? 10.0 : 14.0;
-    return SizedBox(
-      width: double.infinity,
-      height: h,
-      child: OutlinedButton.icon(
-        icon: Icon(Icons.settings_input_antenna, size: isSmall ? 16 : 18, color: _primaryGradient[0]),
-        label: Text(
-          'إعداد الراوتر (أوفلاين)',
-          style: GoogleFonts.cairo(fontSize: isSmall ? 12 : 14, fontWeight: FontWeight.w700, color: _primaryGradient[0]),
-        ),
-        style: OutlinedButton.styleFrom(
-          padding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 16),
-          side: BorderSide(color: _primaryGradient[0].withOpacity(0.5)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r)),
-        ),
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const NetworkToolsHomePage()));
-        },
-      ),
-    );
-  }
-
-  Widget _buildApiStatusBadge() {
-    final isSmall = MediaQuery.of(context).size.width < 420;
-    return Center(
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: isSmall ? 10 : 16, vertical: isSmall ? 5 : 8),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              const Color(0xFF11998e).withOpacity(0.1),
-              const Color(0xFF38ef7d).withOpacity(0.1),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF11998e).withOpacity(0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: isSmall ? 6 : 8, height: isSmall ? 6 : 8,
-              decoration: const BoxDecoration(color: Color(0xFF11998e), shape: BoxShape.circle)),
-            SizedBox(width: isSmall ? 5 : 8),
-            Text('متصل بـ VPS API', style: GoogleFonts.cairo(fontSize: isSmall ? 10 : 12, color: const Color(0xFF11998e), fontWeight: FontWeight.w600)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// قائمة منسدلة للحسابات المحفوظة
-  Widget _buildSavedCredentialsDropdown() {
-    return DropdownButtonFormField<SavedCredential>(
-      value: _selectedCredential,
-      isExpanded: true,
-      icon: Icon(Icons.keyboard_arrow_down, color: _primaryGradient[0]),
-      decoration: _buildInputDecoration(
-        label: 'حسابات محفوظة',
-        hint: 'اختر حساب محفوظ للدخول السريع',
-        icon: Icons.bookmark_rounded,
-      ),
-      items: _savedCredentials.map((credential) {
-        return DropdownMenuItem<SavedCredential>(
-          value: credential,
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: _primaryGradient[0].withOpacity(0.2),
-                child: Text(
-                  credential.username[0].toUpperCase(),
-                  style: TextStyle(
-                    color: _primaryGradient[0],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      credential.username,
-                      style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      credential.companyName,
-                      style: GoogleFonts.cairo(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.close, size: 16, color: Colors.grey[400]),
-                onPressed: () => _deleteCredential(credential),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                tooltip: 'حذف',
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-      onChanged: (credential) {
-        if (credential != null) {
-          _selectCredential(credential);
-        }
-      },
-      selectedItemBuilder: (context) {
-        return _savedCredentials.map((credential) {
-          return Row(
-            children: [
-              CircleAvatar(
-                radius: 12,
-                backgroundColor: _primaryGradient[0],
-                child: Text(
-                  credential.username[0].toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '${credential.username} - ${credential.companyName}',
-                  style: GoogleFonts.cairo(fontSize: 13),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          );
-        }).toList();
-      },
-    );
-  }
-
-  Widget _buildErrorMessage() {
-    final isSmall = MediaQuery.of(context).size.width < 420;
+  Widget _buildFeatureCard(IconData icon, SdGroup group, String title, String sub) {
     return Container(
-      padding: EdgeInsets.all(isSmall ? 8 : 12),
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
       decoration: BoxDecoration(
-        color: Colors.red[50],
-        borderRadius: BorderRadius.circular(isSmall ? 8 : 12),
-        border: Border.all(color: Colors.red[200]!),
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline, color: Colors.red[700], size: isSmall ? 16 : 20),
-          SizedBox(width: isSmall ? 6 : 10),
+          SdIconCube(icon: icon, group: group, size: 40),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              _errorMessage!,
-              style: GoogleFonts.cairo(color: Colors.red[700], fontSize: isSmall ? 11 : 13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  sub,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.66),
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1277,305 +931,903 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     );
   }
 
-  Widget _buildCompanySelector() {
-    if (_loadingCompanies) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(_primaryGradient[0]),
+  // ── البطاقة ──
+
+  /// بطاقة الدخول البيضاء المرفوعة (مع ميلان خفيف على سطح المكتب).
+  Widget _buildAuthCard(BuildContext context, {bool tilt = false}) {
+    Widget card = Container(
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: SdOutline.all,
+        boxShadow: const [
+          BoxShadow(color: Color(0xFFC9CFE3), offset: Offset(0, 10)),
+          BoxShadow(color: Color(0xFF8E97C2), offset: Offset(0, 12)),
+          BoxShadow(
+            color: Color(0xBF050828),
+            offset: Offset(0, 40),
+            blurRadius: 60,
+            spreadRadius: -24,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+            child: _buildLoginForm(context),
+          ),
+          // خط ذهبي علوي.
+          Positioned(
+            top: 0,
+            right: 36,
+            left: 36,
+            child: Container(
+              height: 4,
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(6)),
+                gradient: LinearGradient(
+                  colors: [Color(0xFF00ACC1), SdColors.primary, SdColors.gold],
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              'جاري تحميل الشركات...',
-              style: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 13),
-            ),
+          ),
+        ],
+      ),
+    );
+
+    if (tilt) {
+      card = Transform(
+        alignment: Alignment.centerRight,
+        transform: Matrix4.identity()
+          ..setEntry(3, 2, 0.0011)
+          ..rotateY(0.05),
+        child: card,
+      );
+    }
+    return card;
+  }
+
+  /// محتوى البطاقة بالترتيب المعتمد.
+  Widget _buildLoginForm(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildCardHeader(),
+          const SizedBox(height: 14),
+          if (_errorMessage != null) ...[
+            _buildErrorMessage(),
+            const SizedBox(height: 14),
           ],
+          _buildModeSegmented(),
+          const SizedBox(height: 14),
+          if (_isAdminMode) _buildAdminNote() else _buildCompanySelector(),
+          const SizedBox(height: 14),
+          _buildUsernameField(),
+          const SizedBox(height: 14),
+          _buildPasswordField(),
+          const SizedBox(height: 12),
+          _buildRememberRow(),
+          if (_savedCredentials.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildSavedCredentialsDropdown(),
+          ],
+          const SizedBox(height: 16),
+          _buildLoginButton(),
+          const SizedBox(height: 12),
+          _buildOfflineRouterSetupButton(),
+          const SizedBox(height: 12),
+          Center(child: _buildVersionText()),
+        ],
+      ),
+    );
+  }
+
+  /// رأس البطاقة: مكعّب قفل + «مرحباً بعودتك» + شارة اتصال حيّة.
+  Widget _buildCardHeader() {
+    return Row(
+      children: [
+        SdIconCube(icon: Icons.lock_rounded, group: SdGroup.admin, size: 50),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'مرحباً بعودتك',
+                style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: SdColors.ink,
+                  height: 1.2,
+                ),
+              ),
+              Text(
+                'سجّل الدخول لمتابعة عملك',
+                style: SdText.bodySm,
+              ),
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
+        _LiveStatusBadge(
+          loading: _loadingCompanies,
+          offline: _companiesLoadError != null,
+        ),
+      ],
+    );
+  }
+
+  /// المفتاح المقسّم: موظف شركة | مدير النظام.
+  Widget _buildModeSegmented() {
+    return SdSegmented(
+      segments: const [
+        SdSegment('موظف شركة', icon: Icons.apartment_rounded),
+        SdSegment('مدير النظام', icon: Icons.verified_user_rounded),
+      ],
+      selected: _isAdminMode ? 1 : 0,
+      onChanged: (i) => i == 1 ? _selectAdminMode() : _selectEmployeeMode(),
+    );
+  }
+
+  /// لافتة توضيحية لوضع مدير النظام (بديل قائمة الشركات).
+  Widget _buildAdminNote() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(14),
+        border: SdOutline.all,
+        boxShadow: const [BoxShadow(color: Color(0xFFFFE082), offset: Offset(0, 3))],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.verified_user_rounded, size: 20, color: Color(0xFF7A4F01)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'دخول مدير النظام — يفتح لوحة الإدارة العليا',
+              style: TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF7A4F01),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// تسمية حقل فوق الإطار.
+  Widget _buildFieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 4, bottom: 6),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontFamily: SdText.family,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+          color: SdColors.muted,
+        ),
+      ),
+    );
+  }
+
+  /// إطار حقل مرفوع (خلفية فاتحة + حافّة سفلية).
+  Widget _buildFieldFrame({required Widget child, double minHeight = 56}) {
+    return Container(
+      constraints: BoxConstraints(minHeight: minHeight),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(16),
+        border: SdOutline.all,
+        boxShadow: const [BoxShadow(color: SdColors.edge, offset: Offset(0, 3))],
+      ),
+      child: Center(child: child),
+    );
+  }
+
+  /// منتقي الشركة (يظهر في وضع موظف شركة فقط).
+  Widget _buildCompanySelector() {
+    if (_loadingCompanies) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildFieldLabel('الشركة'),
+          _buildFieldFrame(
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: SdColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text('جاري تحميل الشركات...', style: SdText.bodySm),
+              ],
+            ),
+          ),
+        ],
       );
     }
 
-    return DropdownButtonFormField<CompanyListItem>(
-      value: _selectedCompany,
-      isExpanded: true,
-      icon: Icon(Icons.keyboard_arrow_down, color: _primaryGradient[0]),
-      decoration: _buildInputDecoration(
-        label: 'الشركة',
-        hint: 'اختر الشركة',
-        icon: Icons.business_rounded,
-      ),
-      items: _buildCompanyDropdownItems(),
-      onChanged: (value) {
-        setState(() {
-          _selectedCompany = value;
-          _selectedCredential = null;
-        });
-      },
-      validator: (value) => value == null ? 'يرجى اختيار الشركة' : null,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildFieldLabel('الشركة'),
+        _buildFieldFrame(
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [Color(0xFF26C6DA), SdColors.accent],
+                  ),
+                  boxShadow: const [
+                    BoxShadow(color: SdColors.accentEdge, offset: Offset(0, 3)),
+                  ],
+                ),
+                child: const Icon(Icons.business_rounded, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<CompanyListItem>(
+                    value: _selectedCompany,
+                    isExpanded: true,
+                    isDense: true,
+                    hint: Text('اختر الشركة', style: SdText.bodySm),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: SdColors.primary),
+                    borderRadius: BorderRadius.circular(16),
+                    items: _buildCompanyDropdownItems(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCompany = value;
+                        _selectedCredential = null;
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   List<DropdownMenuItem<CompanyListItem>> _buildCompanyDropdownItems() {
-    final isSmall = MediaQuery.of(context).size.width < 420;
-    final iconSize = isSmall ? 16.0 : 20.0;
-    final fs = isSmall ? 12.0 : 14.0;
     final items = <DropdownMenuItem<CompanyListItem>>[];
-
-    // مدير النظام
-    items.add(
-      DropdownMenuItem(
-        value: CompanyListItem(id: '1', name: 'مدير النظام', code: '1'),
-        child: Row(
-          children: [
-            Icon(Icons.admin_panel_settings, color: Colors.amber[700], size: iconSize),
-            SizedBox(width: isSmall ? 6 : 10),
-            Text('مدير النظام', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.amber[700], fontSize: fs)),
-          ],
-        ),
-      ),
-    );
-
-    items.add(const DropdownMenuItem(enabled: false, child: Divider()));
-
     for (final company in _companies) {
-      if (company.code == '1') continue;
+      if (company.code == '1') continue; // «مدير النظام» عبر المفتاح المقسّم
       items.add(
         DropdownMenuItem(
           value: company,
           child: Row(
             children: [
-              Icon(Icons.business_rounded, color: _primaryGradient[0], size: iconSize),
-              SizedBox(width: isSmall ? 6 : 10),
-              Expanded(child: Text(company.name, style: GoogleFonts.cairo(fontSize: fs), overflow: TextOverflow.ellipsis)),
-              Text(company.code, style: GoogleFonts.cairo(fontSize: isSmall ? 9 : 11, color: Colors.grey[500])),
+              Expanded(
+                child: Text(company.name,
+                    style: SdText.label, overflow: TextOverflow.ellipsis),
+              ),
+              Text(company.code, style: SdText.caption),
             ],
           ),
         ),
       );
     }
-
     return items;
   }
 
   Widget _buildUsernameField() {
-    final isSmall = MediaQuery.of(context).size.width < 420;
-    return TextFormField(
-      controller: _usernameController,
-      textDirection: TextDirection.ltr,
-      style: GoogleFonts.cairo(fontSize: isSmall ? 13 : 15),
-      decoration: _buildInputDecoration(
-        label: 'اسم المستخدم',
-        hint: 'أدخل اسم المستخدم أو رقم الهاتف',
-        icon: Icons.person_rounded,
-      ),
-      validator: (value) => value == null || value.trim().isEmpty
-          ? 'يرجى إدخال اسم المستخدم'
-          : null,
-      onChanged: (_) => setState(() => _selectedCredential = null),
-    );
-  }
-
-  Widget _buildPasswordField() {
-    final isSmall = MediaQuery.of(context).size.width < 420;
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: _obscurePassword,
-      textDirection: TextDirection.ltr,
-      style: GoogleFonts.cairo(fontSize: isSmall ? 13 : 15),
-      decoration: _buildInputDecoration(
-        label: 'كلمة المرور',
-        hint: 'أدخل كلمة المرور',
-        icon: Icons.lock_rounded,
-        suffixIcon: IconButton(
-          icon: Icon(
-            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-            color: Colors.grey[500], size: isSmall ? 20 : 24,
-          ),
-          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-        ),
-      ),
-      validator: (value) =>
-          value == null || value.isEmpty ? 'يرجى إدخال كلمة المرور' : null,
-      onFieldSubmitted: (_) => _login(),
-    );
-  }
-
-  Widget _buildRememberMeCheckbox() {
-    final isSmall = MediaQuery.of(context).size.width < 420;
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Transform.scale(
-          scale: isSmall ? 0.9 : 1.1,
-          child: Checkbox(
-            value: _rememberMe,
-            onChanged: (value) => setState(() => _rememberMe = value ?? false),
-            activeColor: _primaryGradient[0],
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          ),
-        ),
-        GestureDetector(
-          onTap: () => setState(() => _rememberMe = !_rememberMe),
-          child: Text(
-            'تذكرني',
-            style: GoogleFonts.cairo(color: Colors.grey[700], fontSize: isSmall ? 12 : 14),
+        _buildFieldLabel('اسم المستخدم'),
+        _buildFieldFrame(
+          child: Row(
+            children: [
+              const Icon(Icons.person_rounded, color: SdColors.primary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _usernameController,
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.right,
+                  style: SdText.body,
+                  decoration: InputDecoration(
+                    isCollapsed: true,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    filled: false,
+                    hintText: 'اسم المستخدم أو رقم الهاتف',
+                    hintStyle: SdText.bodySm.copyWith(color: SdColors.faint),
+                    errorStyle: const TextStyle(height: 0, fontSize: 0),
+                  ),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'يرجى إدخال اسم المستخدم'
+                      : null,
+                  onChanged: (_) => setState(() => _selectedCredential = null),
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLoginButton() {
-    final isSmall = MediaQuery.of(context).size.width < 420;
-    final h = isSmall ? 42.0 : 52.0;
-    final r = isSmall ? 10.0 : 14.0;
-    return Container(
-      height: h,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: _primaryGradient),
-        borderRadius: BorderRadius.circular(r),
-        boxShadow: [
-          BoxShadow(
-            color: _primaryGradient[0].withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+  Widget _buildPasswordField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildFieldLabel('كلمة المرور'),
+        _buildFieldFrame(
+          child: Row(
+            children: [
+              const Icon(Icons.lock_rounded, color: SdColors.primary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.right,
+                  style: SdText.body,
+                  decoration: InputDecoration(
+                    isCollapsed: true,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    filled: false,
+                    hintText: '••••••••',
+                    hintStyle: SdText.bodySm.copyWith(color: SdColors.faint),
+                    errorStyle: const TextStyle(height: 0, fontSize: 0),
+                  ),
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'يرجى إدخال كلمة المرور'
+                      : null,
+                  onFieldSubmitted: (_) => _login(),
+                ),
+              ),
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: SdColors.muted,
+                    size: 20,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  tooltip: _obscurePassword ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRememberRow() {
+    return SizedBox(
+      height: 44,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              SdToggle(
+                value: _rememberMe,
+                onChanged: (value) => setState(() => _rememberMe = value),
+                label: 'تذكرني',
+              ),
+              const SizedBox(width: 10),
+              Text('تذكرني', style: SdText.label),
+            ],
+          ),
+          Row(
+            children: [
+              const Icon(Icons.lock_outline_rounded, size: 14, color: SdColors.faint),
+              const SizedBox(width: 4),
+              Text('اتصال مشفّر', style: SdText.caption),
+            ],
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _login,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: EdgeInsets.symmetric(vertical: isSmall ? 0 : 4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r)),
-        ),
-        child: _isLoading
-            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.login_rounded, color: Colors.white, size: isSmall ? 18 : 22),
-                  SizedBox(width: isSmall ? 6 : 10),
-                  Text('تسجيل الدخول', style: GoogleFonts.cairo(fontSize: isSmall ? 14 : 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                ],
+    );
+  }
+
+  /// الحسابات المحفوظة — قائمة منسدلة (تجاوز معتمد: Dropdown لا شرائح).
+  Widget _buildSavedCredentialsDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildFieldLabel('حسابات محفوظة على هذا الجهاز'),
+        _buildFieldFrame(
+          child: Row(
+            children: [
+              const Icon(Icons.bookmark_rounded, color: SdColors.primary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<SavedCredential>(
+                    value: _selectedCredential,
+                    isExpanded: true,
+                    isDense: true,
+                    hint: Text('اختر حساباً للدخول السريع', style: SdText.bodySm),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: SdColors.primary),
+                    borderRadius: BorderRadius.circular(16),
+                    selectedItemBuilder: (context) {
+                      return _savedCredentials.map((credential) {
+                        return Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            '${credential.username} · ${credential.companyName}',
+                            style: SdText.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList();
+                    },
+                    items: _savedCredentials.map((credential) {
+                      return DropdownMenuItem<SavedCredential>(
+                        value: credential,
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 13,
+                              backgroundColor: SdColors.primaryTint,
+                              child: Text(
+                                credential.username.isNotEmpty
+                                    ? credential.username[0].toUpperCase()
+                                    : '؟',
+                                style: const TextStyle(
+                                  color: SdColors.primary,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 11,
+                                  fontFamily: SdText.family,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(credential.username,
+                                      style: SdText.label,
+                                      overflow: TextOverflow.ellipsis),
+                                  Text(credential.companyName,
+                                      style: SdText.caption,
+                                      overflow: TextOverflow.ellipsis),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded,
+                                  size: 18, color: SdColors.faint),
+                              onPressed: () => _deleteCredential(credential),
+                              padding: EdgeInsets.zero,
+                              constraints:
+                                  const BoxConstraints(minWidth: 44, minHeight: 44),
+                              tooltip: 'حذف',
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (credential) {
+                      if (credential != null) _selectCredential(credential);
+                    },
+                  ),
+                ),
               ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorMessage() {
+    final t = SdStatus.danger.tone;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: t.tint,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        border: Border.all(color: t.tintEdge),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: t.text, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _errorMessage!,
+              style: SdText.bodySm.copyWith(color: t.text),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  InputDecoration _buildInputDecoration({
-    required String label,
-    required String hint,
-    required IconData icon,
-    Widget? suffixIcon,
-  }) {
-    final isSmall = MediaQuery.of(context).size.width < 420;
-    final radius = isSmall ? 8.0 : 12.0;
-    final vPad = isSmall ? 10.0 : 16.0;
-    final hPad = isSmall ? 10.0 : 16.0;
+  Widget _buildLoginButton() {
+    return SdButton(
+      label: 'تسجيل الدخول',
+      icon: Icons.login_rounded,
+      kind: SdButtonKind.primary,
+      expand: true,
+      height: 60,
+      onPressed: _isLoading ? null : _login,
+    );
+  }
 
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      isDense: isSmall,
-      labelStyle: GoogleFonts.cairo(color: Colors.grey[600], fontSize: isSmall ? 12 : 14),
-      hintStyle: GoogleFonts.cairo(color: Colors.grey[400], fontSize: isSmall ? 11 : 13),
-      prefixIcon: Icon(icon, color: _primaryGradient[0], size: isSmall ? 18 : 24),
-      suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: Colors.grey[50],
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(color: Colors.grey[200]!),
+  Widget _buildOfflineRouterSetupButton() {
+    return SdButton(
+      label: 'إعداد الراوتر (أوفلاين)',
+      icon: Icons.settings_input_antenna,
+      kind: SdButtonKind.secondary,
+      expand: true,
+      onPressed: () {
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const NetworkToolsHomePage()));
+      },
+    );
+  }
+
+  Widget _buildVersionText() {
+    final label = _appVersion.isEmpty
+        ? 'منصة الصدارة'
+        : 'الإصدار v$_appVersion · منصة الصدارة';
+    return Text(
+      label,
+      style: const TextStyle(
+        fontFamily: SdText.family,
+        fontSize: 11.5,
+        fontWeight: FontWeight.w700,
+        color: SdColors.faint,
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(color: Colors.grey[200]!),
+    );
+  }
+
+  /// شاشة التحميل: مكعّب درع يدور + ثلاث مراحل مربوطة بـ _isLoading/_isNavigating.
+  Widget _buildLoadingOverlay() {
+    final step = _isNavigating ? 2 : 1; // 1=تحقق، 2=صلاحيات/تحضير
+    const steps = ['التحقق من البيانات', 'تحميل الصلاحيات', 'تحضير لوحة التحكم'];
+    final title = _isNavigating ? 'جارٍ تحضير لوحة التحكم…' : 'جارٍ تسجيل الدخول…';
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      builder: (context, value, child) => Opacity(opacity: value, child: child),
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(0, -0.4),
+            radius: 1.1,
+            colors: [Color(0xFF23308F), Color(0xFF121A5C), Color(0xFF0B1033)],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const _SpinShieldCube(size: 96),
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 7,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: const Color(0xFF4DD0E1).withValues(alpha: 0.3),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 280),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < steps.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: _buildLoadingStep(
+                          steps[i],
+                          done: i < step,
+                          active: i == step,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: BorderSide(color: _primaryGradient[0], width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(radius),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-      contentPadding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+    );
+  }
+
+  Widget _buildLoadingStep(String label, {required bool done, required bool active}) {
+    final Color dotColor = done
+        ? const Color(0xFF69F0AE)
+        : active
+            ? const Color(0xFF4DD0E1)
+            : Colors.white.withValues(alpha: 0.18);
+    return Row(
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: dotColor,
+            boxShadow: done
+                ? const [BoxShadow(color: Color(0xFF69F0AE), blurRadius: 10)]
+                : active
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF4DD0E1).withValues(alpha: 0.25),
+                          blurRadius: 0,
+                          spreadRadius: 5,
+                        )
+                      ]
+                    : null,
+          ),
+          child: done
+              ? const Icon(Icons.check_rounded, size: 10, color: Color(0xFF0B1033))
+              : null,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              color: (done || active)
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.45),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
-/// نقاط متحركة تعطي إحساس بالتحميل
-class _AnimatedDots extends StatefulWidget {
-  final Color color;
-  const _AnimatedDots({required this.color});
+/// شارة اتصال حيّة: أخضر نابض (متصل) / أحمر (غير متصل) / رمادي (جارٍ الفحص).
+class _LiveStatusBadge extends StatefulWidget {
+  const _LiveStatusBadge({required this.loading, required this.offline});
+  final bool loading;
+  final bool offline;
 
   @override
-  State<_AnimatedDots> createState() => _AnimatedDotsState();
+  State<_LiveStatusBadge> createState() => _LiveStatusBadgeState();
 }
 
-class _AnimatedDotsState extends State<_AnimatedDots>
+class _LiveStatusBadgeState extends State<_LiveStatusBadge>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
 
   @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LiveStatusBadge old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
+
+  void _sync() {
+    final connected = !widget.loading && !widget.offline;
+    final reduce = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (connected && !reduce) {
+      if (!_pulse.isAnimating) _pulse.repeat();
+    } else {
+      if (_pulse.isAnimating) _pulse.stop();
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _pulse.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (index) {
-            final delay = index * 0.33;
-            final t = ((_controller.value + delay) % 1.0);
-            final sinVal = math.sin(t * math.pi);
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Transform.scale(
-                scale: 0.5 + 0.5 * sinVal,
-                child: Opacity(
-                  opacity: (0.3 + 0.7 * sinVal).clamp(0.0, 1.0),
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: widget.color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+    late final Color bg, fg, dot;
+    late final String label;
+    if (widget.loading) {
+      bg = const Color(0xFFECEFF1);
+      fg = const Color(0xFF546E7A);
+      dot = const Color(0xFF78909C);
+      label = 'جارٍ الفحص';
+    } else if (widget.offline) {
+      bg = SdColors.dangerTint;
+      fg = const Color(0xFFB71C1C);
+      dot = SdColors.danger;
+      label = 'غير متصل';
+    } else {
+      bg = SdColors.successTint;
+      fg = SdColors.successEdge;
+      dot = SdColors.success;
+      label = 'متصل';
+    }
+
+    final connected = !widget.loading && !widget.offline;
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          connected
+              ? AnimatedBuilder(
+                  animation: _pulse,
+                  builder: (context, _) {
+                    final p = _pulse.value;
+                    return Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: dot,
+                        boxShadow: [
+                          BoxShadow(
+                            color: dot.withValues(alpha: 0.55 * (1 - p)),
+                            spreadRadius: 6 * p,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                )
+              : Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: dot),
                 ),
-              ),
-            );
-          }),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// مكعّب درع يدور حول المحور العمودي (شاشة التحميل).
+class _SpinShieldCube extends StatefulWidget {
+  const _SpinShieldCube({this.size = 96});
+  final double size;
+
+  @override
+  State<_SpinShieldCube> createState() => _SpinShieldCubeState();
+}
+
+class _SpinShieldCubeState extends State<_SpinShieldCube>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3200),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduce = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduce) {
+      if (_spin.isAnimating) _spin.stop();
+    } else if (!_spin.isAnimating) {
+      _spin.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.size;
+    return AnimatedBuilder(
+      animation: _spin,
+      builder: (context, child) {
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.0015)
+            ..rotateX(-0.42)
+            ..rotateY(_spin.value * 2 * math.pi),
+          child: child,
         );
       },
+      child: Container(
+        width: s,
+        height: s,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(s * 0.16),
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.white, Color(0xFFE3E7F5)],
+          ),
+          border: Border.all(color: const Color(0x261A237E)),
+        ),
+        child: ClipOval(
+          child: Image.asset(
+            'assets/logo.png',
+            width: s * 0.62,
+            height: s * 0.62,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
+      ),
     );
   }
 }

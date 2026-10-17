@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../frontend/frontend.dart';
 import '../models/quality_models.dart';
 import '../services/wifi_channel_analyzer_service.dart';
 import '../widgets/depth_3d.dart';
@@ -53,70 +54,62 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Nq3d.ground,
-        appBar: nq3dAppBar('محلّل قنوات WiFi'),
-        body: LayoutBuilder(
-          builder: (ctx, c) {
-            final w = c.maxWidth;
-            final isPhone = w < 600;
-            final maxContentWidth = isPhone ? w : (w >= 1024 ? 720.0 : 600.0);
-            return Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxContentWidth),
-                  child: _scanning
-                      ? _loading()
-                      : _result == null
-                          ? const SizedBox.shrink()
-                          : (!_result!.supported
-                              ? _unsupported(_result!.message)
-                              : _body(_result!, isPhone)),
-                ),
+    return SdPage(
+      padding: EdgeInsets.zero,
+      scrollable: false,
+      maxWidth: double.infinity,
+      appBar: const SdAppBar(title: 'محلّل قنوات WiFi'),
+      body: LayoutBuilder(
+        builder: (ctx, c) {
+          final w = c.maxWidth;
+          final isPhone = w < 600;
+          final maxContentWidth = isPhone ? w : (w >= 1024 ? 720.0 : 600.0);
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                child: _scanning
+                    ? _loading()
+                    : _result == null
+                        ? const SizedBox.shrink()
+                        : (!_result!.supported
+                            ? _unsupported(_result!.message)
+                            : _body(_result!, isPhone)),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _loading() => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 60),
+  Widget _loading() => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 60),
         child: Column(
           children: [
-            const SizedBox(
+            SizedBox(
                 width: 34,
                 height: 34,
                 child: CircularProgressIndicator(
-                    strokeWidth: 3, color: Nq3d.indigo)),
-            const SizedBox(height: 16),
+                    strokeWidth: 3, color: SdColors.primary)),
+            SizedBox(height: 16),
             Text('جارٍ مسح الشبكات المجاورة...',
-                style: TextStyle(fontSize: 13, color: Nq3d.muted)),
+                style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 13,
+                    color: SdColors.muted)),
           ],
         ),
       );
 
   Widget _unsupported(String msg) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 8),
-        child: Column(
-          children: [
-            const Icon(Icons.wifi_off_rounded, size: 54, color: Nq3d.faint),
-            const SizedBox(height: 14),
-            Text(msg.isEmpty ? 'غير مدعوم على هذه المنصّة.' : msg,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: Nq3d.ink)),
-            const SizedBox(height: 6),
-            Text(
+        child: SdEmptyState(
+          icon: Icons.wifi_off_rounded,
+          title: msg.isEmpty ? 'غير مدعوم على هذه المنصّة.' : msg,
+          message:
               'محلّل القنوات متاح حالياً على ويندوز عبر مسح الشبكات المجاورة.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Nq3d.muted),
-            ),
-          ],
         ),
       );
 
@@ -140,7 +133,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
         // قائمة الشبكات للنطاق الحالي.
         Row(
           children: [
-            Icon(Icons.wifi_rounded, size: 15, color: Colors.grey.shade500),
+            const Icon(Icons.wifi_rounded, size: 15, color: SdColors.faint),
             const SizedBox(width: 6),
             Text('شبكات ${_band24 ? '2.4GHz' : '5GHz'} (${nets.length})',
                 style: const TextStyle(
@@ -149,42 +142,19 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
         ),
         const SizedBox(height: 6),
         if (nets.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
             child: Text('لا شبكات على هذا النطاق.',
-                style: TextStyle(fontSize: 12, color: Nq3d.muted)),
+                style: TextStyle(fontSize: 12, color: SdColors.muted)),
           )
         else
           ...nets.map(_netCard),
         const SizedBox(height: 16),
-        Raised3D(
-          onTap: _scan,
-          radius: 16,
-          depth: 6,
-          padding: EdgeInsets.zero,
-          edgeColor: Nq3d.indigoDark,
-          glowColor: const Color(0x990F1660),
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF283593), Nq3d.indigo],
-          ),
-          semanticLabel: 'إعادة المسح',
-          child: const SizedBox(
-            height: 52,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.refresh_rounded, color: Colors.white),
-                SizedBox(width: 8),
-                Text('إعادة المسح',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16)),
-              ],
-            ),
-          ),
+        SdButton(
+          label: 'إعادة المسح',
+          icon: Icons.refresh_rounded,
+          expand: true,
+          onPressed: _scan,
         ),
       ],
     );
@@ -201,7 +171,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 11),
             decoration: BoxDecoration(
-              color: selected ? Nq3d.indigo : Colors.transparent,
+              color: selected ? SdColors.primary : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(label,
@@ -209,7 +179,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
                 style: TextStyle(
                     fontWeight: FontWeight.w900,
                     fontSize: 13.5,
-                    color: selected ? Colors.white : Nq3d.muted)),
+                    color: selected ? Colors.white : SdColors.muted)),
           ),
         ),
       );
@@ -291,7 +261,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
                 style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
-                    color: Nq3d.ink)),
+                    color: SdColors.ink)),
           ),
           const SizedBox(height: 8),
           LayoutBuilder(builder: (ctx, c) {
@@ -351,7 +321,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
               style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w900,
-                  color: recommended ? const Color(0xFF2E7D32) : Nq3d.muted)),
+                  color: recommended ? const Color(0xFF2E7D32) : SdColors.muted)),
         ],
       ),
     );
@@ -376,9 +346,9 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FA),
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Row(
         children: [
@@ -387,17 +357,17 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
             height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-                color: Nq3d.indigo.withValues(alpha: 0.08),
+                color: SdColors.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.wifi_rounded, size: 15, color: Nq3d.indigo),
+                const Icon(Icons.wifi_rounded, size: 15, color: SdColors.primary),
                 Text('ق${n.channel}',
                     style: const TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
-                        color: Nq3d.indigo)),
+                        color: SdColors.primary)),
               ],
             ),
           ),
@@ -415,9 +385,9 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
                 Text('${n.bssid}  •  قناة ${n.channel}  •  ${n.band}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey.shade600,
+                    style: const TextStyle(
+                        fontSize: 11.5,
+                        color: SdColors.muted,
                         fontFamily: 'monospace')),
               ],
             ),

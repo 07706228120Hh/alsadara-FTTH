@@ -13,8 +13,8 @@ import '../users/user_details_page.dart';
 import '../auth/login_page.dart';
 import 'dart:io';
 import '../../services/api_service.dart';
-import '../../utils/smart_text_color.dart';
 import '../../permissions/permissions.dart';
+import '../../frontend/frontend.dart';
 
 class UsersPage extends StatefulWidget {
   final String authToken;
@@ -907,15 +907,15 @@ class _UsersPageState extends State<UsersPage> {
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.green.shade50, Colors.green.shade100],
+          colors: [SdColors.successTint, SdColors.successTintEdge],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: Colors.green.shade200),
+        border: Border.all(color: SdColors.successTintEdge),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withValues(alpha: 0.1),
+            color: SdColors.success.withValues(alpha: 0.1),
             spreadRadius: 1,
             blurRadius: 4,
             offset: const Offset(0, 2),
@@ -928,14 +928,14 @@ class _UsersPageState extends State<UsersPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.table_view, color: Colors.green.shade700, size: 24),
+              Icon(Icons.table_view, color: SdColors.successEdge, size: 24),
               const SizedBox(width: 12),
               Text(
                 'جاري إنشاء ملف إكسل...',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green.shade700,
+                  color: SdColors.successEdge,
                 ),
               ),
             ],
@@ -943,7 +943,7 @@ class _UsersPageState extends State<UsersPage> {
           const SizedBox(height: 16),
           Text(
             excelExportMessage,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+            style: TextStyle(fontSize: 14, color: SdColors.muted),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -951,8 +951,8 @@ class _UsersPageState extends State<UsersPage> {
             borderRadius: BorderRadius.circular(8.0),
             child: LinearProgressIndicator(
               value: excelExportProgress,
-              backgroundColor: Colors.grey.shade300,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade600),
+              backgroundColor: SdColors.divider,
+              valueColor: AlwaysStoppedAnimation<Color>(SdColors.success),
               minHeight: 8,
             ),
           ),
@@ -962,7 +962,7 @@ class _UsersPageState extends State<UsersPage> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.green.shade700,
+              color: SdColors.successEdge,
             ),
           ),
         ],
@@ -975,23 +975,23 @@ class _UsersPageState extends State<UsersPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.search, color: Colors.blue, size: 20),
+              const Icon(Icons.search, color: SdColors.primary, size: 20),
               const SizedBox(width: 8),
               const Text(
                 'خيارات البحث والتصفية',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+                  color: SdColors.primary,
                 ),
               ),
             ],
@@ -1006,7 +1006,7 @@ class _UsersPageState extends State<UsersPage> {
                 borderRadius: BorderRadius.circular(8.0),
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: SdColors.surface,
             ),
             onChanged: (value) => searchName = value,
           ),
@@ -1020,7 +1020,7 @@ class _UsersPageState extends State<UsersPage> {
                 borderRadius: BorderRadius.circular(8.0),
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: SdColors.surface,
             ),
             keyboardType: TextInputType.phone,
             onChanged: (value) => searchPhone = value,
@@ -1051,7 +1051,7 @@ class _UsersPageState extends State<UsersPage> {
                 borderRadius: BorderRadius.circular(8.0),
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: SdColors.surface,
             ),
             onChanged: (value) {
               setState(() {
@@ -1106,7 +1106,7 @@ class _UsersPageState extends State<UsersPage> {
                 borderRadius: BorderRadius.circular(8.0),
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: SdColors.surface,
             ),
             menuMaxHeight: 300,
           ),
@@ -1115,7 +1115,7 @@ class _UsersPageState extends State<UsersPage> {
             width: double.infinity,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14.0),
                 shape: RoundedRectangleBorder(
@@ -1138,7 +1138,7 @@ class _UsersPageState extends State<UsersPage> {
             width: double.infinity,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: SdColors.danger,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 shape: RoundedRectangleBorder(
@@ -1170,14 +1170,14 @@ class _UsersPageState extends State<UsersPage> {
               EdgeInsets.symmetric(horizontal: isWide ? 16 : 12, vertical: 6),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.blue.shade600, Colors.blue.shade400],
+              colors: [SdColors.primaryLight, SdColors.primarySoft],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(10.0),
             boxShadow: [
               BoxShadow(
-                color: Colors.blue.withValues(alpha: 0.25),
+                color: SdColors.primary.withValues(alpha: 0.25),
                 spreadRadius: 0.5,
                 blurRadius: 4,
                 offset: const Offset(0, 2),
@@ -1261,12 +1261,12 @@ class _UsersPageState extends State<UsersPage> {
                         Container(
                           padding: const EdgeInsets.all(8.0),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade100,
+                            color: SdColors.primaryTint,
                             borderRadius: BorderRadius.circular(8.0),
                           ),
                           child: Icon(
                             Icons.person,
-                            color: Colors.blue.shade700,
+                            color: SdColors.primary,
                             size: 20,
                           ),
                         ),
@@ -1277,7 +1277,7 @@ class _UsersPageState extends State<UsersPage> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: SdColors.ink,
                             ),
                           ),
                         ),
@@ -1288,7 +1288,7 @@ class _UsersPageState extends State<UsersPage> {
                       children: [
                         Icon(
                           Icons.phone,
-                          color: Colors.green.shade600,
+                          color: SdColors.success,
                           size: 18,
                         ),
                         const SizedBox(width: 8),
@@ -1297,7 +1297,7 @@ class _UsersPageState extends State<UsersPage> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.grey.shade700,
+                            color: SdColors.muted,
                           ),
                         ),
                       ],
@@ -1307,7 +1307,7 @@ class _UsersPageState extends State<UsersPage> {
                       children: [
                         Icon(
                           Icons.tag,
-                          color: Colors.orange.shade600,
+                          color: SdColors.warning,
                           size: 18,
                         ),
                         const SizedBox(width: 8),
@@ -1315,13 +1315,13 @@ class _UsersPageState extends State<UsersPage> {
                           'ID: $userId',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color: SdColors.muted,
                           ),
                         ),
                         const Spacer(),
                         Icon(
                           Icons.arrow_forward_ios,
-                          color: Colors.grey.shade400,
+                          color: SdColors.faint,
                           size: 16,
                         ),
                       ],
@@ -1354,7 +1354,7 @@ class _UsersPageState extends State<UsersPage> {
           padding:
               EdgeInsets.symmetric(horizontal: isWide ? 10 : 6, vertical: 2),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: SdColors.divider),
             borderRadius: BorderRadius.circular(6.0),
           ),
           child: DropdownButton<int>(
@@ -1364,7 +1364,7 @@ class _UsersPageState extends State<UsersPage> {
             iconSize: 18,
             style: TextStyle(
                 fontSize: pageSizeFont,
-                color: Colors.black87,
+                color: SdColors.ink,
                 fontWeight: FontWeight.w600),
             items: const [
               DropdownMenuItem(value: 10, child: Text('10')),
@@ -1389,7 +1389,7 @@ class _UsersPageState extends State<UsersPage> {
           style: TextStyle(
             fontWeight: FontWeight.w500,
             fontSize: fontSize,
-            color: Colors.grey.shade700,
+            color: SdColors.muted,
           ),
         );
 
@@ -1399,9 +1399,9 @@ class _UsersPageState extends State<UsersPage> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor:
-                    currentPage > 1 ? Colors.blue : Colors.grey.shade300,
+                    currentPage > 1 ? SdColors.primary : SdColors.divider,
                 foregroundColor:
-                    currentPage > 1 ? Colors.white : Colors.grey.shade600,
+                    currentPage > 1 ? Colors.white : SdColors.muted,
                 padding: EdgeInsets.symmetric(
                     horizontal: btnHPad, vertical: btnVPad),
                 minimumSize: const Size(40, 32),
@@ -1417,11 +1417,11 @@ class _UsersPageState extends State<UsersPage> {
               padding: EdgeInsets.symmetric(
                   horizontal: isWide ? 18 : 14, vertical: isWide ? 10 : 8),
               decoration: BoxDecoration(
-                color: Colors.blue.shade600,
+                color: SdColors.primaryLight,
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.blue.withValues(alpha: 0.15),
+                      color: SdColors.primary.withValues(alpha: 0.15),
                       blurRadius: 4,
                       offset: const Offset(0, 2)),
                 ],
@@ -1436,11 +1436,11 @@ class _UsersPageState extends State<UsersPage> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: (currentPage * pageSize) < totalUsers
-                    ? Colors.blue
-                    : Colors.grey.shade300,
+                    ? SdColors.primary
+                    : SdColors.divider,
                 foregroundColor: (currentPage * pageSize) < totalUsers
                     ? Colors.white
-                    : Colors.grey.shade600,
+                    : SdColors.muted,
                 padding: EdgeInsets.symmetric(
                     horizontal: btnHPad, vertical: btnVPad),
                 minimumSize: const Size(40, 32),
@@ -1460,11 +1460,11 @@ class _UsersPageState extends State<UsersPage> {
           margin:
               EdgeInsets.symmetric(horizontal: isWide ? 16 : 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withValues(alpha: 0.15),
+                color: SdColors.faint.withValues(alpha: 0.15),
                 blurRadius: 4,
                 spreadRadius: 0.5,
                 offset: const Offset(0, 2),
@@ -1479,7 +1479,7 @@ class _UsersPageState extends State<UsersPage> {
                       children: [
                         Row(children: [
                           const Icon(Icons.view_list,
-                              color: Colors.blue, size: 18),
+                              color: SdColors.primary, size: 18),
                           const SizedBox(width: 6),
                           Text('عدد في الصفحة',
                               style: TextStyle(
@@ -1501,7 +1501,7 @@ class _UsersPageState extends State<UsersPage> {
                     Row(
                       children: [
                         const Icon(Icons.view_list,
-                            color: Colors.blue, size: 16),
+                            color: SdColors.primary, size: 16),
                         const SizedBox(width: 4),
                         Text('عدد:',
                             style: TextStyle(
@@ -1527,132 +1527,18 @@ class _UsersPageState extends State<UsersPage> {
 
   @override
   Widget build(BuildContext context) {
-    // تحديد ألوان التدرج للـ AppBar
-    final gradientColors = [Colors.blue.shade700, Colors.blue.shade500];
-
-    // تحديد لون النص والأيقونات بطريقة ذكية
-    final smartTextColor =
-        SmartTextColor.getAppBarTextColorWithGradient(context, gradientColors);
-    final smartIconColor = smartTextColor;
-
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 56,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: gradientColors,
-            ),
-          ),
-        ),
-        bottom: askingPassword
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(68),
-                child: Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        gradientColors.first.withValues(alpha: .9),
-                        gradientColors.last.withValues(alpha: .9)
-                      ],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    border: Border(
-                      top: BorderSide(
-                          color: Colors.black.withValues(alpha: 0.05)),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _exportPasswordController,
-                          obscureText: !_showPassword,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white,
-                            hintText: 'أدخل كلمة المرور',
-                            errorText: _passwordError,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: Colors.blue.shade200,
-                              ),
-                            ),
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              tooltip:
-                                  _showPassword ? 'إخفاء الرمز' : 'إظهار الرمز',
-                              icon: Icon(
-                                _showPassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              onPressed: () => setState(() {
-                                _showPassword = !_showPassword;
-                              }),
-                            ),
-                          ),
-                          onSubmitted: (_) => _onMainExportPressed(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade600,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                        ),
-                        onPressed: _onMainExportPressed,
-                        icon: const Icon(Icons.lock_open),
-                        label: const Text('تأكيد'),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : null,
-        title: Row(
-          children: [
-            Icon(Icons.people, color: smartIconColor, size: 26),
-            const SizedBox(width: 8),
-            Text(
-              'قائمة المستخدمين',
-              style: SmartTextColor.getSmartTextStyle(
-                context: context,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                gradientColors: gradientColors,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: smartIconColor, size: 26),
-        elevation: 4,
+      appBar: SdAppBar(
+        title: 'قائمة المستخدمين',
         actions: [
-          // زر التصفية في الشريط العلوي
-          IconButton(
-            icon: Icon(
-              showFilter ? Icons.filter_alt_off : Icons.filter_alt,
-              color: smartIconColor,
-              size: 26,
-            ),
-            tooltip: showFilter ? 'إخفاء التصفية' : 'إظهار التصفية',
+          SdAppBarAction(
+            icon: showFilter ? Icons.filter_alt_off : Icons.filter_alt,
+            label: showFilter ? 'إخفاء التصفية' : 'إظهار التصفية',
             onPressed: () => setState(() => showFilter = !showFilter),
           ),
-          IconButton(
-            icon: Icon(Icons.refresh, color: smartIconColor, size: 26),
-            tooltip: 'إعادة تحميل الصفحة',
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'إعادة تحميل الصفحة',
             onPressed: () async {
               setState(() => isLoading = true);
               await _fetchUsers();
@@ -1661,16 +1547,15 @@ class _UsersPageState extends State<UsersPage> {
           if (!isExcelExporting &&
               !askingPassword &&
               PermissionManager.instance.canExport('users'))
-            IconButton(
-              tooltip: 'تصدير',
-              icon: Icon(Icons.cloud_upload, color: smartIconColor, size: 26),
+            SdAppBarAction(
+              icon: Icons.cloud_upload,
+              label: 'تصدير',
               onPressed: _onMainExportPressed,
             ),
           if (askingPassword && !isExcelExporting)
-            IconButton(
-              tooltip: 'إخفاء',
-              icon:
-                  Icon(Icons.close_fullscreen, color: smartIconColor, size: 24),
+            SdAppBarAction(
+              icon: Icons.close_fullscreen,
+              label: 'إخفاء',
               onPressed: () => setState(() {
                 askingPassword = false;
                 _passwordError = null;
@@ -1678,88 +1563,56 @@ class _UsersPageState extends State<UsersPage> {
               }),
             ),
           if (isExcelExporting)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: SizedBox(
-                width: 26,
-                height: 26,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(smartIconColor),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
                 ),
               ),
             ),
-          const SizedBox(width: 8),
         ],
       ),
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: SdColors.ground,
       body: isLoading
-          ? Center(
+          ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(
-                    'جاري تحميل البيانات...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
+                  CircularProgressIndicator(color: SdColors.primary),
+                  SizedBox(height: 16),
+                  Text('جاري تحميل البيانات...', style: SdText.bodySm),
                 ],
               ),
             )
           : errorMessage.isNotEmpty
               ? Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(24.0),
-                    margin: const EdgeInsets.all(16.0),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(12.0),
-                      border: Border.all(color: Colors.red.shade200),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Colors.red.shade600,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        SelectableText(
-                          "خطأ: $errorMessage",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.red.shade700,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              errorMessage = "";
-                              isLoading = true;
-                            });
-                            _fetchUsers();
-                          },
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('إعادة المحاولة'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade600,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
+                  child: SdEmptyState(
+                    title: 'حدث خطأ',
+                    message: errorMessage,
+                    icon: Icons.error_outline,
+                    status: SdStatus.danger,
+                    action: SdButton(
+                      label: 'إعادة المحاولة',
+                      icon: Icons.refresh,
+                      onPressed: () {
+                        setState(() {
+                          errorMessage = "";
+                          isLoading = true;
+                        });
+                        _fetchUsers();
+                      },
                     ),
                   ),
                 )
               : Column(
                   children: [
+                    if (askingPassword) _buildExportPasswordBar(),
                     _buildExcelExportProgress(),
                     if (showFilter) _buildFilterFields(),
                     _buildTotalUsersCount(),
@@ -1767,6 +1620,60 @@ class _UsersPageState extends State<UsersPage> {
                     _buildPagination(),
                   ],
                 ),
+    );
+  }
+
+  // شريط إدخال كلمة مرور التصدير (نُقل من bottom الشريط العلوي إلى أعلى المحتوى)
+  Widget _buildExportPasswordBar() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: const BoxDecoration(
+        color: SdColors.primaryTint,
+        border: Border(
+          bottom: BorderSide(color: SdColors.primaryTintEdge),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _exportPasswordController,
+              obscureText: !_showPassword,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: SdColors.surface,
+                hintText: 'أدخل كلمة المرور',
+                errorText: _passwordError,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(SdRadius.sm),
+                  borderSide: const BorderSide(color: SdColors.cardEdge),
+                ),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  tooltip: _showPassword ? 'إخفاء الرمز' : 'إظهار الرمز',
+                  icon: Icon(
+                    _showPassword ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () => setState(() {
+                    _showPassword = !_showPassword;
+                  }),
+                ),
+              ),
+              onSubmitted: (_) => _onMainExportPressed(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SdButton(
+            label: 'تأكيد',
+            icon: Icons.lock_open,
+            kind: SdButtonKind.accent,
+            onPressed: _onMainExportPressed,
+          ),
+        ],
+      ),
     );
   }
 }

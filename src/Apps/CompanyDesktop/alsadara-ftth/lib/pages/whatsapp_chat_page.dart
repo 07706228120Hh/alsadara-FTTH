@@ -8,6 +8,7 @@ import '../models/whatsapp_conversation.dart';
 import '../services/whatsapp_conversation_service.dart';
 import '../services/whatsapp_business_service.dart';
 import '../ftth/core/home_page.dart';
+import '../frontend/frontend.dart';
 
 /// صفحة المحادثة الفردية
 class WhatsAppChatPage extends StatefulWidget {
@@ -96,7 +97,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('فشل في إرسال الرسالة'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -106,7 +107,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -118,15 +119,18 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: SdColors.ground,
       appBar: AppBar(
+        backgroundColor: SdColors.primary,
+        foregroundColor: Colors.white,
         elevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF25D366), Color(0xFF128C7E)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+        scrolledUnderElevation: 0,
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(6),
+          child: SizedBox(
+            height: 6,
+            width: double.infinity,
+            child: ColoredBox(color: SdColors.primaryEdge),
           ),
         ),
         title: Row(
@@ -149,7 +153,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                 child: Text(
                   widget.phoneNumber.substring(widget.phoneNumber.length - 2),
                   style: const TextStyle(
-                    color: Color(0xFF25D366),
+                    color: SdColors.whatsapp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -198,16 +202,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
           // قائمة الرسائل
           Expanded(
             child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFFECE5DD).withValues(alpha: 0.3),
-                    const Color(0xFFD1D7DB).withValues(alpha: 0.2),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
+              color: SdColors.ground,
               child: StreamBuilder<List<WhatsAppMessage>>(
                 stream:
                     WhatsAppConversationService.getMessages(widget.phoneNumber),
@@ -226,22 +221,10 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
 
                   if (messages.isEmpty) {
                     return const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.chat_bubble_outline,
-                              size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            'لا توجد رسائل بعد',
-                            style: TextStyle(fontSize: 18, color: Colors.grey),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'ابدأ بإرسال رسالة',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ],
+                      child: SdEmptyState(
+                        icon: Icons.chat_bubble_outline,
+                        title: 'لا توجد رسائل بعد',
+                        message: 'ابدأ بإرسال رسالة',
                       ),
                     );
                   }
@@ -268,17 +251,12 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
           // حقل إدخال الرسالة
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.grey[50]!, Colors.white],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+            decoration: const BoxDecoration(
+              color: SdColors.surface,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, -3),
+                  color: SdColors.cardEdge,
+                  offset: Offset(0, -2),
                 ),
               ],
             ),
@@ -287,33 +265,26 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF25D366).withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        ),
-                      ],
                     ),
                     child: TextField(
                       controller: _messageController,
                       decoration: InputDecoration(
                         hintText: 'اكتب رسالة...',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        hintStyle: const TextStyle(color: SdColors.faint),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(30),
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: SdColors.surfaceAlt,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 12,
                         ),
-                        prefixIcon: Icon(Icons.emoji_emotions_outlined,
-                            color: Colors.grey[400]),
+                        prefixIcon: const Icon(Icons.emoji_emotions_outlined,
+                            color: SdColors.faint),
                       ),
                       maxLines: null,
                       textInputAction: TextInputAction.send,
@@ -324,17 +295,16 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                 const SizedBox(width: 12),
                 Container(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+                    gradient: LinearGradient(
+                      colors: [SdGroup.comms.tone.light, SdGroup.comms.tone.base],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     shape: BoxShape.circle,
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
-                        color: const Color(0xFF25D366).withValues(alpha: 0.5),
-                        blurRadius: 12,
-                        spreadRadius: 2,
+                        color: SdColors.warningEdge,
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
@@ -386,28 +356,37 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
+                  // الهوية الخضراء الخفيفة للواتساب مشتقّة من نبرة sd (success).
                   gradient: isMe
                       ? const LinearGradient(
-                          colors: [Color(0xFFDCF8C6), Color(0xFFCFF5BC)],
+                          colors: [
+                            SdColors.successTint,
+                            SdColors.successTintEdge,
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         )
-                      : LinearGradient(
-                          colors: [Colors.white, Colors.grey[50]!],
+                      : const LinearGradient(
+                          colors: [SdColors.surface, SdColors.surfaceAlt],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
+                  border: Border.all(
+                    color: isMe
+                        ? SdColors.successTintEdge
+                        : SdColors.divider,
+                  ),
                   borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(20),
-                    topRight: const Radius.circular(20),
-                    bottomLeft: Radius.circular(isMe ? 20 : 4),
-                    bottomRight: Radius.circular(isMe ? 4 : 20),
+                    topLeft: const Radius.circular(SdRadius.lg),
+                    topRight: const Radius.circular(SdRadius.lg),
+                    bottomLeft: Radius.circular(isMe ? SdRadius.lg : 4),
+                    bottomRight: Radius.circular(isMe ? 4 : SdRadius.lg),
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: isMe
-                          ? const Color(0xFF25D366).withValues(alpha: 0.15)
-                          : Colors.black.withValues(alpha: 0.08),
+                          ? SdColors.success.withValues(alpha: 0.15)
+                          : SdColors.cardEdge.withValues(alpha: 0.4),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                       spreadRadius: 1,
@@ -432,7 +411,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                         message.text,
                         style: TextStyle(
                           fontSize: 15,
-                          color: Colors.grey[900],
+                          color: SdColors.ink,
                           height: 1.4,
                         ),
                       ),
@@ -444,14 +423,14 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                         Icon(
                           Icons.access_time,
                           size: 12,
-                          color: Colors.grey[600],
+                          color: SdColors.muted,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           timeFormat.format(message.timestamp),
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey[600],
+                            color: SdColors.muted,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -461,8 +440,8 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                             padding: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
                               color: message.status == 'read'
-                                  ? const Color(0xFF25D366)
-                                  : Colors.grey[400],
+                                  ? SdColors.success
+                                  : SdColors.faint,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -536,7 +515,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
       width: 200,
       height: 150,
       decoration: BoxDecoration(
-        color: Colors.grey[200],
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(12),
       ),
       child: const Center(
@@ -566,7 +545,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -587,7 +566,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
               width: 40,
               height: 40,
               decoration: const BoxDecoration(
-                color: Color(0xFF25D366),
+                color: SdColors.success,
                 shape: BoxShape.circle,
               ),
               child: isLoading
@@ -614,7 +593,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey[800],
+                  color: SdColors.ink,
                 ),
               ),
               Text(
@@ -623,7 +602,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                     : isLoading
                         ? 'جاري التحميل...'
                         : 'اضغط للتحميل',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 11, color: SdColors.muted),
               ),
             ],
           ),
@@ -654,7 +633,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         width: 220,
         height: 160,
         decoration: BoxDecoration(
-          color: Colors.black87,
+          color: SdColors.ink,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
@@ -717,14 +696,14 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: SdColors.divider),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.insert_drive_file, size: 36, color: Colors.blue[700]),
+            Icon(Icons.insert_drive_file, size: 36, color: SdColors.info),
             const SizedBox(width: 10),
             Flexible(
               child: Column(
@@ -735,7 +714,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey[800],
+                      color: SdColors.ink,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -743,7 +722,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                   const SizedBox(height: 2),
                   Text(
                     isLoading ? 'جاري التحميل...' : 'اضغط للتحميل',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 11, color: SdColors.muted),
                   ),
                 ],
               ),
@@ -755,7 +734,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else
-              Icon(Icons.download, color: Colors.grey[500]),
+              Icon(Icons.download, color: SdColors.muted),
           ],
         ),
       ),
@@ -767,17 +746,17 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.attachment, color: Colors.grey[600]),
+          Icon(Icons.attachment, color: SdColors.muted),
           const SizedBox(width: 8),
           Text(
             message.type,
-            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 13, color: SdColors.muted),
           ),
         ],
       ),
@@ -838,7 +817,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('فشل في تحميل الوسائط'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -848,7 +827,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('خطأ في تحميل الوسائط'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -887,7 +866,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('فشل في فتح الملف'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -933,13 +912,13 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: Colors.grey[200]?.withValues(alpha: 0.7),
+            color: SdColors.surfaceAlt,
             shape: BoxShape.circle,
           ),
           child: Icon(
             Icons.copy,
             size: 16,
-            color: Colors.grey[600],
+            color: SdColors.muted,
           ),
         ),
       ),
@@ -958,7 +937,7 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
             Text('تم نسخ النص'),
           ],
         ),
-        backgroundColor: const Color(0xFF25D366),
+        backgroundColor: SdColors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
@@ -984,25 +963,25 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: SdColors.faint,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                  decoration: const BoxDecoration(
+                    color: SdColors.warningTint,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.copy, color: Color(0xFF25D366)),
+                  child: const Icon(Icons.copy, color: SdColors.warningText),
                 ),
                 title: const Text('نسخ النص'),
                 subtitle: Text(
                   message.text.length > 50
                       ? '${message.text.substring(0, 50)}...'
                       : message.text,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: SdColors.muted, fontSize: 12),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -1012,11 +991,11 @@ class _WhatsAppChatPageState extends State<WhatsAppChatPage> {
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
+                  decoration: const BoxDecoration(
+                    color: SdColors.infoTint,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.select_all, color: Colors.blue),
+                  child: const Icon(Icons.select_all, color: SdColors.info),
                 ),
                 title: const Text('تحديد الكل'),
                 onTap: () {

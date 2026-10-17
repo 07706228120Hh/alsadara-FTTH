@@ -3,9 +3,8 @@ import 'dart:async';
 import 'package:excel/excel.dart' as xls;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_metrics.dart';
@@ -574,8 +573,8 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -584,35 +583,15 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          title: Text(
-            'رفع مجموعة مشتركين',
-            style: GoogleFonts.cairo(
-                fontWeight: FontWeight.w800, color: Colors.white),
-          ),
-          iconTheme: const IconThemeData(color: Colors.white),
-        ),
-        body: _loadingProfiles
-            ? const SasLoadingView(message: 'جاري تحميل الباقات…')
-            : _loadError != null
-                ? SasErrorView(message: _loadError!, onRetry: _loadProfiles)
-                : _buildBody(),
-      ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: const SdAppBar(title: 'رفع مجموعة مشتركين'),
+      body: _loadingProfiles
+          ? const SasLoadingView(message: 'جاري تحميل الباقات…')
+          : _loadError != null
+              ? SasErrorView(message: _loadError!, onRetry: _loadProfiles)
+              : _buildBody(),
     );
   }
 
@@ -640,7 +619,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
           const SasSectionHeader(
             title: 'مصدر البيانات',
             icon: Icons.upload_file_rounded,
-            gradient: AppTheme.blueGradient,
+            gradient: SdColors.blueGradient,
           ),
           SizedBox(height: 12.h),
           Wrap(
@@ -651,44 +630,44 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
               FilledButton.icon(
                 onPressed: _creating ? null : _pickFile,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
+                  backgroundColor: SdColors.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
                 ),
                 icon: const Icon(Icons.file_open_rounded, size: 19),
                 label: Text('استيراد ملف (Excel/CSV)',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
               ),
               OutlinedButton.icon(
                 onPressed: _creating ? null : _addEmptyRow,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor,
+                  foregroundColor: SdColors.primary,
                   side: BorderSide(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.4)),
+                      color: SdColors.primary.withValues(alpha: 0.4)),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
                 ),
                 icon: const Icon(Icons.add_rounded, size: 19),
                 label: Text('إضافة صفّ يدوي',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
               ),
               TextButton.icon(
                 onPressed: _creating ? null : _showTemplate,
                 icon: Icon(Icons.description_outlined,
-                    size: 18, color: AppTheme.infoColor),
+                    size: 18, color: SdColors.info),
                 label: Text('نموذج الأعمدة',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.infoColor)),
+                        color: SdColors.info)),
               ),
               TextButton.icon(
                 onPressed: _creating ? null : _clearAll,
                 icon: Icon(Icons.delete_sweep_rounded,
-                    size: 18, color: AppTheme.errorColor),
+                    size: 18, color: SdColors.danger),
                 label: Text('مسح الكل',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.errorColor)),
+                        color: SdColors.danger)),
               ),
             ],
           ),
@@ -709,11 +688,11 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
     return DropdownButtonFormField<int>(
       initialValue: _defaultProfileId,
       isExpanded: true,
-      style: GoogleFonts.cairo(
+      style: TextStyle(fontFamily: 'Cairo', 
           fontWeight: FontWeight.w600, color: const Color(0xFF1A1A2E)),
       decoration: InputDecoration(
         labelText: 'الباقة الافتراضية (لكل الصفوف) *',
-        labelStyle: GoogleFonts.cairo(color: Colors.grey[600]),
+        labelStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600]),
         isDense: true,
         filled: true,
         fillColor: Colors.white,
@@ -728,7 +707,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
           borderSide:
-              const BorderSide(color: AppTheme.primaryColor, width: 1.6),
+              const BorderSide(color: SdColors.primary, width: 1.6),
         ),
       ),
       items: [
@@ -755,14 +734,14 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
         child: OutlinedButton.icon(
           onPressed: _cancel,
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.errorColor,
-            side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.5)),
+            foregroundColor: SdColors.danger,
+            side: BorderSide(color: SdColors.danger.withValues(alpha: 0.5)),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
           ),
           icon: const Icon(Icons.stop_rounded, size: 20),
           label: Text('إيقاف',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
         ),
       );
     }
@@ -771,14 +750,14 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
       child: FilledButton.icon(
         onPressed: _validCount == 0 ? null : () => _createAll(),
         style: FilledButton.styleFrom(
-          backgroundColor: AppTheme.successColor,
+          backgroundColor: SdColors.success,
           disabledBackgroundColor: Colors.grey.withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
         ),
         icon: const Icon(Icons.cloud_upload_rounded, size: 20),
         label: Text('إنشاء الكل ($_validCount)',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
       ),
     );
   }
@@ -797,16 +776,16 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
             children: [
               Text(
                 _finished ? 'اكتمل الإنشاء' : 'جارٍ الإنشاء…',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF1A1A2E)),
               ),
               const Spacer(),
-              _countPill('نجح', _successCount, AppTheme.successColor),
+              _countPill('نجح', _successCount, SdColors.success),
               SizedBox(width: 6.w),
-              _countPill('فشل', _failCount, AppTheme.errorColor),
+              _countPill('فشل', _failCount, SdColors.danger),
               SizedBox(width: 6.w),
-              _countPill('تمّ', _doneCount, AppTheme.infoColor),
+              _countPill('تمّ', _doneCount, SdColors.info),
             ],
           ),
           SizedBox(height: 8.h),
@@ -818,8 +797,8 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
               backgroundColor: Colors.grey.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation(
                   _failCount > 0 && _finished
-                      ? AppTheme.warningColor
-                      : AppTheme.successColor),
+                      ? SdColors.warning
+                      : SdColors.success),
             ),
           ),
           if (_finished && _failCount > 0) ...[
@@ -829,15 +808,15 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
               child: OutlinedButton.icon(
                 onPressed: () => _createAll(failedOnly: true),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.warningColor,
+                  foregroundColor: SdColors.warning,
                   side: BorderSide(
-                      color: AppTheme.warningColor.withValues(alpha: 0.5)),
+                      color: SdColors.warning.withValues(alpha: 0.5)),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
                 ),
                 icon: const Icon(Icons.replay_rounded, size: 18),
                 label: Text('إعادة محاولة الفاشلين ($_failCount)',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
               ),
             ),
           ],
@@ -860,7 +839,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Text('$label: $value',
-          style: GoogleFonts.cairo(
+          style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 11.sp, fontWeight: FontWeight.w800, color: color)),
     );
   }
@@ -887,13 +866,13 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
       child: Row(
         children: [
           Text('#',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.sp,
                   fontWeight: FontWeight.w800,
                   color: Colors.grey[600])),
           const Spacer(),
           Text('عدد الصفوف: ${_rows.length} · صالح: $_validCount',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.sp,
                   fontWeight: FontWeight.w800,
                   color: Colors.grey[600])),
@@ -910,7 +889,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
       decoration: SasUi.card(
         borderColor: valid || e.status != _RowStatus.pending
             ? statusColor.withValues(alpha: 0.35)
-            : AppTheme.errorColor.withValues(alpha: 0.35),
+            : SdColors.danger.withValues(alpha: 0.35),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -924,7 +903,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
               ),
               SizedBox(width: 8.w),
               Text('صفّ ${index + 1}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w800,
                       color: const Color(0xFF1A1A2E))),
               SizedBox(width: 8.w),
@@ -943,10 +922,10 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
               padding: EdgeInsets.only(bottom: 6.h, right: 4.w),
               child: Text(
                 'سبب الفشل: ${e.error}',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.errorColor),
+                    color: SdColors.danger),
               ),
             ),
           SizedBox(height: 4.h),
@@ -976,15 +955,15 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
   (Color, IconData, String) _statusMeta(_Entry e, bool valid) {
     switch (e.status) {
       case _RowStatus.success:
-        return (AppTheme.successColor, Icons.check_circle_rounded, 'أُنشئ');
+        return (SdColors.success, Icons.check_circle_rounded, 'أُنشئ');
       case _RowStatus.failed:
-        return (AppTheme.errorColor, Icons.error_rounded, 'فشل');
+        return (SdColors.danger, Icons.error_rounded, 'فشل');
       case _RowStatus.running:
-        return (AppTheme.infoColor, Icons.sync_rounded, 'جارٍ…');
+        return (SdColors.info, Icons.sync_rounded, 'جارٍ…');
       case _RowStatus.pending:
         return valid
-            ? (AppTheme.infoColor, Icons.pending_rounded, 'جاهز')
-            : (AppTheme.errorColor, Icons.warning_amber_rounded, 'ناقص');
+            ? (SdColors.info, Icons.pending_rounded, 'جاهز')
+            : (SdColors.danger, Icons.warning_amber_rounded, 'ناقص');
     }
   }
 
@@ -1002,11 +981,11 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
       enabled: !_creating && e.status != _RowStatus.success,
       textDirection: ltr ? TextDirection.ltr : null,
       onChanged: (_) => setState(_resetRunState),
-      style: GoogleFonts.cairo(fontSize: 12.sp, fontWeight: FontWeight.w600),
+      style: TextStyle(fontFamily: 'Cairo', fontSize: 12.sp, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: required ? '${col.labelAr} *' : col.labelAr,
         labelStyle:
-            GoogleFonts.cairo(fontSize: 11.sp, color: Colors.grey[600]),
+            TextStyle(fontFamily: 'Cairo', fontSize: 11.sp, color: Colors.grey[600]),
         isDense: true,
         contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
         filled: true,
@@ -1021,7 +1000,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.6),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.6),
         ),
       ),
     );
@@ -1034,14 +1013,14 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
       child: DropdownButtonFormField<int>(
         initialValue: _effectiveProfile(e),
         isExpanded: true,
-        style: GoogleFonts.cairo(
+        style: TextStyle(fontFamily: 'Cairo', 
             fontSize: 12.sp,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF1A1A2E)),
         decoration: InputDecoration(
           labelText: 'الباقة *',
           labelStyle:
-              GoogleFonts.cairo(fontSize: 11.sp, color: Colors.grey[600]),
+              TextStyle(fontFamily: 'Cairo', fontSize: 11.sp, color: Colors.grey[600]),
           isDense: true,
           contentPadding:
               EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
@@ -1058,7 +1037,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
             borderSide:
-                const BorderSide(color: AppTheme.primaryColor, width: 1.6),
+                const BorderSide(color: SdColors.primary, width: 1.6),
           ),
         ),
         items: [
@@ -1089,10 +1068,10 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
         child: AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.description_outlined, color: AppTheme.infoColor),
+              Icon(Icons.description_outlined, color: SdColors.info),
               SizedBox(width: 8.w),
               Text('نموذج الأعمدة المتوقّعة',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ],
           ),
           content: SizedBox(
@@ -1106,7 +1085,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
                     'يُفضَّل أن يحوي الصفّ الأول رؤوس الأعمدة. الأعمدة الإلزامية: '
                     'اسم المستخدم، كلمة المرور، والباقة (أو اختر باقة افتراضية). '
                     'يمكنك مطابقة الأعمدة يدوياً بعد الاستيراد.',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.5.sp, height: 1.6, color: Colors.grey[700]),
                   ),
                   SizedBox(height: 12.h),
@@ -1120,7 +1099,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
                     ),
                     child: SelectableText(
                       _Col.values.map((c) => c.key).join(','),
-                      style: GoogleFonts.robotoMono(
+                      style: TextStyle(fontFamily: 'monospace', 
                           fontSize: 12.sp, color: const Color(0xFF1A1A2E)),
                     ),
                   ),
@@ -1133,18 +1112,18 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
                               padding: EdgeInsets.symmetric(
                                   horizontal: 6.w, vertical: 1.h),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryColor
+                                color: SdColors.primary
                                     .withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(6.r),
                               ),
                               child: Text(c.key,
-                                  style: GoogleFonts.robotoMono(
+                                  style: TextStyle(fontFamily: 'monospace', 
                                       fontSize: 11.sp,
-                                      color: AppTheme.primaryColor)),
+                                      color: SdColors.primary)),
                             ),
                             SizedBox(width: 8.w),
                             Text(c.labelAr,
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(fontFamily: 'Cairo', 
                                     fontSize: 12.sp,
                                     fontWeight: FontWeight.w700)),
                           ],
@@ -1158,7 +1137,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text('حسناً',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ),
           ],
         ),
@@ -1193,11 +1172,11 @@ class _ColumnMappingDialogState extends State<_ColumnMappingDialog> {
       child: AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.table_chart_rounded, color: AppTheme.primaryColor),
+            Icon(Icons.table_chart_rounded, color: SdColors.primary),
             SizedBox(width: 8.w),
             Expanded(
               child: Text('مطابقة الأعمدة',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ),
           ],
         ),
@@ -1210,7 +1189,7 @@ class _ColumnMappingDialogState extends State<_ColumnMappingDialog> {
               Text(
                 'عدد صفوف البيانات: ${widget.sampleRowCount}. طابق كل حقل بعموده '
                 'في الملف (أو اتركه «— بلا —»).',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.sp, color: Colors.grey[700], height: 1.5),
               ),
               SizedBox(height: 12.h),
@@ -1226,7 +1205,7 @@ class _ColumnMappingDialogState extends State<_ColumnMappingDialog> {
                               SizedBox(
                                 width: 120.w,
                                 child: Text(col.labelAr,
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(fontFamily: 'Cairo', 
                                         fontSize: 12.sp,
                                         fontWeight: FontWeight.w700)),
                               ),
@@ -1234,7 +1213,7 @@ class _ColumnMappingDialogState extends State<_ColumnMappingDialog> {
                                 child: DropdownButtonFormField<int?>(
                                   initialValue: _map[col],
                                   isExpanded: true,
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(fontFamily: 'Cairo', 
                                       fontSize: 12.sp,
                                       color: const Color(0xFF1A1A2E)),
                                   decoration: InputDecoration(
@@ -1250,7 +1229,7 @@ class _ColumnMappingDialogState extends State<_ColumnMappingDialog> {
                                     DropdownMenuItem<int?>(
                                       value: null,
                                       child: Text('— بلا —',
-                                          style: GoogleFonts.cairo(
+                                          style: TextStyle(fontFamily: 'Cairo', 
                                               color: Colors.grey[500])),
                                     ),
                                     for (var i = 0;
@@ -1283,14 +1262,14 @@ class _ColumnMappingDialogState extends State<_ColumnMappingDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', )),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(_map),
             style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor),
+                backgroundColor: SdColors.primary),
             child: Text('استيراد',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           ),
         ],
       ),

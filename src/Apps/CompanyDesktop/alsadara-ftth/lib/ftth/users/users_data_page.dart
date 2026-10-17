@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/agents_auth_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloudflare_bypass_service.dart';
@@ -433,22 +434,18 @@ class _UsersDataPageState extends State<UsersDataPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'بيانات المستخدمين',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: 'بيانات المستخدمين',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'تحديث البيانات',
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث البيانات',
             onPressed: _loadData,
           ),
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            tooltip: 'معلومات',
+          SdAppBarAction(
+            icon: Icons.info_outline,
+            label: 'معلومات',
             onPressed: () => _showInfoDialog(),
           ),
         ],

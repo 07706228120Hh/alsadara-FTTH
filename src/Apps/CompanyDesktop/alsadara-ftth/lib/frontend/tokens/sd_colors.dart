@@ -29,6 +29,9 @@ class SdColors {
   static const accentTint = Color(0xFFE0F2F1);
   static const accentTintEdge = Color(0xFFB2DFDB);
 
+  /// لمسة ذهبية للفخامة — للعناوين الفرعية وخطوط البطاقة العلوية فقط (لا للنص الطويل).
+  static const gold = Color(0xFFE8C26A);
+
   // ── المحايدات ──
   static const ground = Color(0xFFEEF1F6); // خلفية الصفحات
   static const groundAlt = Color(0xFFF2F4F8);
@@ -41,6 +44,11 @@ class SdColors {
   static const edge = Color(0xFFDCE0EC); // حافّة بروز العناصر الصغيرة
   static const cardEdge = Color(0xFFD6DBEA); // حافّة بروز البطاقات
   static const sideShade = Color(0xFFC5CBE0); // الوجه المظلّل للمجسّمات
+
+  /// الإطار الموحّد حول الحقول والبطاقات والأزرار: كحلي رمادي داكن ناعم
+  /// (بدل الأسود الصريح — 17-10-2026). غيّر هنا فقط ليتغيّر في كل التطبيق.
+  static const outline = Color(0xFF3D4466);
+  static const outlineDisabled = Color(0x403D4466);
 
   // ── الدلالية ──
   static const success = Color(0xFF2E7D32);
@@ -64,8 +72,26 @@ class SdColors {
   static const infoTint = Color(0xFFE3F2FD);
   static const infoTintEdge = Color(0xFFBBDEFB);
 
+  // ── بنفسجي المنصّات (مطابق لنبرة SdGroup.platform؛ للجداول/البطاقات الدلالية) ──
+  static const platformBase = Color(0xFF7B1FA2);
+  static const platformLight = Color(0xFFAB47BC);
+  static const platformEdge = Color(0xFF4A148C);
+  static const platformTint = Color(0xFFF3E5F5);
+  static const platformTintEdge = Color(0xFFE1BEE7);
+
   // ── علامات تجارية خارجية (للأيقونة/الشعار فقط، لا للشريط أو الخلفية) ──
   static const whatsapp = Color(0xFF25D366);
+  static const whatsappEdge = Color(0xFF128C7E); // الدرجة الداكنة لحافّة شعار واتساب
+
+  // ── تدرّجات جاهزة (للشارات/الرؤوس المرحَّلة من الوحدات) ──
+  /// تدرّج نيلي (هوية الصدارة) — بديل التدرّج الأزرق القديم.
+  static const List<Color> blueGradient = [primaryMid, primaryLight, primarySoft];
+
+  /// تدرّج نجاح أخضر.
+  static const List<Color> greenGradient = [success, successEdge];
+
+  /// تدرّج تحذير برتقالي.
+  static const List<Color> orangeGradient = [warning, warningEdge];
 }
 
 /// مجموعات أقسام التطبيق — لون واحد لكل مجموعة بدل لون لكل زر.

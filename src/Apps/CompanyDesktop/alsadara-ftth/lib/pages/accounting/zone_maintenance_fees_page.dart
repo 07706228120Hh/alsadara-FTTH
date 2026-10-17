@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../theme/accounting_theme.dart';
-import '../../theme/accounting_responsive.dart';
 
 /// صفحة إدارة أجور صيانة الزونات
 class ZoneMaintenanceFeesPage extends StatefulWidget {
@@ -54,22 +54,42 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'أجور صيانة الزونات',
+          subtitle: '${_fees.length} زون',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _loadData,
+            ),
+            SdAppBarAction(
+              icon: Icons.add,
+              label: 'إضافة',
+              onPressed: _showAddDialog,
+            ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildToolbar(),
               _buildSearchBar(),
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _filtered.isEmpty
-                        ? Center(
-                            child: Text('لا توجد أجور صيانة مضافة',
-                                style: GoogleFonts.cairo(color: AccountingTheme.textMuted)))
+                        ? const Center(
+                            child: SingleChildScrollView(
+                              child: SdEmptyState(
+                                title: 'لا توجد أجور صيانة مضافة',
+                                icon: Icons.build_circle,
+                              ),
+                            ),
+                          )
                         : _buildList(),
               ),
             ],
@@ -79,89 +99,29 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
     );
   }
 
-  Widget _buildToolbar() {
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: context.accR.spaceXL, vertical: context.accR.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            style: IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: context.accR.spaceS),
-          Container(
-            padding: EdgeInsets.all(context.accR.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonGreenGradient,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.build_circle, color: Colors.white, size: context.accR.iconM),
-          ),
-          SizedBox(width: context.accR.spaceM),
-          Expanded(
-            child: Text('أجور صيانة الزونات',
-                style: GoogleFonts.cairo(
-                    fontSize: context.accR.headingMedium,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary)),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: AccountingTheme.neonPink.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text('${_fees.length}',
-                style: GoogleFonts.cairo(
-                    fontSize: context.accR.small,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.neonPink)),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: _loadData,
-            icon: Icon(Icons.refresh, size: context.accR.iconM),
-            style: IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
-          ),
-          const SizedBox(width: 4),
-          ElevatedButton.icon(
-            onPressed: _showAddDialog,
-            icon: Icon(Icons.add, size: context.accR.iconS),
-            label: Text('إضافة', style: GoogleFonts.cairo(fontSize: context.accR.financialSmall)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonGreen,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: context.accR.spaceL, vertical: context.accR.spaceS),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSearchBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: AccountingTheme.bgCard,
+      padding: const EdgeInsets.symmetric(horizontal: SdSpace.md, vertical: SdSpace.xs),
+      color: SdColors.surface,
       child: TextField(
         onChanged: (v) => setState(() => _search = v),
-        style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 13),
+        style: const TextStyle(
+            fontFamily: SdText.family, color: SdColors.ink, fontSize: 13),
         decoration: InputDecoration(
           hintText: 'بحث بالاسم...',
-          hintStyle: TextStyle(color: AccountingTheme.textMuted.withOpacity(0.5)),
-          prefixIcon: const Icon(Icons.search, size: 18, color: AccountingTheme.textMuted),
+          hintStyle: const TextStyle(
+              fontFamily: SdText.family, color: SdColors.faint),
+          prefixIcon: const Icon(Icons.search, size: 18, color: SdColors.muted),
           filled: true,
-          fillColor: AccountingTheme.bgPrimary,
+          fillColor: SdColors.surfaceAlt,
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(SdRadius.xs),
+              borderSide: const BorderSide(color: SdColors.edge)),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(SdRadius.xs),
+              borderSide: const BorderSide(color: SdColors.edge)),
         ),
       ),
     );
@@ -170,7 +130,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
   Widget _buildList() {
     final list = _filtered;
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(SdSpace.sm),
       itemCount: list.length,
       itemBuilder: (_, i) {
         final f = list[i];
@@ -179,63 +139,78 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
         final enabled = f['IsEnabled'] ?? f['isEnabled'] ?? true;
         final notes = f['Notes'] ?? f['notes'] ?? '';
         final id = (f['Id'] ?? f['id'])?.toString() ?? '';
+        final tone = enabled ? SdStatus.success.tone : SdGroup.neutral.tone;
 
-        return Card(
-          color: AccountingTheme.bgCard,
-          margin: const EdgeInsets.only(bottom: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: enabled ? AccountingTheme.neonGreen.withOpacity(0.3) : AccountingTheme.textMuted.withOpacity(0.2),
-            ),
+        return Container(
+          margin: const EdgeInsets.only(bottom: SdSpace.xs),
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.md),
+            boxShadow: SdDepth.raised(depth: SdDepth.small),
+            border: Border(right: BorderSide(color: tone.base, width: 3)),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            contentPadding: const EdgeInsets.symmetric(horizontal: SdSpace.md, vertical: 4),
             leading: Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: (enabled ? AccountingTheme.neonGreen : AccountingTheme.textMuted).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+                color: tone.tint,
+                borderRadius: BorderRadius.circular(SdRadius.xs),
+                boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, 2))],
               ),
               child: Icon(
                 enabled ? Icons.build_circle : Icons.block,
-                color: enabled ? AccountingTheme.neonGreen : AccountingTheme.textMuted,
+                color: tone.base,
                 size: 20,
               ),
             ),
-            title: Text(name,
-                style: GoogleFonts.cairo(
-                    color: AccountingTheme.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold)),
+            title: Text(name, style: SdText.label),
             subtitle: notes.isNotEmpty
-                ? Text(notes, style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: 11))
+                ? Text(notes, style: SdText.caption)
                 : null,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('${amount.toStringAsFixed(0)} د.ع',
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.neonGreen,
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        color: SdColors.success,
                         fontSize: 14,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
+                        fontWeight: FontWeight.w900)),
+                const SizedBox(width: SdSpace.xs),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 18, color: AccountingTheme.textMuted),
-                  color: AccountingTheme.bgCard,
+                  icon: const Icon(Icons.more_vert, size: 18, color: SdColors.muted),
+                  color: SdColors.surface,
                   onSelected: (action) {
                     if (action == 'edit') _showEditDialog(f);
                     if (action == 'toggle') _toggleEnabled(id, enabled);
                     if (action == 'delete') _confirmDelete(id, name);
                   },
                   itemBuilder: (_) => [
-                    PopupMenuItem(value: 'edit', child: Text('تعديل', style: GoogleFonts.cairo(color: AccountingTheme.textPrimary, fontSize: 13))),
+                    const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('تعديل',
+                            style: TextStyle(
+                                fontFamily: SdText.family,
+                                color: SdColors.ink,
+                                fontSize: 13))),
                     PopupMenuItem(
                         value: 'toggle',
                         child: Text(enabled ? 'تعطيل' : 'تفعيل',
-                            style: GoogleFonts.cairo(color: enabled ? AccountingTheme.warning : AccountingTheme.success, fontSize: 13))),
-                    PopupMenuItem(value: 'delete', child: Text('حذف', style: GoogleFonts.cairo(color: AccountingTheme.danger, fontSize: 13))),
+                            style: TextStyle(
+                                fontFamily: SdText.family,
+                                color: enabled
+                                    ? SdColors.warningText
+                                    : SdColors.success,
+                                fontSize: 13))),
+                    const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('حذف',
+                            style: TextStyle(
+                                fontFamily: SdText.family,
+                                color: SdColors.danger,
+                                fontSize: 13))),
                   ],
                 ),
               ],

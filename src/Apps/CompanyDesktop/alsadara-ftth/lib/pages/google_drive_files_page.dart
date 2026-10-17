@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../config/app_secrets.dart';
 
 class GoogleDriveFilesPage extends StatefulWidget {
@@ -153,116 +154,80 @@ class _GoogleDriveFilesPageState extends State<GoogleDriveFilesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.teal[800]!,
-                Colors.teal[600]!,
-                Colors.teal[400]!,
-              ],
-            ),
-          ),
-        ),
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
+    return SdTheme.scope(
+      child: Scaffold(
+        backgroundColor: SdColors.ground,
+        appBar: const SdAppBar(title: 'ملفات Google Drive'),
+        body: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.folder_shared,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'ملفات Google Drive',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(20),
-          ),
-        ),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              onChanged: updateSearchResults,
-              decoration: InputDecoration(
-                hintText: 'Search for a file...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-              ),
-            ),
-          ),
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Expanded(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          'Total Files: $totalFilesCount',
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: filteredFiles.length,
-                          itemBuilder: (context, index) {
-                            final file = filteredFiles[index];
-                            return ListTile(
-                              title: Text(file['name'] ?? 'No Name'),
-                              subtitle: Text('Region: ${file['region']}'),
-                              trailing: const Icon(Icons.arrow_forward),
-                              onTap: () => openInGoogleEarth(
-                                  file['url'], file['name'] ?? 'file.kml'),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                onChanged: updateSearchResults,
+                decoration: InputDecoration(
+                  hintText: 'Search for a file...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-        ],
+              ),
+            ),
+            isLoading
+                ? const Expanded(
+                    child: Center(child: CircularProgressIndicator()))
+                : Expanded(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            'Total Files: $totalFilesCount',
+                            style: SdText.titleSm,
+                          ),
+                        ),
+                        Expanded(
+                          child: ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            itemCount: filteredFiles.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final file = filteredFiles[index];
+                              return SdRaised(
+                                onTap: () => openInGoogleEarth(
+                                    file['url'], file['name'] ?? 'file.kml'),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.insert_drive_file_rounded,
+                                        color: SdColors.accent, size: 22),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(file['name'] ?? 'No Name',
+                                              style: SdText.label),
+                                          const SizedBox(height: 2),
+                                          Text('Region: ${file['region']}',
+                                              style: SdText.caption),
+                                        ],
+                                      ),
+                                    ),
+                                    const Icon(Icons.arrow_forward,
+                                        color: SdColors.faint, size: 18),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ],
+        ),
       ),
     );
   }

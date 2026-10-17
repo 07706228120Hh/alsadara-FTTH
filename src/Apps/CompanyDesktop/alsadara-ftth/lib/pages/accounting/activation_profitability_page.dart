@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../../theme/accounting_theme.dart';
-import '../../theme/accounting_responsive.dart';
 import '../../services/api/api_config.dart';
+import '../../frontend/frontend.dart';
 
 /// تقرير ربحية التفعيلات — يعرض تكلفة المحفظة وربح الخصم وإيراد الصيانة
 class ActivationProfitabilityPage extends StatefulWidget {
@@ -75,55 +75,37 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'تقرير ربحية التفعيلات',
+          subtitle: '${_details.length} سجل',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _isLoading ? null : _load,
+            ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildToolbar(),
               _buildDateFilter(),
               if (_summary != null) _buildSummaryCards(),
               Expanded(child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _details.isEmpty
-                      ? Center(child: Text('لا توجد بيانات', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)))
+                      ? const Center(
+                          child: SdEmptyState(
+                            title: 'لا توجد بيانات',
+                            icon: Icons.analytics_outlined,
+                          ),
+                        )
                       : _buildTable()),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildToolbar() {
-    final isMob = MediaQuery.of(context).size.width < 600;
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : context.accR.spaceXL, vertical: isMob ? 6 : context.accR.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_forward_rounded),
-              style: IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary)),
-          SizedBox(width: context.accR.spaceS),
-          Container(
-            padding: EdgeInsets.all(context.accR.spaceS),
-            decoration: BoxDecoration(gradient: AccountingTheme.neonGreenGradient, borderRadius: BorderRadius.circular(8)),
-            child: Icon(Icons.analytics_outlined, color: Colors.white, size: context.accR.iconM),
-          ),
-          SizedBox(width: context.accR.spaceM),
-          Expanded(child: Text('تقرير ربحية التفعيلات',
-              style: GoogleFonts.cairo(fontSize: context.accR.headingMedium, fontWeight: FontWeight.bold, color: AccountingTheme.textPrimary))),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(color: AccountingTheme.neonPink.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-            child: Text('${_details.length}', style: GoogleFonts.cairo(fontSize: context.accR.small, fontWeight: FontWeight.bold, color: AccountingTheme.neonPink)),
-          ),
-          const SizedBox(width: 8),
-          IconButton(onPressed: _load, icon: Icon(Icons.refresh, size: context.accR.iconM),
-              style: IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary)),
-        ],
       ),
     );
   }
@@ -160,7 +142,7 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
                 }
               },
               icon: const Icon(Icons.date_range, size: 16),
-              label: Text('مخصص', style: GoogleFonts.cairo(fontSize: 11)),
+              label: Text('مخصص', style: GoogleFonts.cairo(fontSize: 11.5)),
               style: TextButton.styleFrom(foregroundColor: AccountingTheme.info),
             ),
           ],
@@ -171,7 +153,7 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
 
   Widget _dateChip(String label, int days) {
     return ChoiceChip(
-      label: Text(label, style: GoogleFonts.cairo(fontSize: 11, color: AccountingTheme.textSecondary)),
+      label: Text(label, style: GoogleFonts.cairo(fontSize: 11.5, color: AccountingTheme.textSecondary)),
       selected: false,
       backgroundColor: AccountingTheme.bgCardHover,
       side: const BorderSide(color: AccountingTheme.borderColor),
@@ -225,7 +207,7 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: 11)),
+          Text(label, style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: 11.5)),
           const SizedBox(height: 4),
           Text('$value د.ع', style: GoogleFonts.cairo(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
         ],
@@ -242,8 +224,8 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
           dataRowColor: WidgetStateProperty.all(AccountingTheme.bgCard),
           columnSpacing: 16,
           horizontalMargin: 12,
-          headingTextStyle: GoogleFonts.cairo(color: AccountingTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.bold),
-          dataTextStyle: GoogleFonts.cairo(color: AccountingTheme.textSecondary, fontSize: 11),
+          headingTextStyle: GoogleFonts.cairo(color: AccountingTheme.textPrimary, fontSize: 11.5, fontWeight: FontWeight.bold),
+          dataTextStyle: GoogleFonts.cairo(color: AccountingTheme.textSecondary, fontSize: 11.5),
           columns: const [
             DataColumn(label: Text('التاريخ')),
             DataColumn(label: Text('العميل')),

@@ -2,6 +2,7 @@
 // صفحة تجديد الاشتراك
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../widgets/notification_filter.dart';
 import '../whatsapp/whatsapp_bottom_window.dart';
 import '../../services/ftth/ftth_event_bus.dart';
@@ -7418,154 +7419,20 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
   }
 
   Widget _buildInfoSection(String title, List<Widget> children) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            Colors.blue.shade50.withValues(alpha: 0.3),
-            Colors.indigo.shade50.withValues(alpha: 0.2),
-          ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: SdCard(
+        title: title,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.blue.shade200.withValues(alpha: 0.5),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.1),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // عنوان القسم
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Colors.blue.shade100.withValues(alpha: 0.8),
-                  Colors.indigo.shade100.withValues(alpha: 0.6),
-                  Colors.purple.shade100.withValues(alpha: 0.4),
-                ],
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(15),
-                topRight: Radius.circular(15),
-              ),
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.blue.shade200.withValues(alpha: 0.7),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue.shade800,
-                shadows: [
-                  Shadow(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    offset: const Offset(0, 1),
-                    blurRadius: 2,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // محتوى القسم
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: children,
-            ),
-          ),
-        ],
       ),
     );
   }
 
   Widget _buildInfoRow(String label, String value, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.grey.shade200.withValues(alpha: 0.8),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            spreadRadius: 0,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade100.withValues(alpha: 0.6),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.blue.shade200.withValues(alpha: 0.8),
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: Colors.blue.shade700,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: Text(
-              '$label:',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: SelectableText(
-              value,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.indigo.shade800,
-                height: 1.3,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return SdInfoRow(label: label, value: value, icon: icon);
   }
 
   /// بناء أزرار الإجراءات
@@ -7580,22 +7447,16 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           // بطاقة أزرار العمليات الرئيسية
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.green.shade50, Colors.teal.shade50],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-              ),
-              borderRadius: BorderRadius.circular(16),
+              color: SdColors.successTint,
+              borderRadius: BorderRadius.circular(SdRadius.lg),
               border: Border.all(
-                color: Colors.green.shade300,
+                color: SdColors.successTintEdge,
                 width: 1.5,
               ),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
-                  color: Colors.green.withValues(alpha: 0.15),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 4),
+                  color: SdColors.successTintEdge,
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -7622,81 +7483,42 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       if (_canCreateOrRenew) {
                         // زر التفعيل التلقائي (تجديد/تغيير/شراء الاشتراك)
                         buttons.add(
-                          ElevatedButton.icon(
+                          SdButton(
                             onPressed: _isActivating || missingSelection
                                 ? null
                                 : executeRenewalOrPurchase,
                             icon: _isActivating
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white))
-                                : Icon(
-                                    isNewSubscription
-                                        ? Icons.shopping_cart
-                                        : Icons.flash_on,
-                                    size: 20,
-                                  ),
-                            label: Text(
-                              _isActivating
-                                  ? "جاري التفعيل..."
-                                  : missingSelection
-                                      ? (needsTechnician
-                                          ? "اختر الفني أولاً"
-                                          : "اختر الوكيل أولاً")
-                                      : (isNewSubscription
-                                          ? "شراء الاشتراك"
-                                          : "تفعيل"),
-                              style: TextStyle(
-                                  fontSize: isMobile ? 13 : 15,
-                                  fontWeight: FontWeight.w700),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _isActivating || missingSelection
-                                  ? Colors.grey.shade500
-                                  : (isNewSubscription
-                                      ? Colors.green.shade600
-                                      : Colors.blueAccent.shade700),
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                  vertical: isMobile ? 10 : 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  side: const BorderSide(
-                                      color: Colors.black, width: 1)),
-                              elevation: 2,
-                            ),
+                                ? null
+                                : (isNewSubscription
+                                    ? Icons.shopping_cart
+                                    : Icons.flash_on),
+                            label: _isActivating
+                                ? "جاري التفعيل..."
+                                : missingSelection
+                                    ? (needsTechnician
+                                        ? "اختر الفني أولاً"
+                                        : "اختر الوكيل أولاً")
+                                    : (isNewSubscription
+                                        ? "شراء الاشتراك"
+                                        : "تفعيل"),
+                            kind: isNewSubscription
+                                ? SdButtonKind.accent
+                                : SdButtonKind.primary,
+                            expand: true,
                           ),
                         );
 
                         // زر التفعيل العادي - يظهر فقط لمن لديه صلاحية Can Manual Activate
                         if (_canManualActivate)
                           buttons.add(
-                            ElevatedButton.icon(
+                            SdButton(
                               onPressed: _isActivating || missingSelection
                                   ? null
                                   : () => _showManualActivationDialog(),
-                              icon: const Icon(Icons.touch_app, size: 20),
-                              label: Text(
-                                "تفعيل عادي",
-                                style: TextStyle(
-                                    fontSize: isMobile ? 13 : 15,
-                                    fontWeight: FontWeight.w700),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _isActivating
-                                    ? Colors.grey.shade400
-                                    : Colors.orange.shade600,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(
-                                    vertical: isMobile ? 10 : 14),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    side: const BorderSide(
-                                        color: Colors.black, width: 1)),
-                                elevation: 2,
-                              ),
+                              icon: Icons.touch_app,
+                              label: "تفعيل عادي",
+                              kind: SdButtonKind.secondary,
+                              expand: true,
                             ),
                           );
                       }
@@ -10236,6 +10058,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
   // عنصر سطر سعر داخل حوار التحذير
   Widget _buildPriceLine(String title, String value, String currency,
       {bool emphasize = false}) {
+    final color = emphasize ? SdColors.dangerEdge : SdColors.danger;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -10244,18 +10067,20 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             child: Text(
               title,
               style: TextStyle(
+                fontFamily: SdText.family,
                 fontSize: 12,
                 fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
-                color: emphasize ? Colors.red.shade900 : Colors.red.shade800,
+                color: color,
               ),
             ),
           ),
           Text(
             '$value $currency',
             style: TextStyle(
+              fontFamily: SdText.family,
               fontSize: emphasize ? 13 : 12,
               fontWeight: emphasize ? FontWeight.w800 : FontWeight.w600,
-              color: emphasize ? Colors.red.shade900 : Colors.red.shade800,
+              color: color,
             ),
           ),
         ],
@@ -10274,23 +10099,20 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             margin: const EdgeInsets.only(top: 5, left: 6),
             width: 6,
             height: 6,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [Colors.red.shade600, Colors.red.shade300],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: SdColors.danger,
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(
+              style: const TextStyle(
+                fontFamily: SdText.family,
                 fontSize: 12.2,
                 height: 1.4,
-                color: Colors.red.shade800,
+                color: SdColors.danger,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -10332,26 +10154,9 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     return Theme(
       data: _buildPageTheme(context),
       child: Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 56,
-          elevation: 0,
-          centerTitle: true,
-          title: Text(
-            isNewSubscription ? 'شراء اشتراك جديد' : 'تجديد او تغيير الاشتراك',
-            style: const TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
-          ),
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF3949AB), Color(0xFF6A1B9A)],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-              ),
-            ),
-          ),
-          foregroundColor: Colors.white,
-          actionsIconTheme: const IconThemeData(color: Colors.white),
+        appBar: SdAppBar(
+          title:
+              isNewSubscription ? 'شراء اشتراك جديد' : 'تجديد او تغيير الاشتراك',
           actions: [
             // زر الطباعة اليدوية (يحتاج صلاحية subscriptions.print_receipt)
             if (PermissionManager.instance
@@ -10447,9 +10252,9 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             // تدرج لوني ديناميكي هادئ: نمزج مجموعتين من الألوان بناءً على قيمة الأنيميشن
             final t = _bgAnim.value;
             Color lerp(Color a, Color b) => Color.lerp(a, b, t)!;
-            final c1 = lerp(const Color(0xFFE8ECF7), const Color(0xFFF2E9FB));
-            final c2 = lerp(const Color(0xFFF6F9FE), const Color(0xFFEDE7F6));
-            final c3 = lerp(const Color(0xFFE3F2FD), const Color(0xFFEDE7FF));
+            final c1 = lerp(SdColors.ground, SdColors.primaryTint);
+            final c2 = lerp(SdColors.groundAlt, SdColors.surfaceAlt);
+            final c3 = lerp(SdColors.infoTint, SdColors.primaryTint);
             return Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -10461,104 +10266,55 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               child: SafeArea(
                 child: isLoading
                     ? Center(
-                        child: Container(
+                        child: SdCard(
                           padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.indigo.shade50,
-                                Colors.blue.shade50.withValues(alpha: 0.8),
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.indigo.shade200, width: 1),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.indigo.withValues(alpha: 0.1),
-                                spreadRadius: 3,
-                                blurRadius: 12,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: SdColors.primaryTint,
                                   shape: BoxShape.circle,
-                                  boxShadow: [
+                                  boxShadow: const [
                                     BoxShadow(
-                                      color:
-                                          Colors.indigo.withValues(alpha: 0.2),
-                                      spreadRadius: 2,
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
+                                      color: SdColors.primaryTintEdge,
+                                      offset: Offset(0, 4),
                                     ),
                                   ],
                                 ),
-                                child: CircularProgressIndicator(
+                                child: const CircularProgressIndicator(
                                   strokeWidth: 4,
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.indigo.shade600,
+                                    SdColors.primary,
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 20),
                               Text(
                                 'جاري تحميل معلومات الاشتراك...',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.indigo.shade800,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: SdText.titleSm,
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 8),
-                              Text(
-                                'يرجى الانتظار لحظات',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.indigo.shade600,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
+                              Text('يرجى الانتظار لحظات', style: SdText.bodySm),
                             ],
                           ),
                         ),
                       )
                     : (subscriptionInfo == null)
                         ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.error_outline,
-                                    size: 64, color: Colors.red),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  'لم يتم العثور على معلومات الاشتراك',
-                                  style: TextStyle(fontSize: 18),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'معرف المستخدم: ${widget.userId}',
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                                Text(
-                                  'معرف الاشتراك: ${widget.subscriptionId}',
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: fetchSubscriptionDetails,
-                                  child: const Text('إعادة المحاولة'),
-                                ),
-                              ],
+                            child: SdEmptyState(
+                              icon: Icons.error_outline,
+                              status: SdStatus.danger,
+                              title: 'لم يتم العثور على معلومات الاشتراك',
+                              message:
+                                  'معرف المستخدم: ${widget.userId}\nمعرف الاشتراك: ${widget.subscriptionId}',
+                              action: SdButton(
+                                label: 'إعادة المحاولة',
+                                icon: Icons.refresh,
+                                onPressed: fetchSubscriptionDetails,
+                              ),
                             ),
                           )
                         : RawScrollbar(
@@ -10603,198 +10359,43 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
           },
         ),
         // القائمة الجانبية اليمنى تحتوي زر إعادة حساب السعر
-        endDrawer: Drawer(
-          child: SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // رأس القائمة
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blue.shade700, Colors.blue.shade500],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.menu_open, color: Colors.white, size: 24),
-                          SizedBox(width: 8),
-                          Text(
-                            'أدوات وخيارات إضافية',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'معلومات وأدوات مساعدة',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
+        endDrawer: SdSideNav.drawer(
+          context,
+          SdSideNav(
+            inDrawer: true,
+            title: 'أدوات وخيارات إضافية',
+            subtitle: priceDetails == null
+                ? 'لا توجد تفاصيل سعر بعد'
+                : 'السعر الحالي: ${_formatNumber(_asDouble(priceDetails!['totalPrice']).round())}',
+            sections: [
+              SdNavSection(items: [
+                SdNavItem(
+                  id: 'passed_data',
+                  label: 'المعلومات المُمررة',
+                  hint: 'عرض جميع البيانات والمعلومات الإضافية',
+                  icon: Icons.info_rounded,
+                  group: SdGroup.admin,
+                  onTap: () => _showPassedDataDialog(),
                 ),
-                // المعلومات المُمررة - محسنة
-                Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        Colors.blue.shade50,
-                        Colors.indigo.shade50.withValues(alpha: 0.5),
-                        Colors.purple.shade50.withValues(alpha: 0.3),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.blue.shade200.withValues(alpha: 0.6),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withValues(alpha: 0.1),
-                        spreadRadius: 1,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.blue.shade400,
-                            Colors.indigo.shade500,
-                          ],
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withValues(alpha: 0.3),
-                            spreadRadius: 1,
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.info_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    title: Text(
-                      'المعلومات المُمررة',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.indigo.shade800,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'عرض جميع البيانات والمعلومات الإضافية بتصميم محسن',
-                      style: TextStyle(
-                        color: Colors.indigo.shade600,
-                        fontSize: 13,
-                        height: 1.2,
-                      ),
-                    ),
-                    trailing: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade100.withValues(alpha: 0.7),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.blue.shade300,
-                          width: 1,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 16,
-                        color: Colors.blue.shade700,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _showPassedDataDialog();
-                    },
-                  ),
+                SdNavItem(
+                  id: 'edit_templates',
+                  label: 'تعديل القوالب',
+                  hint: 'قوالب الطباعة والواتساب',
+                  icon: Icons.edit,
+                  group: SdGroup.comms,
+                  onTap: () => _showPasswordDialog(),
                 ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.edit, color: Colors.orange),
-                  title: const Text('تعديل القوالب'),
-                  subtitle: const Text('قوالب الطباعة والواتساب'),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _showPasswordDialog();
-                  },
+                SdNavItem(
+                  id: 'save_pdf',
+                  label: 'حفظ كـ PDF',
+                  hint: 'حفظ الوصل كملف PDF',
+                  icon: Icons.picture_as_pdf,
+                  group: SdGroup.platform,
+                  enabled: !_isPrinting,
+                  onTap: _isPrinting ? null : () => _saveReceiptAsPdf(),
                 ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-                  title: const Text('حفظ كـ PDF'),
-                  subtitle: const Text('حفظ الوصل كملف PDF'),
-                  onTap: _isPrinting
-                      ? null
-                      : () {
-                          Navigator.of(context).pop();
-                          _saveReceiptAsPdf();
-                        },
-                ),
-                const Divider(),
-                // تم نقل زر إعادة حساب السعر إلى بجوار بطاقة فترة الالتزام في المحتوى الرئيسي
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'أدوات إضافية',
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        if (priceDetails == null)
-                          const Text(
-                            'لا توجد تفاصيل سعر بعد. اختر الخطة والفترة أولاً.',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          )
-                        else
-                          Text(
-                            'السعر الحالي: ${_formatNumber(_asDouble(priceDetails!['totalPrice']).round())}',
-                            style: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ]),
+            ],
           ),
         ),
       ),
@@ -10881,23 +10482,23 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     if (errorMessage.isEmpty) return SizedBox.shrink();
 
     final isSuccess = errorMessage.contains("بنجاح");
+    final t = (isSuccess ? SdStatus.success : SdStatus.danger).tone;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(14),
-      margin: EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
-        color: isSuccess ? Colors.green.shade50 : Colors.red.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isSuccess ? Colors.green.shade200 : Colors.red.shade200,
-          width: 1,
-        ),
+        color: t.tint,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        border: Border.all(color: t.tintEdge, width: 1),
       ),
       child: Text(
         errorMessage,
         style: TextStyle(
+          fontFamily: SdText.family,
           fontSize: 16,
-          color: isSuccess ? Colors.green.shade900 : Colors.red.shade900,
+          fontWeight: FontWeight.w700,
+          color: t.text,
         ),
       ),
     );
@@ -10908,15 +10509,15 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
 
   Color _statusChipColor(String? status) {
     final s = (status ?? '').toLowerCase();
-    if (s.contains('active') || s.contains('نشط')) return Colors.green.shade700;
+    if (s.contains('active') || s.contains('نشط')) return SdColors.success;
     if (s.contains('trial') || s.contains('تجري')) {
-      return Colors.orange.shade700;
+      return SdColors.warning;
     }
     if (s.contains('suspend') || s.contains('معلق')) {
-      return Colors.amber.shade700;
+      return SdColors.warning;
     }
-    if (s.contains('expired') || s.contains('منته')) return Colors.red.shade700;
-    return Colors.blueGrey.shade700;
+    if (s.contains('expired') || s.contains('منته')) return SdColors.danger;
+    return SdColors.muted;
   }
 
   /// نص الحالة بالعربية: فعال / غير فعال
@@ -11996,12 +11597,12 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     final double sc = isMobile ? 0.72 : (screenH / 900).clamp(0.85, 1.3);
     return Card(
       elevation: 2,
-      shadowColor: Colors.indigo.withValues(alpha: 0.2),
-      margin: EdgeInsets.symmetric(vertical: 2, horizontal: 2),
-      color: Colors.indigo.shade50,
+      shadowColor: SdColors.primaryTintEdge,
+      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+      color: SdColors.primaryTint,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: Colors.indigo.shade200, width: 1),
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        side: const BorderSide(color: SdColors.primaryTintEdge, width: 1),
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 8 * sc),
@@ -12015,20 +11616,21 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 6 * sc),
                 margin: EdgeInsets.only(bottom: 8 * sc),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.blue.shade200),
+                  border: Border.all(color: SdColors.infoTintEdge),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.info_outline,
-                        color: Colors.blue.shade700, size: 20 * sc),
+                        color: SdColors.info, size: 20 * sc),
                     SizedBox(width: 8 * sc),
                     Expanded(
                       child: Text(
                         "اشتراك جديد - سيتم تحويل الاشتراك التجريبي إلى مدفوع",
                         style: TextStyle(
-                          color: Colors.blue.shade900,
+                          fontFamily: SdText.family,
+                          color: SdColors.infoEdge,
                           fontWeight: FontWeight.w600,
                           fontSize: 14 * sc,
                         ),
@@ -12040,14 +11642,15 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
             // هيدر: العنوان فقط (تم نقل حالة الاشتراك لصف الاسم والهاتف)
             Row(
               children: [
-                Icon(Icons.person, color: Colors.indigo, size: 20 * sc),
+                Icon(Icons.person, color: SdColors.primary, size: 20 * sc),
                 SizedBox(width: 6 * sc),
                 Text(
                   "معلومات المشترك",
                   style: TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: 16 * sc,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.indigo,
+                    fontWeight: FontWeight.w900,
+                    color: SdColors.primary,
                   ),
                 ),
               ],
@@ -12060,7 +11663,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                 final statusColor = (subscriptionInfo?.status != null &&
                         subscriptionInfo!.status.trim().isNotEmpty)
                     ? _statusChipColor(subscriptionInfo!.status)
-                    : Colors.grey;
+                    : SdColors.muted;
                 final isActive = subscriptionInfo?.status != null &&
                     _isActiveStatus(subscriptionInfo!.status);
                 final children = <Widget>[
@@ -12071,28 +11674,30 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         labelText: 'الاسم',
                         floatingLabelAlignment: FloatingLabelAlignment.center,
                         labelStyle: TextStyle(
+                            fontFamily: SdText.family,
                             fontSize: 15 * sc,
                             fontWeight: FontWeight.w700,
-                            color: Colors.indigo.shade400),
+                            color: SdColors.primarySoft),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                                color: Colors.indigo.shade300, width: 1.2)),
+                            borderSide: const BorderSide(
+                                color: SdColors.primaryTintEdge, width: 1.2)),
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                                color: Colors.indigo.shade300, width: 1.2)),
+                            borderSide: const BorderSide(
+                                color: SdColors.primaryTintEdge, width: 1.2)),
                         contentPadding: EdgeInsets.symmetric(
                             vertical: 12 * sc, horizontal: 12 * sc),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: SdColors.surface,
                       ),
                       child: Text(
                         subscriptionInfo!.customerName,
                         style: TextStyle(
+                            fontFamily: SdText.family,
                             fontSize: 16 * sc,
                             fontWeight: FontWeight.w800,
-                            color: Colors.indigo.shade900),
+                            color: SdColors.primary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
@@ -12110,7 +11715,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                                 content: Text('تم نسخ رقم الهاتف'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                                 duration: Duration(seconds: 2)),
                           );
                         }
@@ -12120,28 +11725,30 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                           labelText: 'رقم الهاتف',
                           floatingLabelAlignment: FloatingLabelAlignment.center,
                           labelStyle: TextStyle(
+                              fontFamily: SdText.family,
                               fontSize: 15 * sc,
                               fontWeight: FontWeight.w700,
-                              color: Colors.teal.shade400),
+                              color: SdColors.accentLight),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                  color: Colors.teal.shade300, width: 1.2)),
+                              borderSide: const BorderSide(
+                                  color: SdColors.accentTintEdge, width: 1.2)),
                           enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                  color: Colors.teal.shade300, width: 1.2)),
+                              borderSide: const BorderSide(
+                                  color: SdColors.accentTintEdge, width: 1.2)),
                           contentPadding: EdgeInsets.symmetric(
                               vertical: 12 * sc, horizontal: 12 * sc),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: SdColors.surface,
                         ),
                         child: Text(
                           _getCustomerPhoneNumber() ?? 'غير متوفر',
                           style: TextStyle(
+                              fontFamily: SdText.family,
                               fontSize: 16 * sc,
                               fontWeight: FontWeight.w800,
-                              color: Colors.teal.shade900),
+                              color: SdColors.accentEdge),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
@@ -12157,6 +11764,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         labelText: 'حالة الاشتراك',
                         floatingLabelAlignment: FloatingLabelAlignment.center,
                         labelStyle: TextStyle(
+                            fontFamily: SdText.family,
                             fontSize: 15 * sc,
                             fontWeight: FontWeight.w700,
                             color: statusColor),
@@ -12189,6 +11797,7 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                                 ? _statusTextAr(subscriptionInfo!.status)
                                 : 'غير معروف',
                             style: TextStyle(
+                                fontFamily: SdText.family,
                                 fontSize: 16 * sc,
                                 fontWeight: FontWeight.w800,
                                 color: statusColor),
@@ -12220,9 +11829,9 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
               Container(
                 padding: EdgeInsets.all(8 * sc),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: SdColors.warningTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.black, width: 1),
+                  border: Border.all(color: SdColors.warningTintEdge, width: 1),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -12230,8 +11839,9 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     Text(
                       "معرف الاشتراك التجريبي",
                       style: TextStyle(
+                        fontFamily: SdText.family,
                         fontSize: 13 * sc,
-                        color: Colors.orange.shade600,
+                        color: SdColors.warningText,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -12239,9 +11849,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                     Text(
                       widget.subscriptionId,
                       style: TextStyle(
+                        fontFamily: SdText.family,
                         fontSize: 15 * sc,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade800,
+                        fontWeight: FontWeight.w900,
+                        color: SdColors.warningEdge,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -12264,12 +11875,12 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     final double sc = isMobile ? 0.72 : (screenH / 900).clamp(0.85, 1.3);
     return Card(
       elevation: 2,
-      shadowColor: Colors.purple.withValues(alpha: 0.2),
+      shadowColor: SdColors.accentTintEdge,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: Colors.purple.shade300, width: 1),
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        side: const BorderSide(color: SdColors.accentTintEdge, width: 1),
       ),
-      color: Colors.purple.shade50,
+      color: SdColors.accentTint,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 10 * sc, vertical: 8 * sc),
         child: Column(
@@ -12288,23 +11899,24 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       prefixIcon: narrow
                           ? null
                           : Icon(Icons.router,
-                              color: Colors.indigo, size: 20 * sc),
+                              color: SdColors.primary, size: 20 * sc),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8)),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
                           color: selectedPlan == null
-                              ? Colors.red
-                              : Colors.indigo.shade200,
+                              ? SdColors.danger
+                              : SdColors.primaryTintEdge,
                           width: 1,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color:
-                              selectedPlan == null ? Colors.red : Colors.indigo,
+                          color: selectedPlan == null
+                              ? SdColors.danger
+                              : SdColors.primary,
                           width: 2,
                         ),
                       ),
@@ -12313,14 +11925,16 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                           vertical: 14 * sc,
                           horizontal: narrow ? 6 * sc : 12 * sc),
                       labelStyle: TextStyle(
+                          fontFamily: SdText.family,
                           fontSize: (narrow ? 14 : 18) * sc,
                           fontWeight: FontWeight.w700,
-                          color: Colors.indigo.shade700),
+                          color: SdColors.primaryLight),
                       isDense: narrow,
                     ),
                     style: TextStyle(
+                        fontFamily: SdText.family,
                         fontSize: 16 * sc,
-                        color: Colors.black87,
+                        color: SdColors.ink,
                         fontWeight: FontWeight.w700),
                     initialValue: selectedPlan,
                     onChanged: (value) {
@@ -12360,15 +11974,15 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       prefixIcon: narrow
                           ? null
                           : Icon(Icons.schedule,
-                              color: Colors.indigo, size: 20 * sc),
+                              color: SdColors.primary, size: 20 * sc),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8)),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
                           color: selectedCommitmentPeriod == null
-                              ? Colors.red
-                              : Colors.indigo.shade200,
+                              ? SdColors.danger
+                              : SdColors.primaryTintEdge,
                           width: 1,
                         ),
                       ),
@@ -12376,8 +11990,8 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
                           color: selectedCommitmentPeriod == null
-                              ? Colors.red
-                              : Colors.indigo,
+                              ? SdColors.danger
+                              : SdColors.primary,
                           width: 2,
                         ),
                       ),
@@ -12387,15 +12001,17 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                           vertical: 14 * sc,
                           horizontal: narrow ? 6 * sc : 12 * sc),
                       labelStyle: TextStyle(
+                          fontFamily: SdText.family,
                           fontSize: (narrow ? 14 : 18) * sc,
                           fontWeight: FontWeight.w700,
-                          color: Colors.indigo.shade700),
+                          color: SdColors.primaryLight),
                       helperText: null,
                       isDense: narrow,
                     ),
                     style: TextStyle(
+                        fontFamily: SdText.family,
                         fontSize: 16 * sc,
-                        color: Colors.black87,
+                        color: SdColors.ink,
                         fontWeight: FontWeight.w700),
                     initialValue: selectedCommitmentPeriod,
                     onChanged: (value) {
@@ -12428,42 +12044,17 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                 );
                 // زر إعادة حساب السعر كحقل ثالث
                 final calcButton = Expanded(
-                  child: ElevatedButton.icon(
+                  child: SdButton(
                     onPressed: (selectedPlan != null &&
                             selectedCommitmentPeriod != null)
                         ? () async {
                             await _handleCalculatePricePressed();
                           }
                         : null,
-                    icon: Icon(Icons.calculate, size: 20 * sc),
-                    label: Text(
-                      'حساب السعر',
-                      style: TextStyle(
-                          fontSize: 14 * sc, fontWeight: FontWeight.w700),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: (selectedPlan != null &&
-                              selectedCommitmentPeriod != null)
-                          ? Colors.purple.shade600
-                          : Colors.grey.shade400,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                          vertical: 14 * sc, horizontal: 10 * sc),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: (selectedPlan != null &&
-                                  selectedCommitmentPeriod != null)
-                              ? Colors.purple.shade800
-                              : Colors.grey.shade600,
-                          width: 1,
-                        ),
-                      ),
-                      elevation: (selectedPlan != null &&
-                              selectedCommitmentPeriod != null)
-                          ? 2
-                          : 0,
-                    ),
+                    icon: Icons.calculate,
+                    label: 'حساب السعر',
+                    kind: SdButtonKind.primary,
+                    expand: true,
                   ),
                 );
                 if (narrow) {
@@ -12706,19 +12297,8 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
-            ),
-          ),
-        ),
-        title: const Text('تسجيل الدخول - WhatsApp Web'),
+      appBar: SdAppBar(
+        title: 'تسجيل الدخول - WhatsApp Web',
         actions: [
           IconButton(
             tooltip: 'تحديث',
@@ -12752,9 +12332,9 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
   Widget _bottomBar() => Container(
         height: 42,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            border: Border(top: BorderSide(color: Colors.grey.shade300))),
+        decoration: const BoxDecoration(
+            color: SdColors.surfaceAlt,
+            border: Border(top: BorderSide(color: SdColors.divider))),
         child: Row(children: [
           Expanded(
               child: Text(
@@ -12762,8 +12342,9 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
                 ? '✅ متصل - جلسة محلية (قد تُفقد عند إغلاق التطبيق)'
                 : 'افتح واتساب بالهاتف > الأجهزة المرتبطة > اربط جهازًا لمسح QR',
             style: TextStyle(
+                fontFamily: SdText.family,
                 fontSize: 11.5,
-                color: _loggedIn ? Colors.green.shade700 : null),
+                color: _loggedIn ? SdColors.success : null),
             overflow: TextOverflow.ellipsis,
           )),
           IconButton(
@@ -13169,20 +12750,9 @@ class _WhatsAppWebSendPageState extends State<WhatsAppWebSendPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('إرسال واتساب ويب'),
-            Text(
-              'النافذة تبقى مفتوحة للرسائل التالية',
-              style: TextStyle(fontSize: 11, color: Colors.white70),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.indigo.shade800,
-        foregroundColor: Colors.white,
-        elevation: 2,
+      appBar: SdAppBar(
+        title: 'إرسال واتساب ويب',
+        subtitle: 'النافذة تبقى مفتوحة للرسائل التالية',
         actions: [
           // زر تحديث
           Container(

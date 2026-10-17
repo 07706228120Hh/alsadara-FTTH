@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/period_closing_service.dart';
 import '../../services/audit_trail_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
-import '../../theme/accounting_responsive.dart';
 
 /// صفحة إقفال الفترات المحاسبية
 /// فقط CompanyAdmin يمكنه الوصول لهذه الصفحة
@@ -143,90 +142,33 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'إقفال الفترات',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _loadData,
+            ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildToolbar(),
               _buildYearSelector(),
               _buildSummaryBar(),
               Expanded(
                 child: _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
+                    ? const Center(child: CircularProgressIndicator())
                     : _buildGrid(),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // شريط الأدوات
-  // ═══════════════════════════════════════════════════════════════
-
-  Widget _buildToolbar() {
-    final isMobile = context.accR.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 8 : context.accR.spaceXL,
-        vertical: isMobile ? 6 : context.accR.spaceL,
-      ),
-      decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border:
-            Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            iconSize: isMobile ? 20 : null,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMobile ? 4 : context.accR.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMobile ? 4 : context.accR.spaceS),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF795548), Color(0xFF5D4037)],
-              ),
-              borderRadius: BorderRadius.circular(isMobile ? 6 : 8),
-            ),
-            child: Icon(Icons.lock_rounded,
-                color: Colors.white,
-                size: isMobile ? 16 : context.accR.iconM),
-          ),
-          SizedBox(width: isMobile ? 6 : context.accR.spaceM),
-          Expanded(
-            child: Text(
-              'إقفال الفترات',
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.cairo(
-                fontSize: isMobile ? 14 : context.accR.headingMedium,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: _loadData,
-            icon: Icon(Icons.refresh,
-                size: isMobile ? 18 : context.accR.iconM),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-        ],
       ),
     );
   }
@@ -241,46 +183,21 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: context.accR.isMobile ? 8 : context.accR.spaceXL,
-        vertical: context.accR.spaceS,
+        horizontal: context.sd.gutter,
+        vertical: SdSpace.sm,
       ),
-      color: AccountingTheme.bgPrimary,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: years.map((year) {
-          final isSelected = year == _selectedYear;
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.accR.spaceXS),
-            child: ChoiceChip(
-              label: Text(
-                '$year',
-                style: GoogleFonts.cairo(
-                  fontSize: context.accR.body,
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected
-                      ? Colors.white
-                      : AccountingTheme.textSecondary,
-                ),
-              ),
-              selected: isSelected,
-              selectedColor: AccountingTheme.neonBlue,
-              backgroundColor: AccountingTheme.bgCard,
-              side: BorderSide(
-                color: isSelected
-                    ? AccountingTheme.neonBlue
-                    : AccountingTheme.borderColor,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              onSelected: (_) {
-                setState(() => _selectedYear = year);
-                _loadData();
-              },
-            ),
-          );
-        }).toList(),
+      color: SdColors.surface,
+      child: Center(
+        child: SdFilterChips<int>(
+          selected: _selectedYear,
+          onSelected: (year) {
+            setState(() => _selectedYear = year);
+            _loadData();
+          },
+          options: [
+            for (final y in years) SdFilterOption(y, '$y'),
+          ],
+        ),
       ),
     );
   }
@@ -292,36 +209,36 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
   Widget _buildSummaryBar() {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: context.accR.isMobile ? 8 : context.accR.spaceXL,
-        vertical: context.accR.spaceS,
+        horizontal: context.sd.gutter,
+        vertical: SdSpace.sm,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _buildSummaryChip(
             '$_closedCount فترات مقفلة',
-            AccountingTheme.danger,
+            SdStatus.danger.tone,
           ),
-          SizedBox(width: context.accR.spaceM),
+          const SizedBox(width: SdSpace.md),
           _buildSummaryChip(
             '$_openCount فترات مفتوحة',
-            AccountingTheme.success,
+            SdStatus.success.tone,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryChip(String label, Color color) {
+  Widget _buildSummaryChip(String label, SdTone tone) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.accR.spaceM,
-        vertical: context.accR.spaceXS,
+      padding: const EdgeInsets.symmetric(
+        horizontal: SdSpace.md,
+        vertical: SdSpace.xs,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.pill),
+        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -329,15 +246,16 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: tone.base, shape: BoxShape.circle),
           ),
-          SizedBox(width: context.accR.spaceXS),
+          const SizedBox(width: SdSpace.xs),
           Text(
             label,
-            style: GoogleFonts.cairo(
-              fontSize: context.accR.small,
-              fontWeight: FontWeight.w600,
-              color: color,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: tone.text,
             ),
           ),
         ],
@@ -350,19 +268,19 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
   // ═══════════════════════════════════════════════════════════════
 
   Widget _buildGrid() {
-    final isMobile = context.accR.isMobile;
-    final crossAxisCount = isMobile ? 3 : 4;
+    final isPhone = context.sd.isPhone;
+    final crossAxisCount = isPhone ? 3 : 4;
 
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 8 : context.accR.spaceXL,
-        vertical: context.accR.spaceS,
+        horizontal: context.sd.gutter,
+        vertical: SdSpace.sm,
       ),
       child: GridView.count(
         crossAxisCount: crossAxisCount,
-        mainAxisSpacing: context.accR.spaceM,
-        crossAxisSpacing: context.accR.spaceM,
-        childAspectRatio: isMobile ? 0.85 : 1.0,
+        mainAxisSpacing: SdSpace.md,
+        crossAxisSpacing: SdSpace.md,
+        childAspectRatio: isPhone ? 0.85 : 1.0,
         children: List.generate(12, (i) => _buildMonthCard(i + 1)),
       ),
     );
@@ -372,92 +290,77 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
     final closed = _isClosed(month);
     final monthName = _monthNames[month - 1];
     final periodStr = _periodKey(_selectedYear, month);
-    final statusColor =
-        closed ? AccountingTheme.danger : AccountingTheme.success;
-    final isMobile = context.accR.isMobile;
+    final tone = closed ? SdStatus.danger.tone : SdStatus.success.tone;
+    final isPhone = context.sd.isPhone;
 
     return Container(
       decoration: BoxDecoration(
-        color: closed
-            ? AccountingTheme.danger.withOpacity(0.08)
-            : AccountingTheme.success.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(context.accR.cardRadius),
-        border: Border.all(
-          color: statusColor.withOpacity(0.4),
-          width: 1.5,
-        ),
-        boxShadow: AccountingTheme.cardShadow,
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(depth: SdDepth.small, edge: tone.tintEdge),
+        border: Border.all(color: tone.tintEdge, width: 1.5),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(context.accR.cardRadius),
+          borderRadius: BorderRadius.circular(SdRadius.md),
           onTap: () => _togglePeriod(month),
           child: Padding(
-            padding: EdgeInsets.all(context.accR.cardPad),
+            padding: const EdgeInsets.all(SdSpace.sm),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // اسم الشهر
                 Text(
                   monthName,
-                  style: GoogleFonts.cairo(
-                    fontSize: isMobile
-                        ? context.accR.body
-                        : context.accR.headingSmall,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary,
-                  ),
+                  style: isPhone ? SdText.label : SdText.titleSm,
                 ),
-                SizedBox(height: context.accR.spaceXS),
+                const SizedBox(height: SdSpace.xxs),
                 // YYYY-MM
                 Text(
                   periodStr,
-                  style: GoogleFonts.cairo(
-                    fontSize: context.accR.small,
-                    color: AccountingTheme.textMuted,
-                  ),
+                  style: SdText.caption,
                 ),
-                SizedBox(height: context.accR.spaceS),
+                const SizedBox(height: SdSpace.xs),
                 // أيقونة القفل
                 Icon(
                   closed ? Icons.lock_rounded : Icons.lock_open_rounded,
-                  size: isMobile ? context.accR.iconL : context.accR.iconXL,
-                  color: statusColor,
+                  size: isPhone ? 28 : 34,
+                  color: tone.base,
                 ),
-                SizedBox(height: context.accR.spaceXS),
+                const SizedBox(height: SdSpace.xxs),
                 // حالة
                 Text(
                   closed ? 'مقفلة' : 'مفتوحة',
-                  style: GoogleFonts.cairo(
-                    fontSize: context.accR.small,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: tone.text,
                   ),
                 ),
-                SizedBox(height: context.accR.spaceS),
+                const SizedBox(height: SdSpace.xs),
                 // زر الإجراء
                 SizedBox(
                   width: double.infinity,
-                  height: context.accR.btnHeight * 0.8,
+                  height: 36,
                   child: ElevatedButton(
                     onPressed: () => _togglePeriod(month),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: closed
-                          ? AccountingTheme.success
-                          : AccountingTheme.danger,
+                      backgroundColor:
+                          closed ? SdColors.success : SdColors.danger,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(context.accR.btnRadius),
+                        borderRadius: BorderRadius.circular(SdRadius.xs),
                       ),
                       padding: EdgeInsets.zero,
                     ),
                     child: Text(
                       closed ? 'إعادة فتح' : 'إقفال',
-                      style: GoogleFonts.cairo(
-                        fontSize: context.accR.small,
-                        fontWeight: FontWeight.bold,
+                      style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),

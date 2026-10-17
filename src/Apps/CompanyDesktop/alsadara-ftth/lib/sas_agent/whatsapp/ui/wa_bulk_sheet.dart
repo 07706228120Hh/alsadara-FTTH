@@ -9,9 +9,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../../theme/app_theme.dart';
+import '../../../frontend/frontend.dart';
 import '../../widgets/sas_metrics.dart';
 import '../../widgets/sas_state_views.dart';
 import '../config/wa_settings.dart';
@@ -23,7 +22,7 @@ import '../models/wa_template.dart';
 import '../server/wa_server_launcher.dart';
 import '../templates/template_store.dart';
 
-const Color _kWaGreen = Color(0xFF25D366);
+const Color _kWaGreen = SdColors.whatsapp;
 
 /// يفتح ورقة الإرسال الجماعي لقائمة مستلِمين.
 Future<void> showWaBulkSheet(
@@ -134,8 +133,8 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo()),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: TextStyle(fontFamily: 'Cairo', )),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
     ));
   }
 
@@ -197,13 +196,13 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
                   skipped: _skipped),
               SizedBox(height: 14.h),
               Text('القالب',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.sp, fontWeight: FontWeight.w800)),
               SizedBox(height: 8.h),
               DropdownButtonFormField<WaTemplate>(
                 initialValue: _template,
                 isExpanded: true,
-                style: GoogleFonts.cairo(fontSize: 13.sp, color: Colors.black87),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 13.sp, color: Colors.black87),
                 decoration: const InputDecoration(isDense: true),
                 items: [
                   for (final t in _templates)
@@ -218,7 +217,7 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
               if (_template != null && _valid.isNotEmpty) ...[
                 Text(
                     'معاينة (${_valid.first.name.isEmpty ? _valid.first.phone : _valid.first.name})',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.sp, fontWeight: FontWeight.w800)),
                 SizedBox(height: 8.h),
                 Container(
@@ -233,7 +232,7 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
                   child: Text(
                     _template!.render(_valid.first.templateVars),
                     style:
-                        GoogleFonts.cairo(fontSize: 12.5.sp, height: 1.55),
+                        TextStyle(fontFamily: 'Cairo', fontSize: 12.5.sp, height: 1.55),
                   ),
                 ),
                 SizedBox(height: 14.h),
@@ -263,14 +262,14 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
           SizedBox(width: 10.w),
           Expanded(
             child: Text('إرسال واتساب جماعي',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF1A1A2E))),
           ),
           SasStatusBadge(
               label: _settings.mode.label,
-              color: AppTheme.primaryColor,
+              color: SdColors.primary,
               icon: _settings.mode == WaMode.server
                   ? Icons.dns_rounded
                   : Icons.open_in_new_rounded),
@@ -284,21 +283,21 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
       padding: EdgeInsets.all(12.w),
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: AppTheme.warningColor.withValues(alpha: 0.10),
+        color: SdColors.warning.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-        border: Border.all(color: AppTheme.warningColor.withValues(alpha: 0.30)),
+        border: Border.all(color: SdColors.warning.withValues(alpha: 0.30)),
       ),
       child: Row(
         children: [
           Icon(Icons.warning_amber_rounded,
-              size: 18.sp, color: AppTheme.warningColor),
+              size: 18.sp, color: SdColors.warning),
           SizedBox(width: 8.w),
           Expanded(
             child: Text(
               _status.state == WaConnState.unavailable
                   ? 'الخادم المحلي غير مشغّل — شغّله أو بدّل إلى النمط اليدوي من الإعدادات.'
                   : 'الخادم غير مربوط — امسح رمز QR من إعدادات واتساب أولاً.',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.5.sp, color: Colors.grey[700], height: 1.5),
             ),
           ),
@@ -326,15 +325,15 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
             ? OutlinedButton.icon(
                 onPressed: _cancel,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.errorColor,
+                  foregroundColor: SdColors.danger,
                   side: BorderSide(
-                      color: AppTheme.errorColor.withValues(alpha: 0.45)),
+                      color: SdColors.danger.withValues(alpha: 0.45)),
                   padding: EdgeInsets.symmetric(vertical: 12.h),
                   minimumSize: Size(double.infinity, 0),
                 ),
                 icon: const Icon(Icons.stop_rounded),
                 label: Text('إيقاف',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
               )
             : automated
                 ? FilledButton.icon(
@@ -351,7 +350,7 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
                     ),
                     icon: const Icon(Icons.send_rounded),
                     label: Text('إرسال (${_valid.length})',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
                   )
                 : Row(
                     children: [
@@ -359,15 +358,15 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
                         child: OutlinedButton.icon(
                           onPressed: _valid.isEmpty ? null : _copyAll,
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppTheme.primaryColor,
+                            foregroundColor: SdColors.primary,
                             side: BorderSide(
-                                color: AppTheme.primaryColor
+                                color: SdColors.primary
                                     .withValues(alpha: 0.45)),
                             padding: EdgeInsets.symmetric(vertical: 12.h),
                           ),
                           icon: const Icon(Icons.copy_rounded),
                           label: Text('نسخ الكل',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(fontFamily: 'Cairo', 
                                   fontWeight: FontWeight.w700, fontSize: 12.5.sp)),
                         ),
                       ),
@@ -383,7 +382,7 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
                           ),
                           icon: const Icon(Icons.open_in_new_rounded),
                           label: Text('فتح تِباعاً',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(fontFamily: 'Cairo', 
                                   fontWeight: FontWeight.w800, fontSize: 12.5.sp)),
                         ),
                       ),
@@ -402,11 +401,11 @@ class _SummaryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _StatBox(label: 'الكل', value: total, color: AppTheme.primaryColor),
+        _StatBox(label: 'الكل', value: total, color: SdColors.primary),
         SizedBox(width: 8.w),
         _StatBox(label: 'صالح', value: valid, color: _kWaGreen),
         SizedBox(width: 8.w),
-        _StatBox(label: 'مُستبعَد', value: skipped, color: AppTheme.warningColor),
+        _StatBox(label: 'مُستبعَد', value: skipped, color: SdColors.warning),
       ],
     );
   }
@@ -431,11 +430,11 @@ class _StatBox extends StatelessWidget {
         child: Column(
           children: [
             Text('$value',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w900, fontSize: 19.sp, color: color)),
             SizedBox(height: 1.h),
             Text(label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.sp,
                     color: Colors.grey[700],
                     fontWeight: FontWeight.w700)),
@@ -463,12 +462,12 @@ class _ProgressCard extends StatelessWidget {
             children: [
               Text(
                 done ? (cancelled ? 'أُوقف' : 'اكتمل') : 'جارٍ الإرسال…',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 13.sp, fontWeight: FontWeight.w800),
               ),
               const Spacer(),
               Text('${progress.processed}/${progress.total}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.5.sp, fontWeight: FontWeight.w700)),
             ],
           ),
@@ -486,20 +485,20 @@ class _ProgressCard extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.check_circle_rounded,
-                  size: 14.sp, color: AppTheme.successColor),
+                  size: 14.sp, color: SdColors.success),
               SizedBox(width: 4.w),
               Text('نجح: ${progress.sent}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 11.5.sp,
-                      color: AppTheme.successColor,
+                      color: SdColors.success,
                       fontWeight: FontWeight.w700)),
               SizedBox(width: 16.w),
-              Icon(Icons.cancel_rounded, size: 14.sp, color: AppTheme.errorColor),
+              Icon(Icons.cancel_rounded, size: 14.sp, color: SdColors.danger),
               SizedBox(width: 4.w),
               Text('فشل: ${progress.failed}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 11.5.sp,
-                      color: AppTheme.errorColor,
+                      color: SdColors.danger,
                       fontWeight: FontWeight.w700)),
             ],
           ),
@@ -508,8 +507,8 @@ class _ProgressCard extends StatelessWidget {
               padding: EdgeInsets.only(top: 6.h),
               child: Text(
                 'آخر خطأ: ${progress.last!.error}',
-                style: GoogleFonts.cairo(
-                    fontSize: 11.sp, color: AppTheme.errorColor),
+                style: TextStyle(fontFamily: 'Cairo', 
+                    fontSize: 11.sp, color: SdColors.danger),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

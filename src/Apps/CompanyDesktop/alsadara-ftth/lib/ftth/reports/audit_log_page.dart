@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
 
@@ -210,12 +211,12 @@ class _AuditLogPageState extends State<AuditLogPage> {
   }
 
   Color _eventColor(String type) {
-    if (type.contains('Extend')) return Colors.green.shade700;
+    if (type.contains('Extend')) return SdColors.success;
     // لون أخضر مميز لحدث Change حسب طلب المستخدم
-    if (type.contains('Change')) return Colors.green.shade900;
-    if (type.contains('Suspend')) return Colors.red.shade800;
-    if (type.contains('Renew')) return Colors.blue.shade800;
-    return Colors.blueGrey.shade700;
+    if (type.contains('Change')) return SdColors.successEdge;
+    if (type.contains('Suspend')) return SdColors.danger;
+    if (type.contains('Renew')) return SdColors.info;
+    return SdColors.muted;
   }
 
   // تحويل اسم الحدث (بالإنجليزية) إلى عنوان عربي مناسب للعرض
@@ -273,39 +274,30 @@ class _AuditLogPageState extends State<AuditLogPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-              gradient: LinearGradient(
-                  colors: [
-                    Colors.blue.shade800,
-                    Colors.blue.shade600,
-                    Colors.blue.shade400
-                  ],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  stops: const [0, .55, 1])),
-        ),
-        title: Text('سجل التدقيق - ${widget.customerName}',
-            style: TextStyle(fontSize: _fs(16), fontWeight: FontWeight.w700)),
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: 'سجل التدقيق - ${widget.customerName}',
         actions: [
-          IconButton(
+          if (_refreshing)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                ),
+              ),
+            )
+          else
+            SdAppBarAction(
+              icon: Icons.refresh_rounded,
+              label: 'تحديث',
               onPressed: _onRefresh,
-              tooltip: 'تحديث',
-              icon: _refreshing
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.refresh_rounded))
+            ),
         ],
       ),
       floatingActionButton: AnimatedSlide(
@@ -321,53 +313,38 @@ class _AuditLogPageState extends State<AuditLogPage> {
                   duration: const Duration(milliseconds: 450),
                   curve: Curves.easeOutQuad);
             },
-            backgroundColor: Colors.blue.shade700,
+            backgroundColor: SdColors.primary,
             child: const Icon(Icons.arrow_upward_rounded, color: Colors.white),
           ),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF0F181F), const Color(0xFF132736)]
-                    : [Colors.blue.shade50, Colors.white],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter)),
-        child: SafeArea(
-          child: _initialLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _error.isNotEmpty
-                  ? _errorView()
-                  : Column(children: [
-                      _summaryBar(),
-                      // أخفي شريط الفلاتر (الصلاحيات) حسب الطلب
-                      // _filtersChipsBar(),
-                      Expanded(child: _buildList()),
-                    ]),
-        ),
+      body: SafeArea(
+        top: false,
+        child: _initialLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error.isNotEmpty
+                ? _errorView()
+                : Column(children: [
+                    _summaryBar(),
+                    // أخفي شريط الفلاتر (الصلاحيات) حسب الطلب
+                    // _filtersChipsBar(),
+                    Expanded(child: _buildList()),
+                  ]),
       ),
+    ),
     );
   }
 
   Widget _errorView() => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.error_outline, color: Colors.red.shade400, size: 60),
-            const SizedBox(height: 16),
-            Text(_error,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: _fs(14),
-                    fontWeight: FontWeight.w600,
-                    color: Colors.red.shade700)),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-                onPressed: _loadInitial,
-                icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة'))
-          ]),
+        child: SdEmptyState(
+          icon: Icons.error_outline,
+          status: SdStatus.danger,
+          title: _error,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh,
+            onPressed: _loadInitial,
+          ),
         ),
       );
 
@@ -382,12 +359,12 @@ class _AuditLogPageState extends State<AuditLogPage> {
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: _isPhone ? 12 : 18, vertical: _isPhone ? 12 : 18),
-          decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
+          decoration: const BoxDecoration(
+              borderRadius: BorderRadius.all(Radius.circular(20)),
               gradient: LinearGradient(colors: [
-                Colors.blue.shade600,
-                Colors.blue.shade500,
-                Colors.blue.shade400
+                SdColors.primaryMid,
+                SdColors.primary,
+                SdColors.primaryLight
               ], begin: Alignment.topRight, end: Alignment.bottomLeft)),
           child: Row(children: [
             Container(
@@ -467,19 +444,19 @@ class _AuditLogPageState extends State<AuditLogPage> {
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               const SizedBox(height: 90),
-              Icon(Icons.inbox_outlined, size: _isPhone ? 56 : 72, color: Colors.blue.shade200),
+              Icon(Icons.inbox_outlined, size: _isPhone ? 56 : 72, color: SdColors.primarySoft),
               const SizedBox(height: 16),
               Center(
                   child: Text('لا توجد سجلات',
                       style: TextStyle(
                           fontSize: _fs(15),
                           fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade700))),
+                          color: SdColors.primary))),
               const SizedBox(height: 8),
               Center(
                   child: Text('حاول تغيير نوع الحدث أو التحديث',
                       style: TextStyle(
-                          fontSize: _fs(12), color: Colors.blueGrey.shade600))),
+                          fontSize: _fs(12), color: SdColors.muted))),
               const SizedBox(height: 180),
             ],
           ),
@@ -632,12 +609,12 @@ class _AuditLogPageState extends State<AuditLogPage> {
                           horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                           color: success
-                              ? Colors.green.shade600
-                              : Colors.red.shade600,
+                              ? SdColors.success
+                              : SdColors.danger,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                                color: (success ? Colors.green : Colors.red)
+                                color: (success ? SdColors.success : SdColors.danger)
                                     .withValues(alpha: .25),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3))
@@ -734,15 +711,15 @@ class _AuditLogPageState extends State<AuditLogPage> {
   Color _badgeColor(String label, Color fallback) {
     switch (label) {
       case 'المستخدم':
-        return Colors.deepPurple.shade600;
+        return SdColors.platformBase;
       case 'التاريخ':
-        return Colors.blue.shade600;
+        return SdColors.info;
       case 'المبلغ':
-        return Colors.green.shade700;
+        return SdColors.success;
       case 'نوع الحساب':
-        return Colors.teal.shade700;
+        return SdColors.accent;
       case 'نوع مالك المحفظة':
-        return Colors.indigo.shade600;
+        return SdColors.primary;
       default:
         return fallback;
     }
@@ -774,7 +751,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                     text: TextSpan(
                         style: TextStyle(
                             fontSize: _fs(12),
-                            color: Colors.grey.shade800,
+                            color: SdColors.ink,
                             height: 1.3),
                         children: [
                   TextSpan(
@@ -879,7 +856,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                               fontSize: _fs(12),
-                              color: Colors.grey.shade900,
+                              color: SdColors.ink,
                               fontWeight: FontWeight.w600))
                     ]),
               )
@@ -918,7 +895,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 18, vertical: 14),
                     decoration: BoxDecoration(
-                        color: Colors.blue.shade700,
+                        color: SdColors.primary,
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(24))),
                     child: Row(children: [
@@ -976,13 +953,13 @@ class _AuditLogPageState extends State<AuditLogPage> {
                           Text('البيانات الخام (JSON):',
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade700)),
+                                  color: SdColors.primary)),
                           const SizedBox(height: 8),
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                                color: Colors.grey.shade900,
+                                color: SdColors.ink,
                                 borderRadius: BorderRadius.circular(12)),
                             child: SelectableText(jsonPretty,
                                 style: const TextStyle(
@@ -1010,16 +987,16 @@ class _AuditLogPageState extends State<AuditLogPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.grey.shade300)),
+          border: Border.all(color: SdColors.divider)),
       child: Row(children: [
         Expanded(
             child: Text(label,
                 style: TextStyle(
                     fontSize: _fs(13),
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade700))),
+                    color: SdColors.muted))),
         const SizedBox(width: 12),
         Expanded(
             flex: 2,

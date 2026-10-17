@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 
 class ReturnFormPage extends StatefulWidget {
@@ -194,7 +195,32 @@ class _ReturnFormPageState extends State<ReturnFormPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
+      ),
+    );
+  }
+
+  InputDecoration _dec(String? label, {bool dense = false}) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: SdText.bodySm,
+      filled: true,
+      fillColor: SdColors.surface,
+      isDense: dense,
+      contentPadding: dense
+          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 6)
+          : const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.cardEdge),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.cardEdge),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
       ),
     );
   }
@@ -205,57 +231,40 @@ class _ReturnFormPageState extends State<ReturnFormPage> {
         ? 'مرتجع مبيعات'
         : 'مرتجع مشتريات';
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F6FA),
-          foregroundColor: const Color(0xFF1A1A2E),
-          iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
-          titleTextStyle: const TextStyle(
-              color: Color(0xFF1A1A2E),
-              fontSize: 18,
-              fontWeight: FontWeight.w700),
-          elevation: 0,
-          title: Text(title),
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _buildForm(),
-      ),
+    return SdPage(
+      scrollable: false,
+      maxWidth: SdSpace.formMax,
+      appBar: SdAppBar(title: title),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
+          : _buildForm(),
     );
   }
 
   Widget _buildForm() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Step 1: Select invoice
-            const Text('1. اختر الفاتورة الأصلية',
-                style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          // الخطوة 1: اختيار الفاتورة
+          SdCard(
+            title: '1. اختر الفاتورة الأصلية',
+            icon: Icons.receipt_long_rounded,
+            child: DropdownButtonFormField<String>(
               value: _selectedInvoiceId,
-              decoration: const InputDecoration(
-                labelText: 'الفاتورة',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
+              isExpanded: true,
+              style: SdText.label,
+              decoration: _dec('الفاتورة'),
               items: _invoices.map((e) {
                 final id = (e['Id'] ?? e['id'] ?? '').toString();
                 final num =
-                    (e['InvoiceNumber'] ?? e['invoiceNumber'] ?? '-')
-                        .toString();
+                    (e['InvoiceNumber'] ?? e['invoiceNumber'] ?? '-').toString();
                 final name =
                     (e['EntityName'] ?? e['entityName'] ?? '').toString();
                 return DropdownMenuItem(
-                    value: id, child: Text('$num - $name'));
+                    value: id,
+                    child: Text('$num - $name', overflow: TextOverflow.ellipsis));
               }).toList(),
               onChanged: widget.invoiceId != null
                   ? null
@@ -263,187 +272,270 @@ class _ReturnFormPageState extends State<ReturnFormPage> {
                       setState(() => _selectedInvoiceId = v);
                       if (v != null) _loadInvoiceItems(v);
                     },
-              validator: (v) =>
-                  v == null || v.isEmpty ? 'مطلوب' : null,
+              validator: (v) => v == null || v.isEmpty ? 'مطلوب' : null,
             ),
-            const SizedBox(height: 24),
+          ),
+          const SizedBox(height: SdSpace.lg),
 
-            // Step 2: Items with return quantities
-            if (_loadingItems)
-              const Center(
-                  child: Padding(
+          // الخطوة 2: الكميات + التفاصيل
+          if (_loadingItems)
+            const Center(
+              child: Padding(
                 padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(),
-              ))
-            else if (_invoiceItems.isNotEmpty) ...[
-              const Text('2. حدد كميات الإرجاع',
-                  style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Table(
-                  border: TableBorder.all(color: Colors.black54),
-                  defaultColumnWidth: const IntrinsicColumnWidth(),
-                  defaultVerticalAlignment:
-                      TableCellVerticalAlignment.middle,
-                  children: [
-                    TableRow(
-                      decoration:
-                          BoxDecoration(color: Colors.grey.shade200),
-                      children: const [
-                        _Cell('المادة', isHeader: true),
-                        _Cell('الكمية الأصلية', isHeader: true),
-                        _Cell('كمية الإرجاع', isHeader: true),
-                      ],
-                    ),
-                    ..._invoiceItems.asMap().entries.map((entry) {
-                      final i = entry.key;
-                      final m = entry.value;
-                      final originalQty =
-                          (m['Quantity'] ?? m['quantity'] ?? 0);
-                      return TableRow(
-                        decoration: BoxDecoration(
-                          color: i.isEven
-                              ? Colors.white
-                              : Colors.grey.shade50,
-                        ),
-                        children: [
-                          _Cell((m['ItemName'] ?? m['itemName'] ?? '-')
-                              .toString()),
-                          _Cell(fmtN(originalQty)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            child: SizedBox(
-                              width: 80,
-                              child: TextFormField(
-                                controller: _qtyControllers[i],
-                                keyboardType: TextInputType.number,
-                                textAlign: TextAlign.center,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 6),
-                                  isDense: true,
-                                ),
-                                validator: (v) {
-                                  final qty = int.tryParse(v ?? '') ?? 0;
-                                  final max = (originalQty is int)
-                                      ? originalQty
-                                      : (int.tryParse('$originalQty') ?? 0);
-                                  if (qty < 0) return 'غير صالح';
-                                  if (qty > max) return 'أكبر من المتاح';
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
+                child: CircularProgressIndicator(color: SdColors.primary),
               ),
-              const SizedBox(height: 24),
+            )
+          else if (_invoiceItems.isNotEmpty) ...[
+            _buildItemsCard(),
+            const SizedBox(height: SdSpace.lg),
+            _buildDetailsCard(),
+            const SizedBox(height: SdSpace.xl),
+            _buildSaveButton(),
+            const SizedBox(height: SdSpace.md),
+          ],
+        ],
+      ),
+    );
+  }
 
-              // Reason
-              TextFormField(
-                controller: _reasonController,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'سبب الإرجاع',
-                  border: OutlineInputBorder(),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                ),
+  Widget _buildItemsCard() {
+    final phone = context.sd.isPhone;
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SdSectionHeader(title: '2. حدد كميات الإرجاع'),
+          if (phone)
+            for (var i = 0; i < _invoiceItems.length; i++) _itemCardPhone(i)
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: _itemsTable(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _itemsTable() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Table(
+        defaultColumnWidth: const IntrinsicColumnWidth(),
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        children: [
+          const TableRow(
+            decoration: BoxDecoration(color: SdColors.primary),
+            children: [
+              _HeaderCell('المادة'),
+              _HeaderCell('الكمية الأصلية'),
+              _HeaderCell('كمية الإرجاع'),
+            ],
+          ),
+          for (var i = 0; i < _invoiceItems.length; i++) _dataRow(i),
+        ],
+      ),
+    );
+  }
+
+  TableRow _dataRow(int i) {
+    final m = _invoiceItems[i];
+    final originalQty = (m['Quantity'] ?? m['quantity'] ?? 0);
+    return TableRow(
+      decoration: BoxDecoration(
+        color: i.isEven ? SdColors.surface : SdColors.surfaceAlt,
+      ),
+      children: [
+        _DataCell((m['ItemName'] ?? m['itemName'] ?? '-').toString()),
+        _DataCell(fmtN(originalQty)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: SizedBox(
+            width: 80,
+            child: _qtyField(i, originalQty),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _qtyField(int i, dynamic originalQty) {
+    return TextFormField(
+      controller: _qtyControllers[i],
+      keyboardType: TextInputType.number,
+      textAlign: TextAlign.center,
+      style: SdText.label,
+      decoration: _dec(null, dense: true),
+      validator: (v) {
+        final qty = int.tryParse(v ?? '') ?? 0;
+        final max = (originalQty is int)
+            ? originalQty
+            : (int.tryParse('$originalQty') ?? 0);
+        if (qty < 0) return 'غير صالح';
+        if (qty > max) return 'أكبر من المتاح';
+        return null;
+      },
+    );
+  }
+
+  Widget _itemCardPhone(int i) {
+    final m = _invoiceItems[i];
+    final originalQty = (m['Quantity'] ?? m['quantity'] ?? 0);
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(SdSpace.sm),
+      decoration: BoxDecoration(
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        border: Border.all(color: SdColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text((m['ItemName'] ?? m['itemName'] ?? '-').toString(), style: SdText.label),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: Text('الأصلية: ${fmtN(originalQty)}', style: SdText.bodySm),
               ),
-              const SizedBox(height: 16),
-
-              // Refund method
-              DropdownButtonFormField<String>(
-                value: _refundMethod,
-                decoration: const InputDecoration(
-                  labelText: 'طريقة الاسترداد',
-                  border: OutlineInputBorder(),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                ),
-                items: _refundMethods.entries
-                    .map((e) => DropdownMenuItem(
-                        value: e.key, child: Text(e.value)))
-                    .toList(),
-                onChanged: (v) =>
-                    setState(() => _refundMethod = v ?? 'Cash'),
-              ),
-              const SizedBox(height: 16),
-
-              // Cash box (if refund is cash)
-              if (_refundMethod == 'Cash')
-                DropdownButtonFormField<String>(
-                  value: _selectedCashBoxId,
-                  decoration: const InputDecoration(
-                    labelText: 'الصندوق',
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  ),
-                  items: _cashBoxes.map((e) {
-                    final id = (e['Id'] ?? e['id'] ?? '').toString();
-                    final name =
-                        (e['Name'] ?? e['name'] ?? '-').toString();
-                    return DropdownMenuItem(
-                        value: id, child: Text(name));
-                  }).toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedCashBoxId = v),
-                  validator: (v) =>
-                      _refundMethod == 'Cash' && (v == null || v.isEmpty)
-                          ? 'مطلوب'
-                          : null,
-                ),
-              if (_refundMethod == 'Cash') const SizedBox(height: 16),
-
-              // Save button
+              const SizedBox(width: 8),
               SizedBox(
-                height: 48,
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('إنشاء وتأكيد المرتجع',
-                          style: TextStyle(fontSize: 16)),
-                ),
+                width: 120,
+                child: _qtyField(i, originalQty),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsCard() {
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // السبب
+          TextFormField(
+            controller: _reasonController,
+            maxLines: 2,
+            style: SdText.label,
+            decoration: _dec('سبب الإرجاع'),
+          ),
+          const SizedBox(height: 16),
+
+          // طريقة الاسترداد
+          DropdownButtonFormField<String>(
+            value: _refundMethod,
+            style: SdText.label,
+            decoration: _dec('طريقة الاسترداد'),
+            items: _refundMethods.entries
+                .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                .toList(),
+            onChanged: (v) => setState(() => _refundMethod = v ?? 'Cash'),
+          ),
+
+          // الصندوق (إذا الاسترداد نقد)
+          if (_refundMethod == 'Cash') ...[
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedCashBoxId,
+              isExpanded: true,
+              style: SdText.label,
+              decoration: _dec('الصندوق'),
+              items: _cashBoxes.map((e) {
+                final id = (e['Id'] ?? e['id'] ?? '').toString();
+                final name = (e['Name'] ?? e['name'] ?? '-').toString();
+                return DropdownMenuItem(
+                    value: id, child: Text(name, overflow: TextOverflow.ellipsis));
+              }).toList(),
+              onChanged: (v) => setState(() => _selectedCashBoxId = v),
+              validator: (v) =>
+                  _refundMethod == 'Cash' && (v == null || v.isEmpty)
+                      ? 'مطلوب'
+                      : null,
+            ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    if (_saving) {
+      return Opacity(
+        opacity: .7,
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(SdRadius.md),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [SdColors.primaryMid, SdColors.primary],
+            ),
+            boxShadow: const [BoxShadow(color: SdColors.primaryEdge, offset: Offset(0, 6))],
+          ),
+          child: const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+          ),
         ),
+      );
+    }
+    return SdButton(
+      label: 'إنشاء وتأكيد المرتجع',
+      icon: Icons.assignment_return,
+      expand: true,
+      onPressed: _save,
+    );
+  }
+}
+
+class _HeaderCell extends StatelessWidget {
+  final String text;
+  const _HeaderCell(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontWeight: FontWeight.w800,
+            fontSize: 12.5,
+            color: Colors.white),
       ),
     );
   }
 }
 
-class _Cell extends StatelessWidget {
+class _DataCell extends StatelessWidget {
   final String text;
-  final bool isHeader;
-  const _Cell(this.text, {this.isHeader = false});
+  const _DataCell(this.text);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: TextStyle(
-          fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-          fontSize: isHeader ? 13 : 12,
-        ),
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+            color: SdColors.ink),
       ),
     );
   }

@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import 'account_stats_page.dart';
 import '../../models/filter_criteria.dart';
 import '../../services/api/api_config.dart';
@@ -463,7 +464,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                         TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
               ],
             ),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 10),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
@@ -1131,7 +1132,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في البحث الشامل: $e'),
-            backgroundColor: Colors.red.shade700,
+            backgroundColor: SdColors.dangerEdge,
           ),
         );
       }
@@ -1381,11 +1382,11 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 18, color: Colors.deepPurple.shade400),
+            Icon(icon, size: 18, color: SdColors.primaryLight),
             const SizedBox(width: 8),
             SizedBox(
               width: 120,
-              child: Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+              child: Text(label, style: TextStyle(fontSize: 13, color: SdColors.ink, fontWeight: FontWeight.w600)),
             ),
             Expanded(
               child: copyable
@@ -1405,7 +1406,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                             child: Text(value, style: TextStyle(fontSize: 13, color: valueColor ?? Colors.black87, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
                           ),
                           const SizedBox(width: 4),
-                          Icon(Icons.copy, size: 14, color: Colors.grey.shade400),
+                          Icon(Icons.copy, size: 14, color: SdColors.faint),
                         ],
                       ),
                     )
@@ -1442,18 +1443,18 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? Colors.green.shade50 : Colors.red.shade50,
+          color: active ? SdColors.successTint : SdColors.dangerTint,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: active ? Colors.green.shade300 : Colors.red.shade300),
+          border: Border.all(color: active ? SdColors.successTintEdge : SdColors.dangerTintEdge),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: active ? Colors.green.shade700 : Colors.red.shade700),
+            Icon(icon, size: 16, color: active ? SdColors.successEdge : SdColors.dangerEdge),
             const SizedBox(width: 6),
             Text(
               '$label: ${active ? "تم" : "لم يتم"}',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? Colors.green.shade700 : Colors.red.shade700),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: active ? SdColors.successEdge : SdColors.dangerEdge),
             ),
           ],
         ),
@@ -1479,7 +1480,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [Colors.deepPurple.shade700, Colors.deepPurple.shade500]),
+                  gradient: LinearGradient(colors: [SdColors.primaryEdge, SdColors.primary]),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Column(
@@ -1512,7 +1513,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: operationType.contains('شراء') ? Colors.green.shade400 : Colors.orange.shade400,
+                            color: operationType.contains('شراء') ? SdColors.success : SdColors.warning,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(operationType, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
@@ -1530,7 +1531,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                   children: [
                     // ═══ 1. حالات المعالجة ═══
-                    sectionHeader('حالة المعالجة', Icons.check_circle_outline, Colors.blueGrey.shade700),
+                    sectionHeader('حالة المعالجة', Icons.check_circle_outline, SdColors.ink),
                     Wrap(
                       spacing: 10,
                       runSpacing: 8,
@@ -1541,11 +1542,11 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     ),
 
                     // ═══ 2. معلومات الاشتراك ═══
-                    sectionHeader('معلومات الاشتراك', Icons.card_membership, Colors.blue.shade700),
+                    sectionHeader('معلومات الاشتراك', Icons.card_membership, SdColors.infoEdge),
                     detailRow(Icons.badge, 'معرف الاشتراك', subscriptionId, copyable: true),
                     detailRow(Icons.wifi, 'اسم الباقة', planName, bold: true),
-                    detailRow(Icons.attach_money, 'سعر الباقة', '$planPrice IQD', valueColor: Colors.green.shade700, bold: true),
-                    detailRow(Icons.credit_card, 'نوع الدفع', paymentType, valueColor: isCash ? Colors.teal.shade700 : Colors.red.shade700, bold: true),
+                    detailRow(Icons.attach_money, 'سعر الباقة', '$planPrice IQD', valueColor: SdColors.successEdge, bold: true),
+                    detailRow(Icons.credit_card, 'نوع الدفع', paymentType, valueColor: isCash ? SdColors.accentEdge : SdColors.dangerEdge, bold: true),
                     detailRow(Icons.shopping_bag, 'نوع التحصيل', collectionType),
                     detailRow(Icons.payment, 'حالة الدفع', paymentStatus),
                     detailRow(Icons.timer, 'فترة الالتزام', commitment.isNotEmpty ? '$commitment شهر' : ''),
@@ -1554,7 +1555,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     detailRow(Icons.event_busy, 'تاريخ الانتهاء', endDate),
 
                     // ═══ 3. معلومات العميل ═══
-                    sectionHeader('معلومات العميل', Icons.person, Colors.indigo.shade700),
+                    sectionHeader('معلومات العميل', Icons.person, SdColors.primaryEdge),
                     detailRow(Icons.person_outline, 'اسم العميل', customerName, bold: true),
                     detailRow(Icons.phone, 'رقم الهاتف', phone, copyable: true),
                     detailRow(Icons.fingerprint, 'معرف العميل', customerId, copyable: true),
@@ -1562,7 +1563,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     detailRow(Icons.location_on, 'المنطقة', zone),
 
                     // ═══ 4. معلومات العملية ═══
-                    sectionHeader('معلومات العملية', Icons.swap_horiz, Colors.orange.shade800),
+                    sectionHeader('معلومات العملية', Icons.swap_horiz, SdColors.warningEdge),
                     detailRow(Icons.person_pin, 'منفذ العملية', activatedBy),
                     detailRow(Icons.engineering, 'الفني', technicianName),
                     detailRow(Icons.calendar_today, 'تاريخ التفعيل', date),
@@ -1573,7 +1574,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
 
                     // ═══ 5. معلومات الشبكة ═══
                     if (fbg.isNotEmpty || fat.isNotEmpty || fdt.isNotEmpty) ...[
-                      sectionHeader('معلومات الشبكة', Icons.lan, Colors.cyan.shade700),
+                      sectionHeader('معلومات الشبكة', Icons.lan, SdColors.accentEdge),
                       detailRow(Icons.hub, 'FBG', fbg, copyable: true),
                       detailRow(Icons.device_hub, 'FAT', fat, copyable: true),
                       detailRow(Icons.cable, 'FDT', fdt, copyable: true),
@@ -1581,17 +1582,17 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
 
                     // ═══ 6. التفاصيل المالية ═══
                     if (ded > 0 || rev > 0 || exp > 0 || basePrice.isNotEmpty || compDiscount.isNotEmpty) ...[
-                      sectionHeader('التفاصيل المالية', Icons.account_balance, Colors.green.shade700),
+                      sectionHeader('التفاصيل المالية', Icons.account_balance, SdColors.successEdge),
                       // المبالغ الرئيسية
                       Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: Row(
                           children: [
-                            Expanded(child: _financialMini('المستقطع', ded, Colors.blue.shade700)),
+                            Expanded(child: _financialMini('المستقطع', ded, SdColors.infoEdge)),
                             const SizedBox(width: 8),
-                            Expanded(child: _financialMini('الإيرادات', rev, Colors.green.shade700)),
+                            Expanded(child: _financialMini('الإيرادات', rev, SdColors.successEdge)),
                             const SizedBox(width: 8),
-                            Expanded(child: _financialMini('المصاريف', exp, Colors.red.shade700)),
+                            Expanded(child: _financialMini('المصاريف', exp, SdColors.dangerEdge)),
                           ],
                         ),
                       ),
@@ -1606,16 +1607,16 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: isReconciled ? Colors.green.shade50 : Colors.orange.shade50,
+                              color: isReconciled ? SdColors.successTint : SdColors.warningTint,
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: isReconciled ? Colors.green.shade300 : Colors.orange.shade300),
+                              border: Border.all(color: isReconciled ? SdColors.successTintEdge : SdColors.warningTintEdge),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(isReconciled ? Icons.check_circle : Icons.pending, size: 16, color: isReconciled ? Colors.green.shade700 : Colors.orange.shade700),
+                                Icon(isReconciled ? Icons.check_circle : Icons.pending, size: 16, color: isReconciled ? SdColors.successEdge : SdColors.warningEdge),
                                 const SizedBox(width: 6),
-                                Text(isReconciled ? 'تمت المطابقة' : 'غير مطابق', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isReconciled ? Colors.green.shade700 : Colors.orange.shade700)),
+                                Text(isReconciled ? 'تمت المطابقة' : 'غير مطابق', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isReconciled ? SdColors.successEdge : SdColors.warningEdge)),
                               ],
                             ),
                           ),
@@ -1626,7 +1627,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
 
                     // ═══ 7. معلومات الرصيد ═══
                     if (walletBefore.isNotEmpty || walletAfter.isNotEmpty || partnerWalletBefore.isNotEmpty || customerWalletBefore.isNotEmpty) ...[
-                      sectionHeader('معلومات الرصيد', Icons.account_balance_wallet, Colors.purple.shade700),
+                      sectionHeader('معلومات الرصيد', Icons.account_balance_wallet, SdColors.platformEdge),
                       detailRow(Icons.arrow_back, 'الرصيد قبل', walletBefore),
                       detailRow(Icons.arrow_forward, 'الرصيد بعد', walletAfter),
                       detailRow(Icons.people_outline, 'رصيد الشريك قبل', partnerWalletBefore),
@@ -1635,16 +1636,16 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
 
                     // ═══ 8. الملاحظات ═══
                     if (subscriptionNotes.isNotEmpty) ...[
-                      sectionHeader('الملاحظات', Icons.note_alt, Colors.teal.shade700),
+                      sectionHeader('الملاحظات', Icons.note_alt, SdColors.accentEdge),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.teal.shade50,
+                          color: SdColors.accentTint,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.teal.shade200),
+                          border: Border.all(color: SdColors.accentTintEdge),
                         ),
-                        child: Text(subscriptionNotes, style: TextStyle(fontSize: 13, color: Colors.teal.shade800, height: 1.5)),
+                        child: Text(subscriptionNotes, style: TextStyle(fontSize: 13, color: SdColors.accentEdge, height: 1.5)),
                       ),
                     ],
                   ],
@@ -1655,8 +1656,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                  color: SdColors.surfaceAlt,
+                  border: Border(top: BorderSide(color: SdColors.divider)),
                 ),
                 child: SizedBox(
                   width: double.infinity,
@@ -1665,7 +1666,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     icon: const Icon(Icons.close, size: 18),
                     label: const Text('إغلاق'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
+                      backgroundColor: SdColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1708,7 +1709,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.person, color: Colors.deepPurple),
+                  Icon(Icons.person, color: SdColors.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text('تفاصيل المستخدم',
@@ -1732,7 +1733,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                   padding: const EdgeInsets.only(top: 4.0),
                   child: Text(
                     'تم إخفاء $diff سجلات لا تخصك (منفذ العملية مختلف).',
-                    style: TextStyle(fontSize: 12, color: Colors.amber.shade800),
+                    style: TextStyle(fontSize: 12, color: SdColors.warningEdge),
                   ),
                 ),
               const Divider(height: 24),
@@ -1740,11 +1741,11 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Colors.indigo.shade700)),
+                      color: SdColors.primaryEdge)),
               const SizedBox(height: 6),
               if (fsUser == null && fsPerm == null && fsDept == null && fsCenter == null)
                 Text('لا تتوفر بيانات للنظام الأول.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600))
+                    style: TextStyle(fontSize: 12, color: SdColors.muted))
               else ...[
                 if (fsUser != null) _kv('مستخدم النظام الأول', fsUser),
                 if (fsPerm != null) _kv('صلاحيات النظام الأول', fsPerm),
@@ -1762,11 +1763,12 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: SdColors.ground,
       appBar: AppBar(
         toolbarHeight: _isPhone ? 48 : 56,
         title: Text('سجلات الحسابات',
             style: TextStyle(fontSize: _fs(16), fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: SdColors.primary,
         foregroundColor: Colors.white,
         actions: [
           // زر التصفية السريعة بالتاريخ
@@ -1775,13 +1777,13 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: _quickDateFilter == 'all'
-                    ? Colors.orange.withValues(alpha: 0.3)
-                    : Colors.green.withValues(alpha: 0.3),
+                    ? SdColors.warning.withValues(alpha: 0.3)
+                    : SdColors.success.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: _quickDateFilter == 'all'
-                      ? Colors.orange
-                      : Colors.greenAccent,
+                      ? SdColors.warning
+                      : SdColors.success,
                   width: 1.5,
                 ),
               ),
@@ -1822,8 +1824,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           ? Icons.check_circle
                           : Icons.circle_outlined,
                       color: _quickDateFilter == 'today_yesterday'
-                          ? Colors.green
-                          : Colors.grey,
+                          ? SdColors.success
+                          : SdColors.muted,
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -1840,8 +1842,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           ? Icons.check_circle
                           : Icons.circle_outlined,
                       color: _quickDateFilter == 'today'
-                          ? Colors.green
-                          : Colors.grey,
+                          ? SdColors.success
+                          : SdColors.muted,
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -1858,8 +1860,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           ? Icons.check_circle
                           : Icons.circle_outlined,
                       color: _quickDateFilter == 'yesterday'
-                          ? Colors.green
-                          : Colors.grey,
+                          ? SdColors.success
+                          : SdColors.muted,
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -1877,8 +1879,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           ? Icons.check_circle
                           : Icons.circle_outlined,
                       color: _quickDateFilter == 'all'
-                          ? Colors.orange
-                          : Colors.grey,
+                          ? SdColors.warning
+                          : SdColors.muted,
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -1904,11 +1906,11 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
                 color: hideDuplicates
-                    ? Colors.blue.withValues(alpha: 0.3)
-                    : Colors.grey.withValues(alpha: 0.3),
+                    ? SdColors.info.withValues(alpha: 0.3)
+                    : SdColors.muted.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: hideDuplicates ? Colors.lightBlueAccent : Colors.grey,
+                  color: hideDuplicates ? SdColors.info : SdColors.muted,
                   width: 1.5,
                 ),
               ),
@@ -1945,7 +1947,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: _hasActiveFilters()
-                    ? Colors.redAccent.withValues(alpha: 0.28)
+                    ? SdColors.danger.withValues(alpha: 0.28)
                     : Colors.white.withValues(alpha: 0.10),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -2132,10 +2134,10 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     return Container(
       padding: EdgeInsets.all(_isPhone ? 10 : 16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: SdColors.surfaceAlt,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: SdColors.muted.withValues(alpha: 0.2),
             blurRadius: 4,
             offset: Offset(0, 2),
           ),
@@ -2151,7 +2153,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               border: Border.all(color: Color(0xFF1565C0), width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.withValues(alpha: 0.15),
+                  color: SdColors.info.withValues(alpha: 0.15),
                   blurRadius: 8,
                   offset: Offset(0, 3),
                 ),
@@ -2160,7 +2162,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'البحث في السجلات...',
-                hintStyle: TextStyle(color: Colors.grey.shade500),
+                hintStyle: TextStyle(color: SdColors.muted),
                 prefixIcon:
                     Icon(Icons.search, color: Color(0xFF1565C0), size: 24),
                 border: InputBorder.none,
@@ -2168,7 +2170,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 suffixIcon: searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.clear, color: Colors.red.shade400),
+                        icon: Icon(Icons.clear, color: SdColors.danger),
                         onPressed: () {
                           setState(() {
                             searchQuery = '';
@@ -2192,20 +2194,20 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
           Container(
             decoration: BoxDecoration(
               color: _isGlobalSearchActive
-                  ? Colors.orange.shade50
+                  ? SdColors.warningTint
                   : Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: _isGlobalSearchActive
-                    ? Colors.orange.shade700
-                    : Colors.deepPurple.shade300,
+                    ? SdColors.warningEdge
+                    : SdColors.primaryTintEdge,
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
                   color: _isGlobalSearchActive
-                      ? Colors.orange.withValues(alpha: 0.2)
-                      : Colors.purple.withValues(alpha: 0.1),
+                      ? SdColors.warning.withValues(alpha: 0.2)
+                      : SdColors.platformBase.withValues(alpha: 0.1),
                   blurRadius: 8,
                   offset: Offset(0, 3),
                 ),
@@ -2216,7 +2218,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               onSubmitted: _globalSearch,
               decoration: InputDecoration(
                 hintText: 'بحث شامل في كل السجلات (اضغط Enter)...',
-                hintStyle: TextStyle(color: Colors.grey.shade500),
+                hintStyle: TextStyle(color: SdColors.muted),
                 prefixIcon: _isGlobalSearching
                     ? Padding(
                         padding: EdgeInsets.all(12),
@@ -2225,21 +2227,21 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.orange.shade700,
+                            color: SdColors.warningEdge,
                           ),
                         ),
                       )
                     : Icon(Icons.manage_search,
                         color: _isGlobalSearchActive
-                            ? Colors.orange.shade700
-                            : Colors.deepPurple.shade400,
+                            ? SdColors.warningEdge
+                            : SdColors.primaryLight,
                         size: 24),
                 border: InputBorder.none,
                 contentPadding:
                     EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 suffixIcon: _isGlobalSearchActive
                     ? IconButton(
-                        icon: Icon(Icons.close, color: Colors.orange.shade700),
+                        icon: Icon(Icons.close, color: SdColors.warningEdge),
                         onPressed: () {
                           _globalSearchCtrl.clear();
                           _globalSearch('');
@@ -2257,13 +2259,13 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.info_outline,
-                      size: 14, color: Colors.orange.shade700),
+                      size: 14, color: SdColors.warningEdge),
                   SizedBox(width: 4),
                   Text(
                     'البحث الشامل نشط — النتائج من جميع المشغّلين وكل التواريخ (${filteredRecords.length} نتيجة)',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.orange.shade800,
+                      color: SdColors.warningEdge,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -2407,7 +2409,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           border: Border.all(color: Colors.black, width: 1.5),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.green.withValues(alpha: 0.25),
+                              color: SdColors.success.withValues(alpha: 0.25),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -2467,8 +2469,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           boxShadow: [
                             BoxShadow(
                               color: (showDuplicatesOnly
-                                      ? Colors.orange
-                                      : Colors.purple)
+                                      ? SdColors.warning
+                                      : SdColors.platformBase)
                                   .withValues(alpha: 0.25),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
@@ -2535,8 +2537,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                             BoxShadow(
                               color:
                                   (selectedReprintFilter == 'مطبوع أكثر من مرة'
-                                          ? Colors.red
-                                          : Colors.teal)
+                                          ? SdColors.danger
+                                          : SdColors.accent)
                                       .withValues(alpha: 0.25),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
@@ -2634,7 +2636,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                             style: TextStyle(
                               fontSize: _fs(16),
                               fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple,
+                              color: SdColors.primary,
                             ),
                           ),
                           // زر التبديل لدمج الأسماء المتطابقة (بدون حساسية حالة)
@@ -2647,13 +2649,13 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                                     'دمج الأسماء المتطابقة (حالة الأحرف)',
                                     style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey[800],
+                                        color: SdColors.ink,
                                         fontWeight: FontWeight.w600),
                                   ),
                                 ),
                                 Switch(
                                   value: mergeSimilarAccounts,
-                                  activeThumbColor: Colors.deepPurple,
+                                  activeThumbColor: SdColors.primary,
                                   onChanged: (v) {
                                     setState(() {
                                       mergeSimilarAccounts = v;
@@ -2735,12 +2737,12 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: Colors.deepPurple, width: 2),
+            borderSide: BorderSide(color: SdColors.primary, width: 2),
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           filled: true,
-          fillColor: Colors.grey.shade50,
+          fillColor: SdColors.surfaceAlt,
         );
 
     Widget boxed(Widget child) => ConstrainedBox(
@@ -2967,7 +2969,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               onPressed: _setYesterdayDate,
               icon: const Icon(Icons.calendar_view_day, size: 16),
               label: const Text('أمس', style: TextStyle(fontSize: 12)),
-              style: style(Colors.orange.shade600),
+              style: style(SdColors.warning),
             ),
           ),
           SizedBox(
@@ -2976,7 +2978,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               onPressed: _setTodayDate,
               icon: const Icon(Icons.today, size: 16),
               label: const Text('اليوم', style: TextStyle(fontSize: 12)),
-              style: style(Colors.green.shade600),
+              style: style(SdColors.success),
             ),
           ),
           SizedBox(
@@ -2985,7 +2987,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               onPressed: _setThisWeekDate,
               icon: const Icon(Icons.date_range, size: 16),
               label: const Text('الأسبوع', style: TextStyle(fontSize: 12)),
-              style: style(Colors.blue.shade600),
+              style: style(SdColors.info),
             ),
           ),
         ],
@@ -3022,15 +3024,15 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             decoration: BoxDecoration(
               border: Border.all(
                   color: active
-                      ? Colors.deepPurple.shade400
-                      : Colors.grey.shade400),
+                      ? SdColors.primaryLight
+                      : SdColors.faint),
               borderRadius: BorderRadius.circular(8),
-              color: active ? Colors.deepPurple.shade50 : Colors.grey.shade50,
+              color: active ? SdColors.primaryTint : SdColors.surfaceAlt,
             ),
             child: Row(
               children: [
                 Icon(Icons.calendar_today,
-                    size: 16, color: active ? Colors.deepPurple : Colors.grey),
+                    size: 16, color: active ? SdColors.primary : SdColors.muted),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -3091,19 +3093,19 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 decoration: BoxDecoration(
                   border: Border.all(
                       color: (toTime != null)
-                          ? Colors.deepPurple.shade400
-                          : Colors.grey.shade400),
+                          ? SdColors.primaryLight
+                          : SdColors.faint),
                   borderRadius: BorderRadius.circular(8),
                   color: (toTime != null)
-                      ? Colors.deepPurple.shade50
-                      : Colors.grey.shade50,
+                      ? SdColors.primaryTint
+                      : SdColors.surfaceAlt,
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.access_time,
                         size: 16,
                         color:
-                            (toTime != null) ? Colors.deepPurple : Colors.grey),
+                            (toTime != null) ? SdColors.primary : SdColors.muted),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -3141,20 +3143,20 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 decoration: BoxDecoration(
                   border: Border.all(
                       color: (fromTime != null)
-                          ? Colors.deepPurple.shade400
-                          : Colors.grey.shade400),
+                          ? SdColors.primaryLight
+                          : SdColors.faint),
                   borderRadius: BorderRadius.circular(8),
                   color: (fromTime != null)
-                      ? Colors.deepPurple.shade50
-                      : Colors.grey.shade50,
+                      ? SdColors.primaryTint
+                      : SdColors.surfaceAlt,
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.access_time,
                         size: 16,
                         color: (fromTime != null)
-                            ? Colors.deepPurple
-                            : Colors.grey),
+                            ? SdColors.primary
+                            : SdColors.muted),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -3317,7 +3319,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
           ],
         ),
         duration: Duration(seconds: 2),
-        backgroundColor: Colors.green.shade600,
+        backgroundColor: SdColors.success,
       ),
     );
 
@@ -3345,7 +3347,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
           ],
         ),
         duration: Duration(seconds: 2),
-        backgroundColor: Colors.orange.shade600,
+        backgroundColor: SdColors.warning,
       ),
     );
 
@@ -3377,7 +3379,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
           ],
         ),
         duration: Duration(seconds: 3),
-        backgroundColor: Colors.blue.shade600,
+        backgroundColor: SdColors.info,
       ),
     );
 
@@ -3470,9 +3472,9 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.deepPurple.shade500,
-                    Colors.deepPurple.shade700,
-                    Colors.deepPurple.shade900,
+                    SdColors.primary,
+                    SdColors.primaryEdge,
+                    SdColors.primaryEdge,
                   ],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
@@ -3480,7 +3482,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.deepPurple.withValues(alpha: 0.4),
+                    color: SdColors.primary.withValues(alpha: 0.4),
                     blurRadius: 8,
                     offset: Offset(0, 4),
                   ),
@@ -3573,21 +3575,21 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
               children: [
                 Expanded(child: _buildInfoRow('📦 الباقة', planName, FontWeight.w600, 14)),
                 SizedBox(width: 8),
-                Expanded(child: _buildInfoRow('⚙️ العملية', operationType, FontWeight.w600, 14, Colors.orange.shade700)),
+                Expanded(child: _buildInfoRow('⚙️ العملية', operationType, FontWeight.w600, 14, SdColors.warningEdge)),
               ],
             ),
             SizedBox(height: 8),
             // صف 2: السعر + نوع الدفع
             Row(
               children: [
-                Expanded(child: _buildInfoRow('💰 السعر', '$totalPrice $currency', FontWeight.bold, 14, Colors.green.shade700)),
+                Expanded(child: _buildInfoRow('💰 السعر', '$totalPrice $currency', FontWeight.bold, 14, SdColors.successEdge)),
                 SizedBox(width: 8),
                 Expanded(child: _buildInfoRow(
                     '💳 الدفع',
                     paymentType,
                     FontWeight.w600,
                     14,
-                    paymentType.contains('نقد') ? Colors.teal.shade700 : Colors.purple.shade700)),
+                    paymentType.contains('نقد') ? SdColors.accentEdge : SdColors.platformEdge)),
               ],
             ),
             // صف 3: الفني/الوكيل + المنطقة
@@ -3612,9 +3614,9 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(
                   children: [
-                    if (hasZone) Expanded(child: _buildInfoRow('📍 المنطقة', zone, FontWeight.w600, 14, Colors.indigo.shade700)),
+                    if (hasZone) Expanded(child: _buildInfoRow('📍 المنطقة', zone, FontWeight.w600, 14, SdColors.primaryEdge)),
                     if (hasZone && hasPerson) SizedBox(width: 8),
-                    if (hasPerson) Expanded(child: _buildInfoRow(personLabel.toString(), personName.toString(), FontWeight.w600, 14, Colors.brown.shade700)),
+                    if (hasPerson) Expanded(child: _buildInfoRow(personLabel.toString(), personName.toString(), FontWeight.w600, 14, SdColors.ink)),
                     if (hasZone && !hasPerson) Expanded(child: SizedBox.shrink()),
                     if (!hasZone && hasPerson) Expanded(child: SizedBox.shrink()),
                   ],
@@ -3633,7 +3635,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     SizedBox(height: 8),
                     _buildInfoRow('📅 فترة الاشتراك',
                         '${startDate.isNotEmpty ? startDate : '؟'} → ${endDate.isNotEmpty ? endDate : '؟'}',
-                        FontWeight.w500, 14, Colors.indigo.shade600),
+                        FontWeight.w500, 14, SdColors.primary),
                   ],
                 ],
               );
@@ -3749,14 +3751,14 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                     padding: const EdgeInsets.all(10),
                     margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: Colors.blueGrey.shade50,
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blueGrey.shade100),
+                      border: Border.all(color: SdColors.surfaceAlt),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.settings,
-                            color: Colors.blueGrey.shade600, size: 18),
+                            color: SdColors.muted, size: 18),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Wrap(
@@ -3770,10 +3772,10 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                                     Icons.print,
                                     size: 16,
                                     color: printStatus.isEmpty
-                                        ? Colors.red.shade600
+                                        ? SdColors.danger
                                         : (_isPrintedStatus(printStatus)
-                                            ? Colors.green.shade600
-                                            : Colors.red.shade600),
+                                            ? SdColors.success
+                                            : SdColors.danger),
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
@@ -3782,10 +3784,10 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: printStatus.isEmpty
-                                          ? Colors.red.shade700
+                                          ? SdColors.dangerEdge
                                           : (_isPrintedStatus(printStatus)
-                                              ? Colors.green.shade700
-                                              : Colors.red.shade700),
+                                              ? SdColors.successEdge
+                                              : SdColors.dangerEdge),
                                     ),
                                   ),
                                 ],
@@ -3797,10 +3799,10 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                                     Icons.chat,
                                     size: 16,
                                     color: whatsappStatus.isEmpty
-                                        ? Colors.red.shade600
+                                        ? SdColors.danger
                                         : (_isWhatsAppStatus(whatsappStatus)
-                                            ? Colors.green.shade600
-                                            : Colors.red.shade600),
+                                            ? SdColors.success
+                                            : SdColors.danger),
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
@@ -3809,10 +3811,10 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: whatsappStatus.isEmpty
-                                          ? Colors.red.shade700
+                                          ? SdColors.dangerEdge
                                           : (_isWhatsAppStatus(whatsappStatus)
-                                              ? Colors.green.shade700
-                                              : Colors.red.shade700),
+                                              ? SdColors.successEdge
+                                              : SdColors.dangerEdge),
                                     ),
                                   ),
                                 ],
@@ -3829,9 +3831,9 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                       padding: EdgeInsets.all(12),
                       margin: EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: Colors.teal.shade50,
+                        color: SdColors.accentTint,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.teal.shade200),
+                        border: Border.all(color: SdColors.accentTintEdge),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3839,13 +3841,13 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           Row(
                             children: [
                               Icon(Icons.note,
-                                  color: Colors.teal.shade600, size: 16),
+                                  color: SdColors.accent, size: 16),
                               SizedBox(width: 6),
                               Text(
                                 'ملاحظات الاشتراك:',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.teal.shade700,
+                                  color: SdColors.accentEdge,
                                   fontSize: 13,
                                 ),
                               ),
@@ -3855,7 +3857,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           Text(
                             subscriptionNotes,
                             style: TextStyle(
-                              color: Colors.teal.shade800,
+                              color: SdColors.accentEdge,
                               fontSize: 13,
                             ),
                           ),
@@ -3877,7 +3879,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                   icon: Icon(Icons.visibility, size: 16),
                   label: Text('عرض التفاصيل'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: SdColors.info,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -3905,7 +3907,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             label,
             style: TextStyle(
               fontSize: _fs(fontSize - 1),
-              color: Colors.grey[600],
+              color: SdColors.muted,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -4194,7 +4196,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: Duration(seconds: 5),
           ),
         );

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/whatsapp_business_service.dart';
 
 /// صفحة إعدادات WhatsApp Business API
@@ -134,7 +135,7 @@ class _WhatsAppBusinessConfigPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ خطأ في حفظ الإعدادات'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -150,7 +151,7 @@ class _WhatsAppBusinessConfigPageState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('⚠️ يرجى إدخال User Token و Phone Number ID أولاً'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
           duration: Duration(seconds: 4),
         ),
       );
@@ -169,7 +170,7 @@ class _WhatsAppBusinessConfigPageState
           builder: (context) => AlertDialog(
             title: const Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.green, size: 32),
+                Icon(Icons.check_circle, color: SdColors.success, size: 32),
                 SizedBox(width: 10),
                 Text('Token صالح ✅'),
               ],
@@ -190,11 +191,11 @@ class _WhatsAppBusinessConfigPageState
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isPermanent
-                        ? Colors.green.shade50
-                        : Colors.orange.shade50,
+                        ? SdColors.successTint
+                        : SdColors.warningTint,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isPermanent ? Colors.green : Colors.orange,
+                      color: isPermanent ? SdColors.success : SdColors.warning,
                       width: 2,
                     ),
                   ),
@@ -205,7 +206,7 @@ class _WhatsAppBusinessConfigPageState
                         children: [
                           Icon(
                             isPermanent ? Icons.verified : Icons.access_time,
-                            color: isPermanent ? Colors.green : Colors.orange,
+                            color: isPermanent ? SdColors.success : SdColors.warning,
                             size: 24,
                           ),
                           const SizedBox(width: 8),
@@ -216,7 +217,7 @@ class _WhatsAppBusinessConfigPageState
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                                 color:
-                                    isPermanent ? Colors.green : Colors.orange,
+                                    isPermanent ? SdColors.success : SdColors.warning,
                               ),
                             ),
                           ),
@@ -230,8 +231,8 @@ class _WhatsAppBusinessConfigPageState
                         style: TextStyle(
                           fontSize: 13,
                           color: isPermanent
-                              ? Colors.green.shade900
-                              : Colors.orange.shade900,
+                              ? SdColors.successEdge
+                              : SdColors.warningEdge,
                         ),
                       ),
                     ],
@@ -242,7 +243,7 @@ class _WhatsAppBusinessConfigPageState
                   '✅ جاهز للاستخدام الآن!',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                    color: SdColors.success,
                   ),
                 ),
               ],
@@ -261,7 +262,7 @@ class _WhatsAppBusinessConfigPageState
           builder: (context) => AlertDialog(
             title: const Row(
               children: [
-                Icon(Icons.error_outline, color: Colors.red, size: 28),
+                Icon(Icons.error_outline, color: SdColors.danger, size: 28),
                 SizedBox(width: 10),
                 Text('Token غير صالح'),
               ],
@@ -288,7 +289,7 @@ class _WhatsAppBusinessConfigPageState
                     'للحصول على التوكنات الصحيحة:',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+                      color: SdColors.info,
                     ),
                   ),
                   SizedBox(height: 5),
@@ -317,7 +318,7 @@ class _WhatsAppBusinessConfigPageState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('⚠️ يرجى إدخال رقم هاتف للاختبار'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -337,13 +338,13 @@ class _WhatsAppBusinessConfigPageState
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.description, color: Colors.green),
+              leading: const Icon(Icons.description, color: SdColors.success),
               title: const Text('رسالة قالب (موصى به)'),
               subtitle: const Text('يمكن إرسالها دائماً'),
               onTap: () => Navigator.pop(context, 'template'),
             ),
             ListTile(
-              leading: const Icon(Icons.message, color: Colors.orange),
+              leading: const Icon(Icons.message, color: SdColors.warning),
               title: const Text('رسالة نصية عادية'),
               subtitle: const Text('خلال 24 ساعة من رد المستلم'),
               onTap: () => Navigator.pop(context, 'text'),
@@ -378,7 +379,7 @@ class _WhatsAppBusinessConfigPageState
                 ? '✅ تم إرسال الرسالة التجريبية بنجاح'
                 : '❌ فشل في إرسال الرسالة - راجع Console للتفاصيل',
           ),
-          backgroundColor: result != null ? Colors.green : Colors.red,
+          backgroundColor: result != null ? SdColors.success : SdColors.danger,
         ),
       );
     }
@@ -396,19 +397,19 @@ class _WhatsAppBusinessConfigPageState
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.check_circle, color: Colors.green),
+              leading: const Icon(Icons.check_circle, color: SdColors.success),
               title: const Text('6'),
               subtitle:
                   const Text('Your RSVP for {{1}} by {{2}} is confirmed!'),
               trailing: const Chip(
                 label: Text('متغيرات'),
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
               ),
               onTap: () => Navigator.pop(context, '6'),
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.warning, color: Colors.orange),
+              leading: const Icon(Icons.warning, color: SdColors.warning),
               title: const Text('hello_world'),
               subtitle: const Text('للاختبار فقط - لا يعمل على أرقام الإنتاج'),
               enabled: false,
@@ -499,7 +500,7 @@ class _WhatsAppBusinessConfigPageState
                 ? '✅ تم إرسال رسالة القالب بنجاح'
                 : '❌ فشل في إرسال الرسالة - راجع Console للتفاصيل',
           ),
-          backgroundColor: result != null ? Colors.green : Colors.red,
+          backgroundColor: result != null ? SdColors.success : SdColors.danger,
           duration: const Duration(seconds: 4),
         ),
       );
@@ -521,7 +522,7 @@ class _WhatsAppBusinessConfigPageState
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: SdColors.danger),
             child: const Text('حذف'),
           ),
         ],
@@ -540,7 +541,7 @@ class _WhatsAppBusinessConfigPageState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ تم حذف جميع البيانات'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -553,7 +554,7 @@ class _WhatsAppBusinessConfigPageState
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.help_outline, color: Colors.blue, size: 28),
+            Icon(Icons.help_outline, color: SdColors.info, size: 28),
             SizedBox(width: 10),
             Expanded(child: Text('كيف تحصل على التوكنات؟')),
           ],
@@ -567,23 +568,23 @@ class _WhatsAppBusinessConfigPageState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: SdColors.successTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade300, width: 2),
+                  border: Border.all(color: SdColors.success, width: 2),
                 ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.verified, color: Colors.green, size: 24),
+                        Icon(Icons.verified, color: SdColors.success, size: 24),
                         SizedBox(width: 8),
                         Text(
                           '✅ توكن دائم (موصى به)',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Colors.green,
+                            color: SdColors.success,
                           ),
                         ),
                       ],
@@ -613,7 +614,7 @@ class _WhatsAppBusinessConfigPageState
                     Text(
                       '💡 هذا التوكن لا ينتهي أبداً!',
                       style: TextStyle(
-                        color: Colors.green,
+                        color: SdColors.success,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -627,23 +628,23 @@ class _WhatsAppBusinessConfigPageState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: SdColors.warningTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade300),
+                  border: Border.all(color: SdColors.warning),
                 ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.access_time, color: Colors.orange, size: 24),
+                        Icon(Icons.access_time, color: SdColors.warning, size: 24),
                         SizedBox(width: 8),
                         Text(
                           '⏰ توكن مؤقت (للتجربة)',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Colors.orange,
+                            color: SdColors.warning,
                           ),
                         ),
                       ],
@@ -660,7 +661,7 @@ class _WhatsAppBusinessConfigPageState
                     Text(
                       '⚠️ ينتهي بعد 24 ساعة!',
                       style: TextStyle(
-                        color: Colors.red,
+                        color: SdColors.danger,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -674,23 +675,23 @@ class _WhatsAppBusinessConfigPageState
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.shade300),
+                  border: Border.all(color: SdColors.info),
                 ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.phone, color: Colors.blue, size: 24),
+                        Icon(Icons.phone, color: SdColors.info, size: 24),
                         SizedBox(width: 8),
                         Text(
                           '📱 Phone Number ID',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Colors.blue,
+                            color: SdColors.info,
                           ),
                         ),
                       ],
@@ -705,7 +706,7 @@ class _WhatsAppBusinessConfigPageState
                     Text(
                       '⚠️ ليس رقم هاتفك العادي!',
                       style: TextStyle(
-                        color: Colors.red,
+                        color: SdColors.danger,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -731,10 +732,10 @@ class _WhatsAppBusinessConfigPageState
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.teal.shade50, Colors.teal.shade100],
+          colors: [SdColors.accentTint, SdColors.accentTint],
         ),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.teal.shade300),
+        border: Border.all(color: SdColors.accentLight),
       ),
       child: Row(
         children: [
@@ -747,7 +748,7 @@ class _WhatsAppBusinessConfigPageState
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.teal.shade900,
+                    color: SdColors.accentEdge,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -755,7 +756,7 @@ class _WhatsAppBusinessConfigPageState
                   subtitle,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.teal.shade700,
+                    color: SdColors.accentEdge,
                   ),
                 ),
               ],
@@ -783,7 +784,7 @@ class _WhatsAppBusinessConfigPageState
         labelText: label,
         hintText: hint,
         border: const OutlineInputBorder(),
-        prefixIcon: Icon(icon, color: Colors.green),
+        prefixIcon: Icon(icon, color: SdColors.success),
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -792,21 +793,21 @@ class _WhatsAppBusinessConfigPageState
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade100,
+                  color: SdColors.successTint,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.check_circle,
-                        size: 14, color: Colors.green.shade700),
+                        size: 14, color: SdColors.successEdge),
                     const SizedBox(width: 4),
                     Text(
                       'config',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade700,
+                        color: SdColors.successEdge,
                       ),
                     ),
                   ],
@@ -822,7 +823,7 @@ class _WhatsAppBusinessConfigPageState
         ),
         filled: true,
         fillColor: fromConfig && controller.text.isNotEmpty
-            ? Colors.green.shade50
+            ? SdColors.successTint
             : null,
       ),
       obscureText: obscureText,
@@ -833,27 +834,30 @@ class _WhatsAppBusinessConfigPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('إعدادات WhatsApp Business API'),
-        backgroundColor: Colors.green,
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: 'إعدادات WhatsApp Business API',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline),
+          SdAppBarAction(
+            icon: Icons.help_outline,
+            label: 'كيف تحصل على التوكنات؟',
             onPressed: _showHelpDialog,
-            tooltip: 'كيف تحصل على التوكنات؟',
           ),
           if (_isConfigured)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
+            SdAppBarAction(
+              icon: Icons.delete_outline,
+              label: 'حذف الإعدادات',
               onPressed: _clearConfig,
-              tooltip: 'حذف الإعدادات',
             ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+          : SafeArea(
+              top: false,
+              child: SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Form(
                 key: _formKey,
@@ -863,8 +867,8 @@ class _WhatsAppBusinessConfigPageState
                     // حالة الإعداد
                     Card(
                       color: _isConfigured
-                          ? Colors.green.shade50
-                          : Colors.orange.shade50,
+                          ? SdColors.successTint
+                          : SdColors.warningTint,
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Row(
@@ -874,7 +878,7 @@ class _WhatsAppBusinessConfigPageState
                                   ? Icons.check_circle
                                   : Icons.warning,
                               color:
-                                  _isConfigured ? Colors.green : Colors.orange,
+                                  _isConfigured ? SdColors.success : SdColors.warning,
                               size: 32,
                             ),
                             const SizedBox(width: 12),
@@ -887,8 +891,8 @@ class _WhatsAppBusinessConfigPageState
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: _isConfigured
-                                      ? Colors.green.shade900
-                                      : Colors.orange.shade900,
+                                      ? SdColors.successEdge
+                                      : SdColors.warningEdge,
                                 ),
                               ),
                             ),
@@ -961,7 +965,7 @@ class _WhatsAppBusinessConfigPageState
                         hintText: 'EAATnCB8Myh4BQ... (الصق التوكن الدائم)',
                         border: const OutlineInputBorder(),
                         prefixIcon:
-                            const Icon(Icons.vpn_key, color: Colors.red),
+                            const Icon(Icons.vpn_key, color: SdColors.danger),
                         suffixIcon: IconButton(
                           icon: Icon(_showTokens
                               ? Icons.visibility_off
@@ -970,7 +974,7 @@ class _WhatsAppBusinessConfigPageState
                               setState(() => _showTokens = !_showTokens),
                         ),
                         filled: true,
-                        fillColor: Colors.red.shade50,
+                        fillColor: SdColors.dangerTint,
                       ),
                       obscureText: !_showTokens,
                       maxLines: _showTokens ? 3 : 1,
@@ -985,20 +989,20 @@ class _WhatsAppBusinessConfigPageState
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: SdColors.infoTint,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
+                        border: Border.all(color: SdColors.infoTint),
                       ),
                       child: Row(
                         children: [
                           Icon(Icons.info,
-                              color: Colors.blue.shade700, size: 20),
+                              color: SdColors.infoEdge, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               '💡 احصل على التوكن الدائم من:\nBusiness Settings > System Users > Generate Token',
                               style: TextStyle(
-                                  fontSize: 12, color: Colors.blue.shade900),
+                                  fontSize: 12, color: SdColors.infoEdge),
                             ),
                           ),
                         ],
@@ -1016,7 +1020,7 @@ class _WhatsAppBusinessConfigPageState
                         labelText: 'رقم اختبار (مع رمز الدولة)',
                         hintText: '+9647XXXXXXXXX',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone, color: Colors.orange),
+                        prefixIcon: Icon(Icons.phone, color: SdColors.warning),
                         helperText: 'يجب أن يكون الرقم مسجلاً في WhatsApp',
                       ),
                       keyboardType: TextInputType.phone,
@@ -1039,7 +1043,7 @@ class _WhatsAppBusinessConfigPageState
                                 : const Icon(Icons.save),
                             label: const Text('حفظ الإعدادات'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
+                              backgroundColor: SdColors.success,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.all(16),
                             ),
@@ -1069,7 +1073,7 @@ class _WhatsAppBusinessConfigPageState
                         label: const Text('إرسال رسالة اختبار',
                             style: TextStyle(fontSize: 16)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: SdColors.info,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.all(20),
                         ),
@@ -1083,12 +1087,12 @@ class _WhatsAppBusinessConfigPageState
                       child: OutlinedButton.icon(
                         onPressed: _clearConfig,
                         icon:
-                            const Icon(Icons.delete_outline, color: Colors.red),
+                            const Icon(Icons.delete_outline, color: SdColors.danger),
                         label: const Text('حذف جميع البيانات',
-                            style: TextStyle(color: Colors.red)),
+                            style: TextStyle(color: SdColors.danger)),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.all(16),
-                          side: const BorderSide(color: Colors.red),
+                          side: const BorderSide(color: SdColors.danger),
                         ),
                       ),
                     ),
@@ -1098,22 +1102,22 @@ class _WhatsAppBusinessConfigPageState
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
+                        color: SdColors.warningTint,
                         borderRadius: BorderRadius.circular(12),
                         border:
-                            Border.all(color: Colors.amber.shade300, width: 2),
+                            Border.all(color: SdColors.warning, width: 2),
                       ),
                       child: Row(
                         children: [
                           Icon(Icons.lightbulb,
-                              color: Colors.amber.shade700, size: 28),
+                              color: SdColors.warningText, size: 28),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               '💡 البيانات المحملة من config.json تظهر تلقائياً في الحقول. يمكنك تعديلها والحفظ.',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.amber.shade900,
+                                color: SdColors.warningEdge,
                               ),
                             ),
                           ),
@@ -1123,9 +1127,9 @@ class _WhatsAppBusinessConfigPageState
                     const SizedBox(height: 16),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: SdColors.infoTint,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.shade200),
+                        border: Border.all(color: SdColors.infoTint),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -1135,13 +1139,13 @@ class _WhatsAppBusinessConfigPageState
                             Row(
                               children: [
                                 Icon(Icons.info_outline,
-                                    color: Colors.blue.shade700),
+                                    color: SdColors.infoEdge),
                                 const SizedBox(width: 8),
                                 Text(
                                   'إرشادات الحصول على البيانات',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blue.shade900,
+                                    color: SdColors.infoEdge,
                                   ),
                                 ),
                               ],
@@ -1171,6 +1175,8 @@ class _WhatsAppBusinessConfigPageState
                 ),
               ),
             ),
+            ),
+      ),
     );
   }
 
@@ -1188,7 +1194,7 @@ class _WhatsAppBusinessConfigPageState
           Expanded(
             child: Text(
               value,
-              style: TextStyle(color: Colors.blue.shade700),
+              style: TextStyle(color: SdColors.infoEdge),
             ),
           ),
         ],

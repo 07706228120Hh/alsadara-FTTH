@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/tenant_user.dart';
 import '../permissions/permission_registry.dart';
 import '../services/custom_auth_service.dart';
@@ -257,90 +258,70 @@ class _UserDetailsPageState extends State<UserDetailsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
-        elevation: 2,
-        title: Text(
-          'تفاصيل المستخدم: ${widget.user.username}',
-          style: GoogleFonts.cairo(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+    return SdTheme.scope(
+      child: Scaffold(
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'تفاصيل المستخدم: ${widget.user.username}',
+          actions: [
+            if (!_isEditing)
+              SdAppBarAction(
+                icon: Icons.edit,
+                label: 'تعديل',
+                onPressed: () => setState(() => _isEditing = true),
+              ),
+            if (_isEditing) ...[
+              SdAppBarAction(
+                icon: Icons.close,
+                label: 'إلغاء',
+                onPressed: () => setState(() => _isEditing = false),
+              ),
+              SdAppBarAction(
+                icon: Icons.save,
+                label: 'حفظ',
+                onPressed: _isSaving ? null : _saveChanges,
+              ),
+            ],
+          ],
+          bottom: SdTabBar(
+            controller: _tabController,
+            height: 74,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.person, size: 24),
+                text: 'المعلومات الشخصية',
+                height: 70,
+              ),
+              Tab(
+                icon: Icon(Icons.security, size: 24),
+                text: 'صلاحيات النظام الأول',
+                height: 70,
+              ),
+              Tab(
+                icon: Icon(Icons.admin_panel_settings, size: 24),
+                text: 'صلاحيات النظام الثاني',
+                height: 70,
+              ),
+            ],
           ),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          if (!_isEditing)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
-              tooltip: 'تعديل',
-            ),
-          if (_isEditing) ...[
-            IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => setState(() => _isEditing = false),
-              tooltip: 'إلغاء',
-            ),
-            IconButton(
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.save),
-              onPressed: _isSaving ? null : _saveChanges,
-              tooltip: 'حفظ',
-            ),
-          ],
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withOpacity(0.6),
-          indicatorColor: Colors.white,
-          indicatorWeight: 4,
-          indicatorSize: TabBarIndicatorSize.tab,
-          labelStyle: GoogleFonts.cairo(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildPersonalInfoTab(),
+                    _buildFirstSystemPermissionsTab(),
+                    _buildSecondSystemPermissionsTab(),
+                  ],
+                ),
+              ),
+            ],
           ),
-          unselectedLabelStyle: GoogleFonts.cairo(
-            fontSize: 12,
-            fontWeight: FontWeight.normal,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          tabs: [
-            Tab(
-              icon: const Icon(Icons.person, size: 24),
-              text: 'المعلومات الشخصية',
-              height: 70,
-            ),
-            Tab(
-              icon: const Icon(Icons.security, size: 24),
-              text: 'صلاحيات النظام الأول',
-              height: 70,
-            ),
-            Tab(
-              icon: const Icon(Icons.admin_panel_settings, size: 24),
-              text: 'صلاحيات النظام الثاني',
-              height: 70,
-            ),
-          ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildPersonalInfoTab(),
-          _buildFirstSystemPermissionsTab(),
-          _buildSecondSystemPermissionsTab(),
-        ],
       ),
     );
   }
@@ -355,7 +336,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
           Center(
             child: CircleAvatar(
               radius: 60,
-              backgroundColor: _isActive ? Colors.blue : Colors.grey,
+              backgroundColor: _isActive ? SdColors.primary : SdColors.faint,
               child: Text(
                 widget.user.username[0].toUpperCase(),
                 style: GoogleFonts.cairo(
@@ -495,7 +476,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                     _selectedRole.arabicName,
                     style: GoogleFonts.cairo(
                       fontSize: 16,
-                      color: Colors.blue,
+                      color: SdColors.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -576,12 +557,13 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                     onChanged: (value) => setState(() => _isActive = value),
                     contentPadding: EdgeInsets.zero,
                   )
-                : Chip(
-                    label: Text(
+                : Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: SdStatusChip(
                       _isActive ? 'نشط' : 'غير نشط',
-                      style: GoogleFonts.cairo(color: Colors.white),
+                      status: _isActive ? SdStatus.success : SdStatus.danger,
+                      icon: _isActive ? Icons.check_circle : Icons.cancel,
                     ),
-                    backgroundColor: _isActive ? Colors.green : Colors.red,
                   ),
           ),
 
@@ -609,17 +591,12 @@ class _UserDetailsPageState extends State<UserDetailsPage>
           const SizedBox(height: 16),
 
           // زر تغيير كلمة المرور
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _showChangePasswordDialog,
-              icon: const Icon(Icons.lock_reset),
-              label: Text('تغيير كلمة المرور', style: GoogleFonts.cairo()),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.all(16),
-                backgroundColor: Colors.orange,
-              ),
-            ),
+          SdButton(
+            label: 'تغيير كلمة المرور',
+            icon: Icons.lock_reset,
+            kind: SdButtonKind.accent,
+            expand: true,
+            onPressed: _showChangePasswordDialog,
           ),
         ],
       ),
@@ -630,13 +607,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(
-          'صلاحيات النظام الأول',
-          style: GoogleFonts.cairo(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text('صلاحيات النظام الأول', style: SdText.title),
         const SizedBox(height: 16),
         ..._buildV2PermissionWidgets(
           _firstSystemPermissionsV2,
@@ -651,13 +622,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(
-          'صلاحيات النظام الثاني (FTTH)',
-          style: GoogleFonts.cairo(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text('صلاحيات النظام الثاني (FTTH)', style: SdText.title),
         const SizedBox(height: 16),
         ..._buildV2PermissionWidgets(
           _secondSystemPermissionsV2,
@@ -717,31 +682,12 @@ class _UserDetailsPageState extends State<UserDetailsPage>
     required String title,
     required Widget child,
   }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 20, color: Colors.blue),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: GoogleFonts.cairo(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            child,
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SdCard(
+        title: title,
+        icon: icon,
+        child: child,
       ),
     );
   }
@@ -752,18 +698,23 @@ class _UserDetailsPageState extends State<UserDetailsPage>
     required ValueChanged<bool?> onChanged,
     required bool enabled,
   }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: SwitchListTile(
-        title: Text(
-          title,
-          style: GoogleFonts.cairo(
-            color: enabled ? Colors.black : Colors.grey,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SdCard(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: SwitchListTile(
+          title: Text(
+            title,
+            style: GoogleFonts.cairo(
+              fontWeight: FontWeight.w700,
+              color: enabled ? SdColors.ink : SdColors.faint,
+            ),
           ),
+          value: value,
+          onChanged: enabled ? onChanged : null,
+          activeColor: SdColors.success,
+          contentPadding: EdgeInsets.zero,
         ),
-        value: value,
-        onChanged: enabled ? onChanged : null,
-        activeColor: Colors.green,
       ),
     );
   }

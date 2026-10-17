@@ -8,9 +8,8 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../../theme/app_theme.dart';
+import '../../../frontend/frontend.dart';
 import '../../widgets/sas_metrics.dart';
 import '../../widgets/sas_state_views.dart';
 import '../config/wa_settings.dart';
@@ -20,7 +19,7 @@ import '../senders/server_sender.dart';
 import '../server/wa_server_launcher.dart';
 import 'wa_templates_screen.dart';
 
-const Color _kWaGreen = Color(0xFF25D366);
+const Color _kWaGreen = SdColors.whatsapp;
 
 class WaSettingsScreen extends StatefulWidget {
   const WaSettingsScreen({super.key});
@@ -122,38 +121,22 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: 'إعدادات واتساب',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'القوالب',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const WaTemplatesScreen()),
             ),
           ),
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Text('إعدادات واتساب',
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800, fontSize: 17, color: Colors.white)),
-          actions: [
-            IconButton(
-              tooltip: 'القوالب',
-              icon: const Icon(Icons.chat_bubble_outline_rounded,
-                  color: Colors.white),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const WaTemplatesScreen()),
-              ),
-            ),
-          ],
-        ),
-        body: _loading
+        ],
+      ),
+      body: _loading
             ? const SasLoadingView(message: 'جاري تحميل الإعدادات…')
             : SasContentWrap(
                 maxWidth: 820,
@@ -183,7 +166,6 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                   ],
                 ),
               ),
-      ),
     );
   }
 
@@ -196,17 +178,17 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
         margin: EdgeInsets.only(bottom: 10.h),
         decoration: BoxDecoration(
           color: selected
-              ? AppTheme.primaryColor.withValues(alpha: 0.04)
+              ? SdColors.primary.withValues(alpha: 0.04)
               : Colors.white,
           borderRadius: BorderRadius.circular(SasUi.radius.r),
           border: Border.all(
             color: selected
-                ? AppTheme.primaryColor.withValues(alpha: 0.45)
+                ? SdColors.primary.withValues(alpha: 0.45)
                 : Colors.grey.withValues(alpha: 0.16),
             width: selected ? 1.6 : 1.2,
           ),
           boxShadow: selected
-              ? SasUi.cardShadow(AppTheme.primaryColor)
+              ? SasUi.cardShadow(SdColors.primary)
               : SasUi.cardShadow(),
         ),
         child: Material(
@@ -229,7 +211,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                         ? Icons.radio_button_checked_rounded
                         : Icons.radio_button_unchecked_rounded,
                     color: selected
-                        ? AppTheme.primaryColor
+                        ? SdColors.primary
                         : Colors.grey.withValues(alpha: 0.55),
                     size: 22.sp,
                   ),
@@ -243,7 +225,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                             Flexible(
                               child: Text(
                                 m.label,
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(fontFamily: 'Cairo', 
                                     fontSize: 13.5.sp,
                                     fontWeight: FontWeight.w800,
                                     color: const Color(0xFF1A1A2E)),
@@ -259,7 +241,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                         SizedBox(height: 3.h),
                         Text(
                           m.description,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 11.sp,
                               color: Colors.grey[600],
                               height: 1.4),
@@ -284,12 +266,12 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('عنوان الخادم',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 12.sp, fontWeight: FontWeight.w800)),
           SizedBox(height: 8.h),
           TextField(
             controller: _serverUrl,
-            style: GoogleFonts.cairo(fontSize: 13.sp),
+            style: TextStyle(fontFamily: 'Cairo', fontSize: 13.sp),
             decoration: const InputDecoration(
               hintText: 'http://127.0.0.1:3100',
               isDense: true,
@@ -318,9 +300,9 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
               OutlinedButton.icon(
                 onPressed: _checking ? null : _checkServer,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor,
+                  foregroundColor: SdColors.primary,
                   side: BorderSide(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.45)),
+                      color: SdColors.primary.withValues(alpha: 0.45)),
                   padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                 ),
                 icon: _checking
@@ -328,10 +310,10 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                         width: 15.w,
                         height: 15.w,
                         child: const CircularProgressIndicator(
-                            strokeWidth: 2, color: AppTheme.primaryColor))
+                            strokeWidth: 2, color: SdColors.primary))
                     : Icon(Icons.refresh_rounded, size: 17.sp),
                 label: Text('فحص',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontWeight: FontWeight.w700, fontSize: 12.sp)),
               ),
             ],
@@ -340,7 +322,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
             SizedBox(height: 14.h),
             Text(
               'امسح رمز QR من تطبيق واتساب على هاتفك (الأجهزة المرتبطة):',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 12.sp,
                   fontWeight: FontWeight.w600,
                   color: Colors.grey[700]),
@@ -380,23 +362,23 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
             Container(
               padding: EdgeInsets.all(11.w),
               decoration: BoxDecoration(
-                color: AppTheme.warningColor.withValues(alpha: 0.10),
+                color: SdColors.warning.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
                 border: Border.all(
-                    color: AppTheme.warningColor.withValues(alpha: 0.30)),
+                    color: SdColors.warning.withValues(alpha: 0.30)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(Icons.warning_amber_rounded,
-                      size: 18.sp, color: AppTheme.warningColor),
+                      size: 18.sp, color: SdColors.warning),
                   SizedBox(width: 8.w),
                   Expanded(
                     child: Text(
                       st.detail ??
                           'الخادم غير متاح. سيُشغَّل تلقائياً عند الفحص إن كان مثبّتاً، '
                               'أو استخدم النمط اليدوي (wa.me) بلا خادم.',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 11.5.sp,
                           color: Colors.grey[700],
                           height: 1.5),
@@ -418,7 +400,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                   ),
                   icon: Icon(Icons.qr_code_rounded, size: 18.sp),
                   label: Text('ربط / تحديث',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w800, fontSize: 12.5.sp)),
                 ),
               ),
@@ -427,14 +409,14 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _checking ? null : _resetSession,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.errorColor,
+                    foregroundColor: SdColors.danger,
                     side: BorderSide(
-                        color: AppTheme.errorColor.withValues(alpha: 0.45)),
+                        color: SdColors.danger.withValues(alpha: 0.45)),
                     padding: EdgeInsets.symmetric(vertical: 11.h),
                   ),
                   icon: Icon(Icons.link_off_rounded, size: 18.sp),
                   label: Text('قطع الربط',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w700, fontSize: 12.5.sp)),
                 ),
               ),
@@ -449,27 +431,27 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
     final (String txt, Color c, IconData icon) = switch (st?.state) {
       WaConnState.ready => (
           'متصل${st?.phone != null ? ' · ${st!.phone}' : ''}',
-          AppTheme.successColor,
+          SdColors.success,
           Icons.check_circle_rounded
         ),
       WaConnState.needsQr => (
           'يحتاج مسح QR',
-          AppTheme.warningColor,
+          SdColors.warning,
           Icons.qr_code_rounded
         ),
       WaConnState.connecting => (
           'جارٍ الاتصال…',
-          AppTheme.infoColor,
+          SdColors.info,
           Icons.sync_rounded
         ),
       WaConnState.disconnected => (
           'غير متصل',
-          AppTheme.errorColor,
+          SdColors.danger,
           Icons.link_off_rounded
         ),
       WaConnState.unavailable => (
           'الخادم متوقّف',
-          AppTheme.errorColor,
+          SdColors.danger,
           Icons.cloud_off_rounded
         ),
       null => ('لم يُفحَص', Colors.grey, Icons.help_outline_rounded),
@@ -502,11 +484,11 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('قوالب الرسائل',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(fontFamily: 'Cairo', 
                             fontSize: 13.5.sp, fontWeight: FontWeight.w800)),
                     SizedBox(height: 2.h),
                     Text('تذكير · تجديد · انتهاء + قوالب مخصّصة',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(fontFamily: 'Cairo', 
                             fontSize: 11.sp, color: Colors.grey[600])),
                   ],
                 ),

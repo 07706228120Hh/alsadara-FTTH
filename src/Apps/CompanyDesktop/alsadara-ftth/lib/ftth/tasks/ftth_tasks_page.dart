@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/ftth_connect_service.dart';
 import 'ftth_connect_form.dart';
 
@@ -20,7 +21,10 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
   bool get _isPhone =>
       MediaQuery.of(context).size.width < 500;
 
-  double _fs(double size) => _isPhone ? size * 0.85 : size;
+  double _fs(double size) {
+    final v = _isPhone ? size * 0.85 : size;
+    return v < 11.5 ? 11.5 : v; // أصغر خط مسموح 11.5 (نظام التصميم الموحّد)
+  }
 
   double _ic(double size) => _isPhone ? size * 0.85 : size;
 
@@ -127,92 +131,79 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final totalPages = (_totalCount / _pageSize).ceil().clamp(1, 9999);
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F6FA),
-        appBar: AppBar(
-          title: Text('مهام التوصيل — FTTH',
-              style: TextStyle(fontSize: _fs(18))),
-          centerTitle: true,
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white,
-          elevation: 0,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'مهام التوصيل — FTTH',
           actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'تحديث',
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
               onPressed: _fetchTasks,
             ),
           ],
         ),
-        body: Column(
-          children: [
-            // ═══ شريط الفلاتر ═══
-            _buildFilters(theme),
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              // ═══ شريط الفلاتر ═══
+              _buildFilters(),
 
-            // ═══ المحتوى ═══
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _error != null
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.error_outline,
-                                  size: _ic(48), color: Colors.red.shade300),
-                              const SizedBox(height: 12),
-                              Text(_error!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.red)),
-                              const SizedBox(height: 12),
-                              ElevatedButton.icon(
+              // ═══ المحتوى ═══
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? Center(
+                            child: SdEmptyState(
+                              icon: Icons.error_outline,
+                              status: SdStatus.danger,
+                              title: _error!,
+                              action: SdButton(
+                                label: 'إعادة المحاولة',
+                                icon: Icons.refresh,
                                 onPressed: _fetchTasks,
-                                icon: Icon(Icons.refresh, size: _ic(18)),
-                                label: const Text('إعادة المحاولة'),
                               ),
-                            ],
-                          ),
-                        )
-                      : _tasks.isEmpty
-                          ? Center(
-                              child: Text('لا توجد مهام',
-                                  style: TextStyle(
-                                      fontSize: _fs(16), color: Colors.grey)),
-                            )
-                          : ListView.builder(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: _isPhone ? 8 : 16, vertical: 8),
-                              itemCount: _tasks.length,
-                              itemBuilder: (ctx, i) =>
-                                  _buildTaskCard(_tasks[i]),
                             ),
-            ),
+                          )
+                        : _tasks.isEmpty
+                            ? const Center(
+                                child: SdEmptyState(
+                                  icon: Icons.assignment_outlined,
+                                  title: 'لا توجد مهام',
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: _isPhone ? 8 : 16, vertical: 8),
+                                itemCount: _tasks.length,
+                                itemBuilder: (ctx, i) =>
+                                    _buildTaskCard(_tasks[i]),
+                              ),
+              ),
 
-            // ═══ Pagination ═══
-            if (!_isLoading && _totalCount > _pageSize)
-              _buildPagination(totalPages),
-          ],
+              // ═══ Pagination ═══
+              if (!_isLoading && _totalCount > _pageSize)
+                _buildPagination(totalPages),
+            ],
+          ),
         ),
       ),
     );
   }
 
   // ─── الفلاتر ───
-  Widget _buildFilters(ThemeData theme) {
+  Widget _buildFilters() {
     return Container(
       padding: EdgeInsets.all(_isPhone ? 8 : 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
         boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2)),
+          BoxShadow(color: SdColors.cardEdge, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -240,26 +231,27 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               filled: true,
-              fillColor: Colors.grey.shade50,
+              fillColor: SdColors.surfaceAlt,
             ),
           ),
           const SizedBox(height: 10),
 
           // فلتر الحالة
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                Text('الحالة: ',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: _fs(13))),
-                const SizedBox(width: 8),
-                ...[
-                  _statusChip('الكل', 0),
-                  _statusChip('لم تبدأ', 1),
-                  _statusChip('قيد التنفيذ', 2),
-                  _statusChip('مكتملة', 3),
-                ],
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: SdFilterChips<int>(
+              selected: _statusFilter,
+              options: const [
+                SdFilterOption(0, 'الكل'),
+                SdFilterOption(1, 'لم تبدأ'),
+                SdFilterOption(2, 'قيد التنفيذ'),
+                SdFilterOption(3, 'مكتملة'),
               ],
+              onSelected: (value) {
+                setState(() => _statusFilter = value);
+                _currentPage = 1;
+                _fetchTasks();
+              },
             ),
           ),
           const SizedBox(height: 8),
@@ -270,7 +262,8 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
             child: Row(
               children: [
                 Text('النوع: ',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: _fs(13))),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: _fs(13))),
                 const SizedBox(width: 8),
                 ..._taskTypes.map((t) => Padding(
                       padding: const EdgeInsets.only(left: 6),
@@ -289,8 +282,8 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
                           _currentPage = 1;
                           _fetchTasks();
                         },
-                        selectedColor: Colors.indigo.shade100,
-                        checkmarkColor: Colors.indigo,
+                        selectedColor: SdColors.primaryTint,
+                        checkmarkColor: SdColors.primary,
                         visualDensity: VisualDensity.compact,
                       ),
                     )),
@@ -304,28 +297,10 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                 'المجموع: $_totalCount مهمة',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: _fs(12)),
+                style: TextStyle(color: SdColors.muted, fontSize: _fs(12)),
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _statusChip(String label, int value) {
-    final selected = _statusFilter == value;
-    return Padding(
-      padding: const EdgeInsets.only(left: 6),
-      child: ChoiceChip(
-        label: Text(label, style: TextStyle(fontSize: _fs(12))),
-        selected: selected,
-        onSelected: (_) {
-          setState(() => _statusFilter = value);
-          _currentPage = 1;
-          _fetchTasks();
-        },
-        selectedColor: Colors.indigo.shade100,
-        visualDensity: VisualDensity.compact,
       ),
     );
   }
@@ -342,110 +317,91 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
     final createdAt = task['createdAt'] ?? '';
     final dueAt = task['dueAt'] ?? '';
 
-    Color statusColor;
+    SdStatus statusTone;
     String statusAr;
     switch (status) {
       case 'Not started':
-        statusColor = Colors.orange;
+        statusTone = SdStatus.warning;
         statusAr = 'لم تبدأ';
         break;
       case 'In progress':
-        statusColor = Colors.blue;
+        statusTone = SdStatus.info;
         statusAr = 'قيد التنفيذ';
         break;
       case 'Completed':
-        statusColor = Colors.green;
+        statusTone = SdStatus.success;
         statusAr = 'مكتملة';
         break;
       default:
-        statusColor = Colors.grey;
+        statusTone = SdStatus.neutral;
         statusAr = status;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 1,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SdRaised(
         onTap: () => _openConnectForm(task),
-        child: Padding(
-          padding: EdgeInsets.all(_isPhone ? 10 : 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // السطر الأول: الاسم + الحالة
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      customerName,
-                      style: TextStyle(
-                          fontSize: _fs(15), fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+        padding: EdgeInsets.all(_isPhone ? 10 : 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // السطر الأول: الاسم + الحالة
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    customerName,
+                    style: TextStyle(
+                        fontSize: _fs(15),
+                        fontWeight: FontWeight.bold,
+                        color: SdColors.ink),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: _isPhone ? 7 : 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(statusAr,
-                        style: TextStyle(
-                            color: statusColor,
-                            fontSize: _fs(11),
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
+                ),
+                SdStatusChip(statusAr, status: statusTone),
+              ],
+            ),
+            const SizedBox(height: 6),
 
-              // السطر الثاني: النوع + الزون
-              Row(
-                children: [
-                  Icon(Icons.cable, size: _ic(14), color: Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                  Text(_translateTaskType(taskName),
+            // السطر الثاني: النوع + الزون
+            Row(
+              children: [
+                Icon(Icons.cable, size: _ic(14), color: SdColors.faint),
+                const SizedBox(width: 4),
+                Text(_translateTaskType(taskName),
+                    style: TextStyle(fontSize: _fs(12), color: SdColors.muted)),
+                SizedBox(width: _isPhone ? 10 : 16),
+                Icon(Icons.location_on, size: _ic(14), color: SdColors.faint),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(zoneName,
                       style:
-                          TextStyle(fontSize: _fs(12), color: Colors.grey.shade700)),
-                  SizedBox(width: _isPhone ? 10 : 16),
-                  Icon(Icons.location_on,
-                      size: _ic(14), color: Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(zoneName,
-                        style:
-                            TextStyle(fontSize: _fs(12), color: Colors.grey.shade700),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
+                          TextStyle(fontSize: _fs(12), color: SdColors.muted),
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
 
-              // السطر الثالث: التواريخ
-              Row(
-                children: [
-                  Icon(Icons.calendar_today,
-                      size: _ic(12), color: Colors.grey.shade500),
+            // السطر الثالث: التواريخ
+            Row(
+              children: [
+                Icon(Icons.calendar_today, size: _ic(12), color: SdColors.faint),
+                const SizedBox(width: 4),
+                Text(_formatDate(createdAt),
+                    style: TextStyle(fontSize: _fs(11.5), color: SdColors.faint)),
+                if (dueAt.isNotEmpty) ...[
+                  const SizedBox(width: 12),
+                  Icon(Icons.timer, size: _ic(12), color: SdColors.faint),
                   const SizedBox(width: 4),
-                  Text(_formatDate(createdAt),
+                  Text(_formatDate(dueAt),
                       style:
-                          TextStyle(fontSize: _fs(11), color: Colors.grey.shade500)),
-                  if (dueAt.isNotEmpty) ...[
-                    const SizedBox(width: 12),
-                    Icon(Icons.timer, size: _ic(12), color: Colors.grey.shade500),
-                    const SizedBox(width: 4),
-                    Text(_formatDate(dueAt),
-                        style: TextStyle(
-                            fontSize: _fs(11), color: Colors.grey.shade500)),
-                  ],
+                          TextStyle(fontSize: _fs(11.5), color: SdColors.faint)),
                 ],
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -455,20 +411,17 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
   Widget _buildPagination(int totalPages) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
         boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, -2)),
+          BoxShadow(color: SdColors.cardEdge, offset: Offset(0, -2)),
         ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_right),
+            icon: const Icon(Icons.chevron_right, color: SdColors.primary),
             onPressed: _currentPage > 1
                 ? () {
                     _currentPage--;
@@ -477,9 +430,10 @@ class _FtthTasksPageState extends State<FtthTasksPage> {
                 : null,
           ),
           Text('$_currentPage / $totalPages',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: SdColors.ink)),
           IconButton(
-            icon: const Icon(Icons.chevron_left),
+            icon: const Icon(Icons.chevron_left, color: SdColors.primary),
             onPressed: _currentPage < totalPages
                 ? () {
                     _currentPage++;

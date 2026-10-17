@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart' as wvwin;
 
+import '../../frontend/frontend.dart';
 import '../models/device_models.dart';
 import '../models/quality_models.dart';
 import '../services/device_credentials_service.dart';
@@ -28,7 +29,7 @@ class DeviceDetailPage extends StatefulWidget {
 }
 
 class _DeviceDetailPageState extends State<DeviceDetailPage> {
-  static const _indigo = Color(0xFF1A237E);
+  static const _indigo = SdColors.primary;
   bool _busy = false;
 
   // WebView خفيّ (ويندوز) للقراءة الصامتة لبصريات هواوي — محجوب بالكامل خلف
@@ -105,14 +106,17 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
             ],
           ),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء')),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: _indigo, foregroundColor: Colors.white),
+            SdButton(
+              label: 'إلغاء',
+              kind: SdButtonKind.secondary,
+              height: 44,
+              onPressed: () => Navigator.pop(ctx, false),
+            ),
+            SdButton(
+              label: 'فحص',
+              icon: Icons.search_rounded,
+              height: 44,
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('فحص'),
             ),
           ],
         ),
@@ -125,71 +129,45 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF2F4F8),
-        appBar: AppBar(
-          title: Text(d.displayName,
-              style: const TextStyle(fontWeight: FontWeight.w800)),
-          backgroundColor: _indigo,
-          foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              tooltip: 'إعادة الفحص',
-              icon: _busy
-                  ? const Padding(
-                      padding: EdgeInsets.all(14),
-                      child: SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white)))
-                  : const Icon(Icons.refresh),
-              onPressed: _busy ? null : () => _reinspect(),
-            ),
-          ],
-        ),
-        body: Stack(
-          children: [
-            // الواجهة الطبيعية هي الطبقة الأساسية (كاملة الشاشة).
-            Positioned.fill(
-              child: Container(
-                color: const Color(0xFFF2F4F8),
-                child: ListView(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  children: [
-                    _buildIdentity(),
-                    _buildAccess(),
-                    if (d.status == InspectStatus.needsCredentials)
-                      _buildNeedsCreds(),
-                    if (d.optical != null)
-                      _buildOptical()
-                    else if (d.isOnu)
-                      _buildOpticalFailed(),
-                    if (d.report != null && d.report!.hasAnyData) _buildReport(),
-                    if (d.report?.clients.isNotEmpty ?? false) _buildClients(),
-                  ],
-                ),
+    return SdPage(
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: d.displayName,
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'إعادة الفحص',
+            onPressed: _busy ? null : () => _reinspect(),
+          ),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // WebView2 (ويندوز) يرسم طبقة native فوق Flutter؛ نركّبه فقط أثناء
+          // القراءة الصامتة بحجم 1×1 (غير مرئي عملياً) ومتجاهِلاً للمؤشّر،
+          // والقراءة تتم عبر JS/XHR على المتحكّم نفسه.
+          if (Platform.isWindows && _webReady && _webBusy)
+            SizedBox(
+              width: 1,
+              height: 1,
+              child: IgnorePointer(
+                ignoring: true,
+                child: wvwin.Webview(_webCtrl),
               ),
             ),
-            // WebView2 (ويندوز) يرسم طبقة native فوق Flutter ولا يمكن حجبه بطبقة
-            // Flutter؛ لذا نركّبه فقط أثناء القراءة الصامتة بحجم 1×1 في الزاوية
-            // (غير مرئي عملياً) ومتجاهِلاً للمؤشّر، حتى لا يغطّي الواجهة ولا
-            // تنهار أحداث المؤشّر. القراءة تتم عبر JS/XHR على المتحكّم نفسه.
-            if (Platform.isWindows && _webReady && _webBusy)
-              Positioned(
-                left: 0,
-                top: 0,
-                width: 1,
-                height: 1,
-                child: IgnorePointer(
-                  ignoring: true,
-                  child: wvwin.Webview(_webCtrl),
-                ),
-              ),
-          ],
-        ),
+          _buildIdentity(),
+          _buildAccess(),
+          if (d.status == InspectStatus.needsCredentials) _buildNeedsCreds(),
+          if (d.optical != null)
+            _buildOptical()
+          else if (d.isOnu)
+            _buildOpticalFailed(),
+          if (d.report != null && d.report!.hasAnyData) _buildReport(),
+          if (d.report?.clients.isNotEmpty ?? false) _buildClients(),
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }
@@ -226,63 +204,28 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _accessButton(
+          SdButton(
             icon: Icons.language_rounded,
             label: 'فتح واجهة الجهاز (${d.ip})',
-            color: _indigo,
-            onTap: _openDeviceWeb,
+            expand: true,
+            onPressed: _openDeviceWeb,
           ),
           if (isRouter) ...[
             const SizedBox(height: 10),
-            _accessButton(
+            SdButton(
               icon: Icons.wifi_password_rounded,
               label: 'تعديل WiFi',
-              color: const Color(0xFF00695C),
-              onTap: _openWifiEdit,
+              kind: SdButtonKind.accent,
+              expand: true,
+              onPressed: _openWifiEdit,
             ),
           ],
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             'تُفتح صفحة دخول الجهاز في المتصفح الافتراضي — المسار الموثوق للدخول على كل المنصّات.',
-            style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
+            style: SdText.caption,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _accessButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: color),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        color: color)),
-              ),
-              Icon(Icons.chevron_left_rounded,
-                  color: color.withValues(alpha: 0.7)),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -305,38 +248,30 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
 
   Widget _statusChip() {
     String text;
-    Color color;
+    SdStatus status;
     switch (d.status) {
       case InspectStatus.authenticated:
         text = 'تم الفحص';
-        color = Colors.green;
+        status = SdStatus.success;
         break;
       case InspectStatus.needsCredentials:
         text = 'يلزم اعتماد';
-        color = Colors.orange;
+        status = SdStatus.warning;
         break;
       case InspectStatus.unreachableUi:
         text = 'جهاز متصل';
-        color = Colors.blueGrey;
+        status = SdStatus.info;
         break;
       case InspectStatus.error:
         text = 'خطأ';
-        color = Colors.red;
+        status = SdStatus.danger;
         break;
       case InspectStatus.notInspected:
         text = 'لم يُفحص';
-        color = Colors.grey;
+        status = SdStatus.neutral;
         break;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(10)),
-      child: Text(text,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w800, color: color)),
-    );
+    return SdStatusChip(text, status: status);
   }
 
   Widget _buildNeedsCreds() {
@@ -349,17 +284,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
         children: [
           Text(
             'تعذّر الدخول بالاعتماد الافتراضي لهذا الجهاز. أدخل اسم المستخدم وكلمة المرور ليُفحص بالتفصيل (يُحفظ مشفّراً للمرّة القادمة).',
-            style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, height: 1.5),
+            style: SdText.bodySm,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.login_rounded, size: 18),
-              label: const Text('إدخال اعتماد الدخول'),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade800,
-                  foregroundColor: Colors.white),
+            child: SdButton(
+              icon: Icons.login_rounded,
+              label: 'إدخال اعتماد الدخول',
               onPressed: _busy ? null : _enterCredentials,
             ),
           ),
@@ -373,7 +305,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     return SectionCard(
       title: 'الإشارة الضوئية',
       icon: Icons.fiber_manual_record,
-      accent: const Color(0xFF00838F),
+      accent: SdColors.accent,
       child: Column(
         children: [
           MetricTile(MetricResult(
@@ -437,7 +369,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     return SectionCard(
       title: 'الإشارة الضوئية',
       icon: Icons.fiber_manual_record,
-      accent: const Color(0xFF00838F),
+      accent: SdColors.accent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -445,33 +377,28 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
             d.error.isNotEmpty
                 ? d.error
                 : 'تعذّر قراءة الإشارة الضوئية — جرّب إدخال اعتماد telecomadmin يدوياً.',
-            style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700, height: 1.5),
+            style: SdText.bodySm,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 10,
+            runSpacing: 10,
             children: [
               if (Platform.isWindows)
-                ElevatedButton.icon(
+                SdButton(
                   icon: _webBusy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.auto_fix_high_rounded, size: 18),
-                  label: Text(_webBusy
+                      ? Icons.hourglass_top_rounded
+                      : Icons.auto_fix_high_rounded,
+                  label: _webBusy
                       ? 'جارٍ القراءة الصامتة...'
-                      : 'قراءة متقدمة صامتة (موصى به)'),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00838F),
-                      foregroundColor: Colors.white),
+                      : 'قراءة متقدمة صامتة (موصى به)',
+                  kind: SdButtonKind.accent,
                   onPressed: (_busy || _webBusy) ? null : _silentWebViewRead,
                 ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.login_rounded, size: 18),
-                label: const Text('إدخال اعتماد وإعادة المحاولة'),
+              SdButton(
+                icon: Icons.login_rounded,
+                label: 'إدخال اعتماد وإعادة المحاولة',
+                kind: SdButtonKind.secondary,
                 onPressed: _busy ? null : _enterCredentials,
               ),
             ],
@@ -519,7 +446,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     return SectionCard(
       title: 'الأجهزة المتصلة (${clients.length})',
       icon: Icons.group_rounded,
-      accent: const Color(0xFF455A64),
+      accent: SdGroup.neutral.tone.base,
       child: Column(
         children: clients
             .map((c) => Padding(
@@ -527,7 +454,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                   child: Row(
                     children: [
                       const Icon(Icons.smartphone_rounded,
-                          size: 16, color: Colors.grey),
+                          size: 16, color: SdColors.faint),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -537,17 +464,17 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 12.5)),
                             Text('${c.ip}  •  ${c.mac}',
-                                style: TextStyle(
-                                    fontSize: 10.5,
-                                    color: Colors.grey.shade600,
+                                style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: SdColors.muted,
                                     fontFamily: 'monospace')),
                           ],
                         ),
                       ),
                       if (c.vendor.isNotEmpty)
                         Text(c.vendor,
-                            style: TextStyle(
-                                fontSize: 10, color: Colors.grey.shade500)),
+                            style: const TextStyle(
+                                fontSize: 11.5, color: SdColors.faint)),
                     ],
                   ),
                 ))

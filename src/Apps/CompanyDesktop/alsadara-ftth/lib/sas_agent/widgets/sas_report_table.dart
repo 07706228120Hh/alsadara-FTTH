@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/sas_agent_api_service.dart';
 import 'sas_format.dart';
-import 'sas_metrics.dart';
 import 'sas_state_views.dart';
 
 /// تعريف عمود جدول تقرير. `key` يدعم النقطة للوصول المتداخل.
@@ -29,7 +27,7 @@ class SasReportDef {
     required this.path,
     required this.icon,
     required this.cols,
-    this.gradient = AppTheme.blueGradient,
+    this.gradient = const [SdColors.primaryLight, SdColors.primary],
   });
 }
 
@@ -151,7 +149,7 @@ class _SasReportTableState extends State<SasReportTable> {
 
   Widget _searchBar() {
     return Padding(
-      padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 8.h),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
       child: Row(
         children: [
           Expanded(
@@ -162,16 +160,18 @@ class _SasReportTableState extends State<SasReportTable> {
                 _page = 1;
                 _load();
               },
-              style: GoogleFonts.cairo(fontSize: 13.sp),
-              decoration: InputDecoration(
+              style: const TextStyle(
+                  fontFamily: SdText.family, fontSize: 13),
+              decoration: const InputDecoration(
                 isDense: true,
                 hintText: 'بحث…',
-                hintStyle: GoogleFonts.cairo(fontSize: 12.5.sp),
-                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                hintStyle: TextStyle(
+                    fontFamily: SdText.family, fontSize: 12.5),
+                prefixIcon: Icon(Icons.search_rounded, size: 20),
               ),
             ),
           ),
-          SizedBox(width: 8.w),
+          const SizedBox(width: 8),
           IconButton.filledTonal(
             onPressed: _loading
                 ? null
@@ -193,10 +193,11 @@ class _SasReportTableState extends State<SasReportTable> {
       return SasEmptyView(
         message: 'هذا التقرير غير متاح لحسابك (محجوب من نظام الساس).',
         icon: Icons.lock_outline_rounded,
-        action: OutlinedButton.icon(
+        action: SdButton(
+          label: 'إعادة المحاولة',
+          icon: Icons.refresh_rounded,
+          kind: SdButtonKind.secondary,
           onPressed: _load,
-          icon: const Icon(Icons.refresh_rounded),
-          label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
         ),
       );
     }
@@ -205,15 +206,16 @@ class _SasReportTableState extends State<SasReportTable> {
       return SasEmptyView(
         message: 'لا سجلّات في هذا التقرير',
         icon: widget.def.icon,
-        action: OutlinedButton.icon(
+        action: SdButton(
+          label: 'تحديث',
+          icon: Icons.refresh_rounded,
+          kind: SdButtonKind.secondary,
           onPressed: _load,
-          icon: const Icon(Icons.refresh_rounded),
-          label: Text('تحديث', style: GoogleFonts.cairo()),
         ),
       );
     }
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 8.h),
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
       child: Container(
         decoration: SasUi.card(),
         clipBehavior: Clip.antiAlias,
@@ -224,14 +226,14 @@ class _SasReportTableState extends State<SasReportTable> {
             headingRowHeight: 44,
             dataRowMinHeight: 38,
             dataRowMaxHeight: 54,
-            headingRowColor: WidgetStatePropertyAll(
-                AppTheme.primaryColor.withValues(alpha: 0.06)),
-            headingTextStyle: GoogleFonts.cairo(
-                fontSize: 12.sp,
+            headingRowColor: const WidgetStatePropertyAll(SdColors.primary),
+            headingTextStyle: const TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w800,
-                color: AppTheme.primaryColor),
-            dataTextStyle:
-                GoogleFonts.cairo(fontSize: 12.sp, color: Colors.black87),
+                color: Colors.white),
+            dataTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, color: SdColors.ink),
             columns: [
               for (final c in widget.def.cols)
                 DataColumn(label: Text(c.label), numeric: c.numeric),
@@ -252,9 +254,9 @@ class _SasReportTableState extends State<SasReportTable> {
   Widget _pager() {
     return Material(
       elevation: 6,
-      color: Colors.white,
+      color: SdColors.surface,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -268,8 +270,10 @@ class _SasReportTableState extends State<SasReportTable> {
               icon: const Icon(Icons.chevron_right_rounded),
             ),
             Text('صفحة $_page من $_lastPage · الإجمالي $_total',
-                style: GoogleFonts.cairo(
-                    fontSize: 12.5.sp, fontWeight: FontWeight.w700)),
+                style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700)),
             IconButton(
               onPressed: _page < _lastPage
                   ? () {

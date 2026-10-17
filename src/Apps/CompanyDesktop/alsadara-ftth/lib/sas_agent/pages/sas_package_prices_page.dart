@@ -2,14 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../permissions/permission_manager.dart';
-import '../../theme/app_theme.dart';
 import '../models/sas_account.dart';
 import '../models/sas_accounting.dart';
 import '../services/sas_agent_api_service.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_refresh_bus.dart';
 import '../widgets/sas_state_views.dart';
 
@@ -117,8 +115,9 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
-          style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+          style: const TextStyle(
+              fontFamily: SdText.family, fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -134,38 +133,22 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+    final hasItems = !_loading && _error == null && _items.isNotEmpty;
+    return SdPage(
+      maxWidth: SdSpace.formMax,
+      scrollable: hasItems,
+      appBar: SdAppBar(
+        title: 'أسعار الباقات',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loading ? null : _refreshManual,
           ),
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Text('أسعار الباقات',
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800, color: Colors.white)),
-          actions: [
-            IconButton(
-              tooltip: 'تحديث',
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _loading ? null : _refreshManual,
-            ),
-          ],
-        ),
-        body: _body(),
-        bottomNavigationBar:
-            (_loading || _error != null || _items.isEmpty) ? null : _saveBar(),
+        ],
       ),
+      bottomBar: hasItems ? _saveBar() : null,
+      body: _body(),
     );
   }
 
@@ -177,28 +160,23 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
       return SasErrorView(message: _error!, onRetry: _load);
     }
     if (_items.isEmpty) {
-      return const SasEmptyView(
-        message: 'لا توجد باقات لتسعيرها',
+      return const SdEmptyState(
+        title: 'لا توجد باقات لتسعيرها',
         icon: Icons.inventory_2_rounded,
       );
     }
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 820),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 96.h),
-          children: [
-            _accountStrip(),
-            SizedBox(height: 10.h),
-            _hint(),
-            SizedBox(height: 12.h),
-            for (int i = 0; i < _items.length; i++) ...[
-              _priceCard(_items[i]),
-              SizedBox(height: 10.h),
-            ],
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _accountStrip(),
+        const SizedBox(height: SdSpace.sm),
+        _hint(),
+        const SizedBox(height: SdSpace.sm),
+        for (int i = 0; i < _items.length; i++) ...[
+          _priceCard(_items[i]),
+          const SizedBox(height: SdSpace.sm),
+        ],
+      ],
     );
   }
 
@@ -208,30 +186,29 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
         ? widget.account.label.trim()
         : widget.account.username;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-        border:
-            Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.20)),
+        color: SdColors.primaryTint,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        border: Border.all(color: SdColors.primaryTintEdge),
       ),
       child: Row(
         children: [
-          Icon(Icons.account_circle_rounded,
-              color: AppTheme.primaryColor, size: 20.sp),
-          SizedBox(width: 8.w),
+          const Icon(Icons.account_circle_rounded,
+              color: SdColors.primary, size: 20),
+          const SizedBox(width: 8),
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: GoogleFonts.cairo(
-                    fontSize: 12.5.sp, color: Colors.grey[800]),
+                style: SdText.bodySm.copyWith(color: SdColors.ink),
                 children: [
                   const TextSpan(text: 'الباقات لحساب: '),
                   TextSpan(
                     text: name,
-                    style: GoogleFonts.cairo(
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
                         fontWeight: FontWeight.w800,
-                        color: AppTheme.primaryColor),
+                        color: SdColors.primary),
                   ),
                 ],
               ),
@@ -244,24 +221,24 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
 
   Widget _hint() {
     return Container(
-      padding: EdgeInsets.all(12.w),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.infoColor.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-        border: Border.all(color: AppTheme.infoColor.withValues(alpha: 0.22)),
+        color: SdColors.infoTint,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        border: Border.all(color: SdColors.infoTintEdge),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded,
-              color: AppTheme.infoColor, size: 20.sp),
-          SizedBox(width: 8.w),
+          const Icon(Icons.info_outline_rounded,
+              color: SdColors.info, size: 20),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               'حدّد سعر البيع لكل باقة (يُحصَّل من المشترك). السعر الأساسي يُخصم '
               'تلقائياً من رصيد الصفحة وقت التجديد، والربح = سعر البيع + أجور '
               'الصيانة − الأساسي. فعّل/عطّل الباقة من المفتاح، ثم اضغط «حفظ».',
-              style: GoogleFonts.cairo(
-                  fontSize: 12.sp, color: Colors.grey[800], height: 1.5),
+              style: SdText.bodySm
+                  .copyWith(color: SdColors.infoEdge, height: 1.5),
             ),
           ),
         ],
@@ -270,41 +247,43 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
   }
 
   Widget _priceCard(SasPackagePrice p) {
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: SasUi.card(),
+    return SdCard(
+      tone: SdStatus.info.tone,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              SasUi.gradientBadge(
-                icon: Icons.wifi_tethering_rounded,
-                colors: const [AppTheme.infoColor, AppTheme.secondaryColor],
-                size: 38,
-                iconSize: 19,
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: SdColors.infoTint,
+                  borderRadius: BorderRadius.circular(11),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: SdColors.infoTintEdge, offset: Offset(0, 3))
+                  ],
+                ),
+                child: const Icon(Icons.wifi_tethering_rounded,
+                    color: SdColors.info, size: 19),
               ),
-              SizedBox(width: 10.w),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   p.profileName.isEmpty ? p.profileId : p.profileName,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
-                      fontSize: 14.5.sp,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1A1A2E)),
+                  style: SdText.titleSm,
                 ),
               ),
-              SizedBox(width: 8.w),
+              const SizedBox(width: 8),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('مفعّل',
-                      style: GoogleFonts.cairo(
-                          fontSize: 11.sp, color: Colors.grey[600])),
+                  Text('مفعّل', style: SdText.caption),
                   Switch(
                     value: p.isActive,
-                    activeThumbColor: AppTheme.successColor,
+                    activeThumbColor: SdColors.success,
                     onChanged: _canManage
                         ? (v) => setState(() {
                               p.isActive = v;
@@ -316,7 +295,7 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
               ),
             ],
           ),
-          SizedBox(height: 8.h),
+          const SizedBox(height: 8),
           _numField(
             label: 'سعر البيع (يُحصَّل من المشترك)',
             initial: p.sellingPrice,
@@ -337,67 +316,58 @@ class _SasPackagePricesPageState extends State<SasPackagePricesPage> {
     required bool enabled,
     required ValueChanged<num> onChanged,
   }) {
+    OutlineInputBorder border(Color color, [double width = 1.2]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: BorderSide(color: color, width: width),
+        );
     return TextFormField(
       initialValue: _fmt(initial),
       enabled: enabled,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-      style: GoogleFonts.robotoMono(fontWeight: FontWeight.w700, fontSize: 13.sp),
+      style: const TextStyle(
+          fontFamily: 'monospace',
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          color: SdColors.ink),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 11.5.sp),
+        labelStyle: const TextStyle(
+            fontFamily: SdText.family, color: SdColors.muted, fontSize: 11.5),
         isDense: true,
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+        filled: true,
+        fillColor: SdColors.surface,
+        border: border(SdColors.edge),
+        enabledBorder: border(SdColors.edge),
+        focusedBorder: border(SdColors.primary, 1.6),
       ),
       onChanged: (t) => onChanged(num.tryParse(t.trim()) ?? 0),
     );
   }
 
   Widget _saveBar() {
-    return SafeArea(
-      child: Container(
-        padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 12.h),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, -3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.inventory_2_rounded,
-                size: 18.sp, color: AppTheme.primaryColor),
-            SizedBox(width: 8.w),
-            Text('${_items.length} باقة',
-                style: GoogleFonts.cairo(
-                    fontSize: 12.5.sp, fontWeight: FontWeight.w700)),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: (!_canManage || _saving) ? null : _save,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                disabledBackgroundColor: Colors.grey.withValues(alpha: 0.30),
-                padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 12.h),
-              ),
-              icon: _saving
-                  ? SizedBox(
-                      width: 16.w,
-                      height: 16.w,
-                      child: const CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.save_rounded),
-              label: Text(_canManage ? 'حفظ' : 'لا صلاحية',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
-            ),
-          ],
-        ),
-      ),
+    return Row(
+      children: [
+        const Icon(Icons.inventory_2_rounded,
+            size: 18, color: SdColors.primary),
+        const SizedBox(width: 8),
+        Text('${_items.length} باقة', style: SdText.bodySm),
+        const Spacer(),
+        if (_saving)
+          const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+                strokeWidth: 2.4, color: SdColors.primary),
+          )
+        else
+          SdButton(
+            label: _canManage ? 'حفظ' : 'لا صلاحية',
+            icon: Icons.save_rounded,
+            onPressed: _canManage ? _save : null,
+          ),
+      ],
     );
   }
 

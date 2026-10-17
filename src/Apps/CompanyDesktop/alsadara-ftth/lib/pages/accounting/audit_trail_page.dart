@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/audit_trail_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/accounting_theme.dart';
-import '../../theme/accounting_responsive.dart';
 
 /// صفحة سجل التدقيق - Audit Trail
 class AuditTrailPage extends StatefulWidget {
@@ -56,7 +54,7 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
     setState(() => _records = results);
   }
 
-  // ─── ألوان وأيقونات حسب نوع العملية ───
+  // ─── نبرة وأيقونات حسب نوع العملية ───
 
   IconData _actionIcon(String action) {
     switch (action) {
@@ -79,24 +77,24 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
     }
   }
 
-  Color _actionColor(String action) {
+  SdTone _actionTone(String action) {
     switch (action) {
       case 'create':
-        return const Color(0xFF2ECC71);
+        return SdStatus.success.tone;
       case 'edit':
-        return const Color(0xFF3498DB);
+        return SdStatus.info.tone;
       case 'delete':
-        return const Color(0xFFE74C3C);
+        return SdStatus.danger.tone;
       case 'post':
-        return const Color(0xFF9B59B6);
+        return SdGroup.platform.tone;
       case 'void_':
-        return const Color(0xFFE67E22);
+        return SdStatus.warning.tone;
       case 'closePeriod':
-        return const Color(0xFF795548);
+        return SdGroup.neutral.tone;
       case 'reopenPeriod':
-        return const Color(0xFF009688);
+        return SdGroup.field.tone;
       default:
-        return AccountingTheme.textMuted;
+        return SdGroup.neutral.tone;
     }
   }
 
@@ -139,24 +137,31 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final ar = context.accR;
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'سجل التدقيق',
+          subtitle: '${_records.length} سجل',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh_rounded,
+              label: 'تحديث',
+              onPressed: _isLoading ? null : _loadData,
+            ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildToolbar(ar),
-              _buildFilterBar(ar),
+              _buildFilterBar(),
               Expanded(
                 child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
+                    ? const Center(child: CircularProgressIndicator())
                     : _records.isEmpty
-                        ? _buildEmptyState(ar)
-                        : _buildRecordsList(ar),
+                        ? _buildEmptyState()
+                        : _buildRecordsList(),
               ),
             ],
           ),
@@ -166,151 +171,82 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // شريط الأدوات
-  // ═══════════════════════════════════════════════════════════════
-
-  Widget _buildToolbar(AccountingResponsive ar) {
-    final isMob = ar.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_forward_rounded, size: isMob ? 20 : 24),
-            tooltip: 'رجوع',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF455A64), Color(0xFF37474F)],
-              ),
-              borderRadius: BorderRadius.circular(isMob ? 6 : 8),
-            ),
-            child: Icon(Icons.history_rounded,
-                color: Colors.white, size: isMob ? 16 : ar.iconM),
-          ),
-          SizedBox(width: isMob ? 6 : ar.spaceM),
-          Text('سجل التدقيق',
-              style: GoogleFonts.cairo(
-                fontSize: isMob ? 14 : ar.headingMedium,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              )),
-          SizedBox(width: isMob ? 6 : ar.spaceS),
-          // شارة عدد السجلات
-          Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: isMob ? 6 : 10, vertical: isMob ? 2 : 3),
-            decoration: BoxDecoration(
-              color: AccountingTheme.neonBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AccountingTheme.neonBlue.withOpacity(0.3)),
-            ),
-            child: Text(
-              '${_records.length}',
-              style: GoogleFonts.cairo(
-                fontSize: isMob ? 10 : ar.small,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.neonBlue,
-              ),
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            onPressed: _isLoading ? null : _loadData,
-            icon: Icon(Icons.refresh_rounded, size: isMob ? 18 : 22),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.neonBlue),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
   // شريط الفلاتر
   // ═══════════════════════════════════════════════════════════════
 
-  Widget _buildFilterBar(AccountingResponsive ar) {
-    final isMob = ar.isMobile;
+  Widget _buildFilterBar() {
+    final isPhone = context.sd.isPhone;
     return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceL, vertical: isMob ? 6 : ar.spaceS),
+      padding: EdgeInsets.fromLTRB(
+          isPhone ? SdSpace.xs : SdSpace.md, SdSpace.sm, isPhone ? SdSpace.xs : SdSpace.md, SdSpace.sm),
       decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        boxShadow: [BoxShadow(color: SdColors.cardEdge, offset: Offset(0, 2))],
       ),
       child: Column(
         children: [
           // صف 1: فلتر نوع العملية (chips)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildActionChip(null, 'الكل', ar),
-                _buildActionChip(AuditAction.create, 'إنشاء', ar),
-                _buildActionChip(AuditAction.edit, 'تعديل', ar),
-                _buildActionChip(AuditAction.delete, 'حذف', ar),
-                _buildActionChip(AuditAction.post, 'ترحيل', ar),
-                _buildActionChip(AuditAction.void_, 'إلغاء', ar),
-                _buildActionChip(AuditAction.closePeriod, 'إقفال فترة', ar),
-                _buildActionChip(AuditAction.reopenPeriod, 'إعادة فتح', ar),
-              ],
-            ),
+          SdFilterChips<AuditAction?>(
+            selected: _filterAction,
+            onSelected: (val) {
+              setState(() => _filterAction = val);
+              _applyFilters();
+            },
+            options: const [
+              SdFilterOption(null, 'الكل'),
+              SdFilterOption(AuditAction.create, 'إنشاء'),
+              SdFilterOption(AuditAction.edit, 'تعديل'),
+              SdFilterOption(AuditAction.delete, 'حذف'),
+              SdFilterOption(AuditAction.post, 'ترحيل'),
+              SdFilterOption(AuditAction.void_, 'إلغاء'),
+              SdFilterOption(AuditAction.closePeriod, 'إقفال فترة'),
+              SdFilterOption(AuditAction.reopenPeriod, 'إعادة فتح'),
+            ],
           ),
-          SizedBox(height: isMob ? 6 : ar.spaceS),
+          const SizedBox(height: SdSpace.sm),
           // صف 2: فلتر نوع الكيان + التاريخ
           Row(
             children: [
               // قائمة منسدلة لنوع الكيان
               Expanded(
                 child: Container(
-                  height: isMob ? 32 : ar.btnHeight,
-                  padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 12),
+                  height: context.sd.touchTarget,
+                  padding: const EdgeInsets.symmetric(horizontal: SdSpace.sm),
                   decoration: BoxDecoration(
-                    color: AccountingTheme.bgSecondary,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AccountingTheme.borderColor),
+                    color: SdColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(SdRadius.xs),
+                    border: Border.all(color: SdColors.edge),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<AuditEntityType?>(
                       value: _filterEntityType,
                       isExpanded: true,
-                      icon: Icon(Icons.keyboard_arrow_down,
-                          size: isMob ? 16 : 20,
-                          color: AccountingTheme.textMuted),
-                      style: GoogleFonts.cairo(
-                        fontSize: isMob ? 11 : ar.body,
-                        color: AccountingTheme.textSecondary,
+                      icon: const Icon(Icons.keyboard_arrow_down,
+                          size: 20, color: SdColors.faint),
+                      style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: SdColors.ink,
                       ),
                       items: [
-                        DropdownMenuItem<AuditEntityType?>(
+                        const DropdownMenuItem<AuditEntityType?>(
                           value: null,
                           child: Text('الكل',
-                              style: GoogleFonts.cairo(
-                                  fontSize: isMob ? 11 : ar.body,
-                                  color: AccountingTheme.textSecondary)),
+                              style: TextStyle(
+                                  fontFamily: SdText.family,
+                                  fontSize: 12.5,
+                                  color: SdColors.ink)),
                         ),
                         ...AuditEntityType.values.map((e) {
                           return DropdownMenuItem<AuditEntityType?>(
                             value: e,
                             child: Text(
                               AuditTrailService.entityLabels[e] ?? e.name,
-                              style: GoogleFonts.cairo(
-                                  fontSize: isMob ? 11 : ar.body,
-                                  color: AccountingTheme.textSecondary),
+                              style: const TextStyle(
+                                  fontFamily: SdText.family,
+                                  fontSize: 12.5,
+                                  color: SdColors.ink),
                             ),
                           );
                         }),
@@ -323,34 +259,34 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
                   ),
                 ),
               ),
-              SizedBox(width: isMob ? 6 : ar.spaceM),
+              const SizedBox(width: SdSpace.sm),
               // زر نطاق التاريخ
               InkWell(
                 onTap: () => _pickDateRange(context),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(SdRadius.xs),
                 child: Container(
-                  height: isMob ? 32 : ar.btnHeight,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: isMob ? 8 : 12),
+                  height: context.sd.touchTarget,
+                  padding: const EdgeInsets.symmetric(horizontal: SdSpace.sm),
                   decoration: BoxDecoration(
-                    color: AccountingTheme.bgSecondary,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AccountingTheme.borderColor),
+                    color: SdColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(SdRadius.xs),
+                    border: Border.all(color: SdColors.edge),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.calendar_month,
-                          size: isMob ? 14 : 18,
-                          color: AccountingTheme.neonBlue),
-                      SizedBox(width: 4),
+                      const Icon(Icons.calendar_month,
+                          size: 18, color: SdColors.primary),
+                      const SizedBox(width: SdSpace.xxs),
                       Text(
                         _filterFrom != null && _filterTo != null
                             ? '${DateFormat('yyyy/MM/dd').format(_filterFrom!)} - ${DateFormat('yyyy/MM/dd').format(_filterTo!)}'
                             : 'كل الفترات',
-                        style: GoogleFonts.cairo(
-                            fontSize: isMob ? 10 : ar.small,
-                            color: AccountingTheme.textSecondary),
+                        style: const TextStyle(
+                            fontFamily: SdText.family,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: SdColors.ink),
                       ),
                     ],
                   ),
@@ -358,7 +294,7 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
               ),
               // زر مسح فلتر التاريخ
               if (_filterFrom != null || _filterTo != null) ...[
-                SizedBox(width: 4),
+                const SizedBox(width: SdSpace.xxs),
                 InkWell(
                   onTap: () {
                     setState(() {
@@ -367,10 +303,11 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
                     });
                     _applyFilters();
                   },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Icon(Icons.close,
-                      size: isMob ? 16 : 18,
-                      color: AccountingTheme.textMuted),
+                  borderRadius: BorderRadius.circular(SdRadius.pill),
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(Icons.close, size: 18, color: SdColors.muted),
+                  ),
                 ),
               ],
             ],
@@ -380,53 +317,14 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
     );
   }
 
-  Widget _buildActionChip(
-      AuditAction? action, String label, AccountingResponsive ar) {
-    final isMob = ar.isMobile;
-    final isSelected = _filterAction == action;
-    return Padding(
-      padding: EdgeInsets.only(left: isMob ? 4 : 6),
-      child: InkWell(
-        onTap: () {
-          setState(() => _filterAction = action);
-          _applyFilters();
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-              horizontal: isMob ? 8 : 12, vertical: isMob ? 4 : 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? AccountingTheme.neonBlue
-                : AccountingTheme.bgSecondary,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected
-                  ? AccountingTheme.neonBlue
-                  : AccountingTheme.borderColor,
-            ),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.cairo(
-              fontSize: isMob ? 10 : ar.small,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? Colors.white : AccountingTheme.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   // ═══════════════════════════════════════════════════════════════
   // قائمة السجلات
   // ═══════════════════════════════════════════════════════════════
 
-  Widget _buildRecordsList(AccountingResponsive ar) {
-    final isMob = ar.isMobile;
+  Widget _buildRecordsList() {
+    final isPhone = context.sd.isPhone;
     return ListView.builder(
-      padding: EdgeInsets.all(isMob ? 8 : ar.spaceL),
+      padding: EdgeInsets.all(isPhone ? SdSpace.xs : SdSpace.md),
       itemCount: _records.length,
       itemBuilder: (context, index) {
         final record = _records[index];
@@ -436,34 +334,33 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
         final details = record['details']?.toString() ?? '';
         final userName = record['userName']?.toString() ?? '';
         final timestamp = DateTime.tryParse(record['timestamp'] ?? '');
-        final color = _actionColor(action);
+        final tone = _actionTone(action);
         final icon = _actionIcon(action);
 
         return Container(
-          margin: EdgeInsets.only(bottom: isMob ? 4 : 6),
-          padding: EdgeInsets.all(isMob ? 10 : ar.cardPad),
+          margin: const EdgeInsets.only(bottom: SdSpace.xs),
+          padding: EdgeInsets.all(isPhone ? SdSpace.sm : SdSpace.md),
           decoration: BoxDecoration(
-            color: index.isEven
-                ? AccountingTheme.bgCard
-                : AccountingTheme.tableRowAlt,
-            borderRadius: BorderRadius.circular(ar.cardRadius),
-            border: Border.all(color: AccountingTheme.borderColor),
+            color: index.isEven ? SdColors.surface : SdColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(SdRadius.md),
+            boxShadow: SdDepth.raised(depth: SdDepth.small),
+            border: Border(right: BorderSide(color: tone.base, width: 3)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // أيقونة العملية
               Container(
-                width: isMob ? 32 : 40,
-                height: isMob ? 32 : 40,
+                width: isPhone ? 36 : 40,
+                height: isPhone ? 36 : 40,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  shape: BoxShape.circle,
+                  color: tone.tint,
+                  borderRadius: BorderRadius.circular(SdRadius.xs),
+                  boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, 2))],
                 ),
-                child: Icon(icon,
-                    color: color, size: isMob ? 16 : ar.iconM),
+                child: Icon(icon, color: tone.base, size: isPhone ? 18 : 22),
               ),
-              SizedBox(width: isMob ? 8 : ar.spaceM),
+              const SizedBox(width: SdSpace.sm),
               // المحتوى
               Expanded(
                 child: Column(
@@ -472,11 +369,7 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
                     // السطر الأول: نوع العملية + نوع الكيان
                     Text(
                       '${_actionLabel(action)} ${_entityLabel(entityType)}',
-                      style: GoogleFonts.cairo(
-                        fontSize: isMob ? 12 : ar.body,
-                        fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary,
-                      ),
+                      style: SdText.label,
                     ),
                     // السطر الثاني: الوصف
                     if (description.isNotEmpty)
@@ -484,10 +377,7 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           description,
-                          style: GoogleFonts.cairo(
-                            fontSize: isMob ? 11 : ar.small,
-                            color: AccountingTheme.textSecondary,
-                          ),
+                          style: SdText.bodySm,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -498,10 +388,7 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           details,
-                          style: GoogleFonts.cairo(
-                            fontSize: isMob ? 10 : ar.caption,
-                            color: AccountingTheme.textMuted,
-                          ),
+                          style: SdText.caption,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -509,26 +396,17 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
                   ],
                 ),
               ),
-              SizedBox(width: isMob ? 6 : ar.spaceM),
+              const SizedBox(width: SdSpace.sm),
               // المستخدم والوقت
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (userName.isNotEmpty)
-                    Text(
-                      userName,
-                      style: GoogleFonts.cairo(
-                        fontSize: isMob ? 9 : ar.caption,
-                        color: AccountingTheme.textMuted,
-                      ),
-                    ),
+                    Text(userName, style: SdText.caption),
                   if (timestamp != null)
                     Text(
                       DateFormat('yyyy/MM/dd HH:mm').format(timestamp),
-                      style: GoogleFonts.cairo(
-                        fontSize: isMob ? 9 : ar.caption,
-                        color: AccountingTheme.textMuted,
-                      ),
+                      style: SdText.caption,
                     ),
                 ],
               ),
@@ -543,24 +421,13 @@ class _AuditTrailPageState extends State<AuditTrailPage> {
   // حالة فارغة
   // ═══════════════════════════════════════════════════════════════
 
-  Widget _buildEmptyState(AccountingResponsive ar) {
-    final isMob = ar.isMobile;
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.history_rounded,
-              color: AccountingTheme.textMuted,
-              size: isMob ? 48 : ar.iconEmpty),
-          SizedBox(height: isMob ? 12 : ar.spaceL),
-          Text(
-            'لا توجد سجلات',
-            style: GoogleFonts.cairo(
-              fontSize: isMob ? 14 : ar.headingSmall,
-              color: AccountingTheme.textMuted,
-            ),
-          ),
-        ],
+  Widget _buildEmptyState() {
+    return const Center(
+      child: SingleChildScrollView(
+        child: SdEmptyState(
+          title: 'لا توجد سجلات',
+          icon: Icons.history_rounded,
+        ),
       ),
     );
   }

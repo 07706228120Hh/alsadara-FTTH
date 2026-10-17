@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../models/sas_subscriber.dart';
 import '../services/sas_agent_api_service.dart';
@@ -87,8 +86,8 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -245,45 +244,28 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          toolbarHeight: 56,
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          iconTheme: const IconThemeData(color: Colors.white),
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+    return SdPage(
+      maxWidth: 1000,
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: 'إرسال جماعي',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'إعادة الجلب',
+            onPressed: _loading ? null : _fetch,
           ),
-          title: Text('إرسال جماعي',
-              style:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 17)),
-          actions: [
-            IconButton(
-              tooltip: 'إعادة الجلب',
-              onPressed: _loading ? null : _fetch,
-              icon: Icon(Icons.refresh_rounded, size: 20.sp),
-            ),
+        ],
+      ),
+      body: SasContentWrap(
+        maxWidth: 1000,
+        child: Column(
+          children: [
+            Expanded(child: _body()),
+            if (_fetched && !_loading && _error == null && _all.isNotEmpty)
+              _bottomBar(),
           ],
-        ),
-        body: SasContentWrap(
-          maxWidth: 1000,
-          child: Column(
-            children: [
-              Expanded(child: _body()),
-              if (_fetched && !_loading && _error == null && _all.isNotEmpty)
-                _bottomBar(),
-            ],
-          ),
         ),
       ),
     );
@@ -304,7 +286,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
         action: OutlinedButton.icon(
           onPressed: _fetch,
           icon: const Icon(Icons.refresh_rounded),
-          label: Text('إعادة الجلب', style: GoogleFonts.cairo()),
+          label: Text('إعادة الجلب', style: TextStyle(fontFamily: 'Cairo', )),
         ),
       );
     }
@@ -343,10 +325,10 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
           Row(
             children: [
               Icon(Icons.filter_alt_rounded,
-                  size: 18.sp, color: AppTheme.primaryColor),
+                  size: 18.sp, color: SdColors.primary),
               SizedBox(width: 8.w),
               Text('فلترة المستلِمين',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 13.sp, fontWeight: FontWeight.w800)),
               const Spacer(),
               if (_profile != null || _parent != null ||
@@ -360,7 +342,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
                   }),
                   icon: Icon(Icons.clear_all_rounded, size: 16.sp),
                   label: Text('مسح',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w700, fontSize: 12.sp)),
                 ),
             ],
@@ -371,7 +353,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
           SizedBox(height: 12.h),
           // الحالة — رقائق.
           Text('الحالة',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.5.sp,
                   fontWeight: FontWeight.w700,
                   color: Colors.grey[600])),
@@ -421,18 +403,18 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
         Row(
           children: [
             Icon(Icons.schedule_rounded,
-                size: 17.sp, color: AppTheme.warningColor),
+                size: 17.sp, color: SdColors.warning),
             SizedBox(width: 8.w),
             Expanded(
               child: Text(
                 'المنتهي قريباً — ينتهي خلال $_soonDays يوماً',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.sp, fontWeight: FontWeight.w700),
               ),
             ),
             Switch.adaptive(
               value: _expiringSoon,
-              activeThumbColor: AppTheme.primaryColor,
+              activeThumbColor: SdColors.primary,
               onChanged: (v) => setState(() => _expiringSoon = v),
             ),
           ],
@@ -440,7 +422,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
         if (_expiringSoon) ...[
           SizedBox(height: 6.h),
           Text('يبقى على انتهائهم عدد أيام أو أقل:',
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.5.sp,
                   fontWeight: FontWeight.w700,
                   color: Colors.grey[600])),
@@ -455,12 +437,12 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
                   selected: _soonDays == d,
                   onSelected: (_) => _setSoonDays(d),
                   label: Text('$d يوم',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w700,
                           color: _soonDays == d
                               ? Colors.white
                               : Colors.grey[700])),
-                  selectedColor: AppTheme.primaryColor,
+                  selectedColor: SdColors.primary,
                   backgroundColor: Colors.grey.withValues(alpha: 0.10),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -473,7 +455,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                   ],
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w700, fontSize: 13.sp),
                   onSubmitted: (v) {
                     final n = int.tryParse(v.trim());
@@ -481,7 +463,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
                   },
                   decoration: InputDecoration(
                     labelText: 'عدد مخصّص',
-                    labelStyle: GoogleFonts.cairo(
+                    labelStyle: TextStyle(fontFamily: 'Cairo', 
                         color: Colors.grey[600], fontSize: 11.5.sp),
                     isDense: true,
                     suffixIcon: IconButton(
@@ -510,10 +492,10 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
       selected: selected,
       onSelected: (_) => setState(() => _status = value),
       label: Text(label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(fontFamily: 'Cairo', 
               fontWeight: FontWeight.w700,
               color: selected ? Colors.white : Colors.grey[700])),
-      selectedColor: AppTheme.primaryColor,
+      selectedColor: SdColors.primary,
       backgroundColor: Colors.grey.withValues(alpha: 0.10),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -532,13 +514,13 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
       child: DropdownButtonFormField<String?>(
         initialValue: value,
         isExpanded: true,
-        style: GoogleFonts.cairo(fontSize: 12.5.sp, color: Colors.black87),
+        style: TextStyle(fontFamily: 'Cairo', fontSize: 12.5.sp, color: Colors.black87),
         decoration: InputDecoration(
           labelText: label,
           labelStyle:
-              GoogleFonts.cairo(color: Colors.grey[600], fontSize: 11.5.sp),
+              TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 11.5.sp),
           isDense: true,
-          prefixIcon: Icon(icon, size: 17.sp, color: AppTheme.primaryColor),
+          prefixIcon: Icon(icon, size: 17.sp, color: SdColors.primary),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
         ),
@@ -546,7 +528,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
           DropdownMenuItem<String?>(
             value: null,
             child: Text('الكل',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
           for (final it in items)
             DropdownMenuItem<String?>(
@@ -578,18 +560,18 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
             children: [
               SasStatusBadge(
                 label: 'المفلتَر: $total',
-                color: AppTheme.primaryColor,
+                color: SdColors.primary,
                 icon: Icons.people_rounded,
               ),
               SasStatusBadge(
                 label: 'سيصلهم: $sendable',
-                color: AppTheme.successColor,
+                color: SdColors.success,
                 icon: Icons.chat_rounded,
               ),
               if (noPhone > 0)
                 SasStatusBadge(
                   label: 'بلا رقم: $noPhone',
-                  color: AppTheme.warningColor,
+                  color: SdColors.warning,
                   icon: Icons.phone_disabled_rounded,
                 ),
             ],
@@ -599,13 +581,13 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
             Row(
               children: [
                 Icon(Icons.info_outline_rounded,
-                    size: 14.sp, color: AppTheme.warningColor),
+                    size: 14.sp, color: SdColors.warning),
                 SizedBox(width: 6.w),
                 Expanded(
                   child: Text(
                     'عُرِض ${_all.length} من إجمالي $_localTotal مشترك '
                     '(الحدّ $_fetchLimit) — ضيّق الفلاتر لإرسال دُفعات أصغر.',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 10.5.sp,
                         color: Colors.grey[700],
                         fontWeight: FontWeight.w600),
@@ -625,7 +607,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
     final parent = _parentOf(s);
     final daysLeft = _daysUntil(s.expiration);
     final statusColor =
-        s.isActive ? AppTheme.successColor : AppTheme.errorColor;
+        s.isActive ? SdColors.success : SdColors.danger;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       decoration: BoxDecoration(
@@ -634,7 +616,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
         border: Border.all(
           color: sendable
               ? Colors.grey.withValues(alpha: 0.16)
-              : AppTheme.warningColor.withValues(alpha: 0.40),
+              : SdColors.warning.withValues(alpha: 0.40),
           width: sendable ? 1.2 : 1.4,
         ),
         boxShadow: SasUi.cardShadow(),
@@ -644,7 +626,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
           Icon(
             sendable ? Icons.chat_rounded : Icons.phone_disabled_rounded,
             size: 22.sp,
-            color: sendable ? const Color(0xFF25D366) : AppTheme.warningColor,
+            color: sendable ? const Color(0xFF25D366) : SdColors.warning,
           ),
           SizedBox(width: 12.w),
           Expanded(
@@ -657,7 +639,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
                       child: Text(
                         s.displayName,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(fontFamily: 'Cairo', 
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w800,
                             color: const Color(0xFF1A1A2E)),
@@ -667,10 +649,10 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
                       SasStatusBadge(
                         label: daysLeft <= 0 ? 'منتهٍ' : 'باقٍ $daysLeft يوم',
                         color: daysLeft <= 0
-                            ? AppTheme.errorColor
+                            ? SdColors.danger
                             : (daysLeft <= 2
-                                ? AppTheme.warningColor
-                                : AppTheme.primaryColor),
+                                ? SdColors.warning
+                                : SdColors.primary),
                       ),
                       SizedBox(width: 6.w),
                     ],
@@ -691,7 +673,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
                   ].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 11.5.sp, color: Colors.grey[600]),
                 ),
                 SizedBox(height: 2.h),
@@ -703,10 +685,10 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
                           : 'لا يوجد رقم هاتف — لن يصله الإرسال'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w600,
-                    color: sendable ? Colors.grey[700] : AppTheme.warningColor,
+                    color: sendable ? Colors.grey[700] : SdColors.warning,
                   ),
                 ),
               ],
@@ -744,7 +726,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
                 sendable > 0
                     ? 'سيُرسَل إلى $sendable مشترك عبر واتساب (اختَر القالب أو نصّاً مخصّصاً)'
                     : 'لا يوجد أرقام صالحة ضمن الفلتر الحالي',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w700,
                     color: Colors.grey[700]),
@@ -760,7 +742,7 @@ class _SasBulkMessagePageState extends State<SasBulkMessagePage> {
               ),
               icon: Icon(Icons.send_rounded, size: 18.sp),
               label: Text('إرسال جماعي الآن',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ),
           ],
         ),

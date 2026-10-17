@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart'; // لاستخدام Clipboard
+import '../../frontend/frontend.dart';
 import '../../services/auth_service.dart';
 import '../../task/add_task_api_dialog.dart'; // تأكد من استيراد صفحة AddTaskApiDialog
 // import 'utils/status_translator.dart'; // لم يعد مستخدماً بعد إخفاء زر مؤشرات SLA
@@ -114,13 +115,8 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
   final TextEditingController _commentController = TextEditingController();
   int _commentsTotalCount = 0; // العدد الكلي من الخادم
 
-  // أحجام متجاوبة — تُحسب في build() حسب حجم الشاشة
-  late double kLabelFont;
-  late double kValueFont;
-  late double kIconSizeInfo;
-  late double kRowHPad;
-  late double kRowVPad;
-  late double kInlineGap;
+  /// لون المجموعة (التبليغات = التواصل).
+  SdTone get _tone => SdGroup.comms.tone;
 
   // تحويل الأرقام الغربية إلى أرقام عربية شرقية
   String _toArabicDigits(String input) {
@@ -283,27 +279,6 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // حساب الأحجام نسبياً من ارتفاع الشاشة لتملأ المساحة
-    final screenH = MediaQuery.of(context).size.height;
-    // معامل التحجيم: 1.0 عند 800px، يزيد مع الشاشات الأكبر
-    final double s = (screenH / 800).clamp(0.85, 1.5);
-
-    kLabelFont = 14.0 * s;
-    kValueFont = 14.0 * s;
-    kIconSizeInfo = 17.0 * s;
-    kRowHPad = 12.0 * s;
-    kRowVPad = 6.0 * s;
-    kInlineGap = 8.0 * s;
-
-    final double cardPadH = 10.0 * s;
-    final double cardPadV = 8.0 * s;
-    final double headingFont = 15.0 * s;
-    final double headingIconSize = 17.0 * s;
-    final double gapBetweenCards = 8.0 * s;
-    final double bodyPadH = 14.0 * s;
-    final double bodyPadV = 10.0 * s;
-    final double rowMarginBottom = 5.0 * s;
-
     final tktat = widget.tktat;
     try {
       // تحويل آمن: إذا كانت الخريطة تحوي مفاتيح غير String لن نفشل
@@ -421,34 +396,25 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
           _toArabicDigits(formatDurationVerbose(remaining));
       // تم حذف عرض وقت الإنشاء والتحديث من البطاقة؛ لا حاجة للمتغيرات المحولة للأرقام العربية
 
-      return Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 70,
-          leadingWidth: 96,
-          leading: _buildLeadingActions(context),
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.indigo.shade600,
-                  Colors.blue.shade600,
-                  Colors.teal.shade400,
-                ],
-              ),
-            ),
-          ),
-          titleSpacing: 0,
-          title: const SizedBox.shrink(),
+      return SdPage(
+        maxWidth: SdSpace.formMax,
+        scrollable: false,
+        appBar: SdAppBar(
+          title: 'تفاصيل التذكرة',
           actions: [
-            _buildAppBarAction(
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تم تحديث الصفحة!')),
+                );
+              },
+            ),
+            SdAppBarAction(
               icon: Icons.copy_all,
-              color: Colors.amber,
-              tooltip: 'نسخ معلومات التذكرة والمشترك',
-              iconSize: 28,
-              boxSize: 50,
-              onTap: () {
+              label: 'نسخ المعلومات',
+              onPressed: () {
                 final lines = <String>[
                   '--- معلومات التذكرة ---',
                   'رقم التذكرة: $ticketNumber',
@@ -467,14 +433,10 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                 );
               },
             ),
-            const SizedBox(width: 8),
-            _buildAppBarAction(
+            SdAppBarAction(
               icon: Icons.open_in_new,
-              color: Colors.green,
-              tooltip: 'فتح التذكرة في المتصفح',
-              iconSize: 28,
-              boxSize: 50,
-              onTap: () {
+              label: 'فتح في المتصفح',
+              onPressed: () {
                 if (ticketGuid != null) {
                   _openTicketInBrowser(ticketGuid);
                 } else {
@@ -486,14 +448,10 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                 }
               },
             ),
-            const SizedBox(width: 8),
-            _buildAppBarAction(
+            SdAppBarAction(
               icon: Icons.add,
-              color: Colors.orange,
-              tooltip: 'إضافة',
-              iconSize: 28,
-              boxSize: 50,
-              onTap: () {
+              label: 'إضافة مهمة',
+              onPressed: () {
                 // تجهيز النص المراد تمريره كملاحظات مبدئية في نافذة الإضافة
                 final combinedText = [
                   'رقم التذكرة: $ticketNumber',
@@ -523,179 +481,115 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
             ),
           ],
         ),
-        body: Padding(
-          padding: EdgeInsets.symmetric(horizontal: bodyPadH, vertical: bodyPadV),
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // بطاقة SLA المختصرة
-                _buildSlaCard(
-                  categoryName: _categoryName,
-                  target: targetStr,
-                  elapsed: elapsedVerbose,
-                  remaining: remainingVerbose,
-                  slaStatus: slaStatus,
-                  progress: _targetSla.inSeconds == 0
-                      ? 0
-                      : (elapsed.inSeconds / _targetSla.inSeconds).clamp(0, 1),
-                ),
-                SizedBox(height: gapBetweenCards),
-                // المجموعة 1: معلومات التذكرة
-                _buildGroupCard(
-                  heading: 'معلومات التذكرة',
-                  startColor: Colors.blue.shade50,
-                  endColor: Colors.blue.shade100,
-                  cardPadH: cardPadH, cardPadV: cardPadV,
-                  headingFont: headingFont, headingIconSize: headingIconSize,
-                  rows: [
-                    _buildInfoRow(
-                        icon: Icons.confirmation_number,
-                        label: 'رقم التذكرة',
-                        value: ticketNumber,
-                        iconColor: Colors.indigo,
-                        rowMargin: rowMarginBottom),
-                    _buildInfoRow(
-                        icon: Icons.title,
-                        label: 'العنوان',
-                        value: title,
-                        iconColor: Colors.blue,
-                        rowMargin: rowMarginBottom),
-                    _buildInfoRow(
-                        icon: Icons.description,
-                        label: 'الخلاصة',
-                        value: summary,
-                        iconColor: Colors.teal,
-                        rowMargin: rowMarginBottom),
-                  ],
-                ),
-                SizedBox(height: gapBetweenCards),
-                // المجموعة 2: معلومات المشترك
-                _buildGroupCard(
-                  heading: 'معلومات المشترك',
-                  startColor: Colors.orange.shade50,
-                  endColor: Colors.orange.shade100,
-                  cardPadH: cardPadH, cardPadV: cardPadV,
-                  headingFont: headingFont, headingIconSize: headingIconSize,
-                  rows: [
-                    _buildInfoRow(
-                        icon: Icons.person,
-                        label: 'العميل',
-                        value: customer,
-                        iconColor: Colors.orange,
-                        showCopyButton: true,
-                        rowMargin: rowMarginBottom),
-                    _buildInfoRow(
-                        icon: Icons.badge,
-                        label: 'معرف المستخدم',
-                        value: userId,
-                        iconColor: Colors.deepOrange,
-                        rowMargin: rowMarginBottom),
-                    _buildInfoRow(
-                        icon: Icons.phone,
-                        label: 'رقم الهاتف',
-                        value: _loadingExtraInfo
-                            ? 'جاري التحميل...'
-                            : (_customerPhone.isNotEmpty
-                                ? _customerPhone
-                                : 'غير متوفر'),
-                        iconColor: Colors.green,
-                        showCopyButton: _customerPhone.isNotEmpty,
-                        rowMargin: rowMarginBottom),
-                    _buildInfoRow(
-                        icon: Icons.router,
-                        label: 'FBG',
-                        value: zone,
-                        iconColor: Colors.teal,
-                        rowMargin: rowMarginBottom),
-                    _buildInfoRow(
-                        icon: Icons.cable,
-                        label: 'FAT',
-                        value: _loadingExtraInfo
-                            ? 'جاري التحميل...'
-                            : (_fatValue.isNotEmpty
-                                ? _fatValue
-                                : 'غير متوفر'),
-                        iconColor: Colors.indigo,
-                        rowMargin: rowMarginBottom),
-                  ],
-                ),
-                SizedBox(height: gapBetweenCards),
-                // المجموعة 3: معلومات أخرى
-                _buildGroupCard(
-                  heading: 'معلومات أخرى',
-                  startColor: Colors.green.shade50,
-                  endColor: Colors.green.shade100,
-                  compact: true,
-                  cardPadH: cardPadH, cardPadV: cardPadV,
-                  headingFont: headingFont, headingIconSize: headingIconSize,
-                  rows: [
-                    _buildInfoRowCompact(
-                        icon: Icons.attach_file,
-                        label: 'عدد المرفقات',
-                        value: safeField(ticketMap, 'attachmentsCount'),
-                        iconColor: Colors.blueGrey),
-                    _buildInfoRowCompact(
-                        icon: Icons.comment,
-                        label: 'عدد التعليقات',
-                        value: safeField(ticketMap, 'commentsCount'),
-                        iconColor: Colors.cyan),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: _buildCommentsButton(ticketGuid),
-                    ),
-                  ],
-                ),
-                if (_commentsVisible) const SizedBox(height: 6),
-                if (_commentsVisible)
-                  KeyedSubtree(
-                    key: _commentsKey,
-                    child: _buildCommentsSection(),
+        body: SingleChildScrollView(
+          controller: _scrollController,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // بطاقة SLA المختصرة
+              _buildSlaCard(
+                categoryName: _categoryName,
+                target: targetStr,
+                elapsed: elapsedVerbose,
+                remaining: remainingVerbose,
+                slaStatus: slaStatus,
+                progress: _targetSla.inSeconds == 0
+                    ? 0
+                    : (elapsed.inSeconds / _targetSla.inSeconds).clamp(0, 1),
+              ),
+              const SizedBox(height: SdSpace.sm),
+              // المجموعة 1: معلومات التذكرة
+              _buildGroupCard(
+                heading: 'معلومات التذكرة',
+                icon: Icons.confirmation_number,
+                tone: SdGroup.field.tone,
+                rows: [
+                  _buildInfoRow(
+                      icon: Icons.confirmation_number,
+                      label: 'رقم التذكرة',
+                      value: ticketNumber),
+                  _buildInfoRow(
+                      icon: Icons.title, label: 'العنوان', value: title),
+                  _buildInfoRow(
+                      icon: Icons.description,
+                      label: 'الخلاصة',
+                      value: summary),
+                ],
+              ),
+              const SizedBox(height: SdSpace.sm),
+              // المجموعة 2: معلومات المشترك
+              _buildGroupCard(
+                heading: 'معلومات المشترك',
+                icon: Icons.person,
+                tone: SdGroup.comms.tone,
+                rows: [
+                  _buildInfoRow(
+                      icon: Icons.person,
+                      label: 'العميل',
+                      value: customer,
+                      showCopyButton: true),
+                  _buildInfoRow(
+                      icon: Icons.badge,
+                      label: 'معرف المستخدم',
+                      value: userId),
+                  _buildInfoRow(
+                      icon: Icons.phone,
+                      label: 'رقم الهاتف',
+                      value: _loadingExtraInfo
+                          ? 'جاري التحميل...'
+                          : (_customerPhone.isNotEmpty
+                              ? _customerPhone
+                              : 'غير متوفر'),
+                      showCopyButton: _customerPhone.isNotEmpty),
+                  _buildInfoRow(
+                      icon: Icons.router, label: 'FBG', value: zone),
+                  _buildInfoRow(
+                      icon: Icons.cable,
+                      label: 'FAT',
+                      value: _loadingExtraInfo
+                          ? 'جاري التحميل...'
+                          : (_fatValue.isNotEmpty ? _fatValue : 'غير متوفر')),
+                ],
+              ),
+              const SizedBox(height: SdSpace.sm),
+              // المجموعة 3: معلومات أخرى
+              _buildGroupCard(
+                heading: 'معلومات أخرى',
+                icon: Icons.more_horiz,
+                tone: SdGroup.admin.tone,
+                rows: [
+                  _buildInfoRowCompact(
+                      icon: Icons.attach_file,
+                      label: 'عدد المرفقات',
+                      value: safeField(ticketMap, 'attachmentsCount')),
+                  _buildInfoRowCompact(
+                      icon: Icons.comment,
+                      label: 'عدد التعليقات',
+                      value: safeField(ticketMap, 'commentsCount')),
+                  Padding(
+                    padding: const EdgeInsets.only(top: SdSpace.xs),
+                    child: _buildCommentsButton(ticketGuid),
                   ),
-              ],
-            ),
+                ],
+              ),
+              if (_commentsVisible) const SizedBox(height: 6),
+              if (_commentsVisible)
+                KeyedSubtree(
+                  key: _commentsKey,
+                  child: _buildCommentsSection(),
+                ),
+            ],
           ),
         ),
       );
-    } catch (e, st) {
-      return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          iconTheme: const IconThemeData(color: Colors.white),
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF283593),
-                  Color(0xFF1976D2),
-                  Color(0xFF64B5F6)
-                ],
-              ),
-            ),
-          ),
-          title: const Text('تفاصيل TKTAT'),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('حدث خطأ أثناء عرض التفاصيل',
-                    style: TextStyle(
-                        color: Colors.red, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                Text('الرسالة'),
-                const SizedBox(height: 12),
-                Text('StackTrace:\n$st',
-                    style:
-                        const TextStyle(fontSize: 11, fontFamily: 'monospace')),
-              ],
-            ),
-          ),
+    } catch (_) {
+      return const SdPage(
+        appBar: SdAppBar(title: 'تفاصيل TKTAT'),
+        body: SdEmptyState(
+          title: 'حدث خطأ أثناء عرض التفاصيل',
+          message: 'تعذّر عرض تفاصيل هذه التذكرة. الرجاء الرجوع والمحاولة مجدداً.',
+          icon: Icons.error_outline,
+          status: SdStatus.danger,
         ),
       );
     }
@@ -861,67 +755,43 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
   }
 
   Widget _buildCommentsButton(String? ticketGuid) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.indigo.shade600,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-        onPressed: (ticketGuid == null)
-            ? null
-            : () {
-                if (_loadingComments) return;
-                if (!_commentsFetched) {
-                  // أول مرة: جلب ثم إظهار
-                  _fetchComments(ticketGuid).then((_) {
-                    setState(() {
-                      _commentsVisible = true;
-                    });
-                    _scrollToComments();
+    return SdButton(
+      expand: true,
+      icon: _commentsVisible ? Icons.visibility_off : Icons.comment,
+      label: _loadingComments
+          ? 'جاري تحميل التعليقات...'
+          : !_commentsFetched
+              ? 'عرض التعليقات'
+              : _commentsVisible
+                  ? 'إخفاء التعليقات'
+                  : 'إظهار التعليقات',
+      onPressed: (ticketGuid == null || _loadingComments)
+          ? null
+          : () {
+              if (!_commentsFetched) {
+                // أول مرة: جلب ثم إظهار
+                _fetchComments(ticketGuid).then((_) {
+                  setState(() {
+                    _commentsVisible = true;
                   });
+                  _scrollToComments();
+                });
+              } else {
+                if (_commentsVisible) {
+                  // كانت ظاهرة -> إخفاء والتمرير للأعلى
+                  setState(() {
+                    _commentsVisible = false;
+                  });
+                  _scrollToTop();
                 } else {
-                  if (_commentsVisible) {
-                    // كانت ظاهرة -> إخفاء والتمرير للأعلى
-                    setState(() {
-                      _commentsVisible = false;
-                    });
-                    _scrollToTop();
-                  } else {
-                    // كانت مخفية -> إظهار فقط والتمرير للأسفل
-                    setState(() {
-                      _commentsVisible = true;
-                    });
-                    _scrollToComments();
-                  }
+                  // كانت مخفية -> إظهار فقط والتمرير للأسفل
+                  setState(() {
+                    _commentsVisible = true;
+                  });
+                  _scrollToComments();
                 }
-              },
-        icon: _loadingComments
-            ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2.4, color: Colors.white),
-              )
-            : Icon(_commentsVisible ? Icons.visibility_off : Icons.comment,
-                color: Colors.white),
-        label: Text(
-          _loadingComments
-              ? 'جاري تحميل التعليقات...'
-              : !_commentsFetched
-                  ? 'عرض التعليقات'
-                  : _commentsVisible
-                      ? 'إخفاء التعليقات'
-                      : 'إظهار التعليقات',
-          style: const TextStyle(
-              fontSize: 17.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: .3,
-              color: Colors.white),
-        ),
-      ),
+              }
+            },
     );
   }
 
@@ -957,12 +827,11 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
       return _buildCommentContainer(
         child: Row(
           children: [
-            const Icon(Icons.error, color: Colors.red),
+            const Icon(Icons.error, color: SdColors.danger),
             const SizedBox(width: 8),
             Expanded(
                 child: Text(_commentsError!,
-                    style: const TextStyle(
-                        color: Colors.red, fontWeight: FontWeight.w700))),
+                    style: SdText.label.copyWith(color: SdColors.danger))),
           ],
         ),
       );
@@ -974,11 +843,9 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
           _buildCommentContainer(
             child: Row(
               children: const [
-                Icon(Icons.info_outline, color: Colors.blueGrey),
+                Icon(Icons.info_outline, color: SdColors.muted),
                 SizedBox(width: 8),
-                Expanded(
-                    child: Text('لا توجد تعليقات',
-                        style: TextStyle(fontWeight: FontWeight.w600))),
+                Expanded(child: Text('لا توجد تعليقات', style: SdText.label)),
               ],
             ),
           ),
@@ -996,11 +863,10 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.comment, color: Colors.indigo),
+                  Icon(Icons.comment, color: _tone.base),
                   const SizedBox(width: 6),
                   Text('التعليقات (${_comments.length}/$_commentsTotalCount)',
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w800)),
+                      style: SdText.titleSm),
                 ],
               ),
               const SizedBox(height: 8),
@@ -1015,24 +881,27 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
   }
 
   Widget _buildAddCommentBox() {
+    final t = _tone;
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: BorderSide(color: c, width: w),
+        );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.indigo.shade50,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.indigo.shade200),
+        color: t.tint,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        border: Border.all(color: t.tintEdge),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Icon(Icons.add_comment, color: Colors.indigo),
-              SizedBox(width: 6),
-              Text('إضافة تعليق',
-                  style:
-                      TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
+            children: [
+              Icon(Icons.add_comment, color: t.base),
+              const SizedBox(width: 6),
+              Text('إضافة تعليق', style: SdText.label),
             ],
           ),
           const SizedBox(height: 8),
@@ -1040,50 +909,40 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
             controller: _commentController,
             maxLines: 3,
             minLines: 2,
+            style: SdText.body,
             decoration: InputDecoration(
               hintText: 'اكتب تعليقك هنا...',
+              hintStyle: SdText.body.copyWith(color: SdColors.faint),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: SdColors.surface,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.indigo.shade200)),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.indigo.shade200)),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      BorderSide(color: Colors.indigo.shade400, width: 1.2)),
+              border: border(t.tintEdge),
+              enabledBorder: border(t.tintEdge),
+              focusedBorder: border(t.base, 1.5),
             ),
           ),
           const SizedBox(height: 10),
           Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo.shade600,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              ),
+            child: SdButton(
+              label: _postingComment ? 'إرسال...' : 'إرسال',
+              icon: Icons.send,
               onPressed: _postingComment
                   ? null
                   : () {
                       // محاولة استخراج المعرف المستخدم سابقاً في جلب التعليقات
                       final builtTicketGuid = () {
-                        final t = widget.tktat;
-                        if (t is Map) {
-                          if (t['ticketId'] != null) {
-                            return t['ticketId'].toString();
+                        final src = widget.tktat;
+                        if (src is Map) {
+                          if (src['ticketId'] != null) {
+                            return src['ticketId'].toString();
                           }
-                          if (t['id'] != null &&
-                              t['id'].toString().length > 20) {
-                            return t['id'].toString();
+                          if (src['id'] != null &&
+                              src['id'].toString().length > 20) {
+                            return src['id'].toString();
                           }
-                          final self = t['self'];
+                          final self = src['self'];
                           if (self is Map &&
                               self['id'] != null &&
                               self['id'].toString().length > 20) {
@@ -1101,18 +960,6 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                       }
                       _postComment(builtTicketGuid);
                     },
-              icon: _postingComment
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2.4, color: Colors.white))
-                  : const Icon(Icons.send, size: 18, color: Colors.white),
-              label: Text(_postingComment ? 'إرسال...' : 'إرسال',
-                  style: TextStyle(
-                      fontSize: 13.8,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white70)),
             ),
           )
         ],
@@ -1121,22 +968,9 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
   }
 
   Widget _buildCommentContainer({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 4),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: .05),
-              blurRadius: 8,
-              offset: const Offset(0, 3)),
-        ],
-      ),
-      child: child,
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: SdCard(tone: _tone, child: child),
     );
   }
 
@@ -1183,39 +1017,37 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
             '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       } catch (_) {}
     }
+    final t = _tone;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.indigo.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.indigo.shade100),
+        color: t.tint,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        border: Border.all(color: t.tintEdge),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.person, size: 16, color: Colors.indigo),
+              Icon(Icons.person, size: 16, color: t.base),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   author.isEmpty ? 'غير معروف' : author,
-                  style: const TextStyle(
-                      fontSize: 12.5, fontWeight: FontWeight.w700),
+                  style: SdText.bodySm
+                      .copyWith(color: SdColors.ink, fontWeight: FontWeight.w700),
                 ),
               ),
               if (formattedCreated.isNotEmpty)
-                Text(
-                  formattedCreated,
-                  style: const TextStyle(fontSize: 10.5, color: Colors.black54),
-                ),
+                Text(formattedCreated, style: SdText.caption),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             content.isEmpty ? 'بدون محتوى' : content,
-            style: const TextStyle(fontSize: 13),
+            style: SdText.body,
             textAlign: TextAlign.start,
           ),
         ],
@@ -1227,55 +1059,16 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
   Widget _buildGroupCard({
     required String heading,
     required List<Widget> rows,
-    Color? startColor,
-    Color? endColor,
-    bool compact = false,
-    List<Widget>? actions,
-    double cardPadH = 10,
-    double cardPadV = 6,
-    double headingFont = 15,
-    double headingIconSize = 17,
+    IconData icon = Icons.folder_open,
+    SdTone? tone,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: cardPadH, vertical: cardPadV),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            (startColor ?? Colors.blue.shade50),
-            (endColor ?? Colors.blue.shade100),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.black12, width: 0.7),
-      ),
+    return SdCard(
+      title: heading,
+      icon: icon,
+      tone: tone ?? _tone,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.folder_open, size: headingIconSize, color: Colors.black54),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  heading,
-                  style: TextStyle(
-                    fontSize: headingFont,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              if (actions != null)
-                ...actions.map((w) =>
-                    Padding(padding: const EdgeInsets.only(left: 4), child: w)),
-            ],
-          ),
-          const SizedBox(height: 2),
-          ...rows,
-        ],
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: rows,
       ),
     );
   }
@@ -1285,32 +1078,22 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
     required IconData icon,
     required String label,
     required String value,
-    Color? iconColor,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.black12, width: 0.5),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 13, color: iconColor ?? Colors.indigo),
+          Icon(icon, size: 16, color: SdColors.faint),
           const SizedBox(width: 6),
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                    height: 1.15),
+                style: SdText.bodySm.copyWith(color: SdColors.ink),
                 children: [
                   TextSpan(
                       text: '$label: ',
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                      style: SdText.bodySm.copyWith(
+                          color: SdColors.ink, fontWeight: FontWeight.w800)),
                   TextSpan(text: value),
                 ],
               ),
@@ -1322,45 +1105,26 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
     );
   }
 
-  // صف لعرض مؤشر في الحوار السفلي
-  // تم حذف _metricRow بعد إزالة زر مؤشرات SLA
-
   // صف معلومات
   Widget _buildInfoRow({
     required IconData icon,
     required String label,
     required String value,
-    Color? iconColor,
     bool showCopyButton = false,
-    double rowMargin = 4,
   }) {
-    return Container(
-      margin: EdgeInsets.only(bottom: rowMargin),
-      padding: EdgeInsets.symmetric(horizontal: kRowHPad, vertical: kRowVPad),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.black12, width: 0.5),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: kIconSizeInfo, color: iconColor ?? Colors.indigo),
-          SizedBox(width: kInlineGap),
+          Icon(icon, size: 18, color: SdColors.faint),
+          const SizedBox(width: 8),
           Expanded(
             child: SelectionArea(
               child: RichText(
                 text: TextSpan(
-                  style: TextStyle(
-                      fontSize: kValueFont,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                      height: 1.15),
+                  style: SdText.body,
                   children: [
-                    TextSpan(
-                        text: '$label: ',
-                        style: TextStyle(
-                            fontSize: kLabelFont,
-                            fontWeight: FontWeight.w800)),
+                    TextSpan(text: '$label: ', style: SdText.label),
                     TextSpan(text: value),
                   ],
                 ),
@@ -1381,119 +1145,14 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
                   );
                 }
               },
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(SdRadius.xs),
               child: const Padding(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.copy, size: 14, color: Colors.black54),
+                padding: EdgeInsets.all(6),
+                child: Icon(Icons.copy, size: 16, color: SdColors.muted),
               ),
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAppBarAction({
-    required IconData icon,
-    required VoidCallback onTap,
-    required Color color,
-    String? tooltip,
-    double iconSize = 22,
-    double boxSize = 46,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Ink(
-          width: boxSize,
-          height: boxSize,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                color.withValues(alpha: .95),
-                color.withValues(alpha: .70)
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: .35),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-            border: Border.all(
-                color: Colors.white.withValues(alpha: .55), width: 1),
-          ),
-          child: Tooltip(
-            message: tooltip ?? '',
-            child: Icon(icon, color: Colors.white, size: iconSize),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackAction(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(start: 4, top: 8, bottom: 8),
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: () => Navigator.pop(context),
-          borderRadius: BorderRadius.circular(10),
-          splashColor: Colors.black.withValues(alpha: .08),
-          highlightColor: Colors.black.withValues(alpha: .04),
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Center(
-              child: Icon(Icons.arrow_back_ios_new,
-                  size: 20, color: Colors.black.withValues(alpha: .80)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // مجموعة الأزرار في الجهة اليسرى (عودة + تحديث)
-  Widget _buildLeadingActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _buildBackAction(context),
-        // زيادة المسافة بين زر الرجوع وزر التحديث بناءً على طلب المستخدم
-        const SizedBox(width: 18),
-        // زر التحديث مبسط بجانب العودة
-        Padding(
-          padding: const EdgeInsetsDirectional.only(top: 8, bottom: 8),
-          child: Material(
-            color: Colors.blue.withValues(alpha: .60),
-            borderRadius: BorderRadius.circular(10),
-            child: InkWell(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم تحديث الصفحة!')),
-                );
-              },
-              borderRadius: BorderRadius.circular(10),
-              splashColor: Colors.white.withValues(alpha: .15),
-              child: SizedBox(
-                // تصغير زر التحديث حسب طلب المستخدم
-                width: 34,
-                height: 34,
-                child: const Icon(Icons.refresh, size: 18, color: Colors.white),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1508,61 +1167,53 @@ class _TKTATDetailsPageState extends State<TKTATDetailsPage> {
   }) {
     final bool breached = slaStatus == 'متجاوز';
     final bool warning = !breached && progress >= 0.75;
-    final Color mainColor = breached
-        ? Colors.red.shade600
+    final SdStatus status = breached
+        ? SdStatus.danger
         : warning
-            ? Colors.orange.shade700
-            : Colors.green.shade600;
+            ? SdStatus.warning
+            : SdStatus.success;
+    final t = status.tone;
     final pct = '${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%';
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: mainColor.withValues(alpha: .08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: mainColor.withValues(alpha: .3)),
-      ),
+    return SdCard(
+      tone: t,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Icon(Icons.timer_outlined, color: mainColor, size: 18),
+              Icon(Icons.timer_outlined, color: t.base, size: 18),
               const SizedBox(width: 6),
-              Text('SLA', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: mainColor)),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: mainColor.withValues(alpha: .15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(slaStatus, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: mainColor)),
-              ),
+              Text('SLA', style: SdText.label.copyWith(color: t.text)),
+              const SizedBox(width: 8),
+              SdStatusChip(slaStatus, status: status),
               if (categoryName.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                Text(categoryName, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                const SizedBox(width: 8),
+                Flexible(
+                    child: Text(categoryName,
+                        style: SdText.caption,
+                        overflow: TextOverflow.ellipsis)),
               ],
               const Spacer(),
-              Text('المنقضي: $elapsed', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+              Text('المنقضي: $elapsed', style: SdText.caption),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
-                    minHeight: 6,
+                    minHeight: 8,
                     value: progress,
-                    backgroundColor: mainColor.withValues(alpha: .15),
-                    valueColor: AlwaysStoppedAnimation<Color>(mainColor),
+                    backgroundColor: t.tint,
+                    valueColor: AlwaysStoppedAnimation<Color>(t.base),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              Text(pct, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: mainColor)),
+              Text(pct, style: SdText.label.copyWith(color: t.text)),
             ],
           ),
         ],

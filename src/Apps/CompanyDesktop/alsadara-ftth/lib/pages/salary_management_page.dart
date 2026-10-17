@@ -6,6 +6,7 @@ library;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../utils/responsive_helper.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
@@ -116,7 +117,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: SdColors.primary,
               ),
               child: const Text('إنشاء', style: TextStyle(color: Colors.white)),
             ),
@@ -137,7 +138,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'تم إنشاء المسيّر'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         _loadSalaries();
@@ -145,7 +146,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -171,7 +172,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.success),
               child:
                   const Text('صرف الكل', style: TextStyle(color: Colors.white)),
             ),
@@ -193,7 +194,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'تم صرف الرواتب'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         _loadSalaries();
@@ -201,7 +202,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -227,7 +228,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
               child: const Text('حذف', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -247,7 +248,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'تم الحذف'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
         _loadSalaries();
@@ -255,7 +256,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -281,7 +282,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.primary),
               child: const Text('صرف', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -300,7 +301,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'تم صرف الراتب'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         _loadSalaries();
@@ -308,7 +309,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -335,36 +336,32 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
 
   @override
   Widget build(BuildContext context) {
-    final r = context.responsive;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
-        appBar: AppBar(
-          title: Text('إدارة الرواتب',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: r.appBarTitleSize)),
-          backgroundColor: Colors.teal[700],
-          foregroundColor: Colors.white,
-          elevation: 0,
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            tabs: const [
-              Tab(icon: Icon(Icons.receipt_long), text: 'مسيّر الرواتب'),
-              Tab(icon: Icon(Icons.settings), text: 'سياسة الرواتب'),
-            ],
-          ),
-        ),
-        body: TabBarView(
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: 'إدارة الرواتب',
+        bottom: SdTabBar(
           controller: _tabController,
-          children: [
-            _buildPayrollTab(),
-            _buildPolicyTab(),
+          height: 72,
+          tabs: const [
+            Tab(icon: Icon(Icons.receipt_long), text: 'مسيّر الرواتب'),
+            Tab(icon: Icon(Icons.settings), text: 'سياسة الرواتب'),
           ],
         ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildPayrollTab(),
+                _buildPolicyTab(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -391,22 +388,17 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         vertical: r.isMobile ? 8 : 12,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2)),
-        ],
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        boxShadow: SdDepth.raised(),
       ),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const Icon(Icons.calendar_month, color: Colors.teal),
-          const Text('الشهر:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Icon(Icons.calendar_month, color: SdColors.accent),
+          const Text('الشهر:', style: SdText.label),
           DropdownButton<int>(
             value: _selectedMonth,
             items: List.generate(12, (i) {
@@ -433,7 +425,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               }
             },
           ),
-          const Text('السنة:', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text('السنة:', style: SdText.label),
           DropdownButton<int>(
             value: _selectedYear,
             items: List.generate(5, (i) {
@@ -449,7 +441,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
           ),
           IconButton(
             onPressed: _loadSalaries,
-            icon: const Icon(Icons.refresh, color: Colors.teal),
+            icon: const Icon(Icons.refresh, color: SdColors.accent),
             tooltip: 'تحديث',
           ),
         ],
@@ -474,7 +466,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               'عدد الموظفين',
               '${_summary!['Count'] ?? 0}',
               Icons.people,
-              Colors.blue,
+              SdColors.info,
             ),
           ),
           SizedBox(
@@ -483,7 +475,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               'إجمالي الأساسي',
               _formatCurrency(_summary!['TotalBaseSalary'] ?? 0),
               Icons.account_balance_wallet,
-              Colors.teal,
+              SdColors.accent,
             ),
           ),
           SizedBox(
@@ -492,7 +484,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               'إجمالي الخصومات',
               _formatCurrency(_summary!['TotalDeductions'] ?? 0),
               Icons.remove_circle,
-              Colors.red,
+              SdColors.danger,
             ),
           ),
           SizedBox(
@@ -501,7 +493,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               'إجمالي المكافآت',
               _formatCurrency(_summary!['TotalBonuses'] ?? 0),
               Icons.add_circle,
-              Colors.green,
+              SdColors.success,
             ),
           ),
           SizedBox(
@@ -510,7 +502,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               'صافي الرواتب',
               _formatCurrency(_summary!['TotalNet'] ?? 0),
               Icons.payments,
-              Colors.deepPurple,
+              SdColors.primary,
             ),
           ),
           if ((_summary!['TotalManualDeductions'] ?? 0) > 0)
@@ -520,7 +512,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                 'خصومات يدوية',
                 _formatCurrency(_summary!['TotalManualDeductions'] ?? 0),
                 Icons.money_off,
-                Colors.orange,
+                SdColors.warning,
               ),
             ),
           if ((_summary!['TotalManualBonuses'] ?? 0) > 0)
@@ -530,7 +522,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                 'مكافآت يدوية',
                 _formatCurrency(_summary!['TotalManualBonuses'] ?? 0),
                 Icons.card_giftcard,
-                Colors.indigo,
+                SdColors.primaryLight,
               ),
             ),
         ],
@@ -559,14 +551,17 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             fit: BoxFit.scaleDown,
             child: Text(value,
                 style: TextStyle(
+                    fontFamily: SdText.family,
                     color: Colors.white,
                     fontSize: r.isMobile ? 13 : 16,
-                    fontWeight: FontWeight.bold)),
+                    fontWeight: FontWeight.w900)),
           ),
           Text(title,
               style: TextStyle(
+                  fontFamily: SdText.family,
                   color: Colors.white70,
-                  fontSize: r.isMobile ? 9 : 11),
+                  fontSize: r.isMobile ? 11.5 : 11.5,
+                  fontWeight: FontWeight.w700),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
         ],
@@ -586,40 +581,26 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         runSpacing: 8,
         children: [
           if (!hasSalaries)
-            ElevatedButton.icon(
+            SdButton(
+              label: 'إنشاء مسيّر الرواتب',
+              icon: Icons.auto_fix_high,
+              kind: SdButtonKind.accent,
+              height: 48,
               onPressed: _generatePayroll,
-              icon: const Icon(Icons.auto_fix_high, size: 18),
-              label: Text('إنشاء مسيّر الرواتب',
-                  style: TextStyle(fontSize: r.isMobile ? 12 : 14)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                    horizontal: r.isMobile ? 12 : 20, vertical: 12),
-              ),
             ),
           if (hasSalaries && hasPending) ...[
-            ElevatedButton.icon(
+            SdButton(
+              label: 'صرف جميع الرواتب',
+              icon: Icons.payments,
+              height: 48,
               onPressed: _payAllSalaries,
-              icon: const Icon(Icons.payments, size: 18),
-              label: Text('صرف جميع الرواتب',
-                  style: TextStyle(fontSize: r.isMobile ? 12 : 14)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[700],
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                    horizontal: r.isMobile ? 12 : 20, vertical: 12),
-              ),
             ),
-            OutlinedButton.icon(
+            SdButton(
+              label: 'حذف المسيّر',
+              icon: Icons.delete_outline,
+              kind: SdButtonKind.danger,
+              height: 48,
               onPressed: _deletePayroll,
-              icon: const Icon(Icons.delete_outline, size: 18),
-              label: Text('حذف المسيّر',
-                  style: TextStyle(fontSize: r.isMobile ? 12 : 14)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red),
-              ),
             ),
           ],
         ],
@@ -629,27 +610,14 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
 
   Widget _buildSalaryList() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
 
     if (_salaries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.receipt_long, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'لا يوجد مسيّر رواتب لشهر $_selectedMonth/$_selectedYear',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'اضغط "إنشاء مسيّر الرواتب" للبدء',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-            ),
-          ],
-        ),
+      return SdEmptyState(
+        icon: Icons.receipt_long,
+        title: 'لا يوجد مسيّر رواتب لشهر $_selectedMonth/$_selectedYear',
+        message: 'اضغط "إنشاء مسيّر الرواتب" للبدء',
       );
     }
 
@@ -663,64 +631,59 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
   Widget _buildSalaryCard(Map<String, dynamic> salary) {
     final status = salary['Status'] ?? 'Pending';
     final isPaid = status == 'Paid';
-    final statusColor = isPaid ? Colors.green : Colors.orange;
+    final statusColor = isPaid ? SdColors.success : SdColors.warning;
     final statusText = isPaid ? 'مصروف' : 'بانتظار الصرف';
     final hasDeductions = (salary['Deductions'] ?? 0) > 0;
     final hasBonuses = (salary['Bonuses'] ?? 0) > 0;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () => _showSalaryDetails(salary),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Colors.teal[100],
-                    child: Icon(Icons.person, color: Colors.teal[700]),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          salary['UserName'] ?? 'موظف',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
-                        Text(
-                          'الراتب الأساسي: ${_formatCurrency(salary['BaseSalary'] ?? 0)}',
-                          style:
-                              TextStyle(color: Colors.grey[600], fontSize: 13),
-                        ),
-                      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SdCard(
+        padding: EdgeInsets.zero,
+        child: InkWell(
+          onTap: () => _showSalaryDetails(salary),
+          borderRadius: BorderRadius.circular(SdRadius.lg),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      backgroundColor: SdColors.accentTint,
+                      child: Icon(Icons.person, color: SdColors.accent),
                     ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: statusColor),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            salary['UserName'] ?? 'موظف',
+                            style: SdText.titleSm.copyWith(fontSize: 15),
+                          ),
+                          Text(
+                            'الراتب الأساسي: ${_formatCurrency(salary['BaseSalary'] ?? 0)}',
+                            style: SdText.bodySm.copyWith(fontSize: 13),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Text(statusText,
-                        style: TextStyle(
-                            color: statusColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-              const Divider(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: statusColor),
+                      ),
+                      child: Text(statusText,
+                          style: SdText.caption.copyWith(color: statusColor)),
+                    ),
+                  ],
+                ),
+                const Divider(height: 16, color: SdColors.divider),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -730,27 +693,27 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                   _buildInfoChip(
                     Icons.check_circle,
                     '${salary['AttendanceDays'] ?? 0} حضور',
-                    Colors.green,
+                    SdColors.success,
                   ),
                   // أيام الغياب
                   _buildInfoChip(
                     Icons.cancel,
                     '${salary['AbsentDays'] ?? 0} غياب',
-                    Colors.red,
+                    SdColors.danger,
                   ),
                   // التأخير
                   if ((salary['TotalLateMinutes'] ?? 0) > 0)
                     _buildInfoChip(
                       Icons.access_time,
                       '${salary['TotalLateMinutes']} د تأخير',
-                      Colors.orange,
+                      SdColors.warning,
                     ),
                   // الخصومات
                   if (hasDeductions)
                     Text(
                       '- ${_formatCurrency(salary['Deductions'])}',
                       style: const TextStyle(
-                          color: Colors.red,
+                          color: SdColors.danger,
                           fontWeight: FontWeight.bold,
                           fontSize: 13),
                     ),
@@ -759,7 +722,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                     Text(
                       '+ ${_formatCurrency(salary['Bonuses'])}',
                       style: const TextStyle(
-                          color: Colors.green,
+                          color: SdColors.success,
                           fontWeight: FontWeight.bold,
                           fontSize: 13),
                     ),
@@ -768,13 +731,13 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.deepPurple[50],
+                      color: SdColors.primaryTint,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _formatCurrency(salary['NetSalary'] ?? 0),
                       style: TextStyle(
-                        color: Colors.deepPurple[700],
+                        color: SdColors.primary,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -783,7 +746,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                   // زر صرف فردي
                   if (!isPaid)
                     IconButton(
-                      icon: const Icon(Icons.payment, color: Colors.teal),
+                      icon: const Icon(Icons.payment, color: SdColors.accent),
                       tooltip: 'صرف هذا الراتب',
                       onPressed: () => _paySingleSalary(salary),
                       iconSize: 20,
@@ -794,6 +757,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                 ],
               ),
             ],
+          ),
           ),
         ),
       ),
@@ -949,7 +913,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
-                color: Colors.teal[700])),
+                color: SdColors.primary)),
         const SizedBox(height: 8),
         ...children,
       ],
@@ -961,9 +925,9 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
       bool isPositive = false,
       bool isBold = false,
       double fontSize = 14}) {
-    Color textColor = Colors.black87;
-    if (isNegative) textColor = Colors.red[700]!;
-    if (isPositive) textColor = Colors.green[700]!;
+    Color textColor = SdColors.ink;
+    if (isNegative) textColor = SdColors.danger;
+    if (isPositive) textColor = SdColors.success;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -1007,13 +971,13 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                   style: TextStyle(
                       fontSize: context.responsive.isMobile ? 14 : 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.teal[700])),
+                      color: SdColors.primary)),
               ElevatedButton.icon(
                 onPressed: _showCreatePolicyDialog,
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('إضافة سياسة'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
+                  backgroundColor: SdColors.primary,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -1030,33 +994,14 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
   }
 
   Widget _buildEmptyPolicyState() {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          children: [
-            Icon(Icons.policy, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text('لا توجد سياسات رواتب',
-                style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-            const SizedBox(height: 8),
-            Text(
-              'أنشئ سياسة لتفعيل الحساب التلقائي للخصومات والمكافآت',
-              style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _showCreatePolicyDialog,
-              icon: const Icon(Icons.auto_fix_high),
-              label: const Text('إنشاء سياسة افتراضية'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
+    return SdEmptyState(
+      icon: Icons.policy,
+      title: 'لا توجد سياسات رواتب',
+      message: 'أنشئ سياسة لتفعيل الحساب التلقائي للخصومات والمكافآت',
+      action: SdButton(
+        label: 'إنشاء سياسة افتراضية',
+        icon: Icons.auto_fix_high,
+        onPressed: _showCreatePolicyDialog,
       ),
     );
   }
@@ -1064,43 +1009,44 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
   Widget _buildPolicyCard(Map<String, dynamic> policy) {
     final isDefault = policy['IsDefault'] == true;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: isDefault ? 3 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isDefault
-            ? const BorderSide(color: Colors.teal, width: 2)
-            : BorderSide.none,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.policy,
-                    color: isDefault ? Colors.teal : Colors.grey),
-                const SizedBox(width: 8),
-                Text(
-                  policy['Name'] ?? 'سياسة',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
-                ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: SdColors.surface,
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          border: isDefault
+              ? Border.all(color: SdColors.primary, width: 2)
+              : null,
+          boxShadow: SdDepth.raised(),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.policy,
+                      color: isDefault ? SdColors.primary : SdColors.muted),
+                  const SizedBox(width: 8),
+                  Text(
+                    policy['Name'] ?? 'سياسة',
+                    style: SdText.titleSm,
+                  ),
                 if (isDefault) ...[
                   const SizedBox(width: 8),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.teal[50],
+                      color: SdColors.primaryTint,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.teal),
+                      border: Border.all(color: SdColors.primary),
                     ),
                     child: const Text('افتراضية',
                         style: TextStyle(
-                            color: Colors.teal,
+                            color: SdColors.primary,
                             fontSize: 11,
                             fontWeight: FontWeight.bold)),
                   ),
@@ -1112,7 +1058,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                   tooltip: 'تعديل',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                  icon: const Icon(Icons.delete, size: 20, color: SdColors.danger),
                   onPressed: () => _deletePolicy(policy['Id']),
                   tooltip: 'حذف',
                 ),
@@ -1138,6 +1084,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               ],
             ),
           ],
+          ),
         ),
       ),
     );
@@ -1151,7 +1098,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         children: [
           Flexible(
             child: Text('$label: ',
-                style: TextStyle(fontSize: r.isMobile ? 10 : 12, color: Colors.grey[600]),
+                style: TextStyle(fontSize: r.isMobile ? 10 : 12, color: SdColors.muted),
                 overflow: TextOverflow.ellipsis),
           ),
           Text(value,
@@ -1323,7 +1270,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                         SnackBar(
                           content: Text(
                               isEdit ? 'تم تحديث السياسة' : 'تم إنشاء السياسة'),
-                          backgroundColor: Colors.green,
+                          backgroundColor: SdColors.success,
                         ),
                       );
                       _loadPolicies();
@@ -1333,13 +1280,13 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content: Text('خطأ'),
-                            backgroundColor: Colors.red),
+                            backgroundColor: SdColors.danger),
                       );
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
+                  backgroundColor: SdColors.primary,
                   foregroundColor: Colors.white,
                 ),
                 child: Text(isEdit ? 'تحديث' : 'إنشاء'),
@@ -1411,7 +1358,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
               child: const Text('حذف', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -1427,7 +1374,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم حذف السياسة'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
         _loadPolicies();
@@ -1435,7 +1382,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }

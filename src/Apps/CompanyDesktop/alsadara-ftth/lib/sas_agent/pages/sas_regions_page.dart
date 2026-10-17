@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../permissions/permission_manager.dart';
-import '../../theme/app_theme.dart';
 import '../models/sas_accounting.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_state_views.dart';
@@ -64,8 +62,9 @@ class _SasRegionsPageState extends State<SasRegionsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
-          style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+          style: const TextStyle(
+              fontFamily: SdText.family, fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -103,19 +102,23 @@ class _SasRegionsPageState extends State<SasRegionsPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: Text('حذف المنطقة',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+          title: const Text('حذف المنطقة',
+              style: TextStyle(
+                  fontFamily: SdText.family, fontWeight: FontWeight.w800)),
           content: Text('حذف المنطقة «${r.name}»؟',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              style: const TextStyle(
+                  fontFamily: SdText.family, fontWeight: FontWeight.w600)),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text('إلغاء', style: GoogleFonts.cairo())),
+                child: const Text('إلغاء',
+                    style: TextStyle(fontFamily: SdText.family))),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+              style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
               onPressed: () => Navigator.pop(ctx, true),
-              child: Text('حذف',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+              child: const Text('حذف',
+                  style: TextStyle(
+                      fontFamily: SdText.family, fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -138,47 +141,35 @@ class _SasRegionsPageState extends State<SasRegionsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.orangeGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+    final hasList = !_loading && _error == null && _items.isNotEmpty;
+    return SdPage(
+      maxWidth: 1240,
+      scrollable: false,
+      padding: hasList ? EdgeInsets.zero : null,
+      appBar: SdAppBar(
+        title: 'المناطق وأجور الصيانة',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loading ? null : _load,
           ),
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Text('المناطق وأجور الصيانة',
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800, color: Colors.white)),
-          actions: [
-            IconButton(
-              tooltip: 'تحديث',
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _loading ? null : _load,
-            ),
-          ],
-        ),
-        floatingActionButton: _canManage
-            ? FloatingActionButton.extended(
-                backgroundColor: AppTheme.primaryColor,
-                onPressed: _loading ? null : () => _addOrEdit(),
-                icon: const Icon(Icons.add_location_alt_rounded,
-                    color: Colors.white),
-                label: Text('منطقة جديدة',
-                    style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.w700, color: Colors.white)),
-              )
-            : null,
-        body: _body(),
+        ],
       ),
+      floatingActionButton: _canManage
+          ? FloatingActionButton.extended(
+              backgroundColor: SdColors.primary,
+              onPressed: _loading ? null : () => _addOrEdit(),
+              icon: const Icon(Icons.add_location_alt_rounded,
+                  color: Colors.white),
+              label: const Text('منطقة جديدة',
+                  style: TextStyle(
+                      fontFamily: SdText.family,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white)),
+            )
+          : null,
+      body: _body(),
     );
   }
 
@@ -190,44 +181,38 @@ class _SasRegionsPageState extends State<SasRegionsPage> {
       return SasErrorView(message: _error!, onRetry: _load);
     }
     if (_items.isEmpty) {
-      return const SasEmptyView(
-        message: 'لا توجد مناطق — أضف منطقة لربط المشتركين وتطبيق أجور الصيانة',
+      return const SdEmptyState(
+        title: 'لا توجد مناطق',
+        message: 'أضف منطقة لربط المشتركين وتطبيق أجور الصيانة',
         icon: Icons.map_rounded,
       );
     }
     // شبكة بطاقات متجاوبة: بطاقة مدمجة عمودية بعرض ثابت (~340) تمنع اقتطاع النصوص.
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 96.h),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: LayoutBuilder(
-            builder: (ctx, c) {
-              const double minCard = 320;
-              const double gap = 12;
-              final cols = (c.maxWidth / minCard).floor().clamp(1, 4);
-              final w = (c.maxWidth - gap * (cols - 1)) / cols;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  for (final r in _items)
-                    SizedBox(width: w, child: _regionCard(r)),
-                ],
-              );
-            },
-          ),
-        ),
+      padding: const EdgeInsets.fromLTRB(
+          SdSpace.gutter, SdSpace.md, SdSpace.gutter, 96),
+      child: LayoutBuilder(
+        builder: (ctx, c) {
+          const double minCard = 320;
+          const double gap = 12;
+          final cols = (c.maxWidth / minCard).floor().clamp(1, 4);
+          final w = (c.maxWidth - gap * (cols - 1)) / cols;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final r in _items) SizedBox(width: w, child: _regionCard(r)),
+            ],
+          );
+        },
       ),
     );
   }
 
   /// بطاقة منطقة مدمجة: ترويسة (أيقونة + اسم + حالة) · تفاصيل · أجور الصيانة · إجراءات.
   Widget _regionCard(SasRegion r) {
-    final statusColor = r.isActive ? AppTheme.successColor : Colors.grey;
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: SasUi.card(),
+    final tone = r.isActive ? SdStatus.success.tone : SdGroup.neutral.tone;
+    return SdCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -235,34 +220,37 @@ class _SasRegionsPageState extends State<SasRegionsPage> {
           Row(
             children: [
               Container(
-                width: 40.w,
-                height: 40.w,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+                  color: tone.tint,
+                  borderRadius: BorderRadius.circular(SdRadius.sm),
+                  boxShadow: [
+                    BoxShadow(color: tone.tintEdge, offset: const Offset(0, 3))
+                  ],
                 ),
                 child: Icon(Icons.location_on_rounded,
-                    color: statusColor, size: 20.sp),
+                    color: tone.base, size: 20),
               ),
-              SizedBox(width: 10.w),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   r.name.isEmpty ? '—' : r.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.w800, fontSize: 14.sp),
+                  style: SdText.label,
                 ),
               ),
-              if (!r.isActive) _chip('موقوفة', Colors.grey),
+              if (!r.isActive)
+                const SdStatusChip('موقوفة', status: SdStatus.neutral),
             ],
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: 10),
           // تفاصيل: الموقع + عدد المشتركين.
           Row(
             children: [
-              Icon(Icons.groups_rounded, size: 14.sp, color: Colors.grey[500]),
-              SizedBox(width: 4.w),
+              const Icon(Icons.groups_rounded, size: 14, color: SdColors.faint),
+              const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   [
@@ -272,64 +260,55 @@ class _SasRegionsPageState extends State<SasRegionsPage> {
                   ].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
-                      fontSize: 11.5.sp, color: Colors.grey[600]),
+                  style: SdText.caption,
                 ),
               ),
             ],
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: 10),
           // أجور الصيانة (بارزة).
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.warningColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-              border: Border.all(
-                  color: AppTheme.warningColor.withValues(alpha: 0.20)),
+              color: SdColors.warningTint,
+              borderRadius: BorderRadius.circular(SdRadius.sm),
+              border: Border.all(color: SdColors.warningTintEdge),
             ),
             child: Row(
               children: [
-                Icon(Icons.build_rounded,
-                    size: 14.sp, color: AppTheme.warningColor),
-                SizedBox(width: 6.w),
-                Text('أجور الصيانة',
-                    style: GoogleFonts.cairo(
-                        fontSize: 11.sp, color: Colors.grey[700])),
+                const Icon(Icons.build_rounded,
+                    size: 14, color: SdColors.warning),
+                const SizedBox(width: 6),
+                Text('أجور الصيانة', style: SdText.caption),
                 const Spacer(),
                 Text('${r.maintenanceFee} د.ع',
-                    style: GoogleFonts.cairo(
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
                         fontWeight: FontWeight.w800,
-                        fontSize: 13.sp,
-                        color: AppTheme.warningColor)),
+                        fontSize: 13,
+                        color: SdColors.warningText)),
               ],
             ),
           ),
           if (_canManage) ...[
-            SizedBox(height: 6.h),
+            const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton.icon(
                   onPressed: () => _addOrEdit(r),
-                  icon: Icon(Icons.edit_rounded,
-                      color: AppTheme.infoColor, size: 17.sp),
+                  icon: const Icon(Icons.edit_rounded,
+                      color: SdColors.info, size: 17),
                   label: Text('تعديل',
-                      style: GoogleFonts.cairo(
-                          color: AppTheme.infoColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11.5.sp)),
+                      style: SdText.caption.copyWith(color: SdColors.info)),
                 ),
                 TextButton.icon(
                   onPressed: () => _delete(r),
-                  icon: Icon(Icons.delete_outline_rounded,
-                      color: AppTheme.errorColor, size: 17.sp),
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: SdColors.danger, size: 17),
                   label: Text('حذف',
-                      style: GoogleFonts.cairo(
-                          color: AppTheme.errorColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11.5.sp)),
+                      style: SdText.caption.copyWith(color: SdColors.danger)),
                 ),
               ],
             ),
@@ -338,17 +317,6 @@ class _SasRegionsPageState extends State<SasRegionsPage> {
       ),
     );
   }
-
-  Widget _chip(String text, Color color) => Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8.r),
-        ),
-        child: Text(text,
-            style: GoogleFonts.cairo(
-                fontSize: 10.sp, fontWeight: FontWeight.w700, color: color)),
-      );
 }
 
 /// حوار إضافة/تعديل منطقة.
@@ -377,8 +345,7 @@ class _RegionFormDialogState extends State<_RegionFormDialog> {
     _code = TextEditingController(text: e?.code ?? '');
     _gov = TextEditingController(text: e?.governorate ?? '');
     _city = TextEditingController(text: e?.city ?? '');
-    _fee = TextEditingController(
-        text: e == null ? '' : _fmt(e.maintenanceFee));
+    _fee = TextEditingController(text: e == null ? '' : _fmt(e.maintenanceFee));
     _notes = TextEditingController(text: e?.notes ?? '');
     _active = e?.isActive ?? true;
   }
@@ -397,9 +364,10 @@ class _RegionFormDialogState extends State<_RegionFormDialog> {
     final name = _name.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('اسم المنطقة مطلوب',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor: AppTheme.errorColor,
+        content: const Text('اسم المنطقة مطلوب',
+            style: TextStyle(
+                fontFamily: SdText.family, fontWeight: FontWeight.w600)),
+        backgroundColor: SdColors.danger,
         behavior: SnackBarBehavior.floating,
       ));
       return;
@@ -426,7 +394,8 @@ class _RegionFormDialogState extends State<_RegionFormDialog> {
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         title: Text(widget.existing == null ? 'منطقة جديدة' : 'تعديل المنطقة',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+            style: const TextStyle(
+                fontFamily: SdText.family, fontWeight: FontWeight.w800)),
         content: SizedBox(
           width: 400,
           child: SingleChildScrollView(
@@ -434,28 +403,30 @@ class _RegionFormDialogState extends State<_RegionFormDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _tf(_name, 'اسم المنطقة *'),
-                SizedBox(height: 10.h),
+                const SizedBox(height: 10),
                 _tf(_fee, 'أجور الصيانة (د.ع)',
                     number: true, hint: 'تُطبَّق تلقائياً على مشتركي المنطقة'),
-                SizedBox(height: 10.h),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(child: _tf(_gov, 'المحافظة')),
-                    SizedBox(width: 10.w),
+                    const SizedBox(width: 10),
                     Expanded(child: _tf(_city, 'المدينة/القضاء')),
                   ],
                 ),
-                SizedBox(height: 10.h),
+                const SizedBox(height: 10),
                 _tf(_code, 'رمز اختياري'),
-                SizedBox(height: 10.h),
+                const SizedBox(height: 10),
                 _tf(_notes, 'ملاحظات'),
-                SizedBox(height: 6.h),
+                const SizedBox(height: 6),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _active,
-                  activeThumbColor: AppTheme.successColor,
-                  title: Text('مفعّلة',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  activeThumbColor: SdColors.success,
+                  title: const Text('مفعّلة',
+                      style: TextStyle(
+                          fontFamily: SdText.family,
+                          fontWeight: FontWeight.w700)),
                   onChanged: (v) => setState(() => _active = v),
                 ),
               ],
@@ -465,12 +436,14 @@ class _RegionFormDialogState extends State<_RegionFormDialog> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('إلغاء', style: GoogleFonts.cairo())),
+              child: const Text('إلغاء',
+                  style: TextStyle(fontFamily: SdText.family))),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
             onPressed: _submit,
-            child: Text('حفظ',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+            child: const Text('حفظ',
+                style: TextStyle(
+                    fontFamily: SdText.family, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -487,15 +460,21 @@ class _RegionFormDialogState extends State<_RegionFormDialog> {
       inputFormatters: number
           ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
           : null,
-      style: GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 13.sp),
+      style: const TextStyle(
+          fontFamily: SdText.family,
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+          color: SdColors.ink),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        labelStyle: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 12.sp),
-        hintStyle: GoogleFonts.cairo(color: Colors.grey[400], fontSize: 10.5.sp),
+        labelStyle: const TextStyle(
+            fontFamily: SdText.family, color: SdColors.muted, fontSize: 12),
+        hintStyle: const TextStyle(
+            fontFamily: SdText.family, color: SdColors.faint, fontSize: 11.5),
         isDense: true,
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+            borderRadius: BorderRadius.circular(SdRadius.sm)),
       ),
     );
   }

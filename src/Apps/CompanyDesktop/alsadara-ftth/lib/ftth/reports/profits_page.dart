@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:excel/excel.dart' as excel_pkg;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/auth_service.dart';
 import '../../services/ftth_plans_service.dart';
 import '../auth/auth_error_handler.dart';
@@ -645,7 +646,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
@@ -699,34 +700,26 @@ class _ProfitsPageState extends State<ProfitsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: const Text(
-          'حساب الأرباح',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: const Color(0xFF1A237E),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: 'حساب الأرباح',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.white),
+          SdAppBarAction(
+            icon: Icons.add_circle,
+            label: 'إضافة أرباح',
             onPressed: _showAddProfitsDialog,
-            tooltip: 'إضافة أرباح',
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'إعادة حساب الأرباح',
             onPressed: _calculateProfits,
-            tooltip: 'إعادة حساب الأرباح',
           ),
-          IconButton(
-            icon: const Icon(Icons.file_download, color: Colors.white),
+          SdAppBarAction(
+            icon: Icons.file_download,
+            label: 'تصدير بيانات الأرباح',
             onPressed: _exportProfitData,
-            tooltip: 'تصدير بيانات الأرباح',
           ),
         ],
       ),
@@ -735,11 +728,11 @@ class _ProfitsPageState extends State<ProfitsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Color(0xFF1A237E)),
+                  CircularProgressIndicator(color: SdColors.primary),
                   SizedBox(height: 16),
                   Text(
                     'جاري حساب الأرباح...',
-                    style: TextStyle(fontSize: 16, color: Color(0xFF2C3E50)),
+                    style: TextStyle(fontSize: 16, color: SdColors.muted),
                   ),
                 ],
               ),
@@ -772,6 +765,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                 ],
               ),
             ),
+    ),
     );
   }
 
@@ -983,15 +977,15 @@ class _ProfitsPageState extends State<ProfitsPage> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.teal[400]!, Colors.teal[600]!],
+                  gradient: const LinearGradient(
+                    colors: [SdColors.accentLight, SdColors.accent],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.teal.withValues(alpha: 0.3),
+                      color: SdColors.accent.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -1034,15 +1028,15 @@ class _ProfitsPageState extends State<ProfitsPage> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.indigo[400]!, Colors.indigo[600]!],
+                  gradient: const LinearGradient(
+                    colors: [SdColors.primaryLight, SdColors.primary],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.indigo.withValues(alpha: 0.3),
+                      color: SdColors.primary.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -1091,15 +1085,15 @@ class _ProfitsPageState extends State<ProfitsPage> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: totalProfit >= 0
-                        ? [Colors.blue[500]!, Colors.blue[700]!]
-                        : [Colors.orange[500]!, Colors.orange[700]!],
+                        ? [SdColors.info, SdColors.infoEdge]
+                        : [SdColors.warning, SdColors.warningEdge],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: (totalProfit >= 0 ? Colors.blue : Colors.orange)
+                      color: (totalProfit >= 0 ? SdColors.info : SdColors.warning)
                           .withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
@@ -1152,15 +1146,15 @@ class _ProfitsPageState extends State<ProfitsPage> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.purple[400]!, Colors.purple[600]!],
+                  gradient: const LinearGradient(
+                    colors: [SdColors.platformLight, SdColors.platformBase],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.purple.withValues(alpha: 0.3),
+                      color: SdColors.platformBase.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -1204,23 +1198,16 @@ class _ProfitsPageState extends State<ProfitsPage> {
   }
 
   Widget _buildProfitDetailsByCategorySection() {
+    // على الهاتف: نحوّل صفوف الجدول إلى بطاقات عمودية (بدل التمرير الأفقي)
+    // بنفس القيم والصيغ تماماً — إعادة تقديم بصري فقط.
+    if (context.sd.isPhone) return _buildProfitCategoryCardsMobile();
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green[50]!, Colors.green[100]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green[300]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        border: Border.all(color: SdColors.divider),
+        boxShadow: SdDepth.raised(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1232,9 +1219,9 @@ class _ProfitsPageState extends State<ProfitsPage> {
               constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 72, maxWidth: 900),
               child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: SdColors.surface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green[200]!),
+              border: Border.all(color: SdColors.divider),
             ),
             child: Column(
               children: [
@@ -1242,9 +1229,9 @@ class _ProfitsPageState extends State<ProfitsPage> {
                 Container(
                   padding:
                       const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.green[800],
-                    borderRadius: const BorderRadius.only(
+                  decoration: const BoxDecoration(
+                    color: SdColors.primary,
+                    borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(8),
                       topRight: Radius.circular(8),
                     ),
@@ -1272,7 +1259,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                               vertical: 10, horizontal: 4),
                           margin: const EdgeInsets.symmetric(horizontal: 3),
                           decoration: BoxDecoration(
-                            color: Colors.green[400],
+                            color: SdColors.success,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
@@ -1318,7 +1305,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                               vertical: 10, horizontal: 4),
                           margin: const EdgeInsets.symmetric(horizontal: 3),
                           decoration: BoxDecoration(
-                            color: Colors.orange[400],
+                            color: SdColors.warning,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
@@ -1364,7 +1351,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                               vertical: 10, horizontal: 4),
                           margin: const EdgeInsets.symmetric(horizontal: 3),
                           decoration: BoxDecoration(
-                            color: Colors.blue[400],
+                            color: SdColors.info,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
@@ -1410,7 +1397,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                               vertical: 10, horizontal: 4),
                           margin: const EdgeInsets.symmetric(horizontal: 3),
                           decoration: BoxDecoration(
-                            color: Colors.purple[400],
+                            color: SdColors.platformBase,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
@@ -1499,9 +1486,9 @@ class _ProfitsPageState extends State<ProfitsPage> {
                   return Container(
                     padding:
                         const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       border: Border(
-                        bottom: BorderSide(color: Colors.grey[200]!),
+                        bottom: BorderSide(color: SdColors.divider),
                       ),
                     ),
                     child: IntrinsicHeight(
@@ -1517,7 +1504,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 15,
-                                  color: Color(0xFF1A237E),
+                                  color: SdColors.primary,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -1532,10 +1519,10 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                   vertical: 10, horizontal: 6),
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               decoration: BoxDecoration(
-                                color: Colors.green[100],
+                                color: SdColors.successTint,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: Colors.green[400]!, width: 2),
+                                    color: SdColors.success, width: 2),
                               ),
                               child: Row(
                                 children: [
@@ -1578,10 +1565,10 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                   vertical: 10, horizontal: 6),
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               decoration: BoxDecoration(
-                                color: Colors.orange[100],
+                                color: SdColors.warningTint,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: Colors.orange[400]!, width: 2),
+                                    color: SdColors.warning, width: 2),
                               ),
                               child: Row(
                                 children: [
@@ -1594,7 +1581,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                           fontSize: 18,
                                           color: renewalFromPurchaseMonths > 0
                                               ? Colors.black
-                                              : Colors.grey[500],
+                                              : SdColors.faint,
                                         ),
                                         textAlign: TextAlign.center,
                                       ),
@@ -1613,7 +1600,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                           fontSize: 14,
                                           color: renewalFromPurchaseProfit > 0
                                               ? Colors.black
-                                              : Colors.grey[500],
+                                              : SdColors.faint,
                                           fontWeight: FontWeight.w900,
                                           fontStyle:
                                               renewalFromPurchaseProfit > 0
@@ -1637,10 +1624,10 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                   vertical: 10, horizontal: 6),
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               decoration: BoxDecoration(
-                                color: Colors.blue[100],
+                                color: SdColors.infoTint,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: Colors.blue[400]!, width: 2),
+                                    color: SdColors.info, width: 2),
                               ),
                               child: Row(
                                 children: [
@@ -1685,20 +1672,20 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                   vertical: 10, horizontal: 6),
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
+                                gradient: const LinearGradient(
                                   colors: [
-                                    Colors.purple[200]!,
-                                    Colors.purple[300]!
+                                    SdColors.platformTintEdge,
+                                    SdColors.platformLight,
                                   ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: Colors.purple[500]!, width: 2.5),
+                                    color: SdColors.platformBase, width: 2.5),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.purple.withValues(alpha: 0.3),
+                                    color: SdColors.platformBase.withValues(alpha: 0.3),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
@@ -1728,14 +1715,14 @@ class _ProfitsPageState extends State<ProfitsPage> {
                   Container(
                     padding:
                         const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[400],
-                      borderRadius: const BorderRadius.only(
+                    decoration: const BoxDecoration(
+                      color: SdColors.primaryTint,
+                      borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(8),
                         bottomRight: Radius.circular(8),
                       ),
                       border: Border(
-                        top: BorderSide(color: Colors.grey[600]!, width: 3),
+                        top: BorderSide(color: SdColors.primaryTintEdge, width: 3),
                       ),
                     ),
                     child: SizedBox(
@@ -1751,7 +1738,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 18,
-                                  color: Colors.grey[900],
+                                  color: SdColors.ink,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -1765,10 +1752,10 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                   vertical: 8, horizontal: 6),
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               decoration: BoxDecoration(
-                                color: Colors.green[200],
+                                color: SdColors.successTint,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: Colors.green[600]!, width: 2),
+                                    color: SdColors.success, width: 2),
                               ),
                               child: Row(
                                 children: [
@@ -1811,10 +1798,10 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                   vertical: 8, horizontal: 6),
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               decoration: BoxDecoration(
-                                color: Colors.orange[200],
+                                color: SdColors.warningTint,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: Colors.orange[600]!, width: 2),
+                                    color: SdColors.warning, width: 2),
                               ),
                               child: Builder(
                                 builder: (context) {
@@ -1833,7 +1820,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                               fontSize: 18,
                                               color: totalMonths > 0
                                                   ? Colors.black
-                                                  : Colors.grey[600],
+                                                  : SdColors.muted,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
@@ -1851,7 +1838,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                               fontSize: 17,
                                               color: totalProfit > 0
                                                   ? Colors.black
-                                                  : Colors.grey[600],
+                                                  : SdColors.muted,
                                               fontWeight: FontWeight.w900,
                                               fontStyle: totalProfit > 0
                                                   ? FontStyle.normal
@@ -1891,10 +1878,10 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                   margin:
                                       const EdgeInsets.symmetric(horizontal: 3),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue[200],
+                                    color: SdColors.infoTint,
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                        color: Colors.blue[600]!, width: 2),
+                                        color: SdColors.info, width: 2),
                                   ),
                                   child: Row(
                                     children: [
@@ -1941,20 +1928,20 @@ class _ProfitsPageState extends State<ProfitsPage> {
                                   vertical: 8, horizontal: 6),
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
+                                gradient: const LinearGradient(
                                   colors: [
-                                    Colors.purple[500]!,
-                                    Colors.purple[700]!
+                                    SdColors.platformBase,
+                                    SdColors.platformEdge,
                                   ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                    color: Colors.purple[900]!, width: 3),
+                                    color: SdColors.platformEdge, width: 3),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.purple.withValues(alpha: 0.5),
+                                    color: SdColors.platformBase.withValues(alpha: 0.5),
                                     blurRadius: 8,
                                     offset: const Offset(0, 3),
                                   ),
@@ -1986,6 +1973,194 @@ class _ProfitsPageState extends State<ProfitsPage> {
           ),
           ), // ConstrainedBox
           ), // SingleChildScrollView
+        ],
+      ),
+    );
+  }
+
+  // ═════════════════════════════════════════
+  // عرض الهاتف: بطاقات بدل جدول الفئات العريض
+  // (نفس القيم/الصيغ بالضبط — إعادة تقديم بصري فقط)
+  // ═════════════════════════════════════════
+  Widget _buildProfitCategoryCardsMobile() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // بطاقة لكل فئة — نعرض كل الفئات كما في الجدول
+        ..._planCategories.map((category) {
+          // نفس الحسابات المستخدمة في صف الجدول (منسوخة حرفياً)
+          final int actualPurchaseCount =
+              actualTransactionCountByCategoryAndType[category]?['purchase'] ??
+                  0;
+          final int actualRenewalCount =
+              actualTransactionCountByCategoryAndType[category]?['renewal'] ?? 0;
+
+          final int totalPurchaseMonths =
+              transactionCountByCategoryAndType[category]?['purchase'] ?? 0;
+          final int totalRenewalMonths =
+              transactionCountByCategoryAndType[category]?['renewal'] ?? 0;
+
+          int renewalFromPurchaseMonths =
+              totalPurchaseMonths - actualPurchaseCount;
+          if (renewalFromPurchaseMonths < 0) {
+            renewalFromPurchaseMonths = 0;
+          }
+
+          double purchaseProfit = 0.0;
+          double renewalFromPurchaseProfit = 0.0;
+          double renewalProfit = 0.0;
+
+          if (savedCategoryProfits.containsKey(category)) {
+            double purchaseProfitPerUnit =
+                savedCategoryProfits[category]?['purchase'] ?? 0.0;
+            double renewalFromPurchaseProfitPerUnit =
+                savedCategoryProfits[category]?['renewalFromPurchase'] ?? 0.0;
+            double renewalProfitPerUnit =
+                savedCategoryProfits[category]?['renewal'] ?? 0.0;
+
+            if (actualPurchaseCount > 0) {
+              purchaseProfit = actualPurchaseCount * purchaseProfitPerUnit;
+              renewalFromPurchaseProfit = renewalFromPurchaseMonths *
+                  renewalFromPurchaseProfitPerUnit;
+            }
+
+            renewalProfit = totalRenewalMonths * renewalProfitPerUnit;
+          }
+
+          final double totalCategoryProfit =
+              purchaseProfit + renewalFromPurchaseProfit + renewalProfit;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SdCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    category,
+                    style: const TextStyle(
+                      fontFamily: SdText.family,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      color: SdColors.primary,
+                    ),
+                  ),
+                  const Divider(height: 16, color: SdColors.divider),
+                  _pRow('عدد الشراء', '$actualPurchaseCount'),
+                  _pRow('مبلغ الشراء', _formatCurrency(purchaseProfit),
+                      color: SdColors.success),
+                  _pRow('أشهر تجديد من شراء', '$renewalFromPurchaseMonths'),
+                  _pRow(
+                    'مبلغ تجديد من شراء',
+                    renewalFromPurchaseProfit > 0
+                        ? _formatCurrency(renewalFromPurchaseProfit)
+                        : (renewalFromPurchaseMonths > 0 ? 'أدخل' : '0'),
+                    color: SdColors.warning,
+                  ),
+                  _pRow(
+                    'عدد التجديد',
+                    totalRenewalMonths != actualRenewalCount
+                        ? '$actualRenewalCount ($totalRenewalMonths)'
+                        : '$actualRenewalCount',
+                  ),
+                  _pRow('مبلغ التجديد', _formatCurrency(renewalProfit),
+                      color: SdColors.info),
+                  const Divider(height: 16, color: SdColors.divider),
+                  _pRow('الربح الكلي', _formatCurrency(totalCategoryProfit),
+                      color: SdColors.platformBase, bold: true),
+                ],
+              ),
+            ),
+          );
+        }),
+
+        // بطاقة الإجمالي
+        if (transactionCountByCategoryAndType.isNotEmpty)
+          Builder(
+            builder: (context) {
+              final int totalPurchaseCount =
+                  actualTransactionCountByCategoryAndType.values.fold(
+                      0, (sum, item) => sum + (item['purchase'] ?? 0));
+              final double totalRfpProfit =
+                  _calculateTotalRenewalFromPurchaseProfits();
+              final int totalRfpMonths =
+                  _calculateTotalRenewalFromPurchaseMonths();
+              final int totalRenewActual =
+                  actualTransactionCountByCategoryAndType.values.fold(
+                      0, (sum, item) => sum + (item['renewal'] ?? 0));
+              final int totalRenewMonths =
+                  transactionCountByCategoryAndType.values.fold(
+                      0, (sum, item) => sum + (item['renewal'] ?? 0));
+              return SdCard(
+                tone: SdStatus.info.tone,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'الإجمالي',
+                      style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        color: SdColors.ink,
+                      ),
+                    ),
+                    const Divider(height: 16, color: SdColors.divider),
+                    _pRow('عدد الشراء', '$totalPurchaseCount'),
+                    _pRow('مبلغ الشراء',
+                        _formatCurrency(_calculateTotalPurchaseOnlyProfits()),
+                        color: SdColors.success),
+                    _pRow('أشهر تجديد من شراء', '$totalRfpMonths'),
+                    _pRow(
+                      'مبلغ تجديد من شراء',
+                      totalRfpProfit > 0
+                          ? _formatCurrency(totalRfpProfit)
+                          : (totalRfpMonths > 0 ? 'أدخل' : '0'),
+                      color: SdColors.warning,
+                    ),
+                    _pRow(
+                      'عدد التجديد',
+                      totalRenewMonths != totalRenewActual
+                          ? '$totalRenewActual ($totalRenewMonths)'
+                          : '$totalRenewActual',
+                    ),
+                    _pRow('مبلغ التجديد',
+                        _formatCurrency(_calculateTotalRenewalProfits()),
+                        color: SdColors.info),
+                    const Divider(height: 16, color: SdColors.divider),
+                    _pRow(
+                        'الربح الكلي',
+                        _formatCurrency(_calculateTotalProfitFromCategories()),
+                        color: SdColors.platformBase,
+                        bold: true),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _pRow(String label, String value, {Color? color, bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: SdText.bodySm),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              color: color ?? SdColors.ink,
+              fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+              fontSize: bold ? 15 : 13.5,
+            ),
+          ),
         ],
       ),
     );

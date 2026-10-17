@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/accounting_theme.dart';
+import '../../frontend/frontend.dart';
 import '../../models/agent.dart';
 import '../../services/agent_api_service.dart';
 import '../accounting/agent_transactions_page.dart';
@@ -148,10 +149,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
 
     // وضع عرض وكيل واحد فقط
     if (_isSingleAgentMode) {
-      return Directionality(
-        textDirection: TextDirection.rtl,
+      return SdTheme.scope(
         child: Scaffold(
-          backgroundColor: AccountingTheme.bgPrimary,
+          backgroundColor: SdColors.ground,
           body: SafeArea(
             child: Column(
               children: [
@@ -215,10 +215,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
 
     // الوضع العادي - موبايل مع شريط تنقل سفلي
     if (isMob) {
-      return Directionality(
-        textDirection: TextDirection.rtl,
+      return SdTheme.scope(
         child: Scaffold(
-          backgroundColor: AccountingTheme.bgPrimary,
+          backgroundColor: SdColors.ground,
           body: SafeArea(
             child: Column(
               children: [
@@ -269,10 +268,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     }
 
     // الوضع العادي - ديسكتوب مع القائمة الجانبية
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
         body: SafeArea(
           child: Row(
             children: [
@@ -307,108 +305,45 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     );
   }
 
-  // ==================== القائمة الجانبية ====================
+  // ==================== القائمة الجانبية الموحّدة ====================
 
   Widget _buildSidebar() {
-    return Container(
-      width: 64,
-      decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: const Border(
-          left: BorderSide(color: AccountingTheme.borderColor, width: 1),
+    SdNavItem item(int index, IconData icon, String label, SdGroup g) =>
+        SdNavItem(
+          id: '$index',
+          label: label,
+          icon: icon,
+          group: g,
+          onTap: () => setState(() => _sidebarIndex = index),
+        );
+    return SdSideNav(
+      title: 'إدارة الوكلاء',
+      selectedId: '$_sidebarIndex',
+      sections: [
+        SdNavSection(items: [
+          item(0, Icons.support_agent_rounded, 'الوكلاء', SdGroup.platform),
+          item(1, Icons.receipt_long, 'المعاملات', SdGroup.comms),
+          item(2, Icons.percent, 'العمولات', SdGroup.admin),
+        ]),
+      ],
+      footer: [
+        SdNavItem(
+          id: 'refresh',
+          label: 'تحديث',
+          icon: Icons.refresh,
+          group: SdGroup.field,
+          onTap: () {
+            if (_sidebarIndex == 0) _loadData();
+          },
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(-2, 0),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-          // زر العودة
-          Tooltip(
-            message: 'العودة',
-            preferBelow: false,
-            child: InkWell(
-              onTap: () => Navigator.of(context).pop(),
-              borderRadius: BorderRadius.circular(8),
-              hoverColor: AccountingTheme.neonBlue.withOpacity(0.08),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AccountingTheme.neonBlue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.arrow_forward_rounded,
-                  color: AccountingTheme.neonBlue,
-                  size: 20,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Divider(
-              height: 1,
-              color: AccountingTheme.borderColor,
-              indent: 10,
-              endIndent: 10),
-          const SizedBox(height: 8),
-          // عناصر القائمة
-          _SidebarItem(
-            icon: Icons.support_agent_rounded,
-            label: 'الوكلاء',
-            color: AccountingTheme.neonPurple,
-            isSelected: _sidebarIndex == 0,
-            onTap: () => setState(() => _sidebarIndex = 0),
-          ),
-          _SidebarItem(
-            icon: Icons.receipt_long,
-            label: 'المعاملات',
-            color: AccountingTheme.neonOrange,
-            isSelected: _sidebarIndex == 1,
-            onTap: () => setState(() => _sidebarIndex = 1),
-          ),
-          _SidebarItem(
-            icon: Icons.percent,
-            label: 'العمولات',
-            color: AccountingTheme.neonPink,
-            isSelected: _sidebarIndex == 2,
-            onTap: () => setState(() => _sidebarIndex = 2),
-          ),
-          const Spacer(),
-          // تحديث
-          Tooltip(
-            message: 'تحديث',
-            preferBelow: false,
-            child: InkWell(
-              onTap: () {
-                if (_sidebarIndex == 0) _loadData();
-              },
-              borderRadius: BorderRadius.circular(8),
-              hoverColor: AccountingTheme.neonGreen.withOpacity(0.08),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AccountingTheme.neonGreen.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.refresh,
-                  color: AccountingTheme.neonGreen,
-                  size: 18,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
-      ),
+        SdNavItem(
+          id: 'back',
+          label: 'العودة',
+          icon: Icons.arrow_forward_rounded,
+          group: SdGroup.neutral,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+      ],
     );
   }
 
@@ -2892,80 +2827,5 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
   String _formatCurrency(double amount) {
     if (amount == 0) return '0';
     return amount.round().toString();
-  }
-}
-
-/// عنصر القائمة الجانبية - ستايل المحاسبة
-class _SidebarItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _SidebarItem({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
-      child: Tooltip(
-        message: label,
-        preferBelow: false,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(10),
-            hoverColor: color.withOpacity(0.08),
-            splashColor: color.withOpacity(0.15),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color:
-                    isSelected ? color.withOpacity(0.12) : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? color.withOpacity(0.2)
-                          : color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 19,
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    style: GoogleFonts.cairo(
-                      fontSize: 10,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.w600,
-                      color: isSelected ? color : AccountingTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

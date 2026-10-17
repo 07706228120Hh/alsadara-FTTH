@@ -7,6 +7,7 @@ import '../../services/period_closing_service.dart';
 import '../../services/audit_trail_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة تحصيلات الفنيين - عرض موحّد للمستحقات مع إمكانية إضافة تحصيل وتسديد
 class CollectionsPage extends StatefulWidget {
@@ -79,94 +80,23 @@ class _CollectionsPageState extends State<CollectionsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(),
-              Expanded(child: _buildBody()),
-            ],
-          ),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'تحصيلات الفنيين',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _loadDues,
+            ),
+            SdAppBarAction(
+              icon: Icons.add,
+              label: 'إضافة تحصيل',
+              onPressed: _showAddDialog,
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════
-  //  شريط الأدوات العلوي
-  // ═══════════════════════════════════════════════════
-  Widget _buildToolbar() {
-    final ar = context.accR;
-    final isMobile = ar.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? ar.spaceS : ar.spaceXL,
-          vertical: isMobile ? ar.spaceXS : ar.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            iconSize: isMobile ? 20 : null,
-            constraints: isMobile
-                ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                : null,
-            padding: isMobile ? EdgeInsets.zero : null,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMobile ? 4 : ar.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMobile ? 4 : ar.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonBlueGradient,
-              borderRadius: BorderRadius.circular(ar.btnRadius),
-            ),
-            child: Icon(Icons.engineering_rounded,
-                color: Colors.white, size: isMobile ? 16 : ar.iconM),
-          ),
-          SizedBox(width: isMobile ? 6 : ar.spaceM),
-          Expanded(
-            child: Text('تحصيلات الفنيين',
-                style: GoogleFonts.cairo(
-                    fontSize: isMobile ? 14 : ar.headingMedium,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary),
-                overflow: TextOverflow.ellipsis),
-          ),
-          IconButton(
-            onPressed: _loadDues,
-            icon: Icon(Icons.refresh, size: isMobile ? 18 : ar.iconM),
-            tooltip: 'تحديث',
-            constraints: isMobile
-                ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                : null,
-            padding: isMobile ? EdgeInsets.zero : null,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMobile ? 4 : ar.spaceS),
-          ElevatedButton.icon(
-            onPressed: _showAddDialog,
-            icon: Icon(Icons.add, size: isMobile ? 16 : ar.iconM),
-            label: Text(isMobile ? 'إضافة تحصيل' : 'إضافة تحصيل',
-                style:
-                    GoogleFonts.cairo(fontSize: isMobile ? 11 : ar.buttonText)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonBlue,
-              foregroundColor: Colors.white,
-              padding: isMobile
-                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-                  : ar.buttonPadding,
-              minimumSize: isMobile ? const Size(0, 30) : null,
-            ),
-          ),
-        ],
+        body: SafeArea(top: false, child: _buildBody()),
       ),
     );
   }
@@ -181,28 +111,16 @@ class _CollectionsPageState extends State<CollectionsPage> {
       );
     }
     if (_error != null) {
-      final ar = context.accR;
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline,
-                color: AccountingTheme.danger, size: ar.iconXL),
-            SizedBox(height: ar.spaceM),
-            Text(_error!,
-                style: const TextStyle(color: AccountingTheme.danger)),
-            SizedBox(height: ar.spaceM),
-            ElevatedButton.icon(
-              onPressed: _loadDues,
-              icon: Icon(Icons.refresh, size: ar.iconXS),
-              label: Text('إعادة المحاولة',
-                  style: GoogleFonts.cairo(fontSize: ar.buttonText)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AccountingTheme.neonBlue,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
+        child: SdEmptyState(
+          title: _error!,
+          icon: Icons.error_outline,
+          status: SdStatus.danger,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh,
+            onPressed: _loadDues,
+          ),
         ),
       );
     }

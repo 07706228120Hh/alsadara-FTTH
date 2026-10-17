@@ -4,11 +4,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:webview_windows/webview_windows.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_state_views.dart';
@@ -593,8 +592,8 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo()),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: TextStyle(fontFamily: 'Cairo', )),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -637,60 +636,28 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
     final encryptedCount = _caps
         .where((c) => _looksEncrypted(c.req) || _looksEncrypted(c.res))
         .length;
-    return AppBar(
-      elevation: 0,
-      toolbarHeight: 56,
-      backgroundColor: AppTheme.primaryColor,
-      iconTheme: const IconThemeData(color: Colors.white),
-      flexibleSpace: const DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: AppTheme.blueGradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-      ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('مستكشف الساس المتقدّم',
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: Colors.white)),
-          Text(
-              '${widget.account.displayName} · التُقط ${_caps.length}'
-              '${encryptedCount > 0 ? ' · مشفّر $encryptedCount' : ''}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.cairo(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white.withValues(alpha: 0.80))),
-        ],
-      ),
+    return SdAppBar(
+      title: 'مستكشف الساس المتقدّم',
+      subtitle: '${widget.account.displayName} · التُقط ${_caps.length}'
+          '${encryptedCount > 0 ? ' · مشفّر $encryptedCount' : ''}',
       actions: [
-        IconButton(
-          tooltip: 'فتح في المتصفّح',
+        SdAppBarAction(
+          icon: Icons.open_in_new_rounded,
+          label: 'فتح في المتصفّح',
           onPressed: _openInBrowser,
-          icon: const Icon(Icons.open_in_new_rounded, size: 20),
         ),
         if (Platform.isWindows) ...[
-          IconButton(
-            tooltip: 'نسخ JSON',
+          SdAppBarAction(
+            icon: Icons.copy_rounded,
+            label: 'نسخ JSON',
             onPressed: _caps.isEmpty ? null : _copyJson,
-            icon: const Icon(Icons.copy_rounded, size: 20),
           ),
-          IconButton(
-            tooltip: 'مسح السجلّ',
-            onPressed:
-                _caps.isEmpty ? null : () => setState(_caps.clear),
-            icon: const Icon(Icons.delete_sweep_rounded, size: 20),
+          SdAppBarAction(
+            icon: Icons.delete_sweep_rounded,
+            label: 'مسح السجلّ',
+            onPressed: _caps.isEmpty ? null : () => setState(_caps.clear),
           ),
         ],
-        const SizedBox(width: 4),
       ],
     );
   }
@@ -704,12 +671,12 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
         action: FilledButton.icon(
           onPressed: _openInBrowser,
           style: FilledButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
+            backgroundColor: SdColors.primary,
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
           ),
           icon: const Icon(Icons.open_in_new_rounded),
           label: Text('فتح لوحة الساس',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
         ),
       );
     }
@@ -772,7 +739,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
                 child: TextField(
                   controller: _addr,
                   textDirection: TextDirection.ltr,
-                  style: GoogleFonts.robotoMono(fontSize: 12),
+                  style: TextStyle(fontFamily: 'monospace', fontSize: 12),
                   decoration: InputDecoration(
                     isDense: true,
                     contentPadding:
@@ -792,17 +759,17 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
             FilledButton(
               onPressed: _go,
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: SdColors.primary,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
               child: Text('اذهب',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
           ]),
         ),
         if (_isLoading)
           const LinearProgressIndicator(
-              color: AppTheme.primaryColor, minHeight: 2),
+              color: SdColors.primary, minHeight: 2),
         Expanded(child: Webview(_controller)),
       ],
     );
@@ -814,7 +781,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
       onPressed: onTap,
       iconSize: 20,
       visualDensity: VisualDensity.compact,
-      icon: Icon(icon, color: AppTheme.primaryColor),
+      icon: Icon(icon, color: SdColors.primary),
     );
   }
 
@@ -836,10 +803,10 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Row(children: [
         Icon(Icons.sensors_rounded,
-            size: 18, color: AppTheme.successColor),
+            size: 18, color: SdColors.success),
         const SizedBox(width: 6),
         Text('${_filteredCaps.length} / ${_caps.length}',
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontWeight: FontWeight.w700, fontSize: 12.5)),
         const SizedBox(width: 10),
         Tooltip(
@@ -847,11 +814,11 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Switch(
               value: _onlyApi,
-              activeThumbColor: AppTheme.primaryColor,
+              activeThumbColor: SdColors.primary,
               onChanged: (v) => setState(() => _onlyApi = v),
             ),
             Text('API',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.5, fontWeight: FontWeight.w600)),
           ]),
         ),
@@ -861,14 +828,14 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
               ? Icons.hourglass_top_rounded
               : Icons.lock_open_rounded,
           label: _decrypting ? 'جارٍ…' : 'فكّ الكل',
-          color: AppTheme.warningColor,
+          color: SdColors.warning,
           onTap: _decrypting ? null : _decryptAll,
         ),
         const SizedBox(width: 6),
         _toolBtn(
           icon: Icons.save_alt_rounded,
           label: 'تصدير',
-          color: AppTheme.primaryColor,
+          color: SdColors.primary,
           onTap: _caps.isEmpty ? null : _export,
         ),
       ]),
@@ -890,7 +857,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
       ),
       icon: Icon(icon, size: 16),
       label: Text(label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(fontFamily: 'Cairo', 
               fontWeight: FontWeight.w700, fontSize: 12)),
     );
   }
@@ -912,17 +879,17 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: sel
-                      ? AppTheme.primaryColor
-                      : AppTheme.primaryColor.withValues(alpha: 0.06),
+                      ? SdColors.primary
+                      : SdColors.primary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   labels[i],
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: sel ? Colors.white : AppTheme.primaryColor,
+                    color: sel ? Colors.white : SdColors.primary,
                   ),
                 ),
               ),
@@ -944,7 +911,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
             height: 38,
             child: TextField(
               controller: _searchCtl,
-              style: GoogleFonts.cairo(fontSize: 12.5),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 12.5),
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding:
@@ -960,7 +927,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
                         },
                       ),
                 hintText: 'بحث في المسار/الحمولة/الاستجابة…',
-                hintStyle: GoogleFonts.cairo(fontSize: 12),
+                hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
@@ -991,16 +958,16 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
       padding: const EdgeInsets.only(left: 6),
       child: ChoiceChip(
         label: Text(label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: sel ? Colors.white : AppTheme.primaryColor)),
+                color: sel ? Colors.white : SdColors.primary)),
         selected: sel,
         showCheckmark: false,
-        selectedColor: AppTheme.primaryColor,
-        backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.06),
+        selectedColor: SdColors.primary,
+        backgroundColor: SdColors.primary.withValues(alpha: 0.06),
         side: BorderSide(
-            color: AppTheme.primaryColor.withValues(alpha: 0.18)),
+            color: SdColors.primary.withValues(alpha: 0.18)),
         onSelected: (_) => setState(() => _domainFilter = value),
       ),
     );
@@ -1100,15 +1067,15 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
               shape: const Border(),
               leading: SasUi.gradientBadge(
                 icon: _domainIcon(d),
-                colors: AppTheme.blueGradient,
+                colors: SdColors.blueGradient,
                 size: 32,
                 iconSize: 16,
               ),
               title: Text(d,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w800, fontSize: 13.5)),
               subtitle: Text('${eps.length} نقطة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 11, color: Colors.grey[600])),
               childrenPadding:
                   const EdgeInsets.fromLTRB(14, 0, 14, 10),
@@ -1120,10 +1087,10 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(e.normPath,
-                                style: GoogleFonts.robotoMono(fontSize: 11.5)),
+                                style: TextStyle(fontFamily: 'monospace', fontSize: 11.5)),
                           ),
                           Text('×${e.count}',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(fontFamily: 'Cairo', 
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.grey[600])),
@@ -1139,7 +1106,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
 
   Widget _securityCard(_SecuritySummary sec) {
     final warn = sec.protocol.contains('⚠️') || sec.sensitive.isNotEmpty;
-    final c = warn ? AppTheme.warningColor : AppTheme.successColor;
+    final c = warn ? SdColors.warning : SdColors.success;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: SasUi.card(borderColor: c.withValues(alpha: 0.3)),
@@ -1157,7 +1124,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
             ),
             const SizedBox(width: 10),
             Text('ملخّص أمني دفاعي',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w800, fontSize: 14)),
           ]),
           const SizedBox(height: 12),
@@ -1189,12 +1156,12 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
         SizedBox(
           width: 110,
           child: Text(label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 12, fontWeight: FontWeight.w700)),
         ),
         Expanded(
           child: Text(value,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 12, color: Colors.grey[800])),
         ),
       ]),
@@ -1214,7 +1181,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(method,
-          style: GoogleFonts.robotoMono(
+          style: TextStyle(fontFamily: 'monospace', 
               fontSize: 10, fontWeight: FontWeight.w700, color: color)),
     );
   }
@@ -1222,16 +1189,16 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
   static Color _methodColor(String m) {
     switch (m.toUpperCase()) {
       case 'GET':
-        return AppTheme.infoColor;
+        return SdColors.info;
       case 'POST':
-        return AppTheme.successColor;
+        return SdColors.success;
       case 'PUT':
       case 'PATCH':
-        return AppTheme.warningColor;
+        return SdColors.warning;
       case 'DELETE':
-        return AppTheme.errorColor;
+        return SdColors.danger;
       default:
-        return AppTheme.secondaryColor;
+        return SdColors.primaryLight;
     }
   }
 
@@ -1294,9 +1261,9 @@ class _RequestCardState extends State<_RequestCard> {
 
   Color get _statusColor {
     final s = widget.cap.status;
-    if (s >= 200 && s < 300) return AppTheme.successColor;
-    if (s >= 400) return AppTheme.errorColor;
-    if (s >= 300) return AppTheme.warningColor;
+    if (s >= 200 && s < 300) return SdColors.success;
+    if (s >= 400) return SdColors.danger;
+    if (s >= 300) return SdColors.warning;
     return Colors.grey;
   }
 
@@ -1318,7 +1285,7 @@ class _RequestCardState extends State<_RequestCard> {
                 child: Text(c.path,
                     maxLines: _expanded ? 3 : 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.robotoMono(fontSize: 11.5)),
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 11.5)),
               ),
               const SizedBox(width: 6),
               Container(
@@ -1329,7 +1296,7 @@ class _RequestCardState extends State<_RequestCard> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text('${c.status}',
-                    style: GoogleFonts.robotoMono(
+                    style: TextStyle(fontFamily: 'monospace', 
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: _statusColor)),
@@ -1365,43 +1332,43 @@ class _RequestCardState extends State<_RequestCard> {
     final shown = hasDec ? decrypted : raw;
     if (shown.trim().isEmpty) {
       return Text('$title: —',
-          style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey));
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
           Text(title,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.primaryColor)),
+                  color: SdColors.primary)),
           const SizedBox(width: 6),
           if (hasDec)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
-                color: AppTheme.successColor.withValues(alpha: 0.12),
+                color: SdColors.success.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text('مفكوك',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.successColor)),
+                      color: SdColors.success)),
             )
           else if (_SasExplorerPageState._looksEncrypted(raw))
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
-                color: AppTheme.warningColor.withValues(alpha: 0.12),
+                color: SdColors.warning.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text('مشفّر',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.warningColor)),
+                      color: SdColors.warning)),
             ),
         ]),
         const SizedBox(height: 4),
@@ -1416,7 +1383,7 @@ class _RequestCardState extends State<_RequestCard> {
           child: SelectableText(
             _pretty(shown),
             textDirection: TextDirection.ltr,
-            style: GoogleFonts.robotoMono(fontSize: 10.5, height: 1.4),
+            style: TextStyle(fontFamily: 'monospace', fontSize: 10.5, height: 1.4),
           ),
         ),
       ],
@@ -1455,39 +1422,39 @@ class _EndpointCard extends StatelessWidget {
             child: Text(ep.normPath,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.robotoMono(fontSize: 11.5)),
+                style: TextStyle(fontFamily: 'monospace', fontSize: 11.5)),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.08),
+              color: SdColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text('×${ep.count}',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.primaryColor)),
+                    color: SdColors.primary)),
           ),
         ]),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Row(children: [
             Text('المجال: ${ep.domain}',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 10.5, color: Colors.grey[600])),
             const SizedBox(width: 10),
             Text('الحالات: ${ep.statuses.join(", ")}',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 10.5, color: Colors.grey[600])),
           ]),
         ),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
           if (ep.reqFields.isNotEmpty)
-            _fields('حقول الطلب', ep.reqFields, AppTheme.infoColor),
+            _fields('حقول الطلب', ep.reqFields, SdColors.info),
           if (ep.resFields.isNotEmpty)
-            _fields('حقول الرد', ep.resFields, AppTheme.successColor),
+            _fields('حقول الرد', ep.resFields, SdColors.success),
           if (ep.sample != null) ...[
             const SizedBox(height: 8),
             _sample('عيّنة حمولة',
@@ -1508,7 +1475,7 @@ class _EndpointCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,
                   color: color)),
@@ -1527,7 +1494,7 @@ class _EndpointCard extends StatelessWidget {
                             Border.all(color: color.withValues(alpha: 0.25)),
                       ),
                       child: Text(f,
-                          style: GoogleFonts.robotoMono(
+                          style: TextStyle(fontFamily: 'monospace', 
                               fontSize: 10, color: color)),
                     ))
                 .toList(),
@@ -1550,7 +1517,7 @@ class _EndpointCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
                 color: Colors.grey[700])),
@@ -1566,7 +1533,7 @@ class _EndpointCard extends StatelessWidget {
           child: SelectableText(
             pretty,
             textDirection: TextDirection.ltr,
-            style: GoogleFonts.robotoMono(fontSize: 10, height: 1.4),
+            style: TextStyle(fontFamily: 'monospace', fontSize: 10, height: 1.4),
           ),
         ),
       ],

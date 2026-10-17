@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/vps_auth_service.dart';
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../whatsapp/whatsapp.dart';
 import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
@@ -165,8 +164,8 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -261,33 +260,14 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          toolbarHeight: 56,
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          iconTheme: const IconThemeData(color: Colors.white),
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          title: Text('إرسال رسالة تجريبية',
-              style:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 17)),
-        ),
-        body: SasContentWrap(
-          maxWidth: 900,
-          child: _body(),
-        ),
+    return SdPage(
+      maxWidth: 900,
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: const SdAppBar(title: 'إرسال رسالة تجريبية'),
+      body: SasContentWrap(
+        maxWidth: 900,
+        child: _body(),
       ),
     );
   }
@@ -360,7 +340,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
               children: [
                 Text(
                   'رسالة تجريبية (محاكاة ما بعد التفعيل)',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 15.sp,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
@@ -371,7 +351,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
                   'اختر رقماً وقالباً وعدّل البيانات لاختبار القالب + الإرسال فعلياً',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.5.sp,
                     color: Colors.white.withValues(alpha: 0.80),
                     fontWeight: FontWeight.w500,
@@ -402,10 +382,10 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
             controller: _phoneCtl,
             keyboardType: TextInputType.phone,
             style:
-                GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 13.sp),
+                TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 13.sp),
             decoration: InputDecoration(
               hintText: 'مثال: 07701234567',
-              hintStyle: GoogleFonts.cairo(color: Colors.grey[400]),
+              hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[400]),
               isDense: true,
               prefixIcon: const Icon(Icons.smartphone_rounded),
               border: OutlineInputBorder(
@@ -417,19 +397,19 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
             _hintRow(
               Icons.info_outline_rounded,
               'أدخل رقم هاتف عراقياً ليُفعَّل زر الإرسال.',
-              AppTheme.primaryColor,
+              SdColors.primary,
             )
           else if (normalized != null)
             _hintRow(
               Icons.check_circle_rounded,
               'رقم صالح — سيُرسَل إلى: $normalized',
-              AppTheme.successColor,
+              SdColors.success,
             )
           else
             _hintRow(
               Icons.warning_amber_rounded,
               'رقم غير صالح لواتساب — تأكّد من الصيغة (07XXXXXXXXX).',
-              AppTheme.warningColor,
+              SdColors.warning,
             ),
         ],
       ),
@@ -452,7 +432,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
             isExpanded: true,
             dropdownColor: Colors.white,
             iconEnabledColor: const Color(0xFF1A1A2E),
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
               fontWeight: FontWeight.w700,
               fontSize: 13.sp,
               color: const Color(0xFF1A1A2E),
@@ -469,7 +449,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
                   child: Text(
                     t.title,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w700,
                       fontSize: 13.sp,
                       color: const Color(0xFF1A1A2E),
@@ -554,11 +534,11 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
     return TextField(
       controller: ctl,
       keyboardType: number ? TextInputType.number : TextInputType.text,
-      style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 12.5.sp),
+      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 12.5.sp),
       decoration: InputDecoration(
         labelText: label,
         labelStyle:
-            GoogleFonts.cairo(color: Colors.grey[600], fontSize: 11.5.sp),
+            TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 11.5.sp),
         isDense: true,
         prefixIcon: Icon(icon, size: 18.sp),
         border: OutlineInputBorder(
@@ -590,7 +570,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
             ),
             child: Text(
               preview.isEmpty ? '— لا محتوى —' : preview,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 12.5.sp,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF1A1A2E),
@@ -625,14 +605,14 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(o.label,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 13.sp,
                         fontWeight: FontWeight.w800,
                         color: color)),
                 if (_lastDetail != null && _lastDetail!.isNotEmpty) ...[
                   SizedBox(height: 3.h),
                   Text(_lastDetail!,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 11.5.sp,
                           fontWeight: FontWeight.w600,
                           color: Colors.grey[700])),
@@ -667,7 +647,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
               )
             : Icon(Icons.send_rounded, size: 19.sp),
         label: Text(_sending ? 'جاري الإرسال…' : 'إرسال تجريبي',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
       ),
     );
   }
@@ -677,10 +657,10 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
   Widget _fieldHeader(IconData icon, String title) {
     return Row(
       children: [
-        Icon(icon, size: 18.sp, color: AppTheme.primaryColor),
+        Icon(icon, size: 18.sp, color: SdColors.primary),
         SizedBox(width: 8.w),
         Text(title,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 13.sp, fontWeight: FontWeight.w800)),
       ],
     );
@@ -694,7 +674,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
         SizedBox(width: 6.w),
         Expanded(
           child: Text(text,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.sp, fontWeight: FontWeight.w600, color: color)),
         ),
       ],
@@ -735,13 +715,13 @@ extension _SendOutcomeX on _SendOutcome {
   Color get color {
     switch (this) {
       case _SendOutcome.sent:
-        return AppTheme.successColor;
+        return SdColors.success;
       case _SendOutcome.opened:
-        return AppTheme.primaryColor;
+        return SdColors.primary;
       case _SendOutcome.notReady:
-        return AppTheme.warningColor;
+        return SdColors.warning;
       case _SendOutcome.failed:
-        return AppTheme.errorColor;
+        return SdColors.danger;
     }
   }
 }

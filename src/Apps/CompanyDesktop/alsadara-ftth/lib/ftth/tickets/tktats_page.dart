@@ -13,6 +13,7 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../frontend/frontend.dart';
 import '../../services/auth_service.dart';
 import '../../services/badge_service.dart';
 import 'tktat_details_page.dart';
@@ -201,20 +202,22 @@ class _TKTATsPageState extends State<TKTATsPage> {
         SnackBar(
           content: Row(
             children: [
-              Icon(Icons.notification_important, color: Colors.white),
-              SizedBox(width: 8),
+              const Icon(Icons.notification_important, color: Colors.white),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   message,
-                  style: TextStyle(
+                  style: const TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
+                    color: Colors.white,
                   ),
                 ),
               ),
             ],
           ),
-          backgroundColor: backgroundColor ?? Colors.blue[600],
+          backgroundColor: backgroundColor ?? SdColors.info,
           duration: Duration(seconds: 4),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -246,7 +249,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
 
       // إشعار داخل التطبيق
       showInAppNotification('$title: $body',
-          backgroundColor: Colors.green[600]);
+          backgroundColor: SdColors.success);
       debugPrint('✅ In-app notification sent successfully');
     } catch (e) {
       debugPrint('❌ Error sending notifications');
@@ -661,6 +664,38 @@ class _TKTATsPageState extends State<TKTATsPage> {
   // Helper function to get status color
   Color getStatusColor(String? status) => statusColor(status);
 
+  // تحويل حالة التذكرة إلى نبرة نظام التصميم
+  SdStatus _sdStatusFor(String? status) {
+    switch (canonicalStatusKey(status)) {
+      case 'completed':
+        return SdStatus.success;
+      case 'cancelled':
+        return SdStatus.danger;
+      case 'in progress':
+      case 'pending':
+        return SdStatus.warning;
+      case 'new':
+      case 'assigned':
+        return SdStatus.info;
+      default:
+        return SdStatus.neutral;
+    }
+  }
+
+  // تحويل الأولوية إلى نبرة نظام التصميم
+  SdStatus _sdPriorityStatus(String? priority) {
+    switch (priority?.toLowerCase()) {
+      case 'high':
+        return SdStatus.danger;
+      case 'medium':
+        return SdStatus.warning;
+      case 'low':
+        return SdStatus.success;
+      default:
+        return SdStatus.neutral;
+    }
+  }
+
   // Helper function to get status icon
   IconData getStatusIcon(String? status) {
     final s = canonicalStatusKey(status);
@@ -858,7 +893,7 @@ $lastErrorDetails
         });
         showInAppNotification(
           'لا يوجد اتصال بالإنترنت',
-          backgroundColor: Colors.orange[600],
+          backgroundColor: SdColors.warning,
         );
         return false;
       }
@@ -871,375 +906,142 @@ $lastErrorDetails
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        elevation: 4,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        toolbarHeight: 78, // رفع ارتفاع الشريط ليتناسق مع البطاقة
-        shadowColor: Colors.blue.withValues(alpha: 0.3),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-        ),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.blue[700]!,
-                Colors.blue[500]!,
-                Colors.indigo[400]!,
-              ],
-            ),
-          ),
-        ),
-        title: totalTKTATs > 0
-            ? _buildCountCard()
-            : Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.task_alt, color: Colors.white, size: 22),
-              ),
+    final countSubtitle = totalTKTATs > 0
+        ? (selectedTicketType == 'all' && totalTKTATs > filteredTKTATs.length
+            ? 'العدد: ${filteredTKTATs.length} / $totalTKTATs'
+            : 'العدد: ${filteredTKTATs.length}')
+        : null;
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'التذاكر والطلبات',
+        subtitle: countSubtitle,
         actions: [
           // زر إظهار/إخفاء "قيد المعالجة"
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: _hideInProgress ? Colors.white.withValues(alpha: 0.15) : Colors.blue.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              icon: Icon(_hideInProgress ? Icons.hourglass_disabled : Icons.hourglass_top, size: 20),
-              tooltip: _hideInProgress ? 'إظهار قيد المعالجة' : 'إخفاء قيد المعالجة',
-              onPressed: () {
-                setState(() => _hideInProgress = !_hideInProgress);
-                filterTKTATs();
-              },
-              color: Colors.white,
-              iconSize: 20,
-            ),
+          SdAppBarAction(
+            icon: _hideInProgress
+                ? Icons.hourglass_disabled
+                : Icons.hourglass_top,
+            label: _hideInProgress ? 'إظهار قيد المعالجة' : 'إخفاء قيد المعالجة',
+            onPressed: () {
+              setState(() => _hideInProgress = !_hideInProgress);
+              filterTKTATs();
+            },
           ),
           // زر إظهار/إخفاء المخفية
           if (_hiddenTicketIds.isNotEmpty)
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: _showHidden ? Colors.orange.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: IconButton(
-                icon: Badge(
-                  isLabelVisible: !_showHidden,
-                  label: Text('${_hiddenTicketIds.length}', style: TextStyle(fontSize: 10)),
-                  child: Icon(_showHidden ? Icons.visibility : Icons.visibility_off, size: 20),
-                ),
-                tooltip: _showHidden ? 'إظهار التذاكر النشطة' : 'إظهار المخفية (${_hiddenTicketIds.length})',
-                onPressed: () {
-                  setState(() => _showHidden = !_showHidden);
-                  filterTKTATs();
-                  setState(() {});
-                },
-                color: Colors.white,
-                iconSize: 20,
-              ),
+            SdAppBarAction(
+              icon: _showHidden ? Icons.visibility : Icons.visibility_off,
+              label: _showHidden
+                  ? 'إظهار التذاكر النشطة'
+                  : 'إظهار المخفية',
+              badge: _showHidden ? null : _hiddenTicketIds.length,
+              onPressed: () {
+                setState(() => _showHidden = !_showHidden);
+                filterTKTATs();
+                setState(() {});
+              },
             ),
           // زر إنشاء تذكرة جديدة
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.add_circle_outline, size: 20),
-              tooltip: 'تذكرة جديدة',
-              onPressed: () async {
-                final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => CreateTicketPage(authToken: widget.authToken)));
-                if (result == true && mounted) { setState(() => isLoading = true); fetchTKTATs(); }
-              },
-              color: Colors.white,
-              iconSize: 20,
-            ),
-          ),
-          // أيقونة الإشعارات الجديدة - إضافة جديدة
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Stack(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.notifications, size: 20),
-                  tooltip: 'الإشعارات',
-                  onPressed: _showNotificationsDialog,
-                  color: Colors.white,
-                  iconSize: 20,
-                ),
-                if (showNotificationBadge && newTicketsCount > 0)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      padding: EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.red[600],
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withValues(alpha: 0.5),
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      constraints: BoxConstraints(
-                        minWidth: 20,
-                        minHeight: 20,
-                      ),
-                      child: Text(
-                        newTicketsCount > 99
-                            ? '99+'
-                            : newTicketsCount.toString(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'إعادة تحميل',
-              onPressed: () async {
+          SdAppBarAction(
+            icon: Icons.add_circle_outline,
+            label: 'تذكرة جديدة',
+            onPressed: () async {
+              final result = await Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => CreateTicketPage(authToken: widget.authToken)));
+              if (result == true && mounted) {
                 setState(() => isLoading = true);
-                await fetchTKTATs();
-              },
-              color: Colors.white,
-              iconSize: 20,
-            ),
+                fetchTKTATs();
+              }
+            },
           ),
-          SizedBox(width: 8),
+          // أيقونة الإشعارات
+          SdAppBarAction(
+            icon: Icons.notifications,
+            label: 'الإشعارات',
+            badge: (showNotificationBadge && newTicketsCount > 0)
+                ? newTicketsCount
+                : null,
+            onPressed: _showNotificationsDialog,
+          ),
+          // إعادة تحميل
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'إعادة تحميل',
+            onPressed: () async {
+              setState(() => isLoading = true);
+              await fetchTKTATs();
+            },
+          ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.blue[50]!, Colors.white],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            children: [
-              // شريط اختيار نوع المهام (الكل / الشركة / الوكيل)
-              _buildTaskTypeSelectorBar(),
-              SizedBox(height: 8),
-              // Filter Section
-              if (isFilterVisible) _buildFilterSection(),
+      body: Column(
+        children: [
+          // شريط اختيار نوع المهام (الكل / المفتوحة)
+          _buildTaskTypeSelectorBar(),
+          const SizedBox(height: SdSpace.xs),
+          // Filter Section
+          if (isFilterVisible) _buildFilterSection(),
 
-              // TKTAT List
-              Expanded(child: _buildTKTATsList()),
+          // TKTAT List
+          Expanded(child: _buildTKTATsList()),
 
-              // Navigation Section
-              _buildNavigationSection(),
-            ],
-          ),
-        ),
+          // Navigation Section
+          _buildNavigationSection(),
+        ],
       ),
     );
   }
 
   Widget _buildFilterSection() {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue[600]!, Colors.blue[700]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+    OutlineInputBorder border(Color c) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: BorderSide(color: c),
+        );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: SdSpace.md),
+      child: SdCard(
+        title: 'تصفية التذاكر',
+        icon: Icons.filter_alt,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Icon(Icons.filter_alt, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'تصفية TKTATs',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-
-            // Search TextField - Smaller
-            Container(
-              height: 45,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                onChanged: (value) {
-                  setState(() {
-                    filterText = value;
-                    filterTKTATs();
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'البحث في TKTATs...',
-                  hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
-                  prefixIcon:
-                      Icon(Icons.search, color: Colors.blue[600], size: 20),
-                  suffixIcon: filterText.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear, color: Colors.grey, size: 18),
-                          onPressed: () {
-                            setState(() {
-                              filterText = "";
-                              filterTKTATs();
-                            });
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                style: TextStyle(fontSize: 14),
+            TextField(
+              onChanged: (value) {
+                setState(() {
+                  filterText = value;
+                  filterTKTATs();
+                });
+              },
+              style: SdText.body,
+              decoration: InputDecoration(
+                hintText: 'البحث في التذاكر...',
+                hintStyle: SdText.body.copyWith(color: SdColors.faint),
+                filled: true,
+                fillColor: SdColors.surface,
+                prefixIcon:
+                    const Icon(Icons.search, color: SdColors.faint, size: 20),
+                suffixIcon: filterText.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear,
+                            color: SdColors.faint, size: 18),
+                        onPressed: () {
+                          setState(() {
+                            filterText = "";
+                            filterTKTATs();
+                          });
+                        },
+                      )
+                    : null,
+                border: border(SdColors.divider),
+                enabledBorder: border(SdColors.divider),
+                focusedBorder: border(SdColors.primary),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
             ),
-
-            SizedBox(height: 12),
-
-            // Compact Task Type Selector with Icons
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: EdgeInsets.all(4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildCompactFilterButton(
-                        'المفتوحة', 'open', Icons.pending_actions),
-                  ),
-                  SizedBox(width: 4),
-                  Expanded(
-                    child: _buildCompactFilterButton(
-                        'الكل', 'all', Icons.all_inclusive),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCompactFilterButton(String title, String type, IconData icon) {
-    final isSelected = selectedTicketType == type;
-    return GestureDetector(
-      onTap: () {
-        if (selectedTicketType != type) {
-          setState(() {
-            selectedTicketType = type;
-            currentPage = 1;
-          });
-          fetchTKTATs(); // إعادة جلب من السيرفر لأن الـ URL يتغير
-        }
-      },
-      child: AnimatedContainer(
-        duration: Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(colors: [Colors.white, Colors.grey[50]!])
-              : null,
-          color: isSelected ? null : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color:
-                isSelected ? Colors.white : Colors.white.withValues(alpha: 0.3),
-            width: isSelected ? 1.5 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.blue[600] : Colors.white,
-              size: 18,
-            ),
-            SizedBox(height: 2),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isSelected ? Colors.blue[600] : Colors.white,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                fontSize: 11,
-              ),
-            ),
+            const SizedBox(height: SdSpace.sm),
+            _buildTaskTypeChips(),
           ],
         ),
       ),
@@ -1256,9 +1058,9 @@ $lastErrorDetails
           thickness: 10,
           radius: const Radius.circular(12),
           interactive: true,
-          thumbColor: const Color.fromARGB(255, 203, 85, 38),
-          trackColor: Colors.indigo.shade50,
-          trackBorderColor: Colors.indigo.shade100,
+          thumbColor: SdColors.accent,
+          trackColor: SdColors.accentTint,
+          trackBorderColor: SdColors.accentTintEdge,
           child: ListView.builder(
             controller: _listController,
             itemCount: filteredTKTATs.length,
@@ -1270,157 +1072,56 @@ $lastErrorDetails
         );
       } else {
         return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withValues(alpha: 0.1),
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
+          child: SingleChildScrollView(
+            child: SdEmptyState(
+              icon: Icons.assignment_outlined,
+              status: lastErrorDetails != null
+                  ? SdStatus.danger
+                  : SdStatus.warning,
+              title: message.isNotEmpty ? message : 'لا توجد تذاكر متاحة',
+              message: lastErrorDetails != null
+                  ? 'اضغط «التفاصيل» لعرض سبب الخطأ'
+                  : null,
+              action: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SdButton(
+                    label: 'إعادة المحاولة',
+                    icon: Icons.refresh,
+                    kind: SdButtonKind.secondary,
+                    onPressed: fetchTKTATs,
+                  ),
+                  if (lastErrorDetails != null) ...[
+                    const SizedBox(width: SdSpace.xs),
+                    SdButton(
+                      label: 'التفاصيل',
+                      icon: Icons.info_outline,
+                      kind: SdButtonKind.danger,
+                      onPressed: showErrorDetailsDialog,
                     ),
                   ],
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.assignment_outlined,
-                      size: 60,
-                      color: Colors.orange[400],
-                    ),
-                    SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: lastErrorDetails != null
-                          ? showErrorDetailsDialog
-                          : null,
-                      child: Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border:
-                              Border.all(color: Colors.red[200]!, width: 0.5),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                message.isNotEmpty
-                                    ? message
-                                    : "لا توجد TKTATs متاحة",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.red[700],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            if (lastErrorDetails != null) ...[
-                              SizedBox(width: 6),
-                              Icon(
-                                Icons.touch_app,
-                                color: Colors.red[600],
-                                size: 16,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            fetchTKTATs();
-                          },
-                          icon: Icon(Icons.refresh, size: 16),
-                          label: Text('إعادة المحاولة'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[600],
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            textStyle: TextStyle(fontSize: 12),
-                          ),
-                        ),
-                        if (lastErrorDetails != null) SizedBox(width: 8),
-                        if (lastErrorDetails != null)
-                          ElevatedButton.icon(
-                            onPressed: showErrorDetailsDialog,
-                            icon: Icon(Icons.info_outline, size: 16),
-                            label: Text('التفاصيل'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red[600],
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              textStyle: TextStyle(fontSize: 12),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       }
     } else {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.1),
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+        child: SdCard(
+          padding: const EdgeInsets.all(SdSpace.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(SdColors.primary),
+                strokeWidth: 2.5,
               ),
-              child: Column(
-                children: [
-                  CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
-                    strokeWidth: 2.5,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'جاري تحميل TKTATs...',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+              const SizedBox(height: SdSpace.sm),
+              Text('جاري تحميل التذاكر...', style: SdText.bodySm),
+            ],
+          ),
         ),
       );
     }
@@ -1476,365 +1177,317 @@ $lastErrorDetails
       }
     }
 
-    // تدرج فاتح (درجات أزرق سماوي لطيف) مع تبديل بسيط لتمييز البطاقات
-    final List<Color> lightSchemeA = [
-      const Color(0xFFFAFCFF), // أفتح
-      const Color(0xFFF5F9FE),
-    ];
-    final List<Color> lightSchemeB = [
-      const Color(0xFFFDFEFF),
-      const Color(0xFFF2F7FC),
-    ];
-    final useAlt = index.isOdd;
-    final LinearGradient cardGradient = LinearGradient(
-      colors: useAlt ? lightSchemeB : lightSchemeA,
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-    );
+    final statusTone = _sdStatusFor(status).tone;
+    final tId = selfId.isNotEmpty ? selfId : idVal;
+    final isHidden = _hiddenTicketIds.contains(tId);
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        gradient: cardGradient,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.blueGrey[400]!,
-          width: 1.5,
+    // شريحة حقل بخلفية نبرة المجموعة
+    Widget fieldChip({
+      required IconData icon,
+      required String text,
+      required SdTone tone,
+      bool selectable = false,
+      int maxLines = 1,
+      VoidCallback? onCopy,
+    }) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: tone.tint,
+          borderRadius: BorderRadius.circular(SdRadius.xs),
+          border: Border.all(color: tone.tintEdge),
         ),
-      ),
-      child: InkWell(
-        onTap: () => navigateToTaskDetails(context, tktat),
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with status and priority
-              Row(
-                children: [
-                  Icon(
-                    getStatusIcon(status),
-                    color: getStatusColor(status),
-                    size: 17,
-                  ),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      translateStatus(status),
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  // المعرف بجانب الحالة مع إمكانية النسخ
-                  if (displayId.isNotEmpty) ...[
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      margin: EdgeInsets.only(left: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.indigo.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: InkWell(
-                        onTap: () {
-                          Clipboard.setData(ClipboardData(text: displayId));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('تم نسخ المعرف: $displayId'),
-                              backgroundColor: Colors.indigo[600],
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.copy, size: 13, color: Colors.indigo[500]),
-                            SizedBox(width: 3),
-                            Text(
-                              displayId,
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.indigo[600]),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (priority.isNotEmpty)
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: getPriorityColor(priority),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        translatePriority(priority),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  SizedBox(width: 4),
-                  // زر إخفاء/إظهار التذكرة
-                  InkWell(
-                    onTap: () {
-                      final tId = selfId.isNotEmpty ? selfId : idVal;
-                      if (tId.isNotEmpty) _toggleHideTicket(tId);
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _hiddenTicketIds.contains(selfId.isNotEmpty ? selfId : idVal)
-                            ? Colors.orange.withValues(alpha: 0.15)
-                            : Colors.grey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        _hiddenTicketIds.contains(selfId.isNotEmpty ? selfId : idVal)
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                        size: 16,
-                        color: _hiddenTicketIds.contains(selfId.isNotEmpty ? selfId : idVal)
-                            ? Colors.orange[700]
-                            : Colors.grey[600],
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 4),
-                  InkWell(
-                    onTap: () {
-                      try {
-                        navigateToTaskDetails(context, tktat);
-                      } catch (e) {
-                        showInAppNotification('تعذر فتح التفاصيل',
-                            backgroundColor: Colors.red[600]);
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF1565C0),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.open_in_new, size: 15, color: Colors.white),
-                          SizedBox(width: 3),
-                          Text('فتح', style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              SizedBox(height: 6),
-
-              // العنوان
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Color(0xFFE3F2FD),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Color(0xFF90CAF9), width: 0.8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.title, size: 16, color: Colors.blue[700]),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: SelectableText(
-                        title,
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.blueGrey[900], height: 1.15),
-                        maxLines: 1,
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: title));
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم نسخ العنوان'), duration: Duration(seconds: 1)));
-                      },
-                      child: Icon(Icons.copy, size: 15, color: Colors.blue[400]),
-                    ),
-                  ],
-                ),
-              ),
-
-              // الملخص
-              if (description.isNotEmpty) ...[
-                SizedBox(height: 3),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFE8FFF5),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Color(0xFF80CBC4), width: 0.8),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.notes, size: 16, color: Colors.teal[700]),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: SelectableText(
-                          description,
-                          style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: Colors.teal[900], height: 1.2),
-                          maxLines: 2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              SizedBox(height: 4),
-
-              // صف العميل والمنطقة
-              Row(
-                children: [
-                  if (customerName.isNotEmpty)
-                    Expanded(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFFFF3E0),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Color(0xFFFFCC80), width: 0.8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.person, size: 16, color: Colors.orange[700]),
-                            SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                customerName,
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.brown[800]),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () {
-                                Clipboard.setData(ClipboardData(text: customerName));
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('نُسخ اسم العميل'), duration: Duration(seconds: 1)));
-                              },
-                              child: Icon(Icons.copy, size: 15, color: Colors.orange[400]),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  if (customerName.isNotEmpty && zone.isNotEmpty)
-                    SizedBox(width: 6),
-                  if (zone.isNotEmpty)
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFEDE7F6),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Color(0xFFB39DDB), width: 0.8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.location_on, size: 15, color: Colors.indigo[600]),
-                          SizedBox(width: 3),
-                          Text(zone, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.indigo[800])),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-
-              SizedBox(height: 4),
-
-              // التواريخ والنوع
-              if (createdAtRaw.isNotEmpty || updatedAtRaw.isNotEmpty || status.isNotEmpty)
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 4,
-                  children: [
-                    if (createdAtRaw.isNotEmpty)
-                      _buildTimeInfoChip(icon: Icons.schedule, label: 'إنشاء', value: fmt(createdAtRaw), color: Colors.blueGrey),
-                    if (updatedAtRaw.isNotEmpty)
-                      _buildTimeInfoChip(icon: Icons.update, label: 'تحديث', value: fmt(updatedAtRaw), color: Colors.deepOrange),
-                  ],
-                ),
-
-              // (أزيل صف نوع المهمة بعد دمجه مع صف الوقت)
-
-              // إضافة معلومات debug إذا لم يكن العنوان يظهر
-              if (title == 'بدون عنوان') ...[
-                SizedBox(height: 8),
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red[50],
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.red[200]!, width: 1),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'بيانات debug - العنوان غير موجود',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red[600],
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      SelectableText(
-                        'الحقول المتاحة: ${tktat.keys.toList()}\n'
-                        'self.displayValue: ${tktat['self']?['displayValue']}\n'
-                        'title: ${tktat['title']}\n'
-                        'subject: ${tktat['subject']}',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: Colors.red[500],
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16, color: tone.base),
+            const SizedBox(width: 6),
+            Expanded(
+              child: selectable
+                  ? SelectableText(text,
+                      style: SdText.bodySm.copyWith(
+                          color: tone.text, fontWeight: FontWeight.w700),
+                      maxLines: maxLines)
+                  : Text(text,
+                      style: SdText.bodySm.copyWith(
+                          color: tone.text, fontWeight: FontWeight.w700),
+                      maxLines: maxLines,
+                      overflow: TextOverflow.ellipsis),
+            ),
+            if (onCopy != null) ...[
+              const SizedBox(width: 4),
+              InkWell(
+                  onTap: onCopy,
+                  child: Icon(Icons.copy, size: 15, color: tone.base)),
             ],
-          ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: SdSpace.xs),
+      child: SdRaised(
+        onTap: () => navigateToTaskDetails(context, tktat),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with status and priority
+            Row(
+              children: [
+                Icon(getStatusIcon(status), color: statusTone.base, size: 18),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    translateStatus(status),
+                    style: SdText.label.copyWith(color: statusTone.text),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                // المعرف بجانب الحالة مع إمكانية النسخ
+                if (displayId.isNotEmpty) ...[
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: displayId));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('تم نسخ المعرف: $displayId'),
+                          backgroundColor: SdColors.primary,
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(SdRadius.xs),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 3),
+                      margin: const EdgeInsetsDirectional.only(end: 6),
+                      decoration: BoxDecoration(
+                        color: SdColors.primaryTint,
+                        borderRadius: BorderRadius.circular(SdRadius.xs),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.copy,
+                              size: 13, color: SdColors.primary),
+                          const SizedBox(width: 3),
+                          Text(displayId,
+                              style: SdText.caption
+                                  .copyWith(color: SdColors.primary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (priority.isNotEmpty) ...[
+                  SdStatusChip(translatePriority(priority),
+                      status: _sdPriorityStatus(priority)),
+                  const SizedBox(width: 6),
+                ],
+                // زر إخفاء/إظهار التذكرة
+                InkWell(
+                  onTap: () {
+                    if (tId.isNotEmpty) _toggleHideTicket(tId);
+                  },
+                  borderRadius: BorderRadius.circular(SdRadius.xs),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isHidden
+                          ? SdStatus.warning.tone.tint
+                          : SdColors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(SdRadius.xs),
+                    ),
+                    child: Icon(
+                      isHidden ? Icons.visibility : Icons.visibility_off,
+                      size: 16,
+                      color: isHidden
+                          ? SdStatus.warning.tone.base
+                          : SdColors.muted,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                // زر فتح التفاصيل
+                InkWell(
+                  onTap: () {
+                    try {
+                      navigateToTaskDetails(context, tktat);
+                    } catch (e) {
+                      showInAppNotification('تعذر فتح التفاصيل',
+                          backgroundColor: SdColors.danger);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(SdRadius.xs),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: SdColors.primary,
+                      borderRadius: BorderRadius.circular(SdRadius.xs),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.open_in_new,
+                            size: 15, color: Colors.white),
+                        const SizedBox(width: 3),
+                        Text('فتح',
+                            style: SdText.caption.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 6),
+
+            // العنوان
+            fieldChip(
+              icon: Icons.title,
+              text: title,
+              tone: SdGroup.admin.tone,
+              selectable: true,
+              onCopy: () {
+                Clipboard.setData(ClipboardData(text: title));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('تم نسخ العنوان'),
+                    duration: Duration(seconds: 1)));
+              },
+            ),
+
+            // الملخص
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              fieldChip(
+                icon: Icons.notes,
+                text: description,
+                tone: SdGroup.field.tone,
+                selectable: true,
+                maxLines: 2,
+              ),
+            ],
+
+            const SizedBox(height: 4),
+
+            // صف العميل والمنطقة
+            Row(
+              children: [
+                if (customerName.isNotEmpty)
+                  Expanded(
+                    child: fieldChip(
+                      icon: Icons.person,
+                      text: customerName,
+                      tone: SdGroup.comms.tone,
+                      onCopy: () {
+                        Clipboard.setData(ClipboardData(text: customerName));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('نُسخ اسم العميل'),
+                                duration: Duration(seconds: 1)));
+                      },
+                    ),
+                  ),
+                if (customerName.isNotEmpty && zone.isNotEmpty)
+                  const SizedBox(width: 6),
+                if (zone.isNotEmpty)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: SdGroup.platform.tone.tint,
+                      borderRadius: BorderRadius.circular(SdRadius.xs),
+                      border: Border.all(color: SdGroup.platform.tone.tintEdge),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.location_on,
+                            size: 15, color: SdGroup.platform.tone.base),
+                        const SizedBox(width: 3),
+                        Text(zone,
+                            style: SdText.bodySm.copyWith(
+                                color: SdGroup.platform.tone.text,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 4),
+
+            // التواريخ
+            if (createdAtRaw.isNotEmpty || updatedAtRaw.isNotEmpty)
+              Wrap(
+                spacing: 12,
+                runSpacing: 4,
+                children: [
+                  if (createdAtRaw.isNotEmpty)
+                    _buildTimeInfoChip(
+                        icon: Icons.schedule,
+                        label: 'إنشاء',
+                        value: fmt(createdAtRaw)),
+                  if (updatedAtRaw.isNotEmpty)
+                    _buildTimeInfoChip(
+                        icon: Icons.update,
+                        label: 'تحديث',
+                        value: fmt(updatedAtRaw)),
+                ],
+              ),
+
+            // إضافة معلومات debug إذا لم يكن العنوان يظهر
+            if (title == 'بدون عنوان') ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: SdColors.dangerTint,
+                  borderRadius: BorderRadius.circular(SdRadius.xs),
+                  border: Border.all(color: SdColors.dangerTintEdge),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('بيانات debug - العنوان غير موجود',
+                        style: SdText.caption
+                            .copyWith(color: SdColors.danger)),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      'الحقول المتاحة: ${tktat.keys.toList()}\n'
+                      'self.displayValue: ${tktat['self']?['displayValue']}\n'
+                      'title: ${tktat['title']}\n'
+                      'subject: ${tktat['subject']}',
+                      style: SdText.mono.copyWith(color: SdColors.danger),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
 
-  // عنصر مساعد لعرض شريحة وقت/معرّف واضحة
+  // عنصر مساعد لعرض شريحة وقت واضحة
   Widget _buildTimeInfoChip(
-      {required IconData icon,
-      required String label,
-      required String value,
-      required Color color}) {
+      {required IconData icon, required String label, required String value}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: color),
-        SizedBox(width: 3),
-        Text(
-          '$label: $value',
-          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: color.darken(0.1)),
-        ),
+        Icon(icon, size: 14, color: SdColors.faint),
+        const SizedBox(width: 3),
+        Text('$label: $value',
+            style: SdText.caption.copyWith(color: SdColors.muted)),
       ],
     );
   }
@@ -2051,81 +1704,50 @@ $lastErrorDetails
   }
 
   Widget _buildNavigationSection() {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.white, Colors.grey[50]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 6,
-            offset: Offset(0, -1),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.grey.withValues(alpha: 0.1),
-          width: 0.5,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Previous Button - Compact
-          _buildCompactNavButton(
-            onPressed: currentPage > 1 ? previousPage : null,
-            icon: Icons.chevron_right,
-            label: 'السابق',
-            isEnabled: currentPage > 1,
-          ),
+    return Padding(
+      padding: const EdgeInsets.only(top: SdSpace.xs),
+      child: SdCard(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Previous Button
+            _buildCompactNavButton(
+              onPressed: currentPage > 1 ? previousPage : null,
+              icon: Icons.chevron_right,
+              label: 'السابق',
+            ),
 
-          // Page Info - Enhanced
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.blue.withValues(alpha: 0.2),
-                width: 1,
+            // Page Info
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: SdColors.primaryTint,
+                borderRadius: BorderRadius.circular(SdRadius.xs),
+                border: Border.all(color: SdColors.primaryTintEdge),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('ص $currentPage',
+                      style: SdText.label.copyWith(color: SdColors.primary)),
+                  if (totalTKTATs > 0)
+                    Text('${filteredTKTATs.length} من $totalTKTATs',
+                        style: SdText.caption),
+                ],
               ),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'ص $currentPage',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue[700],
-                  ),
-                ),
-                if (totalTKTATs > 0)
-                  Text(
-                    '${filteredTKTATs.length} من $totalTKTATs',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-              ],
-            ),
-          ),
 
-          // Next Button - Compact
-          _buildCompactNavButton(
-            onPressed: nextPage,
-            icon: Icons.chevron_left,
-            label: 'التالي',
-            isEnabled: true,
-          ),
-        ],
+            // Next Button
+            _buildCompactNavButton(
+              onPressed: nextPage,
+              icon: Icons.chevron_left,
+              label: 'التالي',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2134,37 +1756,13 @@ $lastErrorDetails
     required VoidCallback? onPressed,
     required IconData icon,
     required String label,
-    required bool isEnabled,
   }) {
-    return SizedBox(
-      height: 36,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isEnabled ? Colors.blue[600] : Colors.grey[300],
-          foregroundColor: Colors.white,
-          elevation: isEnabled ? 2 : 0,
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          minimumSize: Size(70, 36),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16),
-            SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return SdButton(
+      label: label,
+      icon: icon,
+      height: 40,
+      kind: SdButtonKind.secondary,
+      onPressed: onPressed,
     );
   }
 
@@ -2323,7 +1921,7 @@ $lastErrorDetails
             ],
           ),
         ),
-        backgroundColor: Color(0xFF4CAF50),
+        backgroundColor: SdColors.success,
         duration: Duration(seconds: 6),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
@@ -2652,281 +2250,41 @@ $lastErrorDetails
     );
   }
 
-  // (تم الاستبدال ببطاقة موحدة _buildCountCard)
-
-  // بطاقة موحدة للنص + العدد
-  Widget _buildCountCard() {
-    return AnimatedSwitcher(
-      duration: Duration(milliseconds: 260),
-      transitionBuilder: (child, anim) => FadeTransition(
-        opacity: anim,
-        child: ScaleTransition(
-            scale: Tween<double>(begin: 0.95, end: 1).animate(anim),
-            child: child),
-      ),
-      child: Container(
-        key: ValueKey(
-            'card-${filteredTKTATs.length}-$totalTKTATs-$selectedTicketType'),
-        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.white.withValues(alpha: 0.95),
-              Colors.white.withValues(alpha: 0.88),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 10,
-              offset: Offset(0, 3),
-            ),
-          ],
-          border:
-              Border.all(color: Colors.white.withValues(alpha: 0.75), width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.blue[600]!,
-                    Colors.indigo[500]!,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withValues(alpha: 0.35),
-                    blurRadius: 6,
-                    offset: Offset(0, 3),
-                  )
-                ],
-              ),
-              child: Icon(Icons.task_alt, color: Colors.white, size: 18),
-            ),
-            SizedBox(width: 10),
-            Text(
-              'العدد',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Colors.blueGrey[800],
-                letterSpacing: .4,
-              ),
-            ),
-            SizedBox(width: 12),
-            Container(
-              height: 26,
-              width: 1.2,
-              decoration: BoxDecoration(
-                color: Colors.blueGrey[200],
-                borderRadius: BorderRadius.circular(1),
-              ),
-            ),
-            SizedBox(width: 12),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${filteredTKTATs.length}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.blue[800],
-                    height: 1,
-                  ),
-                ),
-                if (selectedTicketType == 'all' &&
-                    totalTKTATs > filteredTKTATs.length) ...[
-                  SizedBox(width: 4),
-                  Text(
-                    '/ $totalTKTATs',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blueGrey[600],
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
+  // شريط علوي أسفل الـ AppBar لاختيار نوع المهام
+  Widget _buildTaskTypeSelectorBar() {
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: _buildTaskTypeChips(),
     );
   }
 
-  // شريط علوي أسفل الـ AppBar لاختيار نوع المهام
-  Widget _buildTaskTypeSelectorBar() {
-    final types = [
-      {
-        'label': 'المفتوحة',
-        'type': 'open',
-        'icon': Icons.pending_actions,
-        'color': const Color.fromARGB(255, 57, 113, 191)
-      },
-      {
-        'label': 'الكل',
-        'type': 'all',
-        'icon': Icons.all_inclusive,
-        'color': Colors.teal
-      },
-    ];
-    // لا حاجة للمؤشر الآن بعد حذفه
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const gap = 6.0;
-
-        return Container(
-          height: 60,
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.blue[600]!,
-                Colors.indigo[500]!,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.withValues(alpha: 0.25),
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
-            border: Border.all(
-                color: Colors.white.withValues(alpha: 0.18), width: 1),
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < types.length; i++) ...[
-                Expanded(
-                  child: _buildTopSelectorButton(
-                    label: types[i]['label'] as String,
-                    type: types[i]['type'] as String,
-                    icon: types[i]['icon'] as IconData,
-                    activeColor: types[i]['color'] as Color,
-                  ),
-                ),
-                if (i != types.length - 1) SizedBox(width: gap),
-              ],
-            ],
+  // أقراص اختيار نوع المهام (المفتوحة / الكل) بنظام التصميم
+  Widget _buildTaskTypeChips() {
+    return SdFilterChips<String>(
+      options: const [
+        SdFilterOption('open', 'المفتوحة'),
+        SdFilterOption('all', 'الكل'),
+      ],
+      selected: selectedTicketType,
+      onSelected: (type) {
+        if (selectedTicketType == type) return;
+        setState(() {
+          selectedTicketType = type;
+          currentPage = 1;
+        });
+        fetchTKTATs(); // إعادة جلب من السيرفر لأن الـ URL يتغير
+        HapticFeedback.selectionClick();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'تم عرض ${type == 'all' ? 'جميع المهام' : 'المهام المفتوحة'}'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(SdRadius.sm)),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildTopSelectorButton({
-    required String label,
-    required String type,
-    required IconData icon,
-    required Color activeColor,
-  }) {
-    final bool active = selectedTicketType == type;
-    return Expanded(
-      child: AnimatedContainer(
-        duration: Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        height: 44,
-        decoration: BoxDecoration(
-          // تصميم جديد: زر نشط بتدرج واضح، زر غير نشط بخلفية شفافة فاتحة
-          gradient: active
-              ? LinearGradient(
-                  colors: [
-                    Colors.green[600]!.withValues(alpha: 0.95),
-                    Colors.green[400]!.withValues(alpha: 0.80),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: active ? null : Colors.white, // الزر غير النشط أبيض
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: active
-                ? Colors.green[700]!.withValues(alpha: 0.9)
-                : activeColor
-                    .withValues(alpha: 0.55), // حدود ملوّنة خفيفة للحالة غير النشطة
-            width: active ? 1.4 : 1,
-          ),
-          boxShadow: active
-              ? [
-                  BoxShadow(
-                    color: Colors.green[600]!.withValues(alpha: 0.45),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              if (selectedTicketType == type) return;
-              setState(() {
-                selectedTicketType = type;
-                currentPage = 1;
-              });
-              fetchTKTATs(); // إعادة جلب من السيرفر لأن الـ URL يتغير
-              HapticFeedback.selectionClick();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Icon(icon, color: activeColor, size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                          'تم عرض ${label == 'الكل' ? 'جميع المهام' : 'مهام $label'}'),
-                      Spacer(),
-                      Text('${filteredTKTATs.length}',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  backgroundColor: activeColor.withValues(alpha: 0.9),
-                  duration: Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              );
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon,
-                    size: 20,
-                    color:
-                        active ? Colors.white : activeColor.withValues(alpha: 0.9)),
-                SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                    letterSpacing: .3,
-                    color: active ? Colors.white : activeColor.darken(0.05),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 

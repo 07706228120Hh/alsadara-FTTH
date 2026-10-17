@@ -17,6 +17,7 @@ import '../../services/auth_service.dart';
 import '../../services/customer_onboarding_service.dart';
 import '../../services/id_ocr_service.dart';
 import '../auth/auth_error_handler.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 
 bool get _isOcrSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
@@ -28,9 +29,10 @@ class CustomerOnboardingPage extends StatefulWidget {
 }
 
 class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
-  static const _primary = Color(0xFF1A237E);
-  static const _accent = Color(0xFF667eea);
-  static const _dark = Color(0xFF2C3E50);
+  // ألوان الصفحة من نظام تصميم الصدارة (sd) — لا hex محلي.
+  static const _primary = SdColors.primary;
+  static const _accent = SdColors.primaryLight;
+  static const _dark = SdColors.ink;
 
   final _service = CustomerOnboardingService.instance;
   final _formKeys = List.generate(3, (_) => GlobalKey<FormState>());
@@ -496,10 +498,9 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
     final pad = w > 700 ? w * 0.12 : (_isPhone ? 10.0 : 16.0);
-    return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(title: Text('تسجيل مشترك جديد', style: TextStyle(fontWeight: FontWeight.bold, fontSize: _isPhone ? 16 : 20)),
-        centerTitle: true, backgroundColor: _primary, foregroundColor: Colors.white, elevation: 0),
+    return SdTheme.scope(child: Scaffold(
+      backgroundColor: SdColors.ground,
+      appBar: const SdAppBar(title: 'تسجيل مشترك جديد'),
       body: _isLoading
           ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('جاري تحميل البيانات...')]))
           : _lookupsLoadFailed

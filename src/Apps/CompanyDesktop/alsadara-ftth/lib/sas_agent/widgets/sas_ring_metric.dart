@@ -1,10 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
-import 'sas_metrics.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 
 /// عدّاد **حلقي دائري مسطّح أنيق** لوحدة «وكيل الساس» — عرض فقط، بلا منطق أعمال.
 ///
@@ -253,8 +251,8 @@ class _SasRingMetricState extends State<SasRingMetric> {
     final innerSide = diameter * 0.70 / math.sqrt2;
     final premium = widget.premium;
     // الفاخر: أيقونة ورقم أبرز قليلاً (الـ FittedBox يقلّصهما بأمان عند الضيق).
-    final iconSize = premium ? 19.sp : 16.sp;
-    final numberSize = premium ? 27.sp : 22.sp;
+    final double iconSize = premium ? 19 : 16;
+    final double numberSize = premium ? 27 : 22;
     final showPct = !unavailable &&
         widget.showPercent &&
         !widget.valueIsPercent &&
@@ -272,15 +270,16 @@ class _SasRingMetricState extends State<SasRingMetric> {
               Icon(widget.icon,
                   color: unavailable ? color.withValues(alpha: 0.45) : color,
                   size: iconSize),
-              SizedBox(height: premium ? 4.h : 3.h),
+              SizedBox(height: premium ? 4 : 3),
               if (unavailable)
                 Text(
                   'غير متاح',
                   maxLines: 1,
-                  style: GoogleFonts.cairo(
-                    fontSize: 13.sp,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.primaryColor.withValues(alpha: 0.55),
+                    color: SdColors.muted,
                     height: 1.02,
                   ),
                 )
@@ -289,7 +288,8 @@ class _SasRingMetricState extends State<SasRingMetric> {
                   numberText,
                   maxLines: 1,
                   textDirection: TextDirection.ltr,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: numberSize,
                     fontWeight: FontWeight.w900,
                     color: color,
@@ -301,24 +301,26 @@ class _SasRingMetricState extends State<SasRingMetric> {
               // تسمية داخلية اختيارية: تُحذف تماماً عند تمرير نصّ فارغ (مثل
               // عدّادات الصف العلوي التي يظهر عنوانها أسفل الحلقة) فلا يبقى فراغ.
               if (widget.label.isNotEmpty) ...[
-                SizedBox(height: 2.h),
+                const SizedBox(height: 2),
                 Text(
                   widget.label,
                   maxLines: 1,
-                  style: GoogleFonts.cairo(
-                    fontSize: 10.sp,
-                    color: AppTheme.primaryColor.withValues(alpha: 0.62),
+                  style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 10,
+                    color: SdColors.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
               if (showPct) ...[
-                SizedBox(height: 1.h),
+                const SizedBox(height: 1),
                 Text(
                   '${(_targetFraction * 100).round()}%',
                   maxLines: 1,
-                  style: GoogleFonts.cairo(
-                    fontSize: 9.sp,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 9,
                     color: color.withValues(alpha: 0.85),
                     fontWeight: FontWeight.w800,
                     fontFeatures: const [FontFeature.tabularFigures()],

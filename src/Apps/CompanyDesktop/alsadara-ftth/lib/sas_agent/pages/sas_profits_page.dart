@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_accounting.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_state_views.dart';
@@ -97,36 +95,21 @@ class _SasProfitsPageState extends State<SasProfitsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.greenGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+    final hasData = !_loading && _error == null && _report != null;
+    return SdPage(
+      maxWidth: 980,
+      scrollable: hasData,
+      appBar: SdAppBar(
+        title: 'تقرير الأرباح',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loading ? null : _load,
           ),
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Text('تقرير الأرباح',
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800, color: Colors.white)),
-          actions: [
-            IconButton(
-              tooltip: 'تحديث',
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _loading ? null : _load,
-            ),
-          ],
-        ),
-        body: _body(),
+        ],
       ),
+      body: _body(),
     );
   }
 
@@ -139,51 +122,47 @@ class _SasProfitsPageState extends State<SasProfitsPage> {
     }
     final rep = _report;
     if (rep == null) {
-      return const SasEmptyView(
-          message: 'لا توجد بيانات', icon: Icons.bar_chart_rounded);
+      return const SdEmptyState(
+          title: 'لا توجد بيانات', icon: Icons.bar_chart_rounded);
     }
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 900),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
-          children: [
-            _dateBar(),
-            SizedBox(height: 12.h),
-            _totalsCard(rep.totals),
-            SizedBox(height: 14.h),
-            _breakdown('حسب المنطقة', Icons.location_on_rounded,
-                AppTheme.orangeGradient, rep.byRegion),
-            SizedBox(height: 14.h),
-            _breakdown('حسب الباقة', Icons.inventory_2_rounded,
-                AppTheme.blueGradient, rep.byPackage),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _dateBar(),
+        const SizedBox(height: SdSpace.sm),
+        _totalsCard(rep.totals),
+        const SizedBox(height: SdSpace.sm),
+        _breakdown('حسب المنطقة', Icons.location_on_rounded,
+            SdGroup.comms.tone, rep.byRegion),
+        const SizedBox(height: SdSpace.sm),
+        _breakdown('حسب الباقة', Icons.inventory_2_rounded, SdGroup.admin.tone,
+            rep.byPackage),
+      ],
     );
   }
 
   Widget _dateBar() {
-    String fmt(DateTime? d) =>
-        d == null ? '—' : '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-    return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: SasUi.card(),
+    String fmt(DateTime? d) => d == null
+        ? '—'
+        : '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    return SdCard(
+      padding: const EdgeInsets.all(SdSpace.sm),
       child: Row(
         children: [
-          Icon(Icons.date_range_rounded,
-              color: AppTheme.primaryColor, size: 20.sp),
-          SizedBox(width: 8.w),
+          const Icon(Icons.date_range_rounded,
+              color: SdColors.primary, size: 20),
+          const SizedBox(width: 8),
           Expanded(
             child: Text('${fmt(_from)}  ←  ${fmt(_to)}',
-                style: GoogleFonts.cairo(
-                    fontWeight: FontWeight.w700, fontSize: 12.5.sp)),
+                style: SdText.bodySm.copyWith(
+                    color: SdColors.ink, fontWeight: FontWeight.w700)),
           ),
           TextButton.icon(
             onPressed: _loading ? null : _pickRange,
-            icon: const Icon(Icons.edit_calendar_rounded),
+            icon: const Icon(Icons.edit_calendar_rounded,
+                color: SdColors.primary),
             label: Text('تغيير الفترة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: SdText.label.copyWith(color: SdColors.primary)),
           ),
         ],
       ),
@@ -192,33 +171,41 @@ class _SasProfitsPageState extends State<SasProfitsPage> {
 
   Widget _totalsCard(SasProfitRow t) {
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: AppTheme.greenGradient),
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF388E3C), SdColors.success],
+        ),
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: [
+          BoxShadow(color: SdColors.successEdge, offset: const Offset(0, 5)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.summarize_rounded, color: Colors.white, size: 20.sp),
-              SizedBox(width: 8.w),
+              const Icon(Icons.summarize_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
               Text('الإجمالي (${t.count} عملية)',
-                  style: GoogleFonts.cairo(
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
-                      fontSize: 14.sp)),
+                      fontSize: 14)),
             ],
           ),
-          SizedBox(height: 14.h),
+          const SizedBox(height: 14),
           Row(
             children: [
               _totalItem('الربح', t.profit, Colors.white),
-              _totalItem('المحصّل', t.revenue,
-                  Colors.white.withValues(alpha: 0.9)),
-              _totalItem('الكلفة', t.cost,
-                  Colors.white.withValues(alpha: 0.9)),
+              _totalItem(
+                  'المحصّل', t.revenue, Colors.white.withValues(alpha: 0.9)),
+              _totalItem(
+                  'الكلفة', t.cost, Colors.white.withValues(alpha: 0.9)),
             ],
           ),
         ],
@@ -232,37 +219,39 @@ class _SasProfitsPageState extends State<SasProfitsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: GoogleFonts.cairo(
-                  color: color.withValues(alpha: 0.85), fontSize: 11.sp)),
-          SizedBox(height: 4.h),
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  color: color.withValues(alpha: 0.85),
+                  fontSize: 11.5)),
+          const SizedBox(height: 4),
           Text(_n(value),
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800, color: color, fontSize: 16.sp)),
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                  fontSize: 16)),
         ],
       ),
     );
   }
 
-  Widget _breakdown(
-      String title, IconData icon, List<Color> gradient, List<SasProfitRow> rows) {
-    return Container(
-      padding: EdgeInsets.all(14.w),
-      decoration: SasUi.card(),
+  Widget _breakdown(String title, IconData icon, SdTone tone,
+      List<SasProfitRow> rows) {
+    return SdCard(
+      title: title,
+      icon: icon,
+      tone: tone,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SasSectionHeader(title: title, icon: icon, gradient: gradient),
-          SizedBox(height: 10.h),
           if (rows.isEmpty)
             Padding(
-              padding: EdgeInsets.symmetric(vertical: 12.h),
-              child: Text('لا توجد بيانات في هذه الفترة',
-                  style: GoogleFonts.cairo(color: Colors.grey[600])),
+              padding: const EdgeInsets.symmetric(vertical: SdSpace.sm),
+              child: Text('لا توجد بيانات في هذه الفترة', style: SdText.bodySm),
             )
           else ...[
             _headerRow(),
-            const Divider(height: 1),
-            for (final r in rows) _dataRow(r),
+            for (var i = 0; i < rows.length; i++) _dataRow(rows[i], i.isOdd),
           ],
         ],
       ),
@@ -275,13 +264,21 @@ class _SasProfitsPageState extends State<SasProfitsPage> {
           flex: flex,
           child: Text(t,
               textAlign: align,
-              style: GoogleFonts.cairo(
+              style: const TextStyle(
+                  fontFamily: SdText.family,
                   fontWeight: FontWeight.w800,
-                  fontSize: 11.sp,
-                  color: Colors.grey[700])),
+                  fontSize: 11.5,
+                  color: Colors.white)),
         );
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+      decoration: const BoxDecoration(
+        color: SdColors.primary,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(SdRadius.xs),
+          topRight: Radius.circular(SdRadius.xs),
+        ),
+      ),
       child: Row(
         children: [
           h('المجموعة', 4),
@@ -293,37 +290,48 @@ class _SasProfitsPageState extends State<SasProfitsPage> {
     );
   }
 
-  Widget _dataRow(SasProfitRow r) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
+  Widget _dataRow(SasProfitRow r, bool alt) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
+      color: alt ? SdColors.surfaceAlt : SdColors.surface,
       child: Row(
         children: [
           Expanded(
             flex: 4,
             child: Text(r.label,
-                style: GoogleFonts.cairo(
-                    fontWeight: FontWeight.w700, fontSize: 12.sp)),
+                style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                    color: SdColors.ink)),
           ),
           Expanded(
             flex: 2,
             child: Text('${r.count}',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.cairo(fontSize: 12.sp)),
+                style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 12.5,
+                    color: SdColors.ink)),
           ),
           Expanded(
             flex: 3,
             child: Text(_n(r.cost),
                 textAlign: TextAlign.end,
-                style: GoogleFonts.robotoMono(fontSize: 12.sp)),
+                style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12.5,
+                    color: SdColors.muted)),
           ),
           Expanded(
             flex: 3,
             child: Text(_n(r.profit),
                 textAlign: TextAlign.end,
-                style: GoogleFonts.robotoMono(
+                style: const TextStyle(
+                    fontFamily: 'monospace',
                     fontWeight: FontWeight.w700,
-                    fontSize: 12.sp,
-                    color: AppTheme.successColor)),
+                    fontSize: 12.5,
+                    color: SdColors.success)),
           ),
         ],
       ),

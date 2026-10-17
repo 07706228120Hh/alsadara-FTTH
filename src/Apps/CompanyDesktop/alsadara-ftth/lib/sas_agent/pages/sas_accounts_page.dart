@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../permissions/permission_manager.dart';
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../models/sas_report.dart';
 import '../services/sas_agent_api_service.dart';
@@ -78,8 +77,8 @@ class SasAccountsPageState extends State<SasAccountsPage> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo()),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: TextStyle(fontFamily: 'Cairo', )),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
     ));
   }
 
@@ -128,20 +127,20 @@ class SasAccountsPageState extends State<SasAccountsPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          title: Text('حذف الحساب', style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+          title: Text('حذف الحساب', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           content: Text(
             'هل أنت متأكّد من حذف حساب «${acc.displayName}»؟',
-            style: GoogleFonts.cairo(),
+            style: TextStyle(fontFamily: 'Cairo', ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', )),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+              style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
               onPressed: () => Navigator.pop(ctx, true),
-              child: Text('حذف', style: GoogleFonts.cairo()),
+              child: Text('حذف', style: TextStyle(fontFamily: 'Cairo', )),
             ),
           ],
         ),
@@ -266,14 +265,14 @@ class SasAccountsPageState extends State<SasAccountsPage> {
               horizontal: 18.w, vertical: large ? 14.h : 13.h),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: AppTheme.blueGradient,
+              colors: SdColors.blueGradient,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(14.r),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primaryColor.withValues(alpha: 0.28),
+                color: SdColors.primary.withValues(alpha: 0.28),
                 blurRadius: 12,
                 spreadRadius: -2,
                 offset: const Offset(0, 5),
@@ -288,7 +287,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
               SizedBox(width: 8.w),
               Text(
                 large ? 'ربط حساب ساس' : 'ربط حساب ساس جديد',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 13.5.sp),
@@ -306,7 +305,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
     if (live == null) return null;
     return SasStatusBadge(
       label: '${live.count} مشترك',
-      color: AppTheme.infoColor,
+      color: SdColors.info,
       icon: Icons.people_alt_rounded,
     );
   }
@@ -320,8 +319,8 @@ class SasAccountsPageState extends State<SasAccountsPage> {
           child: OutlinedButton.icon(
             onPressed: busy ? null : () => _testAccount(acc),
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.infoColor,
-              side: BorderSide(color: AppTheme.infoColor.withValues(alpha: 0.45)),
+              foregroundColor: SdColors.info,
+              side: BorderSide(color: SdColors.info.withValues(alpha: 0.45)),
               padding: EdgeInsets.symmetric(vertical: 9.h),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -331,11 +330,11 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                     width: 15.w,
                     height: 15.w,
                     child: const CircularProgressIndicator(
-                        strokeWidth: 2, color: AppTheme.infoColor),
+                        strokeWidth: 2, color: SdColors.info),
                   )
                 : Icon(Icons.wifi_tethering_rounded, size: 17.sp),
             label: Text('اختبار اتصال',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w700, fontSize: 12.sp)),
           ),
         ),
@@ -344,7 +343,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
           child: FilledButton.icon(
             onPressed: busy ? null : () => _syncAccount(acc),
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
+              backgroundColor: SdColors.primary,
               padding: EdgeInsets.symmetric(vertical: 9.h),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -358,7 +357,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                   )
                 : Icon(Icons.sync_rounded, size: 17.sp),
             label: Text('مزامنة',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w800, fontSize: 12.sp)),
           ),
         ),
@@ -368,9 +367,9 @@ class SasAccountsPageState extends State<SasAccountsPage> {
 
   Widget _accountCard(SasAccount acc, bool isSelected) {
     final statusColor =
-        acc.isActive ? AppTheme.successColor : Colors.grey.shade500;
+        acc.isActive ? SdColors.success : Colors.grey.shade500;
     final badgeColors = acc.isActive
-        ? const [AppTheme.secondaryColor, AppTheme.primaryColor]
+        ? const [SdColors.primaryLight, SdColors.primary]
         : [Colors.grey.shade500, Colors.grey.shade600];
 
     return Material(
@@ -385,12 +384,12 @@ class SasAccountsPageState extends State<SasAccountsPage> {
             borderRadius: BorderRadius.circular(SasUi.radius.r),
             border: Border.all(
               color: isSelected
-                  ? AppTheme.primaryColor
+                  ? SdColors.primary
                   : Colors.grey.withValues(alpha: 0.16),
               width: isSelected ? 1.8 : 1.2,
             ),
             boxShadow: isSelected
-                ? SasUi.cardShadow(AppTheme.primaryColor)
+                ? SasUi.cardShadow(SdColors.primary)
                 : SasUi.cardShadow(),
           ),
           child: Row(
@@ -414,7 +413,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                           child: Text(
                             acc.displayName,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 14.5.sp,
                               fontWeight: FontWeight.w800,
                               color: const Color(0xFF1A1A2E),
@@ -424,7 +423,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                         if (isSelected) ...[
                           SizedBox(width: 6.w),
                           Icon(Icons.check_circle_rounded,
-                              size: 16.sp, color: AppTheme.primaryColor),
+                              size: 16.sp, color: SdColors.primary),
                         ],
                       ],
                     ),
@@ -439,7 +438,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                             '${acc.accountType.labelAr} · ${acc.serverUrl}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 11.sp,
                               color: Colors.grey[600],
                               fontWeight: FontWeight.w500,
@@ -476,7 +475,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                               _lastSyncLabel(acc)!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(fontFamily: 'Cairo', 
                                 fontSize: 10.5.sp,
                                 color: Colors.grey[600],
                                 fontWeight: FontWeight.w600,
@@ -509,9 +508,9 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                     value: 'explorer',
                     child: Row(children: [
                       Icon(Icons.travel_explore_rounded,
-                          size: 18, color: AppTheme.infoColor),
+                          size: 18, color: SdColors.info),
                       SizedBox(width: 8.w),
-                      Text('مستكشف الساس', style: GoogleFonts.cairo()),
+                      Text('مستكشف الساس', style: TextStyle(fontFamily: 'Cairo', )),
                     ]),
                   ),
                   if (_canManage) ...[
@@ -519,20 +518,20 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                       value: 'edit',
                       child: Row(children: [
                         Icon(Icons.edit_rounded,
-                            size: 18, color: AppTheme.primaryColor),
+                            size: 18, color: SdColors.primary),
                         SizedBox(width: 8.w),
-                        Text('تعديل', style: GoogleFonts.cairo()),
+                        Text('تعديل', style: TextStyle(fontFamily: 'Cairo', )),
                       ]),
                     ),
                     PopupMenuItem(
                       value: 'delete',
                       child: Row(children: [
                         Icon(Icons.delete_rounded,
-                            size: 18, color: AppTheme.errorColor),
+                            size: 18, color: SdColors.danger),
                         SizedBox(width: 8.w),
                         Text('حذف',
                             style:
-                                GoogleFonts.cairo(color: AppTheme.errorColor)),
+                                TextStyle(fontFamily: 'Cairo', color: SdColors.danger)),
                       ]),
                     ),
                   ],

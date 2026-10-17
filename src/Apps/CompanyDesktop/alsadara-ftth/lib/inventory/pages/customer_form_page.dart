@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 
 class CustomerFormPage extends StatefulWidget {
@@ -88,7 +89,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('فشل تحميل بيانات العميل: $e'),
-              backgroundColor: Colors.red),
+              backgroundColor: SdColors.danger),
         );
       }
     }
@@ -142,7 +143,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_isEditMode ? 'تم تعديل العميل' : 'تم إضافة العميل'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         Navigator.pop(context);
@@ -152,206 +153,211 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('فشل الحفظ: $e'), backgroundColor: Colors.red),
+              content: Text('فشل الحفظ: $e'), backgroundColor: SdColors.danger),
         );
       }
     }
   }
 
+  InputDecoration _dec(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: SdText.bodySm,
+        filled: true,
+        fillColor: SdColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F6FA),
-          foregroundColor: const Color(0xFF1A1A2E),
-          iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
-          titleTextStyle: const TextStyle(
-            color: Color(0xFF1A1A2E),
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-          elevation: 0,
-          title: Text(_isEditMode ? 'تعديل عميل' : 'إضافة عميل'),
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _buildFormFields(),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      height: 48,
-                      child: FilledButton(
-                        onPressed: _saving ? null : _save,
-                        child: _saving
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : const Text('حفظ'),
-                      ),
-                    ),
-                  ],
-                ),
+    return SdPage(
+      scrollable: false,
+      maxWidth: SdSpace.formMax,
+      appBar: SdAppBar(title: _isEditMode ? 'تعديل عميل' : 'إضافة عميل'),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildFormFields(),
+                  const SizedBox(height: SdSpace.xl),
+                  _buildSaveButton(),
+                  const SizedBox(height: SdSpace.md),
+                ],
               ),
-      ),
+            ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    if (_saving) {
+      return Opacity(
+        opacity: .7,
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(SdRadius.md),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [SdColors.primaryMid, SdColors.primary],
+            ),
+            boxShadow: const [BoxShadow(color: SdColors.primaryEdge, offset: Offset(0, 6))],
+          ),
+          child: const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+          ),
+        ),
+      );
+    }
+    return SdButton(
+      label: 'حفظ',
+      icon: Icons.save_rounded,
+      expand: true,
+      onPressed: _save,
     );
   }
 
   Widget _buildFormFields() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          children: [
-            // الاسم الكامل *
-            SizedBox(
-              width: 300,
-              child: TextFormField(
-                controller: _fullNameController,
-                decoration: const InputDecoration(
-                  labelText: 'الاسم الكامل *',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-              ),
+    return SdCard(
+      title: 'بيانات العميل',
+      icon: Icons.person_rounded,
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 12,
+        children: [
+          // الاسم الكامل *
+          SizedBox(
+            width: 300,
+            child: TextFormField(
+              controller: _fullNameController,
+              style: SdText.label,
+              decoration: _dec('الاسم الكامل *'),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
             ),
-            // الهاتف
-            SizedBox(
-              width: 200,
-              child: TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'الهاتف',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
+          ),
+          // الهاتف
+          SizedBox(
+            width: 200,
+            child: TextFormField(
+              controller: _phoneController,
+              style: SdText.label,
+              decoration: _dec('الهاتف'),
+              keyboardType: TextInputType.phone,
             ),
-            // الهاتف 2
-            SizedBox(
-              width: 200,
-              child: TextFormField(
-                controller: _phone2Controller,
-                decoration: const InputDecoration(
-                  labelText: 'الهاتف 2',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
+          ),
+          // الهاتف 2
+          SizedBox(
+            width: 200,
+            child: TextFormField(
+              controller: _phone2Controller,
+              style: SdText.label,
+              decoration: _dec('الهاتف 2'),
+              keyboardType: TextInputType.phone,
             ),
-            // البريد الإلكتروني
-            SizedBox(
-              width: 250,
-              child: TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'البريد الإلكتروني',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
+          ),
+          // البريد الإلكتروني
+          SizedBox(
+            width: 250,
+            child: TextFormField(
+              controller: _emailController,
+              style: SdText.label,
+              decoration: _dec('البريد الإلكتروني'),
+              keyboardType: TextInputType.emailAddress,
             ),
-            // المدينة
-            SizedBox(
-              width: 200,
-              child: TextFormField(
-                controller: _cityController,
-                decoration: const InputDecoration(
-                  labelText: 'المدينة',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+          ),
+          // المدينة
+          SizedBox(
+            width: 200,
+            child: TextFormField(
+              controller: _cityController,
+              style: SdText.label,
+              decoration: _dec('المدينة'),
             ),
-            // المنطقة
-            SizedBox(
-              width: 200,
-              child: TextFormField(
-                controller: _areaController,
-                decoration: const InputDecoration(
-                  labelText: 'المنطقة',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+          ),
+          // المنطقة
+          SizedBox(
+            width: 200,
+            child: TextFormField(
+              controller: _areaController,
+              style: SdText.label,
+              decoration: _dec('المنطقة'),
             ),
-            // العنوان
-            SizedBox(
-              width: 400,
-              child: TextFormField(
-                controller: _addressController,
-                decoration: const InputDecoration(
-                  labelText: 'العنوان',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+          ),
+          // العنوان
+          SizedBox(
+            width: 400,
+            child: TextFormField(
+              controller: _addressController,
+              style: SdText.label,
+              decoration: _dec('العنوان'),
             ),
-            // نوع العميل *
-            SizedBox(
-              width: 200,
-              child: DropdownButtonFormField<int>(
-                value: _customerType,
-                decoration: const InputDecoration(
-                  labelText: 'نوع العميل *',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 0, child: Text('نقدي')),
-                  DropdownMenuItem(value: 1, child: Text('آجل')),
-                  DropdownMenuItem(value: 2, child: Text('VIP')),
-                ],
-                onChanged: (v) {
-                  if (v != null) setState(() => _customerType = v);
-                },
-                validator: (v) => v == null ? 'مطلوب' : null,
-              ),
+          ),
+          // نوع العميل *
+          SizedBox(
+            width: 200,
+            child: DropdownButtonFormField<int>(
+              value: _customerType,
+              style: SdText.label,
+              decoration: _dec('نوع العميل *'),
+              items: const [
+                DropdownMenuItem(value: 0, child: Text('نقدي')),
+                DropdownMenuItem(value: 1, child: Text('آجل')),
+                DropdownMenuItem(value: 2, child: Text('VIP')),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => _customerType = v);
+              },
+              validator: (v) => v == null ? 'مطلوب' : null,
             ),
-            // سقف الائتمان (only if type != Cash)
-            if (_customerType != 0)
-              SizedBox(
-                width: 200,
-                child: TextFormField(
-                  controller: _creditLimitController,
-                  decoration: const InputDecoration(
-                    labelText: 'سقف الائتمان',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-            // الرقم الضريبي
+          ),
+          // سقف الائتمان (only if type != Cash)
+          if (_customerType != 0)
             SizedBox(
               width: 200,
               child: TextFormField(
-                controller: _taxNumberController,
-                decoration: const InputDecoration(
-                  labelText: 'الرقم الضريبي',
-                  border: OutlineInputBorder(),
-                ),
+                controller: _creditLimitController,
+                style: SdText.label,
+                decoration: _dec('سقف الائتمان'),
+                keyboardType: TextInputType.number,
               ),
             ),
-            // ملاحظات
-            SizedBox(
-              width: 400,
-              child: TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'ملاحظات',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
+          // الرقم الضريبي
+          SizedBox(
+            width: 200,
+            child: TextFormField(
+              controller: _taxNumberController,
+              style: SdText.label,
+              decoration: _dec('الرقم الضريبي'),
             ),
-          ],
-        ),
+          ),
+          // ملاحظات
+          SizedBox(
+            width: 400,
+            child: TextFormField(
+              controller: _notesController,
+              style: SdText.label,
+              decoration: _dec('ملاحظات'),
+              maxLines: 3,
+            ),
+          ),
+        ],
       ),
     );
   }

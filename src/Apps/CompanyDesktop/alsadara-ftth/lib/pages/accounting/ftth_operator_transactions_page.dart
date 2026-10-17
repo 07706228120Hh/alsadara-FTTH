@@ -3,9 +3,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
+import '../../frontend/frontend.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/plan_pricing_service.dart';
 import '../../services/ftth_plans_service.dart';
@@ -442,34 +442,29 @@ class _FtthOperatorTransactionsPageState
       'أخرى'
     ];
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'عمليات: ${widget.operatorName}',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: context.accR.headingSmall),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'عمليات: ${widget.operatorName}',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.copy_all,
+            label: 'نسخ الكل',
+            onPressed: _copyAllToClipboard,
           ),
-          backgroundColor: Colors.teal.shade700,
-          foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.copy_all),
-              tooltip: 'نسخ الكل',
-              onPressed: _copyAllToClipboard,
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            // ── بطاقات الإحصائيات ──
-            _buildStatsBar(),
-            // ── شريط البحث والفلاتر ──
-            _buildSearchAndFilters(categories),
-            // ── الجدول ──
-            Expanded(child: _buildTable()),
-          ],
-        ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // ── بطاقات الإحصائيات ──
+          _buildStatsBar(),
+          // ── شريط البحث والفلاتر ──
+          _buildSearchAndFilters(categories),
+          // ── الجدول ──
+          Expanded(child: _buildTable()),
+        ],
       ),
     );
   }
@@ -478,7 +473,7 @@ class _FtthOperatorTransactionsPageState
     final isMob = context.responsive.isMobile;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM, vertical: context.accR.spaceS),
-      color: Colors.grey.shade50,
+      color: SdColors.groundAlt,
       child: isMob
           ? Wrap(
               spacing: context.accR.spaceS,
@@ -486,73 +481,75 @@ class _FtthOperatorTransactionsPageState
               children: [
                 SizedBox(
                   width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
-                  child: _statCard('الإجمالي', '${_filtered.length}', Colors.teal),
+                  child: _statCard('الإجمالي', '${_filtered.length}', SdStatus.info.tone),
                 ),
                 SizedBox(
                   width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
                   child: _statCard(
                       'السالب',
                       '${_currencyFormat.format(_negativeAmount.abs())} د.ع',
-                      Colors.red),
+                      SdStatus.danger.tone),
                 ),
                 SizedBox(
                   width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
                   child: _statCard('الموجب', '${_currencyFormat.format(_positiveAmount)} د.ع',
-                      Colors.green),
+                      SdStatus.success.tone),
                 ),
                 if (widget.attributedOps > 0)
                   SizedBox(
                     width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
                     child: _statCard(
-                        'منسوب تلقائياً', '${widget.attributedOps}', Colors.indigo),
+                        'منسوب تلقائياً', '${widget.attributedOps}', SdGroup.admin.tone),
                   ),
               ],
             )
           : Row(
               children: [
-                _statCard('الإجمالي', '${_filtered.length}', Colors.teal),
+                _statCard('الإجمالي', '${_filtered.length}', SdStatus.info.tone),
                 SizedBox(width: context.accR.spaceS),
                 _statCard(
                     'السالب',
                     '${_currencyFormat.format(_negativeAmount.abs())} د.ع',
-                    Colors.red),
+                    SdStatus.danger.tone),
                 SizedBox(width: context.accR.spaceS),
                 _statCard('الموجب', '${_currencyFormat.format(_positiveAmount)} د.ع',
-                    Colors.green),
+                    SdStatus.success.tone),
                 if (widget.attributedOps > 0) ...[
                   SizedBox(width: context.accR.spaceS),
                   _statCard(
-                      'منسوب تلقائياً', '${widget.attributedOps}', Colors.indigo),
+                      'منسوب تلقائياً', '${widget.attributedOps}', SdGroup.admin.tone),
                 ],
               ],
             ),
     );
   }
 
-  Widget _statCard(String label, String value, Color color) {
+  Widget _statCard(String label, String value, SdTone tone) {
     final card = Container(
       padding: EdgeInsets.symmetric(vertical: context.accR.spaceS, horizontal: context.accR.spaceS),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
               style: TextStyle(
-                  fontSize: context.accR.caption,
-                  color: color.shade700,
-                  fontWeight: FontWeight.w600)),
-          SizedBox(height: 2),
+                  fontFamily: SdText.family,
+                  fontSize: 11.5,
+                  color: tone.text,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(value,
                 style: TextStyle(
-                    fontSize: context.accR.small,
-                    fontWeight: FontWeight.bold,
-                    color: color.shade800),
+                    fontFamily: SdText.family,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: tone.edge),
                 textAlign: TextAlign.center),
           ),
         ],
@@ -567,10 +564,10 @@ class _FtthOperatorTransactionsPageState
   Widget _buildSearchAndFilters(List<String> categories) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
         border:
-            Border(bottom: BorderSide(color: Colors.grey.shade300, width: 1)),
+            Border(bottom: BorderSide(color: SdColors.divider, width: 1)),
       ),
       child: Column(
         children: [
@@ -717,15 +714,10 @@ class _FtthOperatorTransactionsPageState
 
   Widget _buildTable() {
     if (_filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.inbox_outlined, size: context.accR.iconXL, color: Colors.grey.shade400),
-            SizedBox(height: context.accR.spaceS),
-            Text('لا توجد عمليات',
-                style: TextStyle(color: Colors.grey.shade600)),
-          ],
+      return const Center(
+        child: SdEmptyState(
+          title: 'لا توجد عمليات',
+          icon: Icons.inbox_outlined,
         ),
       );
     }

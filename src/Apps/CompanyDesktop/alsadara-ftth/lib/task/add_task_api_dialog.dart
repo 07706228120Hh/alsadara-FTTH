@@ -7,6 +7,7 @@ import '../services/pending_subscribers_service.dart';
 import '../services/vps_auth_service.dart';
 import '../inventory/services/inventory_api_service.dart';
 import '../utils/responsive_helper.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 
 /// حوار إضافة مهمة جديدة عبر API
 class AddTaskApiDialog extends StatefulWidget {
@@ -350,12 +351,12 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
 
     // "شراء اشتراك" يظهر فقط لقسم الحسابات — في نهاية القائمة
     if (_selectedDepartment == 'الحسابات' || _selectedDepartment.isEmpty) {
-      items.add(const DropdownMenuItem(
+      items.add(DropdownMenuItem(
         value: 'شراء اشتراك',
         child: Row(children: [
-          Icon(Icons.shopping_cart, size: 16, color: Colors.purple),
-          SizedBox(width: 8),
-          Text('شراء اشتراك', style: TextStyle(fontWeight: FontWeight.bold)),
+          Icon(Icons.shopping_cart, size: 16, color: SdGroup.platform.tone.base),
+          const SizedBox(width: 8),
+          const Text('شراء اشتراك', style: TextStyle(fontWeight: FontWeight.bold)),
         ]),
       ));
     }
@@ -466,7 +467,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                   ),
                 ),
               ]),
-              backgroundColor: materialsFailed ? Colors.orange : Colors.green,
+              backgroundColor: materialsFailed ? SdColors.warning : SdColors.success,
               duration: Duration(seconds: materialsFailed ? 5 : 3),
             ),
           );
@@ -623,7 +624,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('✅ تم فتح واتساب لإرسال الرسالة'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: SdColors.success,
                   duration: Duration(seconds: 3),
                 ),
               );
@@ -642,7 +643,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   void _showError(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
+        SnackBar(content: Text(message), backgroundColor: SdColors.danger),
       );
     }
   }
@@ -671,10 +672,9 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     // على الموبايل الصغير: شاشة كاملة لسهولة الاستخدام
     if (isSmall) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('إضافة مهمة جديدة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.blue.shade700,
-          foregroundColor: Colors.white,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'إضافة مهمة جديدة',
           leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
         ),
         body: Container(
@@ -683,18 +683,14 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
               ? const Center(child: CircularProgressIndicator())
               : _errorMessage != null
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                          const SizedBox(height: 6),
-                          Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
-                          const SizedBox(height: 6),
-                          ElevatedButton(
-                            onPressed: () { setState(() => _errorMessage = null); _loadDataFromApi(); },
-                            child: const Text('إعادة المحاولة'),
-                          ),
-                        ],
+                      child: SdEmptyState(
+                        icon: Icons.error_outline,
+                        status: SdStatus.danger,
+                        title: _errorMessage!,
+                        action: SdButton(
+                          label: 'إعادة المحاولة',
+                          onPressed: () { setState(() => _errorMessage = null); _loadDataFromApi(); },
+                        ),
                       ),
                     )
                   : _buildTaskForm(),
@@ -719,29 +715,16 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.add_task, color: Colors.blue.shade700, size: isMobile ? 18 : 24),
+                      Icon(Icons.add_task, color: SdColors.primary, size: isMobile ? 18 : 24),
                       SizedBox(width: isMobile ? 4 : 8),
                       Flexible(
                         child: Text('إضافة مهمة جديدة',
                             overflow: TextOverflow.ellipsis,
                             style:
-                                TextStyle(fontSize: isMobile ? 14 : 24, fontWeight: FontWeight.bold)),
+                                TextStyle(fontFamily: SdText.family, fontSize: isMobile ? 14 : 24, fontWeight: FontWeight.w900, color: SdColors.ink)),
                       ),
-                      const SizedBox(width: 4),
-                      Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue.shade200),
-                        ),
-                        child: Text('API',
-                            style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.blue.shade700,
-                                fontWeight: FontWeight.bold)),
-                      ),
+                      const SizedBox(width: 6),
+                      const SdStatusChip('API', status: SdStatus.info),
                     ],
                   ),
                 ),
@@ -750,7 +733,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                     onPressed: () => Navigator.pop(context)),
               ],
             ),
-            const Divider(thickness: 2),
+            const Divider(thickness: 2, color: SdColors.divider),
             Expanded(
               child: _isLoadingData
                   ? const Center(
@@ -765,24 +748,17 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                     )
                   : _errorMessage != null
                       ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.error_outline,
-                                  size: 64, color: Colors.red),
-                              SizedBox(height: _isNarrow ? 3 : 6),
-                              Text(_errorMessage!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.red)),
-                              SizedBox(height: _isNarrow ? 3 : 6),
-                              ElevatedButton(
-                                onPressed: () {
-                                  setState(() => _errorMessage = null);
-                                  _loadDataFromApi();
-                                },
-                                child: const Text('إعادة المحاولة'),
-                              ),
-                            ],
+                          child: SdEmptyState(
+                            icon: Icons.error_outline,
+                            status: SdStatus.danger,
+                            title: _errorMessage!,
+                            action: SdButton(
+                              label: 'إعادة المحاولة',
+                              onPressed: () {
+                                setState(() => _errorMessage = null);
+                                _loadDataFromApi();
+                              },
+                            ),
                           ),
                         )
                       : _buildTaskForm(),
@@ -865,29 +841,30 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
               children: [
                 Row(
                   children: [
-                    if (i > 0) Expanded(child: Container(height: 2, color: isDone ? const Color(0xFF4CAF50) : Colors.grey.shade300)),
+                    if (i > 0) Expanded(child: Container(height: 2, color: isDone ? SdColors.success : SdColors.divider)),
                     Container(
                       width: 28, height: 28,
                       decoration: BoxDecoration(
-                        color: isActive ? const Color(0xFF1A237E) : isDone ? const Color(0xFF4CAF50) : Colors.grey.shade300,
+                        color: isActive ? SdColors.primary : isDone ? SdColors.success : SdColors.divider,
                         shape: BoxShape.circle,
                       ),
                       child: Center(
                         child: isDone
                             ? const Icon(Icons.check, size: 16, color: Colors.white)
-                            : Text('${i + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isActive ? Colors.white : Colors.grey.shade600)),
+                            : Text('${i + 1}', style: TextStyle(fontFamily: SdText.family, fontSize: 12, fontWeight: FontWeight.w900, color: isActive ? Colors.white : SdColors.muted)),
                       ),
                     ),
-                    if (i < steps.length - 1) Expanded(child: Container(height: 2, color: isDone ? const Color(0xFF4CAF50) : Colors.grey.shade300)),
+                    if (i < steps.length - 1) Expanded(child: Container(height: 2, color: isDone ? SdColors.success : SdColors.divider)),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   steps[i],
                   style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color: isActive ? const Color(0xFF1A237E) : Colors.grey.shade500,
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
+                    fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                    color: isActive ? SdColors.primary : SdColors.muted,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,
@@ -964,67 +941,57 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
+        border: Border(top: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         children: [
-          // زر السابق
+          // زر السابق / إلغاء
           if (!isFirst)
             Expanded(
-              child: OutlinedButton.icon(
+              child: SdButton(
+                label: 'السابق',
+                icon: Icons.arrow_forward,
+                kind: SdButtonKind.secondary,
+                expand: true,
                 onPressed: () => setState(() => _currentStep--),
-                icon: const Icon(Icons.arrow_forward, size: 18),
-                label: const Text('السابق'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
               ),
             )
           else
             Expanded(
-              child: OutlinedButton(
+              child: SdButton(
+                label: 'إلغاء',
+                kind: SdButtonKind.secondary,
+                expand: true,
                 onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('إلغاء'),
               ),
             ),
 
           const SizedBox(width: 12),
 
           // زر التالي / حفظ
+          // في RTL «التالي» يتّجه لليسار — arrow_back_ios_new يعكس صحيحاً
           Expanded(
             flex: 2,
-            child: ElevatedButton.icon(
-              onPressed: _isLoading ? null : () {
-                if (isLast) {
-                  if (_formKey.currentState?.validate() ?? false) {
-                    _createTask();
-                  }
-                } else {
-                  if (_validateCurrentStep()) {
-                    setState(() => _currentStep++);
-                  }
-                }
-              },
-              icon: _isLoading
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  // في RTL «التالي» يتّجه لليسار — arrow_back_ios_new يعكس صحيحاً
-                  // (مقابل زر «السابق» الذي يستخدم arrow_forward لليمين)
-                  : Icon(isLast ? Icons.check_rounded : Icons.arrow_back_ios_new, size: 20),
-              label: Text(isLast ? 'حفظ المهمة' : 'التالي'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isLast ? const Color(0xFF4CAF50) : const Color(0xFF1A237E),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-              ),
+            child: SdButton(
+              label: isLast ? 'حفظ المهمة' : 'التالي',
+              icon: isLast ? Icons.check_rounded : Icons.arrow_back_ios_new,
+              kind: isLast ? SdButtonKind.accent : SdButtonKind.primary,
+              expand: true,
+              onPressed: _isLoading
+                  ? null
+                  : () {
+                      if (isLast) {
+                        if (_formKey.currentState?.validate() ?? false) {
+                          _createTask();
+                        }
+                      } else {
+                        if (_validateCurrentStep()) {
+                          setState(() => _currentStep++);
+                        }
+                      }
+                    },
             ),
           ),
         ],
@@ -1033,232 +1000,200 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   }
 
   Widget _buildDepartmentSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade200, width: 1.2),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('معلومات القسم والفريق',
-                style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
-            SizedBox(height: _isNarrow ? 3 : 6),
-            _adaptiveRow(
-              // القسم — ثابت عند شراء اشتراك
-              _selectedTaskType == 'شراء اشتراك'
-                  ? TextFormField(
-                      initialValue: 'الحسابات',
-                      readOnly: true,
-                      decoration: InputDecoration(
-                          labelText: 'القسم *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          isDense: true, filled: true, fillColor: Colors.grey.shade100,
-                          suffixIcon: const Icon(Icons.lock_outline, size: 16, color: Colors.grey)),
-                    )
-                  : DropdownButtonFormField<String>(
-                      key: ValueKey('dept_${_selectedDepartment}_${_departments.length}'),
-                      decoration: InputDecoration(
-                          labelText: 'القسم *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
-                      value: _departments.contains(_selectedDepartment)
-                          ? _selectedDepartment
-                          : null,
-                      items: _departments
-                          .map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13))))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) _onDepartmentChanged(v);
-                      },
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'يجب اختيار القسم' : null,
-                    ),
-              // نوع المهمة — ثابت عند شراء اشتراك
-              _selectedTaskType == 'شراء اشتراك'
-                  ? TextFormField(
-                      initialValue: 'شراء اشتراك',
-                      readOnly: true,
-                      decoration: InputDecoration(
-                          labelText: 'نوع المهمة *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          isDense: true, filled: true, fillColor: Colors.grey.shade100,
-                          suffixIcon: const Icon(Icons.lock_outline, size: 16, color: Colors.grey)),
-                    )
-                  : DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                          labelText: 'نوع المهمة *',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
-                      value: _selectedTaskType.isEmpty ? null : _selectedTaskType,
-                      items: _getTaskTypeItems(),
-                      onChanged: (v) {
-                        setState(() {
-                          _selectedTaskType = v ?? '';
-                          if (_selectedTaskType == 'شراء اشتراك') {
-                            if (!_departments.contains('الحسابات')) {
-                              _departments.add('الحسابات');
-                            }
-                            _selectedDepartment = 'الحسابات';
-                            _selectedTechnician = '';
-                            _selectedLeader = '';
-                            _fetchStaffByDepartment('الحسابات');
+    return SdCard(
+      tone: SdGroup.admin.tone,
+      title: 'معلومات القسم والفريق',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _adaptiveRow(
+            // القسم — ثابت عند شراء اشتراك
+            _selectedTaskType == 'شراء اشتراك'
+                ? TextFormField(
+                    initialValue: 'الحسابات',
+                    readOnly: true,
+                    decoration: InputDecoration(
+                        labelText: 'القسم *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        isDense: true, filled: true, fillColor: SdColors.surfaceAlt,
+                        suffixIcon: const Icon(Icons.lock_outline, size: 16, color: SdColors.faint)),
+                  )
+                : DropdownButtonFormField<String>(
+                    key: ValueKey('dept_${_selectedDepartment}_${_departments.length}'),
+                    decoration: InputDecoration(
+                        labelText: 'القسم *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: SdColors.surface),
+                    value: _departments.contains(_selectedDepartment)
+                        ? _selectedDepartment
+                        : null,
+                    items: _departments
+                        .map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13))))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) _onDepartmentChanged(v);
+                    },
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'يجب اختيار القسم' : null,
+                  ),
+            // نوع المهمة — ثابت عند شراء اشتراك
+            _selectedTaskType == 'شراء اشتراك'
+                ? TextFormField(
+                    initialValue: 'شراء اشتراك',
+                    readOnly: true,
+                    decoration: InputDecoration(
+                        labelText: 'نوع المهمة *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        isDense: true, filled: true, fillColor: SdColors.surfaceAlt,
+                        suffixIcon: const Icon(Icons.lock_outline, size: 16, color: SdColors.faint)),
+                  )
+                : DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                        labelText: 'نوع المهمة *',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: SdColors.surface),
+                    value: _selectedTaskType.isEmpty ? null : _selectedTaskType,
+                    items: _getTaskTypeItems(),
+                    onChanged: (v) {
+                      setState(() {
+                        _selectedTaskType = v ?? '';
+                        if (_selectedTaskType == 'شراء اشتراك') {
+                          if (!_departments.contains('الحسابات')) {
+                            _departments.add('الحسابات');
                           }
-                        });
-                      },
-                      validator: (v) => (v == null || v.isEmpty)
-                          ? 'يجب اختيار نوع المهمة'
-                          : null,
-                    ),
+                          _selectedDepartment = 'الحسابات';
+                          _selectedTechnician = '';
+                          _selectedLeader = '';
+                          _fetchStaffByDepartment('الحسابات');
+                        }
+                      });
+                    },
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'يجب اختيار نوع المهمة'
+                        : null,
+                  ),
+          ),
+          SizedBox(height: _isNarrow ? 3 : 6),
+          _adaptiveRow(
+            _buildSearchableDropdown(
+              label: 'القائد',
+              items: _leaders,
+              selectedValue: _selectedLeader,
+              onSelected: (v) => setState(() => _selectedLeader = v),
             ),
-            SizedBox(height: _isNarrow ? 3 : 6),
-            _adaptiveRow(
-              _buildSearchableDropdown(
-                label: 'القائد',
-                items: _leaders,
-                selectedValue: _selectedLeader,
-                onSelected: (v) => setState(() => _selectedLeader = v),
-              ),
-              _buildSearchableDropdown(
-                label: 'الفني',
-                items: _technicians,
-                selectedValue: _selectedTechnician,
-                onSelected: (v) {
-                  setState(() {
-                    _selectedTechnician = v;
-                    _updateSelectedUserPhone();
-                  });
-                },
-                validator: (v) {
-                  if (v.isEmpty) return 'يجب اختيار فني';
-                  return null;
-                },
-              ),
+            _buildSearchableDropdown(
+              label: 'الفني',
+              items: _technicians,
+              selectedValue: _selectedTechnician,
+              onSelected: (v) {
+                setState(() {
+                  _selectedTechnician = v;
+                  _updateSelectedUserPhone();
+                });
+              },
+              validator: (v) {
+                if (v.isEmpty) return 'يجب اختيار فني';
+                return null;
+              },
             ),
-            if (_currentSelectedPhone.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  border: Border.all(color: Colors.green.shade300),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.phone, size: 16, color: Colors.green),
-                  const SizedBox(width: 8),
-                  Text('رقم هاتف الفني: $_currentSelectedPhone',
-                      style:
-                          const TextStyle(fontSize: 12, color: Colors.green)),
-                ]),
+          ),
+          if (_currentSelectedPhone.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: SdColors.successTint,
+                border: Border.all(color: SdColors.successTintEdge),
+                borderRadius: BorderRadius.circular(SdRadius.xs),
               ),
-          ],
-        ),
+              child: Row(children: [
+                const Icon(Icons.phone, size: 16, color: SdColors.success),
+                const SizedBox(width: 8),
+                Text('رقم هاتف الفني: $_currentSelectedPhone',
+                    style:
+                        const TextStyle(fontFamily: SdText.family, fontSize: 12, color: SdColors.success)),
+              ]),
+            ),
+        ],
       ),
     );
   }
 
   Widget _buildCustomerSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade200, width: 1.2),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('معلومات العميل',
-                style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
-            SizedBox(height: _isNarrow ? 3 : 6),
-            _adaptiveRow(
-              TextFormField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                    labelText: 'اسم العميل *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال اسم العميل' : null,
-              ),
-              TextFormField(
-                controller: _phoneController,
-                decoration: InputDecoration(
-                    labelText: 'رقم الهاتف *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
-                keyboardType: TextInputType.phone,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال رقم الهاتف' : null,
-              ),
+    return SdCard(
+      tone: SdGroup.admin.tone,
+      title: 'معلومات العميل',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _adaptiveRow(
+            TextFormField(
+              controller: _usernameController,
+              decoration: InputDecoration(
+                  labelText: 'اسم العميل *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: SdColors.surface),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال اسم العميل' : null,
             ),
-            SizedBox(height: _isNarrow ? 3 : 6),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _locationController,
-                    decoration: InputDecoration(
-                        labelText: 'الموقع *', border: OutlineInputBorder()),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'يجب إدخال الموقع' : null,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _fetchDeviceLocation,
-                  icon: const Icon(Icons.my_location_rounded),
-                  tooltip: 'تحديد الموقع من الجهاز',
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                    foregroundColor: Colors.blue,
-                    padding: const EdgeInsets.all(12),
-                  ),
-                ),
-              ],
+            TextFormField(
+              controller: _phoneController,
+              decoration: InputDecoration(
+                  labelText: 'رقم الهاتف *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: SdColors.surface),
+              keyboardType: TextInputType.phone,
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال رقم الهاتف' : null,
             ),
-          ],
-        ),
+          ),
+          SizedBox(height: _isNarrow ? 3 : 6),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _locationController,
+                  decoration: const InputDecoration(
+                      labelText: 'الموقع *', border: OutlineInputBorder()),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'يجب إدخال الموقع' : null,
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _fetchDeviceLocation,
+                icon: const Icon(Icons.my_location_rounded),
+                tooltip: 'تحديد الموقع من الجهاز',
+                style: IconButton.styleFrom(
+                  backgroundColor: SdColors.primaryTint,
+                  foregroundColor: SdColors.primary,
+                  padding: const EdgeInsets.all(12),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildTechnicalSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade200, width: 1.2),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('المعلومات الفنية',
-                style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
-            SizedBox(height: _isNarrow ? 3 : 6),
-            _adaptiveRow(
-              // FBG — مربع بحث مع تصفية تلقائية
-              _fbgOptions.isNotEmpty
-                  ? Autocomplete<String>(
-                      optionsBuilder: (textEditingValue) {
-                        if (textEditingValue.text.isEmpty) return _fbgOptions.toSet();
-                        return _fbgOptions.toSet().where((f) =>
-                            f.toLowerCase().contains(textEditingValue.text.toLowerCase()));
-                      },
-                      initialValue: TextEditingValue(text: _fbgController.text),
-                      onSelected: (v) => setState(() => _fbgController.text = v),
-                      fieldViewBuilder: (ctx, controller, focusNode, onSubmitted) {
-                        return TextFormField(
-                          controller: controller,
-                          focusNode: focusNode,
-                          decoration: InputDecoration(
-                            labelText: 'FBG *',
-                            hintText: 'ابحث عن FBG...',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            isDense: true, filled: true, fillColor: Colors.white,
-                            prefixIcon: const Icon(Icons.search, size: 18),
+    return SdCard(
+      tone: SdGroup.admin.tone,
+      title: 'المعلومات الفنية',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _adaptiveRow(
+            // FBG — مربع بحث مع تصفية تلقائية
+            _fbgOptions.isNotEmpty
+                ? Autocomplete<String>(
+                    optionsBuilder: (textEditingValue) {
+                      if (textEditingValue.text.isEmpty) return _fbgOptions.toSet();
+                      return _fbgOptions.toSet().where((f) =>
+                          f.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                    },
+                    initialValue: TextEditingValue(text: _fbgController.text),
+                    onSelected: (v) => setState(() => _fbgController.text = v),
+                    fieldViewBuilder: (ctx, controller, focusNode, onSubmitted) {
+                      return TextFormField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        decoration: InputDecoration(
+                          labelText: 'FBG *',
+                          hintText: 'ابحث عن FBG...',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          isDense: true, filled: true, fillColor: SdColors.surface,
+                          prefixIcon: const Icon(Icons.search, size: 18),
                             suffixIcon: controller.text.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear, size: 16),
@@ -1298,48 +1233,33 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                     )
                   : TextFormField(
                       controller: _fbgController,
-                      decoration: InputDecoration(labelText: 'FBG *', hintText: 'أدخل FBG...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                      decoration: InputDecoration(labelText: 'FBG *', hintText: 'أدخل FBG...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: SdColors.surface),
                       validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال FBG' : null,
                     ),
               TextFormField(
                 controller: _fatController,
-                decoration: InputDecoration(labelText: 'FAT *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: Colors.white),
+                decoration: InputDecoration(labelText: 'FAT *', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)), isDense: true, filled: true, fillColor: SdColors.surface),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'يجب إدخال FAT' : null,
               ),
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildSubscriptionSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade200, width: 1.2),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Icon(Icons.subscriptions,
-                  color: Colors.purple.shade700, size: 20),
-              const SizedBox(width: 8),
-              Text('معلومات الاشتراك',
-                  style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
-            ]),
-            SizedBox(height: _isNarrow ? 3 : 6),
+    return SdCard(
+      tone: SdGroup.platform.tone,
+      icon: Icons.subscriptions,
+      title: 'معلومات الاشتراك',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             _adaptiveRow(
               DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'نوع الخدمة *', border: const OutlineInputBorder(), isDense: true,
-                  prefixIcon: Icon(Icons.speed, color: Colors.green.shade600, size: 18),
+                decoration: const InputDecoration(
+                  labelText: 'نوع الخدمة *', border: OutlineInputBorder(), isDense: true,
+                  prefixIcon: Icon(Icons.speed, color: SdColors.success, size: 18),
                 ),
                 value: _selectedServiceType.isEmpty ? null : _selectedServiceType,
                 items: _serviceTypes.map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)))).toList(),
@@ -1347,9 +1267,9 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 validator: (v) => (_selectedTaskType == 'شراء اشتراك' && (v == null || v.isEmpty)) ? 'يجب اختيار نوع الخدمة' : null,
               ),
               DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'مدة الالتزام *', border: const OutlineInputBorder(), isDense: true,
-                  prefixIcon: Icon(Icons.schedule, color: Colors.blue.shade600, size: 18),
+                decoration: const InputDecoration(
+                  labelText: 'مدة الالتزام *', border: OutlineInputBorder(), isDense: true,
+                  prefixIcon: Icon(Icons.schedule, color: SdColors.info, size: 18),
                 ),
                 value: _selectedSubscriptionDuration.isEmpty ? null : _selectedSubscriptionDuration,
                 items: _subscriptionDurations.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 13)))).toList(),
@@ -1364,7 +1284,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 labelText: 'سعر الاشتراك *',
                 border: const OutlineInputBorder(),
                 prefixIcon:
-                    Icon(Icons.attach_money, color: Colors.orange.shade600),
+                    const Icon(Icons.attach_money, color: SdColors.warning),
                 suffixText: 'دينار',
                 hintText: 'مثال: 15,000',
               ),
@@ -1393,7 +1313,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                           : 'أجور التوصيل',
                   border: const OutlineInputBorder(),
                   prefixIcon:
-                      Icon(Icons.local_shipping, color: Colors.teal.shade600),
+                      const Icon(Icons.local_shipping, color: SdColors.accent),
                   suffixText: 'دينار',
                   hintText: 'مثال: 5,000',
                 ),
@@ -1403,60 +1323,51 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             ],
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildMaterialsSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.orange.shade50.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.orange.shade200, width: 1.2),
+    return SdCard(
+      tone: SdGroup.comms.tone,
+      icon: Icons.inventory_2,
+      title: 'المواد المصروفة',
+      trailing: TextButton.icon(
+        onPressed: () async {
+          if (_allInventoryItems.isEmpty && !_isLoadingItems) {
+            setState(() => _isLoadingItems = true);
+            try {
+              final companyId = VpsAuthService.instance.currentCompanyId ?? '';
+              if (companyId.isEmpty) {
+                if (mounted) _showError('لا يمكن تحميل المواد — لم يتم تحديد الشركة');
+                if (mounted) setState(() => _isLoadingItems = false);
+                return;
+              }
+              final res = await InventoryApiService.instance.getItems(companyId: companyId, pageSize: 200);
+              _allInventoryItems = ((res['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+              if (_allInventoryItems.isEmpty && mounted) {
+                _showError('لا توجد مواد مسجلة في النظام');
+              }
+            } catch (e) {
+              debugPrint('❌ خطأ في تحميل المواد: $e');
+              if (mounted) _showError('فشل في تحميل قائمة المواد');
+            }
+            if (mounted) setState(() => _isLoadingItems = false);
+          }
+          if (_allInventoryItems.isEmpty) return;
+          setState(() => _materialRows.add(_AddTaskMaterialRow()));
+        },
+        icon: const Icon(Icons.add, size: 16, color: SdColors.warning),
+        label: const Text('إضافة', style: TextStyle(fontFamily: SdText.family, fontSize: 12, fontWeight: FontWeight.w800, color: SdColors.warningText)),
       ),
-      padding: EdgeInsets.symmetric(horizontal: _isNarrow ? 8 : 12, vertical: _isNarrow ? 6 : 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(Icons.inventory_2, color: Colors.orange.shade700, size: _isNarrow ? 16 : 18),
-            const SizedBox(width: 6),
-            Expanded(child: Text('المواد المصروفة', style: TextStyle(fontSize: _isNarrow ? 11 : 13, fontWeight: FontWeight.w700, color: Colors.orange.shade800))),
-            TextButton.icon(
-              onPressed: () async {
-                if (_allInventoryItems.isEmpty && !_isLoadingItems) {
-                  setState(() => _isLoadingItems = true);
-                  try {
-                    final companyId = VpsAuthService.instance.currentCompanyId ?? '';
-                    if (companyId.isEmpty) {
-                      if (mounted) _showError('لا يمكن تحميل المواد — لم يتم تحديد الشركة');
-                      if (mounted) setState(() => _isLoadingItems = false);
-                      return;
-                    }
-                    final res = await InventoryApiService.instance.getItems(companyId: companyId, pageSize: 200);
-                    _allInventoryItems = ((res['data'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-                    if (_allInventoryItems.isEmpty && mounted) {
-                      _showError('لا توجد مواد مسجلة في النظام');
-                    }
-                  } catch (e) {
-                    debugPrint('❌ خطأ في تحميل المواد: $e');
-                    if (mounted) _showError('فشل في تحميل قائمة المواد');
-                  }
-                  if (mounted) setState(() => _isLoadingItems = false);
-                }
-                if (_allInventoryItems.isEmpty) return;
-                setState(() => _materialRows.add(_AddTaskMaterialRow()));
-              },
-              icon: Icon(Icons.add, size: 14, color: Colors.orange.shade700),
-              label: Text('إضافة', style: TextStyle(fontSize: 12, color: Colors.orange.shade700)),
-            ),
-          ]),
           if (_isLoadingItems)
             const Padding(padding: EdgeInsets.all(12), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))),
           if (_materialRows.isEmpty && !_isLoadingItems)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Center(child: Text('لا توجد مواد مضافة', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Center(child: Text('لا توجد مواد مضافة', style: TextStyle(fontFamily: SdText.family, fontSize: 11.5, color: SdColors.faint))),
             ),
           ..._materialRows.asMap().entries.map((entry) {
             final idx = entry.key;
@@ -1473,7 +1384,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                           value: row.itemId.isEmpty ? null : row.itemId,
                           isExpanded: true,
                           decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
-                          style: const TextStyle(fontSize: 12, color: Colors.black87),
+                          style: const TextStyle(fontSize: 12, color: SdColors.ink),
                           items: _allInventoryItems.map((item) {
                             final id = (item['Id'] ?? item['id'])?.toString() ?? '';
                             final name = (item['Name'] ?? item['name'])?.toString() ?? '';
@@ -1501,7 +1412,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          InkWell(onTap: () => setState(() => _materialRows.removeAt(idx)), child: const Icon(Icons.remove_circle, size: 22, color: Colors.red)),
+                          InkWell(onTap: () => setState(() => _materialRows.removeAt(idx)), child: const Icon(Icons.remove_circle, size: 22, color: SdColors.danger)),
                         ]),
                       ],
                     )
@@ -1513,7 +1424,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                           value: row.itemId.isEmpty ? null : row.itemId,
                           isExpanded: true,
                           decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
-                          style: const TextStyle(fontSize: 12, color: Colors.black87),
+                          style: const TextStyle(fontSize: 12, color: SdColors.ink),
                           items: _allInventoryItems.map((item) {
                             final id = (item['Id'] ?? item['id'])?.toString() ?? '';
                             final name = (item['Name'] ?? item['name'])?.toString() ?? '';
@@ -1541,7 +1452,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      InkWell(onTap: () => setState(() => _materialRows.removeAt(idx)), child: const Icon(Icons.remove_circle, size: 22, color: Colors.red)),
+                      InkWell(onTap: () => setState(() => _materialRows.removeAt(idx)), child: const Icon(Icons.remove_circle, size: 22, color: SdColors.danger)),
                     ]),
             );
           }),
@@ -1551,50 +1462,39 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   }
 
   Widget _buildAdditionalSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade200, width: 1.2),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 420 ? 8 : 12, vertical: MediaQuery.of(context).size.width < 420 ? 6 : 10),
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('معلومات إضافية',
-                style: TextStyle(fontSize: MediaQuery.of(context).size.width < 420 ? 12 : 15, fontWeight: FontWeight.bold)),
-            SizedBox(height: _isNarrow ? 3 : 6),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                  labelText: 'الأولوية *', border: OutlineInputBorder()),
-              value: _selectedPriority.isEmpty ? null : _selectedPriority,
-              items: _priorities
-                  .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                  .toList(),
-              onChanged: (v) =>
-                  setState(() => _selectedPriority = v ?? 'متوسط'),
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'يجب اختيار الأولوية' : null,
-            ),
-            SizedBox(height: _isNarrow ? 3 : 6),
-            TextFormField(
-              controller: _notesController,
-              decoration: InputDecoration(
-                  labelText: 'الملاحظات', border: OutlineInputBorder()),
-              maxLines: 3,
-            ),
-            SizedBox(height: _isNarrow ? 3 : 6),
-            TextFormField(
-              controller: _summaryController,
-              decoration: InputDecoration(
-                  labelText: 'ملخص المهمة', border: OutlineInputBorder()),
-              maxLines: 2,
-            ),
-          ],
-        ),
+    return SdCard(
+      tone: SdGroup.admin.tone,
+      title: 'معلومات إضافية',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            decoration: const InputDecoration(
+                labelText: 'الأولوية *', border: OutlineInputBorder()),
+            value: _selectedPriority.isEmpty ? null : _selectedPriority,
+            items: _priorities
+                .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                .toList(),
+            onChanged: (v) =>
+                setState(() => _selectedPriority = v ?? 'متوسط'),
+            validator: (v) =>
+                (v == null || v.isEmpty) ? 'يجب اختيار الأولوية' : null,
+          ),
+          SizedBox(height: _isNarrow ? 3 : 6),
+          TextFormField(
+            controller: _notesController,
+            decoration: const InputDecoration(
+                labelText: 'الملاحظات', border: OutlineInputBorder()),
+            maxLines: 3,
+          ),
+          SizedBox(height: _isNarrow ? 3 : 6),
+          TextFormField(
+            controller: _summaryController,
+            decoration: const InputDecoration(
+                labelText: 'ملخص المهمة', border: OutlineInputBorder()),
+            maxLines: 2,
+          ),
+        ],
       ),
     );
   }
@@ -1603,28 +1503,17 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        OutlinedButton(
+        SdButton(
+          label: 'إلغاء',
+          kind: SdButtonKind.secondary,
           onPressed: () => Navigator.pop(context),
-          style: OutlinedButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: _isNarrow ? 12 : 16, vertical: _isNarrow ? 6 : 10),
-            textStyle: TextStyle(fontSize: _isNarrow ? 12 : 14),
-          ),
-          child: const Text('إلغاء'),
         ),
         SizedBox(width: _isNarrow ? 6 : 16),
-        ElevatedButton.icon(
+        SdButton(
+          label: 'حفظ المهمة',
+          icon: Icons.save,
+          kind: SdButtonKind.accent,
           onPressed: _isLoading ? null : _createTask,
-          style: ElevatedButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: _isNarrow ? 12 : 16, vertical: _isNarrow ? 6 : 10),
-            textStyle: TextStyle(fontSize: _isNarrow ? 12 : 14),
-          ),
-          icon: _isLoading
-              ? SizedBox(
-                  width: _isNarrow ? 14 : 18,
-                  height: _isNarrow ? 14 : 18,
-                  child: const CircularProgressIndicator(strokeWidth: 2))
-              : Icon(Icons.save, size: _isNarrow ? 16 : 20),
-          label: const Text('حفظ المهمة'),
         ),
       ],
     );
@@ -1664,7 +1553,7 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 isDense: true,
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: SdColors.surface,
                 suffixIcon: controller.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 18),
@@ -1705,13 +1594,13 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
                         onTap: () => onAutoSelected(option),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          color: isSelected ? Colors.blue.shade50 : null,
+                          color: isSelected ? SdColors.primaryTint : null,
                           child: Text(
                             option,
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-                              color: isSelected ? Colors.blue.shade800 : Colors.black87,
+                              color: isSelected ? SdColors.primary : SdColors.ink,
                             ),
                           ),
                         ),

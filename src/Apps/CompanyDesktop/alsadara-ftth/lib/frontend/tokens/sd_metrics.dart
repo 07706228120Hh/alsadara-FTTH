@@ -42,6 +42,17 @@ class SdRadius {
   static BorderRadius all(double r) => BorderRadius.circular(r);
 }
 
+/// الإطار الموحّد (كحلي رمادي ناعم) لكل الحقول والبطاقات والأزرار.
+class SdOutline {
+  SdOutline._();
+  static const double width = 1.2;
+  static const double focusWidth = 2.0;
+  static const BorderSide side = BorderSide(color: SdColors.outline, width: width);
+  static const BorderSide focus = BorderSide(color: SdColors.primary, width: focusWidth);
+  static const BorderSide disabled = BorderSide(color: SdColors.outlineDisabled, width: width);
+  static Border get all => Border.all(color: SdColors.outline, width: width);
+}
+
 /// العمق «المادّي» ثلاثي الأبعاد: حافّة سفلية صلبة + توهّج ناعم.
 class SdDepth {
   SdDepth._();

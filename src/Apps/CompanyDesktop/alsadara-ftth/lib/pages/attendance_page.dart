@@ -6,12 +6,11 @@ library;
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../utils/responsive_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
+import '../frontend/frontend.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -30,19 +29,7 @@ class AttendancePage extends StatefulWidget {
   State<AttendancePage> createState() => _AttendancePageState();
 }
 
-class _AttendancePageState extends State<AttendancePage>
-    with TickerProviderStateMixin {
-  // ── الألوان ──
-  static const Color _bgDark = Color(0xFF0B1120);
-  static const Color _cardDark = Color(0xFF131C2E);
-  static const Color _blue = Color(0xFF3B82F6);
-  static const Color _cyan = Color(0xFF06B6D4);
-  static const Color _green = Color(0xFF22C55E);
-  static const Color _red = Color(0xFFEF4444);
-  static const Color _orange = Color(0xFFF59E0B);
-  static const Color _purple = Color(0xFF8B5CF6);
-  static const Color _textMuted = Color(0xFF64748B);
-
+class _AttendancePageState extends State<AttendancePage> {
   final AttendanceApiService _attendanceApi = AttendanceApiService.instance;
   int _attendanceCount = 0;
   int _lateDays = 0;
@@ -53,47 +40,14 @@ class _AttendancePageState extends State<AttendancePage>
   String? _savedCode;
   String? _userId;
 
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
   bool _isCheckingIn = false;
   bool _isCheckingOut = false;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..forward();
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    );
     _fetchAttendanceCount();
     _loadSavedCode();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _applySystemUi());
-  }
-
-  void _applySystemUi() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-      systemNavigationBarColor: _bgDark,
-      systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.light,
-      systemNavigationBarContrastEnforced: false,
-    ));
   }
 
   Future<void> _fetchAttendanceCount() async {
@@ -142,7 +96,7 @@ class _AttendancePageState extends State<AttendancePage>
               Text('تم حفظ الكود بنجاح!'),
             ],
           ),
-          backgroundColor: _green,
+          backgroundColor: SdColors.success,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(16),
@@ -185,7 +139,7 @@ class _AttendancePageState extends State<AttendancePage>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Text('تم اكتشاف تطبيق تزييف الموقع! أوقفه وحاول مرة أخرى'),
-                backgroundColor: _red,
+                backgroundColor: SdColors.danger,
                 duration: const Duration(seconds: 5),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -200,7 +154,7 @@ class _AttendancePageState extends State<AttendancePage>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Text('دقة الموقع غير طبيعية — تأكد من إيقاف تطبيقات الموقع الوهمي'),
-                backgroundColor: _orange,
+                backgroundColor: SdColors.warning,
                 duration: const Duration(seconds: 4),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -273,25 +227,25 @@ class _AttendancePageState extends State<AttendancePage>
         Color color;
         if (code == 'DEVICE_MISMATCH') {
           icon = Icons.devices_other;
-          color = _red;
+          color = SdColors.danger;
         } else if (code == 'OUT_OF_RANGE') {
           icon = Icons.location_off;
-          color = _orange;
+          color = SdColors.warning;
         } else if (code == 'DEVICE_PENDING') {
           icon = Icons.hourglass_top;
-          color = _blue;
+          color = SdColors.info;
         } else if (code == 'DEVICE_REJECTED') {
           icon = Icons.block;
-          color = Colors.red.shade800;
+          color = SdColors.dangerEdge;
         } else if (code == 'INVALID_SECURITY_CODE') {
           icon = Icons.lock_outline;
-          color = _orange;
+          color = SdColors.warning;
         } else if (code == 'RATE_LIMITED') {
           icon = Icons.timer_off;
-          color = Colors.deepOrange;
+          color = SdColors.warningEdge;
         } else {
           icon = Icons.error_outline;
-          color = _red;
+          color = SdColors.danger;
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -315,7 +269,7 @@ class _AttendancePageState extends State<AttendancePage>
 
       final record = result['record'] ?? result['Record'];
       String successMsg = 'تم تسجيل $attendanceType بنجاح!';
-      Color successColor = _green;
+      Color successColor = SdColors.success;
 
       if (record is Map) {
         final status = '${record['Status'] ?? record['status'] ?? ''}';
@@ -325,7 +279,7 @@ class _AttendancePageState extends State<AttendancePage>
 
         if (status == 'Late' || status == '1') {
           successMsg += '\n⚠️ متأخر $lateMins دقيقة';
-          successColor = _orange;
+          successColor = SdColors.warning;
         }
         if (overtime != null && overtime > 0) {
           successMsg += '\n⏰ وقت إضافي: $overtime دقيقة';
@@ -339,7 +293,7 @@ class _AttendancePageState extends State<AttendancePage>
       final vpnWarning = result['vpnWarning'] == true;
       if (vpnWarning) {
         successMsg += '\n⚠️ يُشتبه باستخدام VPN — تم تسجيل الملاحظة';
-        successColor = _orange;
+        successColor = SdColors.warning;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -401,160 +355,60 @@ class _AttendancePageState extends State<AttendancePage>
   // ═══════════════════════════════════════
   @override
   Widget build(BuildContext context) {
-    final r = context.responsive;
-    final mobile = MediaQuery.of(context).size.width < 500;
-    final pad = mobile ? 16.0 : 28.0;
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _bgDark,
-        body: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SafeArea(
-            child: Column(
-              children: [
-                // ── المحتوى القابل للتمرير ──
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: pad, vertical: mobile ? 12 : 20),
-                    child: Column(
-                      children: [
-                        _buildHeader(mobile),
-                        SizedBox(height: mobile ? 20 : 28),
-                        _buildStatsGrid(mobile),
-                        SizedBox(height: mobile ? 20 : 28),
-                        _buildCodeCard(mobile),
-                      ],
-                    ),
-                  ),
-                ),
-                // ── أزرار ثابتة في الأسفل ──
-                _buildActionButtons(mobile),
-              ],
-            ),
-          ),
-        ),
+    return SdPage(
+      maxWidth: SdSpace.formMax,
+      appBar: SdAppBar(title: 'نظام البصمة', subtitle: widget.username),
+      bottomBar: _buildActionButtons(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(),
+          SizedBox(height: context.sd.sectionGap),
+          _buildStatsGrid(),
+          SizedBox(height: context.sd.sectionGap),
+          _buildCodeCard(),
+        ],
       ),
     );
   }
 
   // ═══════════════════════════════════════
-  //  الهيدر
+  //  الهيدر (المستخدم + المركز + الساعة الحيّة)
   // ═══════════════════════════════════════
-  Widget _buildHeader(bool mobile) {
-    return Container(
-      padding: EdgeInsets.all(mobile ? 14 : 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: [_blue.withOpacity(0.12), _cyan.withOpacity(0.06)],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-        border: Border.all(color: _blue.withOpacity(0.1)),
-      ),
+  Widget _buildHeader() {
+    final t = SdGroup.admin.tone;
+    return SdCard(
       child: Row(
         children: [
-          // زر رجوع
-          _glassButton(
-            icon: Icons.arrow_forward_ios_rounded,
-            size: mobile ? 36 : 42,
-            onTap: () => Navigator.pop(context),
-          ),
-          SizedBox(width: mobile ? 10 : 16),
-          // أيقونة البصمة
-          ScaleTransition(
-            scale: _pulseAnimation,
-            child: Container(
-              width: mobile ? 40 : 48,
-              height: mobile ? 40 : 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: const LinearGradient(
-                  colors: [_blue, _cyan],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _blue.withOpacity(0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.fingerprint_rounded,
-                  color: Colors.white, size: mobile ? 22 : 26),
-            ),
-          ),
-          SizedBox(width: mobile ? 10 : 14),
-          // العنوان + المركز
+          SdIconCube(icon: Icons.fingerprint_rounded, group: SdGroup.admin, size: 48),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'نظام البصمة',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: mobile ? 17 : 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  widget.username,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
-                    fontSize: mobile ? 12 : 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(widget.username,
+                    style: SdText.titleSm,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 6),
+                SdStatusChip(widget.center,
+                    status: SdStatus.info, icon: Icons.business_rounded),
               ],
             ),
           ),
-          // المركز + الساعة
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: mobile ? 8 : 12,
-                  vertical: mobile ? 3 : 5,
+          StreamBuilder(
+            stream: Stream.periodic(const Duration(seconds: 1)),
+            builder: (context, snapshot) {
+              final now = DateTime.now();
+              return Text(
+                '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}',
+                style: SdText.numberSm.copyWith(
+                  color: t.edge,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
-                decoration: BoxDecoration(
-                  color: _cyan.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _cyan.withOpacity(0.2)),
-                ),
-                child: Text(
-                  widget.center,
-                  style: TextStyle(
-                    color: _cyan,
-                    fontSize: mobile ? 10 : 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              StreamBuilder(
-                stream: Stream.periodic(const Duration(seconds: 1)),
-                builder: (context, snapshot) {
-                  final now = DateTime.now();
-                  return Text(
-                    '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}',
-                    style: TextStyle(
-                      color: _blue,
-                      fontSize: mobile ? 14 : 18,
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  );
-                },
-              ),
-            ],
+              );
+            },
           ),
         ],
       ),
@@ -564,193 +418,87 @@ class _AttendancePageState extends State<AttendancePage>
   // ═══════════════════════════════════════
   //  شبكة الإحصائيات
   // ═══════════════════════════════════════
-  Widget _buildStatsGrid(bool mobile) {
-    final stats = [
-      _StatData('حضور', '$_attendanceCount', Icons.check_circle_rounded, _green),
-      _StatData('تأخير', '$_lateDays', Icons.schedule_rounded, _orange),
-      _StatData('د. تأخير', '$_totalLateMinutes', Icons.timer_off_rounded, _red),
-      _StatData('د. إضافي', '$_totalOvertimeMinutes', Icons.more_time_rounded, _blue),
-      _StatData('ساعات العمل', (_totalWorkedMinutes / 60).toStringAsFixed(1),
-          Icons.work_history_rounded, _purple),
-    ];
-
-    if (mobile) {
-      // على الهاتف: صفين — 3 في الأعلى + 2 في الأسفل
-      return Column(
-        children: [
-          Row(
-            children: [
-              for (int i = 0; i < 3; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(child: _buildStatCard(stats[i], mobile)),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _buildStatCard(stats[3], mobile)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildStatCard(stats[4], mobile)),
-            ],
-          ),
-        ],
-      );
-    }
-
-    // على الشاشات الكبيرة: صف واحد
-    return Row(
-      children: stats
-          .map((s) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: _buildStatCard(s, mobile),
-                ),
-              ))
-          .toList(),
-    );
-  }
-
-  Widget _buildStatCard(_StatData s, bool mobile) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: mobile ? 12 : 16,
-        horizontal: mobile ? 6 : 12,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: _cardDark,
-        border: Border.all(color: s.color.withOpacity(0.12)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: mobile ? 32 : 38,
-            height: mobile ? 32 : 38,
-            decoration: BoxDecoration(
-              color: s.color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(s.icon, color: s.color, size: mobile ? 16 : 20),
-          ),
-          SizedBox(height: mobile ? 8 : 10),
-          Text(
-            s.value,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: mobile ? 18 : 24,
-              fontWeight: FontWeight.w800,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            s.label,
-            style: TextStyle(
-              color: _textMuted,
-              fontSize: mobile ? 10 : 12,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
+  Widget _buildStatsGrid() {
+    return SdTileGrid(
+      minTileWidth: 200,
+      maxColumns: 3,
+      children: [
+        SdStatPedestal(
+          value: _attendanceCount,
+          label: 'أيام الحضور',
+          tone: SdStatus.success.tone,
+        ),
+        SdStatPedestal(
+          value: _lateDays,
+          label: 'أيام التأخير',
+          tone: SdStatus.warning.tone,
+        ),
+        SdStatPedestal(
+          value: _totalLateMinutes,
+          label: 'دقائق التأخير',
+          tone: SdStatus.danger.tone,
+        ),
+        SdStatPedestal(
+          value: _totalOvertimeMinutes,
+          label: 'دقائق إضافية',
+          tone: SdStatus.info.tone,
+        ),
+        SdStatPedestal(
+          value: double.parse((_totalWorkedMinutes / 60).toStringAsFixed(1)),
+          label: 'ساعات العمل',
+          group: SdGroup.platform,
+        ),
+      ],
     );
   }
 
   // ═══════════════════════════════════════
   //  بطاقة كود الأمان
   // ═══════════════════════════════════════
-  Widget _buildCodeCard(bool mobile) {
+  Widget _buildCodeCard() {
     final hasCode = _savedCode?.isNotEmpty == true;
     final isManager = widget.permissions == 'مدير';
+    final t = SdGroup.admin.tone;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(mobile ? 16 : 24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: _cardDark,
-        border: Border.all(color: _cyan.withOpacity(0.1)),
-      ),
+    return SdCard(
+      title: 'كود الأمان',
+      icon: Icons.shield_rounded,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // عنوان
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _cyan.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.shield_rounded,
-                    color: _cyan, size: mobile ? 18 : 22),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'كود الأمان',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: mobile ? 14 : 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: mobile ? 14 : 20),
-
           // عرض الكود
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: mobile ? 14 : 20),
+            padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              color: hasCode
-                  ? _cyan.withOpacity(0.06)
-                  : Colors.white.withOpacity(0.02),
-              border: Border.all(
-                color: hasCode
-                    ? _cyan.withOpacity(0.15)
-                    : Colors.white.withOpacity(0.05),
-              ),
+              borderRadius: BorderRadius.circular(SdRadius.md),
+              color: hasCode ? t.tint : SdColors.surfaceAlt,
+              boxShadow: [
+                BoxShadow(
+                    color: hasCode ? t.tintEdge : SdColors.edge,
+                    offset: const Offset(0, SdDepth.chip)),
+              ],
             ),
             child: Column(
               children: [
                 Text(
                   hasCode ? _savedCode! : '- - -',
                   style: TextStyle(
-                    fontSize: mobile ? 26 : 34,
+                    fontFamily: SdText.family,
+                    fontSize: 32,
                     fontWeight: FontWeight.w900,
-                    color: hasCode ? _cyan : Colors.white.withOpacity(0.15),
+                    color: hasCode ? t.text : SdColors.faint,
                     letterSpacing: 8,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                   textAlign: TextAlign.center,
                 ),
                 if (hasCode) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle_rounded,
-                          color: _green, size: 12),
-                      const SizedBox(width: 4),
-                      Text(
-                        'الكود مُفعّل',
-                        style: TextStyle(
-                          color: _green.withOpacity(0.8),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 6),
+                  SdStatusChip('الكود مُفعّل',
+                      status: SdStatus.success,
+                      icon: Icons.check_circle_rounded),
                 ],
               ],
             ),
@@ -758,88 +506,41 @@ class _AttendancePageState extends State<AttendancePage>
 
           // حقل الإدخال للمدير
           if (isManager) ...[
-            SizedBox(height: mobile ? 14 : 18),
+            const SizedBox(height: SdSpace.md),
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _codeController,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: mobile ? 14 : 16,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2,
-                    ),
+                    style: SdText.label.copyWith(letterSpacing: 2),
                     decoration: InputDecoration(
                       hintText: 'أدخل أو عدّل الكود...',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.15),
-                        fontSize: mobile ? 12 : 14,
-                      ),
+                      hintStyle: SdText.bodySm,
                       filled: true,
-                      fillColor: Colors.white.withOpacity(0.04),
-                      prefixIcon: Icon(Icons.edit_rounded,
-                          color: _blue.withOpacity(0.5), size: 18),
+                      fillColor: SdColors.surfaceAlt,
+                      prefixIcon: const Icon(Icons.edit_rounded,
+                          color: SdColors.faint, size: 18),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(SdRadius.sm),
                         borderSide: BorderSide.none,
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: _blue.withOpacity(0.4)),
+                        borderRadius: BorderRadius.circular(SdRadius.sm),
+                        borderSide: const BorderSide(color: SdColors.primary),
                       ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: mobile ? 12 : 14,
-                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 14),
                       isDense: true,
                     ),
                     onSubmitted: (v) => _saveCode(v),
                   ),
                 ),
                 const SizedBox(width: 10),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => _saveCode(_codeController.text),
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: mobile ? 16 : 22,
-                        vertical: mobile ? 12 : 14,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        gradient: const LinearGradient(
-                          colors: [_blue, _cyan],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _blue.withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.save_rounded,
-                              color: Colors.white, size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'حفظ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: mobile ? 13 : 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                SdButton(
+                  label: 'حفظ',
+                  icon: Icons.save_rounded,
+                  onPressed: () => _saveCode(_codeController.text),
                 ),
               ],
             ),
@@ -852,188 +553,49 @@ class _AttendancePageState extends State<AttendancePage>
   // ═══════════════════════════════════════
   //  أزرار الحضور والانصراف
   // ═══════════════════════════════════════
-  Widget _buildActionButtons(bool mobile) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        mobile ? 16 : 28,
-        mobile ? 12 : 16,
-        mobile ? 16 : 28,
-        mobile ? 16 : 24,
-      ),
-      decoration: BoxDecoration(
-        color: _cardDark,
-        border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.05)),
-        ),
-      ),
-      child: Row(
-        children: [
-          // تسجيل الدخول
-          Expanded(
-            child: _ActionBtn(
-              label: 'تسجيل الدخول',
-              icon: Icons.login_rounded,
-              colors: const [Color(0xFF16A34A), _green],
-              isLoading: _isCheckingIn,
-              mobile: mobile,
-              onTap: () async {
-                setState(() => _isCheckingIn = true);
-                await _submitAttendance('دخول');
-                if (mounted) setState(() => _isCheckingIn = false);
-              },
-            ),
+  Widget _buildActionButtons() {
+    final busy = _isCheckingIn || _isCheckingOut;
+    return Row(
+      children: [
+        Expanded(
+          child: SdButton(
+            label: _isCheckingIn ? 'جاري التسجيل…' : 'تسجيل الدخول',
+            icon: Icons.login_rounded,
+            kind: SdButtonKind.primary,
+            expand: true,
+            onPressed: busy
+                ? null
+                : () async {
+                    setState(() => _isCheckingIn = true);
+                    await _submitAttendance('دخول');
+                    if (mounted) setState(() => _isCheckingIn = false);
+                  },
           ),
-          SizedBox(width: mobile ? 12 : 20),
-          // تسجيل الخروج
-          Expanded(
-            child: _ActionBtn(
-              label: 'تسجيل الخروج',
-              icon: Icons.logout_rounded,
-              colors: const [Color(0xFFDC2626), _red],
-              isLoading: _isCheckingOut,
-              mobile: mobile,
-              onTap: () async {
-                setState(() => _isCheckingOut = true);
-                await _submitAttendance('خروج');
-                if (mounted) setState(() => _isCheckingOut = false);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _glassButton({
-    required IconData icon,
-    required double size,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
-        child: Icon(icon, color: Colors.white54, size: size * 0.45),
-      ),
+        const SizedBox(width: SdSpace.sm),
+        Expanded(
+          child: SdButton(
+            label: _isCheckingOut ? 'جاري التسجيل…' : 'تسجيل الخروج',
+            icon: Icons.logout_rounded,
+            kind: SdButtonKind.danger,
+            expand: true,
+            onPressed: busy
+                ? null
+                : () async {
+                    setState(() => _isCheckingOut = true);
+                    await _submitAttendance('خروج');
+                    if (mounted) setState(() => _isCheckingOut = false);
+                  },
+          ),
+        ),
+      ],
     );
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
-    _fadeController.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
-        overlays: SystemUiOverlay.values);
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-    ));
     _codeController.dispose();
     super.dispose();
-  }
-}
-
-// ═══════════════════════════════════════
-//  نموذج بيانات الإحصائية
-// ═══════════════════════════════════════
-class _StatData {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-  const _StatData(this.label, this.value, this.icon, this.color);
-}
-
-// ═══════════════════════════════════════
-//  زر الإجراء
-// ═══════════════════════════════════════
-class _ActionBtn extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final List<Color> colors;
-  final bool isLoading;
-  final bool mobile;
-  final VoidCallback onTap;
-
-  const _ActionBtn({
-    required this.label,
-    required this.icon,
-    required this.colors,
-    required this.isLoading,
-    required this.mobile,
-    required this.onTap,
-  });
-
-  @override
-  State<_ActionBtn> createState() => _ActionBtnState();
-}
-
-class _ActionBtnState extends State<_ActionBtn> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        if (!widget.isLoading) widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        child: Container(
-          height: widget.mobile ? 64 : 80,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: widget.colors,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: widget.colors[0].withOpacity(0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: widget.isLoading
-              ? const Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2.5),
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(widget.icon,
-                        color: Colors.white,
-                        size: widget.mobile ? 22 : 28),
-                    SizedBox(width: widget.mobile ? 8 : 12),
-                    Text(
-                      widget.label,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: widget.mobile ? 15 : 19,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-        ),
-      ),
-    );
   }
 }
 
@@ -1110,22 +672,21 @@ class _FrontCameraCaptureState extends State<_FrontCameraCapture> {
         body: SafeArea(
           child: _error != null
               ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.camera_alt_outlined,
-                          color: Colors.white38, size: 60),
-                      const SizedBox(height: 16),
-                      Text(_error!,
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 16)),
-                      const SizedBox(height: 24),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('تخطي',
-                            style: TextStyle(color: Colors.white54)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: SdCard(
+                      padding: EdgeInsets.zero,
+                      child: SdEmptyState(
+                        icon: Icons.camera_alt_outlined,
+                        status: SdStatus.danger,
+                        title: _error!,
+                        action: SdButton(
+                          label: 'تخطي',
+                          kind: SdButtonKind.secondary,
+                          onPressed: () => Navigator.pop(context),
+                        ),
                       ),
-                    ],
+                    ),
                   ),
                 )
               : _controller == null || !_controller!.value.isInitialized
@@ -1147,7 +708,7 @@ class _FrontCameraCaptureState extends State<_FrontCameraCapture> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(120),
                               border: Border.all(
-                                  color: Colors.white.withOpacity(0.4),
+                                  color: Colors.white.withValues(alpha: 0.4),
                                   width: 2),
                             ),
                           ),
@@ -1169,7 +730,10 @@ class _FrontCameraCaptureState extends State<_FrontCameraCapture> {
                                 child: const Text(
                                   'ضع وجهك داخل الإطار',
                                   style: TextStyle(
-                                      color: Colors.white, fontSize: 15),
+                                      fontFamily: SdText.family,
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700),
                                 ),
                               ),
                             ],
@@ -1198,22 +762,22 @@ class _FrontCameraCaptureState extends State<_FrontCameraCapture> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                        color: Colors.white, width: 4),
+                                        color: SdColors.surface, width: 4),
                                   ),
                                   child: Container(
                                     margin: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: _isTaking
-                                          ? Colors.grey
-                                          : Colors.white,
+                                          ? SdColors.faint
+                                          : SdColors.surface,
                                     ),
                                     child: _isTaking
                                         ? const Padding(
                                             padding: EdgeInsets.all(18),
-                                            child:
-                                                CircularProgressIndicator(
-                                                    strokeWidth: 2),
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: SdColors.primary),
                                           )
                                         : null,
                                   ),

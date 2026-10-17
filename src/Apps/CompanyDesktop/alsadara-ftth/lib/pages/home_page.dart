@@ -6,7 +6,6 @@ library;
 
 import 'dart:async'; // NEW
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:alsadara/pages/track_users_map_page.dart';
 import '../task/task_list_screen.dart';
@@ -21,7 +20,6 @@ import 'users_page_vps.dart';
 import '../ftth/core/home_page.dart' as ftth_home;
 import '../services/dual_auth_service.dart';
 import '../ftth/auth/cloudflare_gate_dialog.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math' as math; // NEW: for rotations
 import 'aria_page.dart';
@@ -59,8 +57,8 @@ import 'announcements/announcements_page.dart'; // صفحة الإعلانات �
 import '../ftth/requests/customer_hub_page.dart'; // مشترك جديد (Hub)
 import '../services/announcement_service.dart'; // خدمة الإعلانات
 import '../services/notification_api_service.dart'; // خدمة الإشعارات API
-import '../widgets/notification_bell.dart';
 import '../services/api/api_config.dart'; // إعدادات API
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 // تم نقل زر جلب بيانات الموقع إلى النظام الثاني
 
 class HomePage extends StatefulWidget {
@@ -114,6 +112,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _unreadAnnouncementsCount = 0;
   List<Map<String, dynamic>> _myAnnouncements = []; // كل الإعلانات الموجهة
   int _currentAnnouncementIndex = 0;
+  bool _announcementExpanded = false; // حالة عرض محلية فقط (طيّ البطاقة) — لا تمسّ منطق التدوير
   Timer? _announcementRotateTimer;
   StreamSubscription? _chatUnreadSub;
   bool _countersLoading = true;
@@ -127,15 +126,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   // Unified fiber optic color
   final Color _fiberColor = const Color(0xFF00E5FF);
 
-  // ===== القائمة الجانبية =====
-  bool _sidebarExpanded = false;
-  Timer? _autoCollapseTimer;
-  // ألوان ثيم القائمة الجانبية (مطابقة لشاشة الحسابات)
-  static const _sidebarBg = Colors.white;
-  static const _sidebarBorder = Color(0xFFE8E8E8);
-  static const _sidebarToolbar = Color(0xFF2C3E50);
-  static const _sidebarTextDark = Color(0xFF333333);
-  static const _sidebarTextGray = Color(0xFF999999);
 
   @override
   void initState() {
@@ -929,7 +919,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
     _locationTimer?.cancel();
-    _autoCollapseTimer?.cancel();
     _counterAnimController.dispose();
     WhatsAppBottomWindow.hideBottomWindow(
         clearContent: true); // Hide WhatsApp floating button
@@ -1013,12 +1002,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // Simple action button for AppBar
-  Widget _buildAnimatedActionButton({
+  // ignore: unused_element
+  Widget _buildAnimatedActionButtonLegacy({
     required Icon icon,
     required VoidCallback onPressed,
     String? tooltip,
-    Color glowColor = Colors.cyanAccent,
     EdgeInsetsGeometry? margin,
   }) {
     final r = context.responsive;
@@ -1216,129 +1204,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     }
 
-    final r = context.responsive;
-
-    return Scaffold(
-      // ── درج جانبي للشاشات الصغيرة ──
-      drawer: r.showSidebar
-          ? null
-          : Drawer(
-              width: 260,
-              child: SafeArea(child: _buildDrawerContent()),
-            ),
-      appBar: AppBar(
-        toolbarHeight: r.appBarHeight,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-        elevation: 0,
-        leading: r.showSidebar
-            ? null
-            : Builder(
-                builder: (ctx) => IconButton(
-                  icon: Icon(Icons.menu,
-                      color: Colors.white, size: r.appBarIconSize),
-                  onPressed: () => Scaffold.of(ctx).openDrawer(),
-                ),
-              ),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            borderRadius:
-                const BorderRadius.vertical(bottom: Radius.circular(24)),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF2C3E50),
-                Color(0xFF34495E),
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2C3E50).withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-        ),
-        centerTitle: true,
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                'رمز الصدارة',
-                style: TextStyle(
-                  fontSize: r.appBarTitleSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 2),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _isFtthConnected
-                          ? Colors.greenAccent
-                          : Colors.orangeAccent,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (_isFtthConnected
-                                  ? Colors.greenAccent
-                                  : Colors.orangeAccent)
-                              .withOpacity(0.6),
-                          blurRadius: 4,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _isFtthConnected
-                        ? 'FTTH متصل ✓ ($_ftthConnectedUsername)'
-                        : 'FTTH غير متصل',
-                    style: TextStyle(
-                      color: _isFtthConnected
-                          ? Colors.greenAccent
-                          : Colors.orangeAccent,
-                      fontSize: r.scaled(9, 11, 12),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(
-          color: Colors.white,
-          size: r.appBarIconSize,
-        ),
+    return SdNavShell(
+      backgroundColor: SdColors.ground,
+      // ── القائمة الجانبية الموحّدة (درج على الهاتف، شريط على الآيباد/المكتب) ──
+      sections: _navSections(),
+      footer: _navFooter(),
+      title: 'رمز الصدارة',
+      subtitle: VpsAuthService.instance.currentCompanyName,
+      selectedId: 'home',
+      appBar: SdAppBar(
+        title: 'رمز الصدارة',
+        subtitle: _isFtthConnected
+            ? 'FTTH متصل · $_ftthConnectedUsername'
+            : 'FTTH غير متصل',
+        subtitleOk: _isFtthConnected,
         actions: [
           // زر العودة للوحة تحكم Super Admin
           if (widget.isSuperAdminMode)
-            _buildAnimatedActionButton(
-              icon: Icon(
-                Icons.admin_panel_settings,
-                color: Colors.amber,
-                size: r.scaled(18, 24, 26),
-              ),
-              tooltip: 'العودة للوحة تحكم مدير النظام',
-              glowColor: Colors.amber,
+            SdAppBarAction(
+              icon: Icons.admin_panel_settings,
+              label: 'لوحة مدير النظام',
               onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
@@ -1348,18 +1233,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 );
               },
             ),
-          // زر تفعيل/إيقاف الموقع بخلفية متحركة
-          _buildAnimatedActionButton(
-            icon: Icon(
-              _isLocationActive ? Icons.location_on : Icons.location_off,
-              color: _isLocationActive ? Colors.greenAccent : Colors.redAccent,
-              size: r.scaled(18, 24, 26),
+          // زر تتبّع الكادر على الخريطة
+          if (_isAdminUser || PermissionManager.instance.canView('tracking'))
+            SdAppBarAction(
+              icon: Icons.my_location_rounded,
+              label: 'تتبّع الكادر',
+              onPressed: () => _navigateTo(const TrackUsersMapPage()),
             ),
-            tooltip: _isLocationActive
-                ? 'إيقاف مشاركة الموقع'
-                : 'تشغيل مشاركة الموقع',
-            glowColor:
-                _isLocationActive ? Colors.greenAccent : Colors.redAccent,
+          // زر الإشعارات (بشارة) — يفتح لوحة الإشعارات
+          SdAppBarAction(
+            icon: Icons.notifications_outlined,
+            label: 'الإشعارات',
+            badge: _unreadNotificationsCount,
+            onPressed: _showNotificationsPanel,
+          ),
+          // زر الموقع — أيقونة فقط: أخضر إذا يعمل، أحمر إذا متوقف
+          SdAppBarAction(
+            icon: _isLocationActive ? Icons.location_on : Icons.location_off,
+            label: _isLocationActive
+                ? 'الموقع يعمل'
+                : 'الموقع متوقف — تفعيل',
+            iconOnly: true,
+            success: _isLocationActive,
+            danger: !_isLocationActive,
             onPressed: () async {
               if (!_isLocationActive) {
                 final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -1424,294 +1320,33 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               }
             },
           ),
-          SizedBox(width: r.isMobile ? 2 : 6),
-          // زر جرس الإشعارات
-          NotificationBell(iconSize: r.scaled(18, 24, 26)),
-          SizedBox(width: r.isMobile ? 2 : 6),
-          if (_isAdminUser || PermissionManager.instance.canView('tracking'))
-            _buildAnimatedActionButton(
-              icon: Icon(
-                Icons.location_searching,
-                color: Colors.white,
-                size: r.scaled(18, 24, 26),
-              ),
-              tooltip: 'تتبع الكادر على الخريطة',
-              glowColor: Colors.cyanAccent,
-              onPressed: () => _navigateTo(const TrackUsersMapPage()),
-            ),
         ],
       ),
-      body: Row(
-        children: [
-          // ═══ القائمة الجانبية - فقط على الشاشات العريضة ═══
-          if (r.showSidebar) _buildSidebar(),
-          // ═══ المحتوى الرئيسي ═══
-          Expanded(child: _buildBody()),
-        ],
-      ),
+      // ═══ المحتوى الرئيسي ═══
+      body: _buildBody(),
     );
   }
 
-  // ═══ محتوى الدرج الجانبي للشاشات الصغيرة ═══
-  Widget _buildDrawerContent() {
-    final r = context.responsive;
-    return Container(
-      color: _sidebarBg,
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          // عنوان القائمة
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Icon(Icons.menu_open,
-                    color: _sidebarToolbar, size: r.iconSizeSmall),
-                const SizedBox(width: 8),
-                Text(
-                  'القائمة',
-                  style: GoogleFonts.cairo(
-                    fontSize: r.sectionTitleSize,
-                    fontWeight: FontWeight.bold,
-                    color: _sidebarToolbar,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: _sidebarBorder),
-          const SizedBox(height: 8),
-          // عناصر القائمة
-          if (_isAdminUser)
-            _drawerBtn(
-              icon: Icons.people,
-              label: 'إدارة المستخدمين',
-              color: const Color(0xFF3498DB),
-              onTap: () {
-                Navigator.pop(context);
-                final companyId =
-                    widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
-                final companyCode = widget.tenantCode ??
-                    VpsAuthService.instance.currentCompanyCode;
-                final companyName = VpsAuthService.instance.currentCompanyName ?? 'الشركة';
-                _navigateTo(
-                  companyId != null && companyCode != null
-                      ? UsersPageVPS(
-                          companyId: companyId,
-                          companyName: companyName,
-                          permissions: const {'users': true})
-                      : companyId != null
-                          ? UsersPageFirebase(
-                              tenantId: companyId,
-                              permissions: widget.permissions)
-                          : UsersPage(permissions: widget.permissions),
-                );
-              },
-            ),
-          if (!_isAdminUser)
-            _drawerBtn(
-              icon: Icons.people_outline,
-              label: 'المستخدمين',
-              color: Colors.grey,
-              onTap: () {
-                Navigator.pop(context);
-                _showPermissionDenied();
-              },
-            ),
-          if (PermissionManager.instance.canView('diagnostics'))
-            _drawerBtn(
-              icon: Icons.bug_report,
-              label: 'تشخيص النظام',
-              color: const Color(0xFFE67E22),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateTo(CompanyDiagnosticsPage(
-                  tenantId: widget.tenantId,
-                  tenantCode: widget.tenantCode,
-                ));
-              },
-            ),
-          if (_isAdminUser)
-            _drawerBtn(
-              icon: Icons.settings,
-              label: 'إعدادات الشركة',
-              color: const Color(0xFFF39C12),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateTo(CompanySettingsPage(
-                  companyId: widget.tenantId ??
-                      VpsAuthService.instance.currentCompanyId,
-                  companyCode: widget.tenantCode ??
-                      VpsAuthService.instance.currentCompanyCode,
-                  currentUserRole: widget.permissions,
-                  currentUsername: widget.username,
-                ));
-              },
-            ),
-          if (_isAdminUser)
-            _drawerBtn(
-              icon: Icons.sync_rounded,
-              label: 'مزامنة FTTH',
-              color: const Color(0xFF8E44AD),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateTo(const FtthSyncSettingsPage());
-              },
-            ),
-          if (PermissionManager.instance.canView('chat'))
-            _drawerBtn(
-              icon: Icons.forum_rounded,
-              label: 'المحادثة',
-              color: const Color(0xFF1976D2),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateTo(const ChatRoomsPage());
-              },
-            ),
-          _drawerBtn(
-            icon: Icons.logout,
-            label: 'تسجيل الخروج',
-            color: const Color(0xFFE74C3C),
-            onTap: () {
-              Navigator.pop(context);
-              _showLogoutConfirmation();
-            },
-          ),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
-
-  /// زر الدرج الجانبي (للشاشات الصغيرة)
-  Widget _drawerBtn({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final r = context.responsive;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          hoverColor: color.withOpacity(0.08),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: color, size: r.iconSizeSmall),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(label,
-                      style: GoogleFonts.cairo(
-                        fontSize: r.subtitleSize,
-                        fontWeight: FontWeight.w600,
-                        color: _sidebarTextDark,
-                      )),
-                ),
-                Icon(Icons.chevron_left,
-                    color: _sidebarTextGray, size: r.iconSizeSmall),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ═══ القائمة الجانبية (بنفس تصميم شاشة الحسابات) ═══
-  Widget _buildSidebar() {
-    final r = context.responsive;
-    final expanded = _sidebarExpanded;
-    final width = expanded ? r.sidebarExpandedWidth : r.sidebarCollapsedWidth;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
-      width: width,
-      decoration: BoxDecoration(
-        color: _sidebarBg,
-        border: const Border(
-          left: BorderSide(color: _sidebarBorder, width: 1),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(-2, 0),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          // زر طي/فتح القائمة
-          InkWell(
-            onTap: () {
-              _autoCollapseTimer?.cancel();
-              setState(() => _sidebarExpanded = !_sidebarExpanded);
-              if (_sidebarExpanded) {
-                _autoCollapseTimer = Timer(const Duration(seconds: 3), () {
-                  if (mounted && _sidebarExpanded) {
-                    setState(() => _sidebarExpanded = false);
-                  }
-                });
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                mainAxisAlignment: expanded
-                    ? MainAxisAlignment.start
-                    : MainAxisAlignment.center,
-                children: [
-                  AnimatedRotation(
-                    turns: expanded ? 0.0 : 0.5,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(Icons.menu_open,
-                        color: _sidebarToolbar, size: r.iconSizeSmall),
-                  ),
-                  if (expanded) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      'القائمة',
-                      style: GoogleFonts.cairo(
-                        fontSize: r.bodySize,
-                        fontWeight: FontWeight.bold,
-                        color: _sidebarToolbar,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const Divider(height: 1, color: _sidebarBorder),
-          const SizedBox(height: 8),
-          // ── عناصر القائمة ──
+  // ═══ القائمة الجانبية الموحّدة: مصدر واحد لكل الأحجام ═══
+  List<SdNavSection> _navSections() {
+    return [
+      SdNavSection(
+        title: 'الإدارة',
+        items: [
           // إدارة المستخدمين (مدير فقط)
           if (_isAdminUser)
-            _sidebarBtn(
-              icon: Icons.people,
+            SdNavItem(
+              id: 'users',
               label: 'إدارة المستخدمين',
-              color: const Color(0xFF3498DB),
+              icon: Icons.people,
+              group: SdGroup.admin,
               onTap: () {
                 final companyId =
                     widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
                 final companyCode = widget.tenantCode ??
                     VpsAuthService.instance.currentCompanyCode;
-                final companyName = VpsAuthService.instance.currentCompanyName ?? 'الشركة';
+                final companyName =
+                    VpsAuthService.instance.currentCompanyName ?? 'الشركة';
                 _navigateTo(
                   companyId != null && companyCode != null
                       ? UsersPageVPS(
@@ -1730,128 +1365,80 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
           // المستخدمين (محظور) لغير المدراء
           if (!_isAdminUser)
-            _sidebarBtn(
-              icon: Icons.people_outline,
+            SdNavItem(
+              id: 'users',
               label: 'المستخدمين',
-              color: Colors.grey,
+              icon: Icons.people_outline,
+              group: SdGroup.neutral,
+              enabled: false,
               onTap: () => _showPermissionDenied(),
-            ),
-          // تشخيص النظام
-          if (PermissionManager.instance.canView('diagnostics'))
-            _sidebarBtn(
-              icon: Icons.bug_report,
-              label: 'تشخيص النظام',
-              color: const Color(0xFFE67E22),
-              onTap: () => _navigateTo(CompanyDiagnosticsPage(
-                tenantId: widget.tenantId,
-                tenantCode: widget.tenantCode,
-              )),
             ),
           // إعدادات الشركة (للمدير فقط)
           if (_isAdminUser)
-            _sidebarBtn(
-              icon: Icons.settings,
+            SdNavItem(
+              id: 'company_settings',
               label: 'إعدادات الشركة',
-              color: const Color(0xFFF39C12),
+              icon: Icons.settings,
+              group: SdGroup.neutral,
               onTap: () => _navigateTo(CompanySettingsPage(
-                companyId: widget.tenantId ??
-                    VpsAuthService.instance.currentCompanyId,
+                companyId:
+                    widget.tenantId ?? VpsAuthService.instance.currentCompanyId,
                 companyCode: widget.tenantCode ??
                     VpsAuthService.instance.currentCompanyCode,
                 currentUserRole: widget.permissions,
                 currentUsername: widget.username,
               )),
             ),
-          // مزامنة FTTH (للمدير فقط)
-          if (_isAdminUser)
-            _sidebarBtn(
-              icon: Icons.sync_rounded,
-              label: 'مزامنة FTTH',
-              color: const Color(0xFF8E44AD),
-              onTap: () => _navigateTo(const FtthSyncSettingsPage()),
-            ),
-          // تسجيل الخروج
-          _sidebarBtn(
-            icon: Icons.logout,
-            label: 'تسجيل الخروج',
-            color: const Color(0xFFE74C3C),
-            onTap: () => _showLogoutConfirmation(),
-          ),
-          const Spacer(),
         ],
       ),
-    );
+      SdNavSection(
+        title: 'النظام والتواصل',
+        items: [
+          // تشخيص النظام
+          if (PermissionManager.instance.canView('diagnostics'))
+            SdNavItem(
+              id: 'diagnostics',
+              label: 'تشخيص النظام',
+              icon: Icons.bug_report,
+              group: SdGroup.comms,
+              onTap: () => _navigateTo(CompanyDiagnosticsPage(
+                tenantId: widget.tenantId,
+                tenantCode: widget.tenantCode,
+              )),
+            ),
+          // مزامنة FTTH (للمدير فقط)
+          if (_isAdminUser)
+            SdNavItem(
+              id: 'ftth_sync',
+              label: 'مزامنة FTTH',
+              icon: Icons.sync_rounded,
+              group: SdGroup.field,
+              onTap: () => _navigateTo(const FtthSyncSettingsPage()),
+            ),
+          // المحادثة
+          if (PermissionManager.instance.canView('chat'))
+            SdNavItem(
+              id: 'chat',
+              label: 'المحادثة',
+              icon: Icons.forum_rounded,
+              group: SdGroup.comms,
+              onTap: () => _navigateTo(const ChatRoomsPage()),
+            ),
+        ],
+      ),
+    ];
   }
 
-  /// زر القائمة الجانبية (بنفس تصميم شاشة الحسابات)
-  Widget _sidebarBtn({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final r = context.responsive;
-    final expanded = _sidebarExpanded;
-    return Tooltip(
-      message: expanded ? '' : label,
-      preferBelow: false,
-      child: Padding(
-        padding:
-            EdgeInsets.symmetric(horizontal: expanded ? 8 : 6, vertical: 2),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(8),
-            hoverColor: color.withOpacity(0.08),
-            splashColor: color.withOpacity(0.15),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: expanded ? 10 : 0, vertical: 10),
-              child: expanded
-                  ? Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child:
-                              Icon(icon, color: color, size: r.iconSizeSmall),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            label,
-                            style: GoogleFonts.cairo(
-                              fontSize: r.subtitleSize,
-                              fontWeight: FontWeight.w600,
-                              color: _sidebarTextDark,
-                            ),
-                          ),
-                        ),
-                        Icon(Icons.chevron_left,
-                            color: _sidebarTextGray, size: r.iconSizeSmall),
-                      ],
-                    )
-                  : Center(
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(icon, color: color, size: r.iconSizeSmall),
-                      ),
-                    ),
-            ),
-          ),
-        ),
+  List<SdNavItem> _navFooter() {
+    return [
+      SdNavItem(
+        id: 'logout',
+        label: 'تسجيل الخروج',
+        icon: Icons.logout,
+        danger: true,
+        onTap: () => _showLogoutConfirmation(),
       ),
-    );
+    ];
   }
 
   Widget _buildBody() {
@@ -1859,51 +1446,38 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final maxContentWidth = r.maxContentWidth;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    return Stack(
-          children: [
-            // Light background
-            Container(
-              color: const Color(0xFFF5F6FA),
-            ),
-            // رموز إنترنت ثابتة في الخلفية
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _InternetIconsBgPainter(
-                  animValue: 0,
-                  color: const Color(0xFF3498DB).withValues(alpha: 0.35),
-                ),
+    // خلفية سادة SdColors.ground (أُزيلت زخرفة الأيقونات الباهتة)
+    return ColoredBox(
+      color: SdColors.ground,
+      child: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: r.contentPaddingH,
+            right: r.contentPaddingH,
+            bottom: bottomPadding + 80,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxContentWidth),
+              child: Column(
+                children: [
+                  const SizedBox(height: 4),
+                  // بطاقة التعليمات/الترحيب
+                  _buildWelcomeOrAnnouncementCard(r),
+                  // ===== العدّادات الثلاثة =====
+                  _buildCountersRow(),
+                  SizedBox(height: r.isMobile ? 8 : 10),
+                  // شبكة القوائم المقسّمة
+                  _buildMenuGrid(),
+                ],
               ),
             ),
-            SafeArea(
-              bottom: false,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(
-                  left: r.contentPaddingH,
-                  right: r.contentPaddingH,
-                  bottom: bottomPadding + 80,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxContentWidth),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 6),
-                        // بطاقة الإعلانات أو الترحيب
-                        _buildWelcomeOrAnnouncementCard(r),
-                        // ===== عدادات سريعة =====
-                        _buildCountersRow(),
-                        SizedBox(height: r.isMobile ? 8 : 12),
-                        // شبكة القوائم
-                        _buildMenuGrid(),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
+          ),
+        ),
+      ),
+    );
   }
 
   // التنقل إلى صفحة FTTH
@@ -1986,41 +1560,84 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // ===== صف العدادات السريعة (تصميم FTTH) =====
+  // ===== العدّادات الثلاثة (أعمدة مجسّمة SdStatPedestal) =====
   Widget _buildCountersRow() {
-    final r = context.responsive;
-    return Row(
-      children: [
-        Expanded(
-          child: _buildFtthCounterCard(
-            label: 'طلبات الوكلاء',
-            value: _pendingAgentRequests,
-            icon: Icons.person_add_alt_1_rounded,
-            color: const Color(0xFFE74C3C),
-            loading: _countersLoading,
-          ),
+    final l = context.sd;
+    // المقياس = أكبر قيمة بين العدّادات الثلاثة.
+    final maxVal = [
+      _pendingAgentRequests,
+      _openTasksCount,
+      _pendingEmployeeRequests,
+    ].reduce((a, b) => a > b ? a : b);
+
+    final agent = SdStatPedestal(
+      value: _pendingAgentRequests,
+      label: 'طلبات الوكلاء',
+      max: maxVal,
+      group: SdGroup.field,
+      onTap: () => _navigateToFtth(),
+    );
+    final tasks = SdStatPedestal(
+      value: _openTasksCount,
+      label: 'المهام المفتوحة',
+      max: maxVal,
+      group: SdGroup.admin,
+      onTap: () => _navigateTo(TaskListScreen(
+        username: widget.username,
+        permissions: widget.permissions,
+        department: _resolvedDepartments,
+        center: widget.center,
+      )),
+    );
+    final employees = SdStatPedestal(
+      value: _pendingEmployeeRequests,
+      label: 'طلبات الموظفين',
+      max: maxVal,
+      group: SdGroup.platform,
+      onTap: () => _navigateTo(HrHubPage(
+        username: widget.username,
+        permissions: widget.permissions,
+        department: widget.department,
+        center: widget.center,
+        tenantId: widget.tenantId,
+        tenantCode: widget.tenantCode,
+      )),
+    );
+
+    final gap = l.gridGap;
+    // الهاتف: عمود واحد.
+    if (l.isPhone) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            agent,
+            SizedBox(height: gap),
+            tasks,
+            SizedBox(height: gap),
+            employees,
+          ],
         ),
-        SizedBox(width: r.counterSpacing),
-        Expanded(
-          child: _buildFtthCounterCard(
-            label: 'المهام المفتوحة',
-            value: _openTasksCount,
-            icon: Icons.assignment_late_rounded,
-            color: const Color(0xFFF39C12),
-            loading: _countersLoading,
-          ),
+      );
+    }
+    // الآيباد/سطح المكتب: ثلاثة أعمدة متساوية.
+    // IntrinsicHeight يمنح الصفّ ارتفاعاً محدوداً (أطول عمود) داخل التمرير
+    // العمودي، فيعمل stretch دون طلب ارتفاع لا نهائي.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: agent),
+            SizedBox(width: gap),
+            Expanded(child: tasks),
+            SizedBox(width: gap),
+            Expanded(child: employees),
+          ],
         ),
-        SizedBox(width: r.counterSpacing),
-        Expanded(
-          child: _buildFtthCounterCard(
-            label: 'طلبات الموظفين',
-            value: _pendingEmployeeRequests,
-            icon: Icons.request_page_rounded,
-            color: const Color(0xFF8E44AD),
-            loading: _countersLoading,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -2175,168 +1792,170 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   /// بطاقة الترحيب أو الإعلانات (دوري)
   Widget _buildWelcomeOrAnnouncementCard(dynamic r) {
+    final l = context.sd;
     final hasAnnouncements = _myAnnouncements.isNotEmpty;
-    final ann = hasAnnouncements ? _myAnnouncements[_currentAnnouncementIndex] : null;
+    final ann =
+        hasAnnouncements ? _myAnnouncements[_currentAnnouncementIndex] : null;
+    final cubeSize = l.isPhone ? 44.0 : 46.0;
 
-    return GestureDetector(
-      onTap: hasAnnouncements ? () => _showAnnouncementPopup(ann!) : null,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 500),
-        child: Container(
-          key: ValueKey(hasAnnouncements ? 'ann_$_currentAnnouncementIndex' : 'welcome'),
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: EdgeInsets.symmetric(
-              horizontal: r.isMobile ? 10 : 16,
-              vertical: r.isMobile ? 8 : 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: hasAnnouncements ? const Color(0xFFE65100).withOpacity(0.4) : const Color(0xFFD5D5D5),
-              width: 2.0,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+    // ── حالة الترحيب (لا تعليمات) ──
+    if (!hasAnnouncements) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: SdRaised(
+          radius: SdRadius.lg,
+          depth: 5,
+          padding: EdgeInsets.all(l.isPhone ? 12 : 14),
           child: Row(
             children: [
-              // أيقونة
-              Container(
-                width: r.userAvatarSize,
-                height: r.userAvatarSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: hasAnnouncements
-                        ? [const Color(0xFFE65100), const Color(0xFFFF6D00)]
-                        : [const Color(0xFF3498DB), const Color(0xFF2980B9)],
-                  ),
-                ),
-                child: Icon(
-                  hasAnnouncements ? Icons.campaign_rounded : Icons.person,
-                  color: Colors.white,
-                  size: r.userAvatarSize * 0.5,
-                ),
-              ),
-              SizedBox(width: r.isMobile ? 8 : 12),
+              SdIconCube(
+                  icon: Icons.person_rounded,
+                  group: SdGroup.admin,
+                  size: cubeSize),
+              const SizedBox(width: 14),
               Expanded(
-                child: hasAnnouncements
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            ann!['title']?.toString() ?? '',
-                            style: TextStyle(
-                              color: const Color(0xFFE65100),
-                              fontSize: r.captionSize + 1,
-                              fontWeight: FontWeight.w800,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            ann['body']?.toString() ?? '',
-                            style: TextStyle(
-                              color: const Color(0xFF333333),
-                              fontSize: r.subtitleSize,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (_myAnnouncements.length > 1) ...[
-                            const SizedBox(height: 4),
-                            // مؤشر النقاط
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: List.generate(_myAnnouncements.length.clamp(0, 6), (i) {
-                                return Container(
-                                  width: i == _currentAnnouncementIndex ? 12 : 5,
-                                  height: 5,
-                                  margin: const EdgeInsets.only(left: 3),
-                                  decoration: BoxDecoration(
-                                    color: i == _currentAnnouncementIndex
-                                        ? const Color(0xFFE65100)
-                                        : Colors.grey.shade300,
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                );
-                              }),
-                            ),
-                          ],
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'مرحبا بكم في شركة الصدارة',
-                            style: TextStyle(
-                              color: const Color(0xFF000000),
-                              fontSize: r.captionSize + 1,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'مرحباً ${widget.username}',
-                            style: TextStyle(
-                              color: const Color(0xFF000000),
-                              fontSize: r.subtitleSize + 1,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
-                      ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('مرحبا بكم في شركة الصدارة', style: SdText.caption),
+                    Text('مرحباً ${widget.username}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: SdText.titleSm),
+                  ],
+                ),
               ),
-              if (hasAnnouncements && _unreadAnnouncementsCount > 0) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE65100),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$_unreadAnnouncementsCount',
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(width: 4),
-              ],
-              if (!hasAnnouncements) ...[
-                Text('🧔', style: TextStyle(fontSize: r.statValueSize)),
-                const SizedBox(width: 6),
-              ],
-              // زر معلومات
-              InkWell(
+              const SizedBox(width: 10),
+              // زر معلومات المستخدم
+              SdRaised(
                 onTap: () => _showUserInfo(context),
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: r.infoButtonSize,
-                  height: r.infoButtonSize,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3498DB).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: const Color(0xFF3498DB).withOpacity(0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.info_outline,
-                    color: const Color(0xFF3498DB),
-                    size: r.iconSizeSmall - 2,
-                  ),
-                ),
+                radius: SdRadius.sm,
+                depth: 3,
+                color: SdColors.infoTint,
+                edgeColor: SdColors.infoTintEdge,
+                glowColor: const Color(0x261565C0),
+                padding: const EdgeInsets.all(10),
+                semanticLabel: 'معلومات المستخدم',
+                child: const Icon(Icons.info_outline,
+                    color: SdColors.info, size: 20),
               ),
             ],
           ),
+        ),
+      );
+    }
+
+    // ── بطاقة التعليمات الجديدة (إعلان) — مدمجة وقابلة للطيّ ──
+    final t = SdGroup.comms.tone;
+    final body = ann!['body']?.toString() ?? '';
+    final title = ann['title']?.toString() ?? '';
+    final smallCube = l.isPhone ? 34.0 : 36.0;
+    final expanded = _announcementExpanded;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SdRaised(
+        // الضغط على البطاقة يطوي/يوسّع (عرض فقط) — لا يمسّ منطق الإعلانات
+        onTap: () => setState(() => _announcementExpanded = !expanded),
+        radius: SdRadius.lg,
+        depth: 5,
+        edgeColor: t.tintEdge,
+        glowColor: const Color(0x4DEF6C00),
+        padding: EdgeInsets.symmetric(
+            horizontal: l.isPhone ? 12 : 14, vertical: l.isPhone ? 7 : 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── الشريط الرفيع (دائماً ظاهر) ──
+            Row(
+              children: [
+                SdIconCube(
+                    icon: Icons.campaign_rounded,
+                    group: SdGroup.comms,
+                    size: smallCube),
+                const SizedBox(width: 10),
+                Text('التعليمات الجديدة',
+                    style: SdText.caption.copyWith(
+                        color: t.text, fontWeight: FontWeight.w900)),
+                if (_unreadAnnouncementsCount > 0) ...[
+                  const SizedBox(width: 6),
+                  SdBadge(count: _unreadAnnouncementsCount),
+                ],
+                const SizedBox(width: 10),
+                // تلميح العنوان عند الطيّ
+                Expanded(
+                  child: expanded
+                      ? const SizedBox.shrink()
+                      : Text(title.isNotEmpty ? title : body,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: SdText.bodySm),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                    expanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: t.text,
+                    size: 20),
+                if (!l.isCompactPhone) ...[
+                  const SizedBox(width: 8),
+                  // زر عرض التعليمات — يبقى يفتح نفس الشاشة
+                  SdRaised(
+                    onTap: () => _showAnnouncementPopup(ann),
+                    radius: SdRadius.sm,
+                    depth: 3,
+                    color: t.tint,
+                    edgeColor: t.tintEdge,
+                    glowColor: const Color(0x26EF6C00),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    semanticLabel: 'عرض التعليمات',
+                    child: Text('عرض التعليمات',
+                        style: SdText.caption.copyWith(
+                            color: t.text, fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ],
+            ),
+            // ── المحتوى الموسّع (عند الطلب فقط) ──
+            if (expanded) ...[
+              const SizedBox(height: 8),
+              if (title.isNotEmpty)
+                Text(title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: SdText.label),
+              if (body.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(body,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: SdText.bodySm),
+              ],
+            ],
+            // ── مؤشّر التدوير (نقاط) ──
+            if (_myAnnouncements.length > 1) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children:
+                    List.generate(_myAnnouncements.length.clamp(0, 6), (i) {
+                  final on = i == _currentAnnouncementIndex;
+                  return Container(
+                    width: on ? 18 : 5,
+                    height: 5,
+                    margin: const EdgeInsetsDirectional.only(end: 3),
+                    decoration: BoxDecoration(
+                      color: on ? t.base : t.tintEdge,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -2515,245 +2134,316 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // شبكة عناصر القائمة - تخطيط شبكي فاخر
   Widget _buildMenuGrid() {
-    final r = context.responsive;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = r.gridColumns;
-        final spacing = r.gridSpacing;
-        final itemWidth =
-            (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
-                crossAxisCount;
+    final l = context.sd;
 
-        final items = <Widget>[
-          // 1) Agent
-          _buildEnhancedMenuItem(
-            title: 'صفحة الوكيل',
-            subtitle: 'إدارة خدمات العملاء',
-            icon: Icons.person_outline,
-            gradient: [Colors.green[500]!, Colors.green[700]!],
-            permissionKey: 'agent',
-            badgeCount: _pendingAgentRequests,
-            onTap: () => _navigateToFtth(),
-          ),
-          // 2) Tasks
-          _buildEnhancedMenuItem(
-            title: 'المهام',
-            subtitle: 'إدارة المهام اليومية',
-            icon: Icons.task_alt,
-            gradient: [Colors.orange[500]!, Colors.orange[700]!],
-            permissionKey: 'tasks',
-            badgeCount: _openTasksCount,
-            onTap: () => _navigateTo(TaskListScreen(
-              username: widget.username,
-              permissions: widget.permissions,
-              department: _resolvedDepartments,
-              center: widget.center,
-            )),
-          ),
+    // ── العمليات الميدانية ──
+    final fieldTiles = <Widget?>[
+      _menuTile(
+        title: 'صفحة الوكيل',
+        subtitle: 'إدارة خدمات العملاء',
+        icon: Icons.person_outline,
+        group: SdGroup.field,
+        permissionKey: 'agent',
+        badge: _pendingAgentRequests,
+        onTap: () => _navigateToFtth(),
+      ),
+      _menuTile(
+        title: 'المهام',
+        subtitle: 'إدارة المهام اليومية',
+        icon: Icons.task_alt,
+        group: SdGroup.field,
+        permissionKey: 'tasks',
+        badge: _openTasksCount,
+        onTap: () => _navigateTo(TaskListScreen(
+          username: widget.username,
+          permissions: widget.permissions,
+          department: _resolvedDepartments,
+          center: widget.center,
+        )),
+      ),
+      _menuTile(
+        title: 'الزونات',
+        subtitle: 'إدارة المناطق الجغرافية',
+        icon: Icons.map_outlined,
+        group: SdGroup.field,
+        permissionKey: 'zones',
+        onTap: () => _navigateTo(AriaPage(
+          username: widget.username,
+          permissions: widget.permissions,
+          department: _resolvedDepartments,
+          center: widget.center,
+        )),
+      ),
+      _menuTile(
+        title: 'خريطة الزونات',
+        subtitle: 'خريطة تفاعلية لنقاط FAT والمناطق',
+        icon: Icons.location_on_rounded,
+        group: SdGroup.field,
+        permissionKey: 'zones',
+        onTap: () => _navigateTo(const KmlZonesMapPage()),
+      ),
+      _menuTile(
+        title: 'مشترك جديد',
+        subtitle: 'تسجيل مشترك FTTH جديد',
+        icon: Icons.person_add_alt_1_rounded,
+        group: SdGroup.field,
+        permissionKey: '',
+        onTap: () => _navigateTo(CustomerHubPage(
+          authToken: DualAuthService.instance.ftthToken ?? '',
+        )),
+      ),
+      _menuTile(
+        title: 'مشتركي IPTV',
+        subtitle: 'إدارة اشتراكات التلفزيون',
+        icon: Icons.live_tv_rounded,
+        group: SdGroup.field,
+        permissionKey: 'iptv',
+        onTap: () => _navigateTo(const IptvSubscribersPage()),
+      ),
+      _menuTile(
+        title: 'صفحة وكيل الساس',
+        subtitle: 'حسابات الساس ولوحة الوكيل والمشتركين',
+        icon: Icons.dns_rounded,
+        group: SdGroup.field,
+        permissionKey: 'sas_agent',
+        onTap: () => _navigateTo(const SasAgentPage()),
+      ),
+    ].whereType<Widget>().toList();
 
-          // 3) Zones
-          _buildEnhancedMenuItem(
-            title: 'الزونات',
-            subtitle: 'إدارة المناطق الجغرافية',
-            icon: Icons.map_outlined,
-            gradient: [Colors.purple[500]!, Colors.purple[700]!],
-            permissionKey: 'zones',
-            onTap: () => _navigateTo(AriaPage(
-              username: widget.username,
-              permissions: widget.permissions,
-              department: _resolvedDepartments,
-              center: widget.center,
-            )),
+    // ── الإدارة والموارد ──
+    final adminTiles = <Widget?>[
+      _menuTile(
+        title: 'HR',
+        subtitle: 'الموارد البشرية والحضور والرواتب',
+        icon: Icons.groups_rounded,
+        group: SdGroup.admin,
+        permissionKey: 'hr',
+        badge: _pendingEmployeeRequests,
+        onTap: () => _navigateTo(HrHubPage(
+          username: widget.username,
+          permissions: widget.permissions,
+          department: widget.department,
+          center: widget.center,
+          tenantId: widget.tenantId,
+          tenantCode: widget.tenantCode,
+        )),
+      ),
+      _menuTile(
+        title: 'شاشتي',
+        subtitle: 'البصمة والمعاملات والراتب',
+        icon: Icons.dashboard_rounded,
+        group: SdGroup.admin,
+        permissionKey: 'my_dashboard',
+        onTap: () => _navigateTo(MyDashboardPage(
+          username: widget.username,
+          permissions: widget.permissions,
+          center: widget.center,
+        )),
+      ),
+      _menuTile(
+        title: 'المتابعة',
+        subtitle: 'متابعة وتقييم المهام',
+        icon: Icons.fact_check_rounded,
+        group: SdGroup.admin,
+        permissionKey: 'follow_up',
+        onTap: () => _navigateTo(FollowUpPage(
+          username: widget.username,
+          permissions: widget.permissions,
+          department: _resolvedDepartments,
+          center: widget.center,
+        )),
+      ),
+      _menuTile(
+        title: 'المخازن',
+        subtitle: 'إدارة المواد والمستودعات',
+        icon: Icons.warehouse_rounded,
+        group: SdGroup.admin,
+        permissionKey: 'inventory',
+        onTap: () => _navigateTo(PermissionGate.page(
+          permission: 'inventory',
+          pageName: 'المخازن',
+          child: InventoryPage(
+            companyId: widget.tenantId,
           ),
-          // 3b) خريطة الزونات
-          _buildEnhancedMenuItem(
-            title: 'خريطة الزونات',
-            subtitle: 'خريطة تفاعلية لنقاط FAT والمناطق',
-            icon: Icons.location_on_rounded,
-            gradient: [const Color(0xFF0369A1), const Color(0xFF0EA5E9)],
-            permissionKey: 'zones',
-            onTap: () => _navigateTo(const KmlZonesMapPage()),
+        )),
+      ),
+      _menuTile(
+        title: 'الحسابات',
+        subtitle: 'النظام المالي والمحاسبي',
+        icon: Icons.account_balance_wallet,
+        group: SdGroup.admin,
+        permissionKey: 'accounting',
+        onTap: () => _navigateTo(PermissionGate.page(
+          permission: 'accounting',
+          pageName: 'الحسابات',
+          child: AccountingDashboardPage(
+            companyId: widget.tenantId,
           ),
-          // 4) HR - الموارد البشرية
-          _buildEnhancedMenuItem(
-            title: 'HR',
-            subtitle: 'الموارد البشرية والحضور والرواتب',
-            icon: Icons.groups_rounded,
-            gradient: [const Color(0xFF0D47A1), const Color(0xFF1565C0)],
-            permissionKey: 'hr',
-            badgeCount: _pendingEmployeeRequests,
-            onTap: () => _navigateTo(HrHubPage(
-              username: widget.username,
-              permissions: widget.permissions,
-              department: widget.department,
-              center: widget.center,
-              tenantId: widget.tenantId,
-              tenantCode: widget.tenantCode,
-            )),
-          ),
-          // 5) AI Search
-          _buildEnhancedMenuItem(
-            title: 'البحث بالذكاء الاصطناعي',
-            subtitle: 'البحث المتقدم والذكي',
-            icon: Icons.psychology,
-            gradient: [Colors.red[500]!, Colors.red[700]!],
-            permissionKey: 'ai_search',
-            onTap: () => _navigateTo(const SearchUsersPage()),
-          ),
-          // 6) منصة الصدارة
-          _buildEnhancedMenuItem(
-            title: 'منصة الصدارة',
-            subtitle: 'طلبات المواطن والوكيل',
-            icon: Icons.hub_rounded,
-            gradient: [const Color(0xFF667eea), const Color(0xFF764ba2)],
-            permissionKey: 'sadara_portal',
-            onTap: () => _navigateTo(const Scaffold(
-              body: SadaraPortalPage(),
-            )),
-          ),
-          // 7) الحسابات
-          _buildEnhancedMenuItem(
-            title: 'الحسابات',
-            subtitle: 'النظام المالي والمحاسبي',
-            icon: Icons.account_balance_wallet,
-            gradient: [Colors.amber[600]!, Colors.amber[900]!],
-            permissionKey: 'accounting',
-            onTap: () => _navigateTo(PermissionGate.page(
-              permission: 'accounting',
-              pageName: 'الحسابات',
-              child: AccountingDashboardPage(
-                companyId: widget.tenantId,
-              ),
-            )),
-          ),
-          // 8) المخازن والمواد
-          _buildEnhancedMenuItem(
-            title: 'المخازن',
-            subtitle: 'إدارة المواد والمستودعات',
-            icon: Icons.warehouse_rounded,
-            gradient: [Colors.brown[500]!, Colors.brown[800]!],
-            permissionKey: 'inventory',
-            onTap: () => _navigateTo(PermissionGate.page(
-              permission: 'inventory',
-              pageName: 'المخازن',
-              child: InventoryPage(
-                companyId: widget.tenantId,
-              ),
-            )),
-          ),
-          // 8b) صفحة وكيل الساس — بوّابة /api/sas-agent
-          _buildEnhancedMenuItem(
-            title: 'صفحة وكيل الساس',
-            subtitle: 'حسابات الساس ولوحة الوكيل والمشتركين',
-            icon: Icons.dns_rounded,
-            gradient: [const Color(0xFF00695C), const Color(0xFF00897B)],
-            permissionKey: 'sas_agent',
-            onTap: () => _navigateTo(const SasAgentPage()),
-          ),
-          // 8c) سجل العقارات المستقل — بوّابة /api/properties
-          _buildEnhancedMenuItem(
-            title: 'سجل العقارات',
-            subtitle: 'عنوان وطني (QR + NPN) ومواطنون وخدمات',
-            icon: Icons.home_work_rounded,
-            gradient: [const Color(0xFF1565C0), const Color(0xFF42A5F5)],
-            permissionKey: 'property_registry',
-            onTap: () => _navigateTo(const PropertiesListPage()),
-          ),
-          // 9) المتابعة والتقييم
-          _buildEnhancedMenuItem(
-            title: 'المتابعة',
-            subtitle: 'متابعة وتقييم المهام',
-            icon: Icons.fact_check_rounded,
-            gradient: [Colors.indigo[500]!, Colors.indigo[800]!],
-            permissionKey: 'follow_up',
-            onTap: () => _navigateTo(FollowUpPage(
-              username: widget.username,
-              permissions: widget.permissions,
-              department: _resolvedDepartments,
-              center: widget.center,
-            )),
-          ),
-          // 10) شاشتي - لوحة الموظف الشخصية
-          _buildEnhancedMenuItem(
-            title: 'شاشتي',
-            subtitle: 'البصمة والمعاملات والراتب',
-            icon: Icons.dashboard_rounded,
-            gradient: [Colors.teal[500]!, Colors.teal[800]!],
-            permissionKey: 'my_dashboard',
-            onTap: () => _navigateTo(MyDashboardPage(
-              username: widget.username,
-              permissions: widget.permissions,
-              center: widget.center,
-            )),
-          ),
-          // 11) مشتركي IPTV
-          _buildEnhancedMenuItem(
-            title: 'مشتركي IPTV',
-            subtitle: 'إدارة اشتراكات التلفزيون',
-            icon: Icons.live_tv_rounded,
-            gradient: [Colors.deepPurple[500]!, Colors.deepPurple[900]!],
-            permissionKey: 'iptv',
-            onTap: () => _navigateTo(const IptvSubscribersPage()),
-          ),
-          // 12) المحادثة الداخلية
-          _buildEnhancedMenuItem(
-            title: 'المحادثة',
-            subtitle: 'محادثات الموظفين الداخلية',
-            icon: Icons.forum_rounded,
-            gradient: [const Color(0xFF1976D2), const Color(0xFF0D47A1)],
-            permissionKey: 'chat',
-            badgeCount: _unreadChatCount,
-            onTap: () => _navigateTo(const ChatRoomsPage()),
-          ),
-          // 12b) الإعلانات والتبليغات
-          _buildEnhancedMenuItem(
-            title: 'التبليغات',
-            subtitle: 'الإعلانات والتبليغات',
-            icon: Icons.campaign_rounded,
-            gradient: [const Color(0xFFE65100), const Color(0xFFFF6D00)],
-            permissionKey: 'announcements',
-            badgeCount: _unreadAnnouncementsCount,
-            onTap: () => _navigateTo(const AnnouncementsPage()),
-          ),
-          // 13) صفحة الشركة - لوحة تحكم FTTH في WebView
-          _buildEnhancedMenuItem(
-            title: 'صفحة الشركة',
-            subtitle: 'لوحة تحكم الشركة',
-            icon: Icons.business,
-            gradient: [Colors.indigo[400]!, Colors.indigo[700]!],
-            permissionKey: '',
-            onTap: () => _navigateTo(const FtthCompanyPage()),
-          ),
-          // 14) تسجيل مشترك جديد — Customer Onboarding
-          _buildEnhancedMenuItem(
-            title: 'مشترك جديد',
-            subtitle: 'تسجيل مشترك FTTH جديد',
-            icon: Icons.person_add_alt_1_rounded,
-            gradient: [const Color(0xFF6A1B9A), const Color(0xFFAB47BC)],
-            permissionKey: '',
-            onTap: () => _navigateTo(CustomerHubPage(
-              authToken: DualAuthService.instance.ftthToken ?? '',
-            )),
-          ),
-        ];
+        )),
+      ),
+      _menuTile(
+        title: 'صفحة الشركة',
+        subtitle: 'لوحة تحكم الشركة',
+        icon: Icons.business,
+        group: SdGroup.admin,
+        permissionKey: '',
+        onTap: () => _navigateTo(const FtthCompanyPage()),
+      ),
+    ].whereType<Widget>().toList();
 
-        // فلترة العناصر المخفية (غير المصرح بها)
-        final visibleItems = items
-            .where((item) {
-              if (item is SizedBox) return item.width != 0;
-              return true;
-            })
-            .toList();
+    // ── التواصل ──
+    final commsTiles = <Widget?>[
+      _menuTile(
+        title: 'المحادثة',
+        subtitle: 'محادثات الموظفين الداخلية',
+        icon: Icons.forum_rounded,
+        group: SdGroup.comms,
+        permissionKey: 'chat',
+        badge: _unreadChatCount,
+        onTap: () => _navigateTo(const ChatRoomsPage()),
+      ),
+      _menuTile(
+        title: 'التبليغات',
+        subtitle: 'الإعلانات والتبليغات',
+        icon: Icons.campaign_rounded,
+        group: SdGroup.comms,
+        permissionKey: 'announcements',
+        badge: _unreadAnnouncementsCount,
+        onTap: () => _navigateTo(const AnnouncementsPage()),
+      ),
+    ].whereType<Widget>().toList();
 
-        return Wrap(
-          spacing: spacing,
-          runSpacing: r.isMobile ? 8 : 12,
-          children: visibleItems
-              .map((item) => SizedBox(width: itemWidth, child: item))
-              .toList(),
-        );
-      },
+    // ── المنصّات والبيانات ──
+    final platformTiles = <Widget?>[
+      _menuTile(
+        title: 'منصة الصدارة',
+        subtitle: 'طلبات المواطن والوكيل',
+        icon: Icons.hub_rounded,
+        group: SdGroup.platform,
+        permissionKey: 'sadara_portal',
+        onTap: () => _navigateTo(const Scaffold(
+          body: SadaraPortalPage(),
+        )),
+      ),
+      _menuTile(
+        title: 'سجل العقارات',
+        subtitle: 'عنوان وطني (QR + NPN) ومواطنون وخدمات',
+        icon: Icons.home_work_rounded,
+        group: SdGroup.platform,
+        permissionKey: 'property_registry',
+        onTap: () => _navigateTo(const PropertiesListPage()),
+      ),
+      _menuTile(
+        title: 'البحث بالذكاء الاصطناعي',
+        subtitle: 'البحث المتقدم والذكي',
+        icon: Icons.psychology,
+        group: SdGroup.platform,
+        permissionKey: 'ai_search',
+        onTap: () => _navigateTo(const SearchUsersPage()),
+      ),
+    ].whereType<Widget>().toList();
+
+    // كل الأقسام تظهر دائماً (أُزيل شريط الفلاتر بطلب المستخدم)
+    final children = <Widget>[];
+
+    if (fieldTiles.isNotEmpty) {
+      children
+        ..add(SdSectionHeader(
+            title: 'العمليات الميدانية', tone: SdGroup.field.tone))
+        ..add(SdTileGrid(
+            maxColumns: 4, minTileWidth: 260, children: fieldTiles))
+        ..add(SizedBox(height: l.isPhone ? 10 : 12));
+    }
+
+    // قسم موحّد: الإدارة والموارد · التواصل
+    final combined = <Widget>[...adminTiles, ...commsTiles];
+    if (combined.isNotEmpty) {
+      children
+        ..add(_adminCommsHeader(
+          showAdmin: adminTiles.isNotEmpty,
+          showComms: commsTiles.isNotEmpty,
+        ))
+        ..add(SdTileGrid(
+            maxColumns: 4, minTileWidth: 260, children: combined))
+        ..add(SizedBox(height: l.isPhone ? 10 : 12));
+    }
+
+    if (platformTiles.isNotEmpty) {
+      children
+        ..add(SdSectionHeader(
+            title: 'المنصّات والبيانات', tone: SdGroup.platform.tone))
+        ..add(SdTileGrid(
+            maxColumns: 4, minTileWidth: 260, children: platformTiles));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
     );
+  }
+
+  /// بلاطة قسم موحّدة (SdMenuTile) تحترم الصلاحية — null إن لم تُمنح.
+  Widget? _menuTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required SdGroup group,
+    required String permissionKey,
+    required VoidCallback onTap,
+    int badge = 0,
+  }) {
+    if (permissionKey.isNotEmpty &&
+        !PermissionManager.instance.canView(permissionKey)) {
+      return null;
+    }
+    return SdMenuTile(
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
+      group: group,
+      badge: badge > 0 ? badge : null,
+      onTap: onTap,
+    );
+  }
+
+  /// عنوان قسم «الإدارة والموارد · التواصل» بمربّعين ملوّنين.
+  Widget _adminCommsHeader({required bool showAdmin, required bool showComms}) {
+    final adminT = SdGroup.admin.tone;
+    final commsT = SdGroup.comms.tone;
+    Widget label(SdTone t, String text) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: t.base,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: [BoxShadow(color: t.edge, offset: const Offset(0, 3))],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(text, style: SdText.titleSm),
+          ],
+        );
+    if (showAdmin && showComms) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: SdSpace.sm),
+        child: Wrap(
+          spacing: 18,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            label(adminT, 'الإدارة والموارد'),
+            label(commsT, 'التواصل'),
+          ],
+        ),
+      );
+    }
+    if (showAdmin) {
+      return SdSectionHeader(title: 'الإدارة والموارد', tone: adminT);
+    }
+    return SdSectionHeader(title: 'التواصل', tone: commsT);
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_account.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_report_table.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_debtors_page.dart';
@@ -42,7 +40,7 @@ class SasReportsTab extends StatelessWidget {
               subtitle:
                   'ملخّص المشتركين + حسب الباقة + حسب المدير + تفعيلات الشهر',
               icon: Icons.insights_rounded,
-              gradient: AppTheme.blueGradient,
+              tone: SdGroup.admin.tone,
               onTap: () =>
                   _open(context, SasAggregateReportsPage(account: account)),
             ),
@@ -52,7 +50,7 @@ class SasReportsTab extends StatelessWidget {
               subtitle:
                   'العمليات المفوترة (تفعيل/تمديد/تغيير باقة) + المبالغ المحصّلة',
               icon: Icons.receipt_long_rounded,
-              gradient: AppTheme.greenGradient,
+              tone: SdStatus.success.tone,
               onTap: () => _open(context, SasTransactionsPage(account: account)),
             ),
             _tile(
@@ -61,7 +59,7 @@ class SasReportsTab extends StatelessWidget {
               subtitle:
                   'المشتركون المدينون بالآجل + الرصيد المستحق · كشف وتسديد',
               icon: Icons.account_balance_wallet_rounded,
-              gradient: const [AppTheme.errorColor, Color(0xFFEF5350)],
+              tone: SdStatus.danger.tone,
               onTap: () => _open(context, SasDebtorsPage(account: account)),
             ),
             _tile(
@@ -69,7 +67,7 @@ class SasReportsTab extends StatelessWidget {
               title: 'الترخيص والصلاحيات',
               subtitle: 'حالة الترخيص · الانتهاء · الإصدار · الميزات المفعّلة',
               icon: Icons.verified_user_rounded,
-              gradient: AppTheme.orangeGradient,
+              tone: SdStatus.warning.tone,
               onTap: () => _open(context, SasLicensePage(account: account)),
             ),
           ];
@@ -80,7 +78,7 @@ class SasReportsTab extends StatelessWidget {
                 title: r.title,
                 subtitle: null,
                 icon: r.icon,
-                gradient: r.gradient,
+                tone: SdGroup.platform.tone,
                 onTap: () => _open(
                   context,
                   _SingleReportScreen(account: account, def: r),
@@ -88,23 +86,17 @@ class SasReportsTab extends StatelessWidget {
               ),
           ];
           return ListView(
-            padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
             children: [
               _banner(),
-              SizedBox(height: 16.h),
-              const SasSectionHeader(
-                title: 'ملخّصات',
-                icon: Icons.insights_rounded,
-              ),
-              SizedBox(height: 10.h),
+              const SizedBox(height: SdSpace.md),
+              const SdSectionHeader(title: 'ملخّصات'),
+              const SizedBox(height: SdSpace.xs),
               _grid(summaryTiles, cols),
-              SizedBox(height: 20.h),
-              const SasSectionHeader(
-                title: 'التقارير التفصيلية',
-                icon: Icons.table_chart_rounded,
-                gradient: AppTheme.greenGradient,
-              ),
-              SizedBox(height: 10.h),
+              const SizedBox(height: SdSpace.lg),
+              SdSectionHeader(
+                  title: 'التقارير التفصيلية', tone: SdGroup.field.tone),
+              const SizedBox(height: SdSpace.xs),
               _grid(detailTiles, cols),
             ],
           );
@@ -119,7 +111,7 @@ class SasReportsTab extends StatelessWidget {
       return Column(
         children: [
           for (int i = 0; i < tiles.length; i++) ...[
-            if (i > 0) SizedBox(height: 8.h),
+            if (i > 0) const SizedBox(height: SdSpace.xs),
             tiles[i],
           ],
         ],
@@ -130,12 +122,12 @@ class SasReportsTab extends StatelessWidget {
       final cells = <Widget>[];
       for (int j = 0; j < cols; j++) {
         final idx = i + j;
-        if (j > 0) cells.add(SizedBox(width: 10.w));
+        if (j > 0) cells.add(const SizedBox(width: SdSpace.xs));
         cells.add(Expanded(
           child: idx < tiles.length ? tiles[idx] : const SizedBox.shrink(),
         ));
       }
-      if (rows.isNotEmpty) rows.add(SizedBox(height: 10.h));
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: SdSpace.xs));
       rows.add(IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -148,49 +140,50 @@ class SasReportsTab extends StatelessWidget {
 
   Widget _banner() {
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: AppTheme.blueGradient,
+          colors: [SdColors.primaryMid, SdColors.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        boxShadow: SasUi.cardShadow(AppTheme.primaryColor),
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: [
+          BoxShadow(color: SdColors.primaryEdge, offset: const Offset(0, 5)),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 46.w,
-            height: 46.w,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.18),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
             ),
-            child:
-                Icon(Icons.bar_chart_rounded, color: Colors.white, size: 24.sp),
+            child: const Icon(Icons.bar_chart_rounded,
+                color: Colors.white, size: 24),
           ),
-          SizedBox(width: 12.w),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'التقارير',
-                  style: GoogleFonts.cairo(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: 2.h),
+                const Text('التقارير',
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+                const SizedBox(height: 2),
                 Text(
                   'تقارير نظام الساس للحساب «${account.displayName}»',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
-                    fontSize: 11.5.sp,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
                     color: Colors.white.withValues(alpha: 0.80),
                     fontWeight: FontWeight.w500,
                   ),
@@ -208,48 +201,47 @@ class SasReportsTab extends StatelessWidget {
     required String title,
     String? subtitle,
     required IconData icon,
-    required List<Color> gradient,
+    required SdTone tone,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(SasUi.radius.r),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.all(12.w),
-          decoration: SasUi.card(),
-          child: Row(
-            children: [
-              SasUi.gradientBadge(
-                  icon: icon, colors: gradient, size: 42, iconSize: 21),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: GoogleFonts.cairo(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1A1A2E))),
-                    if (subtitle != null) ...[
-                      SizedBox(height: 2.h),
-                      Text(subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.cairo(
-                              fontSize: 11.sp, color: Colors.grey[600])),
-                    ],
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_left_rounded,
-                  color: Colors.grey[400], size: 20.sp),
-            ],
+    return SdRaised(
+      onTap: onTap,
+      radius: SdRadius.lg,
+      padding: const EdgeInsets.all(12),
+      semanticLabel: title,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: tone.tint,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: tone.tintEdge, offset: const Offset(0, 3))
+              ],
+            ),
+            child: Icon(icon, color: tone.base, size: 21),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: SdText.label),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: SdText.caption),
+                ],
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_left_rounded,
+              color: SdColors.faint, size: 20),
+        ],
       ),
     );
   }
@@ -264,29 +256,12 @@ class _SingleReportScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          toolbarHeight: 56,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          title: Text(def.title,
-              style:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 17)),
-        ),
-        body: SasReportTable(accountId: account.id, def: def),
-      ),
+    return SdPage(
+      maxWidth: SdSpace.contentMax,
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(title: def.title),
+      body: SasReportTable(accountId: account.id, def: def),
     );
   }
 }

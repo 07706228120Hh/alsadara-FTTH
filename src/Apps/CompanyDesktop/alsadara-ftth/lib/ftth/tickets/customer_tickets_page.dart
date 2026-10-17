@@ -6,6 +6,7 @@ library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../tickets/tktat_details_page.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
@@ -95,13 +96,13 @@ class _CustomerTicketsPageState extends State<CustomerTicketsPage> {
     return raw;
   }
 
-  Color _statusColor(String s) {
+  SdStatus _statusTone(String s) {
     final l = s.toLowerCase();
-    if (l.contains('مفت')) return Colors.orange;
-    if (l.contains('مغل')) return Colors.green;
-    if (l.contains('قيد')) return Colors.indigo;
-    if (l.contains('معلق')) return Colors.amber;
-    return Colors.blueGrey;
+    if (l.contains('مفت')) return SdStatus.warning;
+    if (l.contains('مغل')) return SdStatus.success;
+    if (l.contains('قيد')) return SdStatus.info;
+    if (l.contains('معلق')) return SdStatus.warning;
+    return SdStatus.neutral;
   }
 
   List<dynamic> get _filtered {
@@ -131,60 +132,33 @@ class _CustomerTicketsPageState extends State<CustomerTicketsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        elevation: 4,
-        toolbarHeight: 72,
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.blue[700]!,
-                Colors.blue[500]!,
-                Colors.indigo[400]!
-              ],
+    final subtitle = [
+      if (widget.customerName != null) widget.customerName!,
+      if (!_loading) '$_total تذكرة',
+    ].join('  •  ');
+    return SdTheme.scope(
+      child: Scaffold(
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'تذاكر المشترك',
+          subtitle: subtitle.isEmpty ? null : subtitle,
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: () => _fetch(reset: true),
             ),
-          ),
-        ),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('تذاكر المشترك',
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white)),
-            if (widget.customerName != null)
-              Text(widget.customerName!,
-                  style: TextStyle(
-                      fontSize: 11, color: Colors.white.withValues(alpha: .9))),
-            if (!_loading)
-              Text('$_total تذكرة',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: .95)))
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: 'تحديث',
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: () => _fetch(reset: true),
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              _buildSearchBar(),
+              Expanded(child: _buildBody()),
+            ],
           ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(child: _buildBody()),
-        ],
+        ),
       ),
     );
   }
@@ -193,18 +167,15 @@ class _CustomerTicketsPageState extends State<CustomerTicketsPage> {
         margin: const EdgeInsets.fromLTRB(12, 12, 12, 6),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: SdColors.surface,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: .05),
-                blurRadius: 6,
-                offset: const Offset(0, 3))
+          boxShadow: const [
+            BoxShadow(color: SdColors.cardEdge, offset: Offset(0, 3)),
           ],
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: SdColors.divider),
         ),
         child: Row(children: [
-          const Icon(Icons.search, color: Colors.blueGrey, size: 20),
+          const Icon(Icons.search, color: SdColors.faint, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -250,34 +221,22 @@ class _CustomerTicketsPageState extends State<CustomerTicketsPage> {
   }
 
   Widget _errorWidget(String msg) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.error_outline, size: 52, color: Colors.red),
-            const SizedBox(height: 12),
-            Text(msg,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.red, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-                onPressed: () => _fetch(reset: true),
-                icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة'))
-          ]),
+        child: SdEmptyState(
+          icon: Icons.error_outline,
+          status: SdStatus.danger,
+          title: msg,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh,
+            onPressed: () => _fetch(reset: true),
+          ),
         ),
       );
 
-  Widget _emptyWidget() => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: const [
-            Icon(Icons.support_agent, size: 56, color: Colors.grey),
-            SizedBox(height: 12),
-            Text('لا توجد تذاكر لهذا المشترك',
-                style: TextStyle(
-                    color: Colors.black54, fontWeight: FontWeight.w600)),
-          ]),
+  Widget _emptyWidget() => const Center(
+        child: SdEmptyState(
+          icon: Icons.support_agent,
+          title: 'لا توجد تذاكر لهذا المشترك',
         ),
       );
 
@@ -300,48 +259,30 @@ class _CustomerTicketsPageState extends State<CustomerTicketsPage> {
       }
     }
 
-    final stColor = _statusColor(status);
-    return InkWell(
-      onTap: () => _openDetails(t.cast<String, dynamic>()),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+    final stTone = _statusTone(status);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SdRaised(
+        onTap: () => _openDetails(t.cast<String, dynamic>()),
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [Colors.white, Colors.grey.shade50]),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: stColor.withValues(alpha: .35), width: 1.2),
-          boxShadow: [
-            BoxShadow(
-                color: stColor.withValues(alpha: .15),
-                blurRadius: 8,
-                offset: const Offset(0, 3)),
-          ],
-        ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: stColor.withValues(alpha: .14),
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Text(status,
-                  style: TextStyle(
-                      color: stColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12)),
-            ),
+            SdStatusChip(status, status: stTone),
             const Spacer(),
             if (displayId.isNotEmpty)
               Text('#$displayId',
                   style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w700)),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: SdColors.muted)),
           ]),
           const SizedBox(height: 10),
           SelectableText(summary,
               style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700, height: 1.25)),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                  color: SdColors.ink)),
           const SizedBox(height: 10),
           Wrap(spacing: 10, runSpacing: 6, children: [
             if (zone != null && zone.isNotEmpty) _chip(Icons.location_on, zone),
@@ -355,18 +296,18 @@ class _CustomerTicketsPageState extends State<CustomerTicketsPage> {
   Widget _chip(IconData icon, String text) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: Colors.blueGrey.shade50,
+          color: SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: Colors.blueGrey.shade200),
+          border: Border.all(color: SdColors.divider),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 14, color: Colors.blueGrey.shade700),
+          Icon(icon, size: 14, color: SdColors.faint),
           const SizedBox(width: 4),
           Text(text,
-              style: TextStyle(
+              style: const TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
-                  color: Colors.blueGrey.shade800)),
+                  color: SdColors.muted)),
         ]),
       );
 }

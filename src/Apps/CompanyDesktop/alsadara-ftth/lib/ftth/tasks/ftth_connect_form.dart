@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/ftth_connect_service.dart';
 
 /// فورم تفاصيل المهمة + توصيل المشترك
@@ -20,7 +21,10 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
 
   // ─── responsive helpers ───
   bool get _isPhone => MediaQuery.of(context).size.width < 500;
-  double _fs(double base) => _isPhone ? base * 0.85 : base;
+  double _fs(double base) {
+    final v = _isPhone ? base * 0.85 : base;
+    return v < 11.5 ? 11.5 : v; // أصغر خط مسموح 11.5 (نظام التصميم الموحّد)
+  }
 
   // ─── بيانات المهمة التفصيلية ───
   Map<String, dynamic>? _taskDetails;
@@ -237,7 +241,7 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg, textDirection: TextDirection.rtl),
-        backgroundColor: isError ? Colors.red.shade700 : Colors.green.shade700,
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
         behavior: SnackBarBehavior.floating,
         duration: Duration(seconds: isError ? 5 : 3),
       ),
@@ -246,31 +250,33 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F6FA),
-        appBar: AppBar(
-          title: const Text('توصيل مشترك'),
-          centerTitle: true,
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
+        backgroundColor: SdColors.ground,
+        appBar: const SdAppBar(title: 'توصيل مشترك'),
         body: _isLoadingDetails
             ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: EdgeInsets.all(_isPhone ? 10 : 16),
-                child: Column(
-                  children: [
-                    _buildCustomerInfo(),
-                    const SizedBox(height: 12),
-                    if (_comments.isNotEmpty) ...[
-                      _buildComments(),
-                      const SizedBox(height: 12),
-                    ],
-                    _buildConnectionForm(),
-                  ],
+            : SafeArea(
+                top: false,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(maxWidth: SdSpace.formMax),
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(_isPhone ? 10 : 16),
+                      child: Column(
+                        children: [
+                          _buildCustomerInfo(),
+                          const SizedBox(height: 12),
+                          if (_comments.isNotEmpty) ...[
+                            _buildComments(),
+                            const SizedBox(height: 12),
+                          ],
+                          _buildConnectionForm(),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
       ),
@@ -294,120 +300,77 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
         widget.task['zone'] as Map<String, dynamic>? ??
         {};
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      elevation: 1,
-      child: Padding(
-        padding: EdgeInsets.all(_isPhone ? 12 : 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.person, color: Colors.indigo.shade700, size: 20),
-                const SizedBox(width: 8),
-                Text('معلومات المشترك',
-                    style:
-                        TextStyle(fontSize: _fs(16), fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const Divider(height: 20),
-            _infoRow('الاسم', customer['displayValue'] ?? '-'),
-            _infoRow('الهاتف', customer['primaryPhone'] ?? '-'),
-            _infoRow('الزون', zone['displayValue'] ?? '-'),
-            _infoRow('الحي', address['neighborhood'] ?? '-'),
-            _infoRow('الشارع', '${address['street'] ?? '-'}'),
-            _infoRow('المنزل', '${address['house'] ?? '-'}'),
-            _infoRow('أقرب نقطة', address['nearestPoint'] ?? '-'),
-            if (gps['latitude'] != null)
-              _infoRow('الإحداثيات',
-                  '${gps['latitude']}, ${gps['longitude']}'),
-            _infoRow('الحالة', widget.task['status'] ?? '-'),
-            _infoRow('تاريخ الإنشاء',
-                _formatDateTime(widget.task['createdAt'] ?? '')),
-          ],
-        ),
+    return SdCard(
+      title: 'معلومات المشترك',
+      icon: Icons.person,
+      tone: SdGroup.field.tone,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _infoRow('الاسم', customer['displayValue'] ?? '-'),
+          _infoRow('الهاتف', customer['primaryPhone'] ?? '-', ltrValue: true),
+          _infoRow('الزون', zone['displayValue'] ?? '-'),
+          _infoRow('الحي', address['neighborhood'] ?? '-'),
+          _infoRow('الشارع', '${address['street'] ?? '-'}'),
+          _infoRow('المنزل', '${address['house'] ?? '-'}'),
+          _infoRow('أقرب نقطة', address['nearestPoint'] ?? '-'),
+          if (gps['latitude'] != null)
+            _infoRow('الإحداثيات', '${gps['latitude']}, ${gps['longitude']}',
+                ltrValue: true),
+          _infoRow('الحالة', widget.task['status'] ?? '-'),
+          _infoRow('تاريخ الإنشاء',
+              _formatDateTime(widget.task['createdAt'] ?? '')),
+        ],
       ),
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          SizedBox(
-            width: _isPhone ? 80 : 100,
-            child: Text('$label:',
-                style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: _fs(13),
-                    fontWeight: FontWeight.w500)),
-          ),
-          Expanded(
-            child: Text(value,
-                style: TextStyle(fontSize: _fs(13)),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
-    );
+  Widget _infoRow(String label, String value, {bool ltrValue = false}) {
+    return SdInfoRow(label: label, value: value, ltrValue: ltrValue);
   }
 
   // ═══════════════════════════════════════════
   //  القسم 2: التعليقات
   // ═══════════════════════════════════════════
   Widget _buildComments() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      elevation: 1,
-      child: Padding(
-        padding: EdgeInsets.all(_isPhone ? 12 : 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.comment, color: Colors.amber.shade700, size: 20),
-                const SizedBox(width: 8),
-                Text('التعليقات (${_comments.length})',
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const Divider(height: 16),
-            ..._comments.map((c) {
-              final by = c['createdBy'] as Map?;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.circle, size: 8, color: Colors.grey.shade400),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            (c['self'] as Map?)?['displayValue'] ?? '',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                          Text(
-                            '${by?['displayValue'] ?? ''} — ${_formatDateTime(c['createdAt'] ?? '')}',
-                            style: TextStyle(
-                                fontSize: 11, color: Colors.grey.shade500),
-                          ),
-                        ],
-                      ),
+    return SdCard(
+      title: 'التعليقات (${_comments.length})',
+      icon: Icons.comment,
+      tone: SdGroup.comms.tone,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ..._comments.map((c) {
+            final by = c['createdBy'] as Map?;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.circle, size: 8, color: SdColors.faint),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          (c['self'] as Map?)?['displayValue'] ?? '',
+                          style: TextStyle(
+                              fontSize: _fs(13), color: SdColors.ink),
+                        ),
+                        Text(
+                          '${by?['displayValue'] ?? ''} — ${_formatDateTime(c['createdAt'] ?? '')}',
+                          style:
+                              TextStyle(fontSize: _fs(11.5), color: SdColors.faint),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -416,27 +379,15 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
   //  القسم 3: فورم التوصيل
   // ═══════════════════════════════════════════
   Widget _buildConnectionForm() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      elevation: 2,
-      child: Padding(
-        padding: EdgeInsets.all(_isPhone ? 12 : 16),
-        child: Form(
+    return SdCard(
+      title: 'بيانات التوصيل',
+      icon: Icons.cable,
+      tone: SdGroup.field.tone,
+      child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.cable, color: Colors.green.shade700, size: 20),
-                  const SizedBox(width: 8),
-                  Text('بيانات التوصيل',
-                      style:
-                          TextStyle(fontSize: _fs(16), fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const Divider(height: 20),
-
               // ─── FDT ───
               _buildDropdown(
                 label: 'FDT',
@@ -496,11 +447,12 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
                     ? null
                     : Icon(
                         _usernameValid! ? Icons.check_circle : Icons.cancel,
-                        color: _usernameValid! ? Colors.green : Colors.red,
+                        color:
+                            _usernameValid! ? SdColors.success : SdColors.danger,
                         size: 20,
                       ),
                 helperText: _usernameHint,
-                helperColor: Colors.red.shade700,
+                helperColor: SdColors.danger,
               ),
               const SizedBox(height: 12),
 
@@ -516,11 +468,12 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
                     ? null
                     : Icon(
                         _passwordValid! ? Icons.check_circle : Icons.cancel,
-                        color: _passwordValid! ? Colors.green : Colors.red,
+                        color:
+                            _passwordValid! ? SdColors.success : SdColors.danger,
                         size: 20,
                       ),
                 helperText: _passwordHint,
-                helperColor: Colors.red.shade700,
+                helperColor: SdColors.danger,
               ),
               const SizedBox(height: 12),
 
@@ -547,39 +500,16 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
               const SizedBox(height: 24),
 
               // ─── زر التوصيل ───
-              SizedBox(
-                width: double.infinity,
+              SdButton(
+                label: _isSubmitting ? 'جارٍ التوصيل...' : 'توصيل المشترك',
+                icon: Icons.cable,
+                expand: true,
                 height: _isPhone ? 40 : 48,
-                child: ElevatedButton.icon(
-                  onPressed: _isSubmitting ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A237E),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 2,
-                  ),
-                  icon: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.cable),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      _isSubmitting ? 'جارٍ التوصيل...' : 'توصيل المشترك',
-                      style: TextStyle(
-                          fontSize: _fs(16), fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
+                onPressed: _isSubmitting ? null : _submit,
               ),
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -595,7 +525,10 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            style: TextStyle(
+                fontSize: _fs(13),
+                fontWeight: FontWeight.w600,
+                color: SdColors.ink)),
         const SizedBox(height: 4),
         isLoading
             ? const LinearProgressIndicator()
@@ -608,14 +541,14 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10)),
                   filled: true,
-                  fillColor: Colors.grey.shade50,
+                  fillColor: SdColors.surfaceAlt,
                 ),
                 hint: Text('اختر $label'),
                 items: items.map((item) {
                   return DropdownMenuItem<String>(
                     value: item['id'] as String,
                     child: Text(item['displayValue'] as String? ?? '-',
-                        style: const TextStyle(fontSize: 13)),
+                        style: TextStyle(fontSize: _fs(13))),
                   );
                 }).toList(),
                 onChanged: onChanged,
@@ -649,13 +582,14 @@ class _FtthConnectFormState extends State<FtthConnectForm> {
         prefixIcon: Icon(icon, size: 20),
         suffixIcon: suffixIcon,
         helperText: helperText,
-        helperStyle: TextStyle(color: helperColor ?? Colors.grey, fontSize: 11),
+        helperStyle:
+            TextStyle(color: helperColor ?? SdColors.muted, fontSize: 11.5),
         helperMaxLines: 2,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: SdColors.surfaceAlt,
       ),
       validator: validator,
       onChanged: onChanged,

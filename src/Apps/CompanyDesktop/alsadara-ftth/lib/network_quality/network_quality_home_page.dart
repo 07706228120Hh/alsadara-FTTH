@@ -11,6 +11,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../frontend/frontend.dart';
 import '../pages/offline_router_setup_page.dart';
 import 'pages/quality_scan_page.dart';
 import 'widgets/depth_3d.dart';
@@ -21,63 +22,55 @@ class NetworkToolsHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Nq3d.ground,
-        appBar: nq3dAppBar('أدوات الراوتر والشبكة', actions: [
-          IconButton(
-            tooltip: 'إعداد الراوتر',
-            icon: const Icon(Icons.settings_input_antenna_rounded,
-                color: Colors.white),
+    return SdPage(
+      maxWidth: 520,
+      appBar: SdAppBar(
+        title: 'أدوات الراوتر والشبكة',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.settings_input_antenna_rounded,
+            label: 'إعداد الراوتر',
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (_) => const OfflineRouterSetupPage()),
+              MaterialPageRoute(builder: (_) => const OfflineRouterSetupPage()),
             ),
           ),
-        ]),
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const HomeNetworkScene3D(maxWidth: 380),
-                  const SizedBox(height: 6),
-                  const Text('اختر الأداة',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 24,
-                          color: Nq3d.ink)),
-                  const SizedBox(height: 2),
-                  const Text('أدوات تعمل بدون إنترنت — اتصال محلي بالراوتر',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 13, color: Nq3d.muted)),
-                  const SizedBox(height: 22),
-                  _toolCard(
-                    title: 'فحص جودة الإنترنت',
-                    subtitle:
-                        'فحص دقيق: السرعة، زمن الاستجابة، إشارة الفايبر الضوئية، WiFi، الجهاز',
-                    icon: Icons.network_check_rounded,
-                    gradient: const [Color(0xFF26A69A), Nq3d.teal],
-                    iconEdge: Nq3d.tealDark,
-                    cardEdge: const Color(0xFFCFE7EA),
-                    glow: const Color(0x7300838F),
-                    badge: 'جديد',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const QualityScanPage()),
-                    ),
-                  ),
-                  SizedBox(height: isMobile ? 12 : 32),
-                ],
-              ),
+        ],
+      ),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const HomeNetworkScene3D(maxWidth: 380),
+          const SizedBox(height: 6),
+          const Text('اختر الأداة',
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 24,
+                  color: SdColors.ink)),
+          const SizedBox(height: 2),
+          const Text('أدوات تعمل بدون إنترنت — اتصال محلي بالراوتر',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontFamily: SdText.family, fontSize: 13, color: SdColors.muted)),
+          const SizedBox(height: 22),
+          _toolCard(
+            title: 'فحص جودة الإنترنت',
+            subtitle:
+                'فحص دقيق: السرعة، زمن الاستجابة، إشارة الفايبر الضوئية، WiFi، الجهاز',
+            icon: Icons.network_check_rounded,
+            gradient: const [Color(0xFF26A69A), Nq3d.teal],
+            iconEdge: Nq3d.tealDark,
+            cardEdge: const Color(0xFFCFE7EA),
+            glow: const Color(0x7300838F),
+            badge: 'جديد',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const QualityScanPage()),
             ),
           ),
-        ),
+          SizedBox(height: isMobile ? 12 : 32),
+        ],
       ),
     );
   }

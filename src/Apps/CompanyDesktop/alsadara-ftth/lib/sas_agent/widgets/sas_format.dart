@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../theme/app_theme.dart';
-import 'sas_metrics.dart';
-import 'sas_state_views.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 
 /// أدوات تنسيق مشتركة لوحدة «وكيل الساس» (أرقام/بايتات/عملة/مدة) + ودجات
 /// عرض صغيرة (KPI · شريط استخدام · حالة خدمة). عرض فقط — لا استدعاءات API.
@@ -105,48 +102,45 @@ class SasKpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 165.w,
-      padding: EdgeInsets.all(14.w),
+      width: 165,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withValues(alpha: 0.10),
-            color.withValues(alpha: 0.03),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        border: Border.all(color: color.withValues(alpha: 0.28), width: 1.2),
-        boxShadow: SasUi.cardShadow(color),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: SdDepth.raised(glow: color.withValues(alpha: 0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 38.w,
-            height: 38.w,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(11.r),
+              borderRadius: BorderRadius.circular(11),
+              boxShadow: [
+                BoxShadow(
+                    color: color.withValues(alpha: 0.28),
+                    offset: const Offset(0, 3)),
+              ],
             ),
-            child: Icon(icon, color: color, size: 20.sp),
+            child: Icon(icon, color: color, size: 20),
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: 10),
           Text(
             value,
-            style: GoogleFonts.cairo(
-                fontSize: 20.sp, fontWeight: FontWeight.w900, color: color),
+            style: TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: color),
           ),
-          SizedBox(height: 2.h),
+          const SizedBox(height: 2),
           Text(
             label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.cairo(
-                fontSize: 11.sp,
-                color: Colors.grey[700],
-                fontWeight: FontWeight.w700),
+            style: SdText.caption,
           ),
         ],
       ),
@@ -166,40 +160,43 @@ class SasUsageBar extends StatelessWidget {
       required this.icon});
 
   Color get _color {
-    if (percent < 70) return AppTheme.successColor;
-    if (percent < 90) return AppTheme.warningColor;
-    return AppTheme.errorColor;
+    if (percent < 70) return SdColors.success;
+    if (percent < 90) return SdColors.warning;
+    return SdColors.danger;
   }
 
   @override
   Widget build(BuildContext context) {
     final pct = percent.clamp(0.0, 100.0);
     return Padding(
-      padding: EdgeInsets.only(bottom: 14.h),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 18.sp, color: _color),
-              SizedBox(width: 8.w),
+              Icon(icon, size: 18, color: _color),
+              const SizedBox(width: 8),
               Text(label,
-                  style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.w700, fontSize: 13.sp)),
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13)),
               const Spacer(),
               Text('${pct.toStringAsFixed(1)}%',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: SdText.family,
                       fontWeight: FontWeight.w800,
                       color: _color,
-                      fontSize: 13.sp)),
+                      fontSize: 13)),
             ],
           ),
-          SizedBox(height: 6.h),
+          const SizedBox(height: 6),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6.r),
+            borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: pct / 100,
-              minHeight: 10.h,
+              minHeight: 10,
               backgroundColor: _color.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation<Color>(_color),
             ),
@@ -235,30 +232,33 @@ class SasServiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ok = _isOk;
-    final color = ok ? AppTheme.successColor : AppTheme.errorColor;
+    final color = ok ? SdColors.success : SdColors.danger;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(SdRadius.sm),
         border: Border.all(color: color.withValues(alpha: 0.32)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(ok ? Icons.check_circle_outline : Icons.error_outline,
-              size: 18.sp, color: color),
-          SizedBox(width: 8.w),
+              size: 18, color: color),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(name.replaceAll('_', ' '),
-                  style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.w700, fontSize: 12.5.sp)),
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5)),
               Text(ok ? 'يعمل' : 'متوقّف',
-                  style: GoogleFonts.cairo(
-                      fontSize: 11.sp,
+                  style: TextStyle(
+                      fontFamily: SdText.family,
+                      fontSize: 11.5,
                       color: color,
                       fontWeight: FontWeight.w800)),
             ],
@@ -284,17 +284,23 @@ class SasInfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? Colors.blueGrey;
+    final c = color ?? SdColors.muted;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14.sp, color: c),
-        SizedBox(width: 4.w),
+        Icon(icon, size: 14, color: c),
+        const SizedBox(width: 4),
         Text('$label: ',
-            style: GoogleFonts.cairo(fontSize: 11.5.sp, color: Colors.grey[600])),
+            style: const TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 11.5,
+                color: SdColors.muted)),
         Text(value,
-            style: GoogleFonts.cairo(
-                fontSize: 11.5.sp, fontWeight: FontWeight.w700)),
+            style: const TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: SdColors.ink)),
       ],
     );
   }

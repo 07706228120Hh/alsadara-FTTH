@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../permissions/permission_manager.dart';
-import '../../theme/app_theme.dart';
 import '../models/sas_accounting.dart';
 import '../services/sas_agent_api_service.dart';
-import 'sas_metrics.dart';
 import 'sas_refresh_bus.dart';
 import 'sas_state_views.dart';
 
@@ -48,6 +46,9 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
 
   bool get _canManage => PermissionManager.instance.canAdd('sas_agent');
 
+  // نمط أرقام تقنية أحادي المسافة (مبالغ/تواريخ).
+  static const _mono = TextStyle(fontFamily: 'monospace');
+
   @override
   void initState() {
     super.initState();
@@ -81,8 +82,10 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg,
+          style: const TextStyle(
+              fontFamily: SdText.family, fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -99,29 +102,29 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 20.h),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
         children: [
           _balanceCard(st.balance),
-          SizedBox(height: 14.h),
+          const SizedBox(height: 14),
           SasSectionHeader(
             title: 'الشحنات',
             icon: Icons.receipt_long_rounded,
-            gradient: AppTheme.orangeGradient,
+            gradient: const [SdColors.warning, SdColors.warningEdge],
             trailingText: '${st.charges.length}',
           ),
-          SizedBox(height: 8.h),
+          const SizedBox(height: 8),
           if (st.charges.isEmpty)
             _emptyInline('لا توجد شحنات')
           else
             for (final c in st.charges) _chargeTile(c),
-          SizedBox(height: 16.h),
+          const SizedBox(height: 16),
           SasSectionHeader(
             title: 'التسديدات',
             icon: Icons.payments_rounded,
-            gradient: AppTheme.greenGradient,
+            gradient: const [SdColors.success, SdColors.successEdge],
             trailingText: '${st.payments.length}',
           ),
-          SizedBox(height: 8.h),
+          const SizedBox(height: 8),
           if (st.payments.isEmpty)
             _emptyInline('لا توجد تسديدات')
           else
@@ -133,76 +136,62 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
 
   Widget _balanceCard(num balance) {
     final owed = balance > 0;
-    final color = owed ? AppTheme.errorColor : AppTheme.successColor;
+    final color = owed ? SdColors.danger : SdColors.success;
+    final tone = owed ? SdStatus.danger.tone : SdStatus.success.tone;
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withValues(alpha: 0.12), color.withValues(alpha: 0.04)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        border: Border.all(color: color.withValues(alpha: 0.30), width: 1.3),
-        boxShadow: SasUi.cardShadow(color),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: [
+          BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.card)),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 46.w,
-            height: 46.w,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.16),
+              color: tone.tintEdge,
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.account_balance_wallet_rounded,
-                color: color, size: 24.sp),
+                color: color, size: 24),
           ),
-          SizedBox(width: 12.w),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('الرصيد المستحق',
-                    style: GoogleFonts.cairo(
-                        fontSize: 12.sp, color: Colors.grey[700])),
-                SizedBox(height: 2.h),
+                Text('الرصيد المستحق', style: SdText.caption),
+                const SizedBox(height: 2),
                 Directionality(
                   textDirection: TextDirection.ltr,
                   child: Text(
                     '${_fmt(balance)} IQD',
-                    style: GoogleFonts.robotoMono(
-                        fontSize: 20.sp,
+                    style: _mono.copyWith(
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
                         color: color),
                   ),
                 ),
-                SizedBox(height: 2.h),
+                const SizedBox(height: 2),
                 Text(owed ? 'مدين على المواطن' : 'لا ذمّة مستحقة',
-                    style: GoogleFonts.cairo(
-                        fontSize: 11.sp,
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                         color: color)),
               ],
             ),
           ),
-          FilledButton.icon(
+          SdButton(
+            label: _canManage ? 'تسديد' : 'لا صلاحية',
+            icon: Icons.add_card_rounded,
+            kind: SdButtonKind.accent,
+            height: 46,
             onPressed: (!_canManage || _busy) ? null : _showPaymentDialog,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.successColor,
-              disabledBackgroundColor: Colors.grey.withValues(alpha: 0.30),
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-            ),
-            icon: _busy
-                ? SizedBox(
-                    width: 16.w,
-                    height: 16.w,
-                    child: const CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.add_card_rounded),
-            label: Text(_canManage ? 'تسديد' : 'لا صلاحية',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -211,42 +200,45 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
 
   Widget _chargeTile(SasCitizenCharge c) {
     return Container(
-      margin: EdgeInsets.only(bottom: 8.h),
-      padding: EdgeInsets.all(12.w),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
       decoration: SasUi.card(),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.north_east_rounded,
-              size: 18.sp, color: AppTheme.warningColor),
-          SizedBox(width: 10.w),
+          const Icon(Icons.north_east_rounded,
+              size: 18, color: SdColors.warning),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  c.operationType.isEmpty ? (c.planName.isEmpty ? '—' : c.planName) : c.operationType,
-                  style: GoogleFonts.cairo(
-                      fontSize: 12.5.sp, fontWeight: FontWeight.w800),
+                  c.operationType.isEmpty
+                      ? (c.planName.isEmpty ? '—' : c.planName)
+                      : c.operationType,
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: SdColors.ink),
                 ),
                 if (c.planName.isNotEmpty && c.operationType.isNotEmpty)
-                  Text(c.planName,
-                      style: GoogleFonts.cairo(
-                          fontSize: 11.sp, color: Colors.grey[600])),
+                  Text(c.planName, style: SdText.caption),
                 if (c.createdAt.isNotEmpty)
                   Text(c.createdAt,
-                      style: GoogleFonts.robotoMono(
-                          fontSize: 10.5.sp, color: Colors.grey[500])),
+                      style: _mono.copyWith(
+                          fontSize: 10.5, color: SdColors.faint)),
               ],
             ),
           ),
           Directionality(
             textDirection: TextDirection.ltr,
             child: Text('${_fmt(c.amount ?? 0)} ${c.currency}',
-                style: GoogleFonts.robotoMono(
-                    fontSize: 13.sp,
+                style: _mono.copyWith(
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.warningColor)),
+                    color: SdColors.warning)),
           ),
         ],
       ),
@@ -255,40 +247,41 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
 
   Widget _paymentTile(SasCitizenPayment p) {
     return Container(
-      margin: EdgeInsets.only(bottom: 8.h),
-      padding: EdgeInsets.all(12.w),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
       decoration: SasUi.card(),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.south_west_rounded,
-              size: 18.sp, color: AppTheme.successColor),
-          SizedBox(width: 10.w),
+          const Icon(Icons.south_west_rounded,
+              size: 18, color: SdColors.success),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('تسديد (${p.methodAr})',
-                    style: GoogleFonts.cairo(
-                        fontSize: 12.5.sp, fontWeight: FontWeight.w800)),
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: SdColors.ink)),
                 if (p.note.isNotEmpty)
-                  Text(p.note,
-                      style: GoogleFonts.cairo(
-                          fontSize: 11.sp, color: Colors.grey[600])),
+                  Text(p.note, style: SdText.caption),
                 if (p.createdAt.isNotEmpty)
                   Text(p.createdAt,
-                      style: GoogleFonts.robotoMono(
-                          fontSize: 10.5.sp, color: Colors.grey[500])),
+                      style: _mono.copyWith(
+                          fontSize: 10.5, color: SdColors.faint)),
               ],
             ),
           ),
           Directionality(
             textDirection: TextDirection.ltr,
             child: Text('${_fmt(p.amount ?? 0)} IQD',
-                style: GoogleFonts.robotoMono(
-                    fontSize: 13.sp,
+                style: _mono.copyWith(
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.successColor)),
+                    color: SdColors.success)),
           ),
         ],
       ),
@@ -296,19 +289,17 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
   }
 
   Widget _emptyInline(String msg) => Container(
-        padding: EdgeInsets.all(14.w),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.18)),
+          color: SdColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          border: Border.all(color: SdColors.divider),
         ),
         child: Row(
           children: [
-            Icon(Icons.inbox_rounded, color: Colors.grey[400], size: 18.sp),
-            SizedBox(width: 8.w),
-            Text(msg,
-                style: GoogleFonts.cairo(
-                    fontSize: 12.sp, color: Colors.grey[600])),
+            const Icon(Icons.inbox_rounded, color: SdColors.faint, size: 18),
+            const SizedBox(width: 8),
+            Text(msg, style: SdText.bodySm),
           ],
         ),
       );
@@ -326,18 +317,20 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
         textDirection: TextDirection.rtl,
         child: StatefulBuilder(
           builder: (ctx, setLocal) => AlertDialog(
+            backgroundColor: SdColors.surface,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(SasUi.radius.r)),
+                borderRadius: BorderRadius.circular(SdRadius.lg)),
             title: Row(
               children: [
                 const Icon(Icons.add_card_rounded,
-                    color: AppTheme.successColor, size: 24),
-                SizedBox(width: 10.w),
+                    color: SdColors.success, size: 24),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text('تسديد على الذمّة',
-                      style: GoogleFonts.cairo(
+                      style: const TextStyle(
+                          fontFamily: SdText.family,
                           fontWeight: FontWeight.w800,
-                          color: AppTheme.successColor)),
+                          color: SdColors.success)),
                 ),
               ],
             ),
@@ -350,11 +343,12 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
                   children: [
                     if ((widget.subscriberName ?? '').isNotEmpty) ...[
                       Text('المواطن: ${widget.subscriberName}',
-                          style: GoogleFonts.cairo(
-                              fontSize: 12.5.sp,
+                          style: const TextStyle(
+                              fontFamily: SdText.family,
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w700,
-                              color: Colors.grey[700])),
-                      SizedBox(height: 12.h),
+                              color: SdColors.muted)),
+                      const SizedBox(height: 12),
                     ],
                     TextField(
                       controller: amountCtl,
@@ -364,27 +358,28 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
                       ],
-                      style: GoogleFonts.robotoMono(
-                          fontWeight: FontWeight.w700, fontSize: 14.sp),
+                      style: _mono.copyWith(
+                          fontWeight: FontWeight.w700, fontSize: 14),
                       decoration: InputDecoration(
                         labelText: 'المبلغ',
-                        labelStyle:
-                            GoogleFonts.cairo(color: Colors.grey[600]),
+                        labelStyle: const TextStyle(
+                            fontFamily: SdText.family, color: SdColors.muted),
                         isDense: true,
                         border: OutlineInputBorder(
                             borderRadius:
-                                BorderRadius.circular(SasUi.radiusSm.r)),
+                                BorderRadius.circular(SdRadius.sm)),
                       ),
                     ),
-                    SizedBox(height: 14.h),
+                    const SizedBox(height: 14),
                     Text('طريقة التسديد',
-                        style: GoogleFonts.cairo(
+                        style: const TextStyle(
+                            fontFamily: SdText.family,
                             fontWeight: FontWeight.w700,
-                            fontSize: 13.sp,
-                            color: Colors.grey[700])),
-                    SizedBox(height: 6.h),
+                            fontSize: 13,
+                            color: SdColors.muted)),
+                    const SizedBox(height: 6),
                     Wrap(
-                      spacing: 8.w,
+                      spacing: 8,
                       children: [
                         _methodChip('cash', 'نقد', method,
                             (v) => setLocal(() => method = v)),
@@ -392,19 +387,21 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
                             (v) => setLocal(() => method = v)),
                       ],
                     ),
-                    SizedBox(height: 14.h),
+                    const SizedBox(height: 14),
                     TextField(
                       controller: noteCtl,
-                      style: GoogleFonts.cairo(
-                          fontWeight: FontWeight.w600, fontSize: 13.sp),
+                      style: const TextStyle(
+                          fontFamily: SdText.family,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13),
                       decoration: InputDecoration(
                         labelText: 'ملاحظة (اختياري)',
-                        labelStyle:
-                            GoogleFonts.cairo(color: Colors.grey[600]),
+                        labelStyle: const TextStyle(
+                            fontFamily: SdText.family, color: SdColors.muted),
                         isDense: true,
                         border: OutlineInputBorder(
                             borderRadius:
-                                BorderRadius.circular(SasUi.radiusSm.r)),
+                                BorderRadius.circular(SdRadius.sm)),
                       ),
                     ),
                   ],
@@ -414,15 +411,19 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text('إلغاء',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                child: const Text('إلغاء',
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontWeight: FontWeight.w700,
+                        color: SdColors.muted)),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.successColor),
-                child: Text('تسديد',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                    backgroundColor: SdColors.success),
+                child: const Text('تسديد',
+                    style: TextStyle(
+                        fontFamily: SdText.family, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -468,13 +469,14 @@ class _SasCitizenStatementViewState extends State<SasCitizenStatementView> {
       selected: active,
       onSelected: (_) => onPick(value),
       label: Text(label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+              fontFamily: SdText.family,
               fontWeight: FontWeight.w700,
-              color: active ? Colors.white : Colors.grey[700])),
-      selectedColor: AppTheme.successColor,
-      backgroundColor: Colors.grey.withValues(alpha: 0.10),
+              color: active ? Colors.white : SdColors.muted)),
+      selectedColor: SdColors.success,
+      backgroundColor: SdColors.surfaceAlt,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+          borderRadius: BorderRadius.circular(SdRadius.sm)),
     );
   }
 
@@ -497,41 +499,19 @@ class SasCitizenStatementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor: AppTheme.primaryColor,
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          iconTheme: const IconThemeData(color: Colors.white),
-          title: Text(
-            subscriberName?.trim().isNotEmpty == true
-                ? 'كشف: ${subscriberName!.trim()}'
-                : 'كشف حساب المواطن',
-            style: GoogleFonts.cairo(
-                fontWeight: FontWeight.w800, color: Colors.white),
-          ),
-        ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 820),
-            child: SasCitizenStatementView(
-              accountId: accountId,
-              userId: userId,
-              subscriberName: subscriberName,
-            ),
-          ),
-        ),
+    return SdPage(
+      maxWidth: 820,
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: subscriberName?.trim().isNotEmpty == true
+            ? 'كشف: ${subscriberName!.trim()}'
+            : 'كشف حساب المواطن',
+      ),
+      body: SasCitizenStatementView(
+        accountId: accountId,
+        userId: userId,
+        subscriberName: subscriberName,
       ),
     );
   }

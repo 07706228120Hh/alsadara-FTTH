@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../frontend/frontend.dart';
 import '../models/receipt_template_models.dart';
 import '../services/receipt_template_storage.dart';
 import '../services/receipt_pdf_builder.dart';
@@ -177,17 +178,23 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('استعادة القالب الافتراضي'),
+        backgroundColor: SdColors.surface,
+        title: const Text('استعادة القالب الافتراضي', style: SdText.titleSm),
         content: const Text(
-            'سيتم حذف جميع التعديلات والعودة للقالب الأصلي. هل أنت متأكد؟'),
+            'سيتم حذف جميع التعديلات والعودة للقالب الأصلي. هل أنت متأكد؟',
+            style: SdText.body),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
-          ElevatedButton(
+          SdButton(
+            label: 'إلغاء',
+            kind: SdButtonKind.secondary,
+            height: 44,
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          SdButton(
+            label: 'استعادة',
+            kind: SdButtonKind.danger,
+            height: 44,
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('استعادة', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -209,16 +216,23 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تصفير عداد الوصل'),
-        content: Text('العداد الحالي: $current\nسيتم إعادة تعيينه إلى 0. هل أنت متأكد؟'),
+        backgroundColor: SdColors.surface,
+        title: const Text('تصفير عداد الوصل', style: SdText.titleSm),
+        content: Text(
+            'العداد الحالي: $current\nسيتم إعادة تعيينه إلى 0. هل أنت متأكد؟',
+            style: SdText.body),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
-          ElevatedButton(
+          SdButton(
+            label: 'إلغاء',
+            kind: SdButtonKind.secondary,
+            height: 44,
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          SdButton(
+            label: 'تصفير',
+            kind: SdButtonKind.danger,
+            height: 44,
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('تصفير', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -377,16 +391,16 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFF1a1a2e),
+        backgroundColor: SdColors.ground,
         appBar: _buildAppBar(),
         body: Row(
           children: [
             // يسار: قائمة الصفوف
             SizedBox(width: 260, child: _buildRowList()),
-            const VerticalDivider(width: 1, color: Colors.white24),
+            const VerticalDivider(width: 1, color: SdColors.divider),
             // وسط: المعاينة
             Expanded(child: _buildPreview()),
-            const VerticalDivider(width: 1, color: Colors.white24),
+            const VerticalDivider(width: 1, color: SdColors.divider),
             // يمين: لوحة الخصائص
             SizedBox(width: 290, child: _buildPropertiesPanel()),
           ],
@@ -398,72 +412,49 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
   // ==================== AppBar ====================
 
   PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: const Color(0xFF16213e),
-      title: const Text('محرر قالب الوصل',
-          style: TextStyle(color: Colors.white, fontSize: 16)),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
-        onPressed: () => Navigator.pop(context),
-      ),
+    return SdAppBar(
+      title: 'محرر قالب الوصل',
       actions: [
         // تصفير عداد الوصل
-        TextButton.icon(
+        SdAppBarAction(
+          icon: Icons.restart_alt,
+          label: 'تصفير العداد',
           onPressed: _resetReceiptCounter,
-          icon: const Icon(Icons.restart_alt, color: Colors.red, size: 18),
-          label: const Text('تصفير العداد',
-              style: TextStyle(color: Colors.red, fontSize: 13)),
+          danger: true,
         ),
-        const SizedBox(width: 8),
-        // تغيير الشعار
-        TextButton.icon(
-          onPressed: _pickCustomLogo,
+        // تغيير الشعار (ضغطة طويلة = استعادة الشعار الافتراضي)
+        GestureDetector(
           onLongPress: _resetLogo,
-          icon: const Icon(Icons.image, color: Colors.purple, size: 18),
-          label: const Text('تغيير الشعار',
-              style: TextStyle(color: Colors.purple, fontSize: 13)),
-        ),
-        const SizedBox(width: 8),
-        // معلومات الشركة
-        TextButton.icon(
-          onPressed: _showCompanyInfoDialog,
-          icon: const Icon(Icons.business, color: Colors.cyan, size: 18),
-          label: const Text('معلومات الشركة',
-              style: TextStyle(color: Colors.cyan, fontSize: 13)),
-        ),
-        const SizedBox(width: 8),
-        // إعدادات الصفحة
-        IconButton(
-          icon: const Icon(Icons.settings, color: Colors.white70, size: 20),
-          tooltip: 'إعدادات الصفحة',
-          onPressed: _showPageSettingsDialog,
-        ),
-        const SizedBox(width: 8),
-        // استعادة
-        TextButton.icon(
-          onPressed: _resetTemplate,
-          icon: const Icon(Icons.restore, color: Colors.orange, size: 18),
-          label: const Text('استعادة',
-              style: TextStyle(color: Colors.orange, fontSize: 13)),
-        ),
-        const SizedBox(width: 8),
-        // حفظ
-        ElevatedButton.icon(
-          onPressed: _isSaving ? null : _saveTemplate,
-          icon: _isSaving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.save, size: 18),
-          label: const Text('حفظ'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green.shade700,
-            foregroundColor: Colors.white,
+          child: SdAppBarAction(
+            icon: Icons.image,
+            label: 'تغيير الشعار',
+            onPressed: _pickCustomLogo,
           ),
         ),
-        const SizedBox(width: 12),
+        // معلومات الشركة
+        SdAppBarAction(
+          icon: Icons.business,
+          label: 'معلومات الشركة',
+          onPressed: _showCompanyInfoDialog,
+        ),
+        // إعدادات الصفحة
+        SdAppBarAction(
+          icon: Icons.settings,
+          label: 'إعدادات الصفحة',
+          onPressed: _showPageSettingsDialog,
+        ),
+        // استعادة
+        SdAppBarAction(
+          icon: Icons.restore,
+          label: 'استعادة',
+          onPressed: _resetTemplate,
+        ),
+        // حفظ
+        SdAppBarAction(
+          icon: Icons.save,
+          label: 'حفظ',
+          onPressed: _isSaving ? null : _saveTemplate,
+        ),
       ],
     );
   }
@@ -472,26 +463,25 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
 
   Widget _buildRowList() {
     return Container(
-      color: const Color(0xFF1a1a2e),
+      color: SdColors.surface,
       child: Column(
         children: [
           // عنوان + زر إضافة
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: const Color(0xFF16213e),
+            decoration: const BoxDecoration(
+              color: SdColors.surfaceAlt,
+              border: Border(bottom: BorderSide(color: SdColors.divider)),
+            ),
             child: Row(
               children: [
-                const Icon(Icons.list, color: Colors.white70, size: 18),
+                const Icon(Icons.list, color: SdColors.muted, size: 18),
                 const SizedBox(width: 8),
-                const Text('الصفوف',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold)),
+                const Text('الصفوف', style: SdText.titleSm),
                 const Spacer(),
                 PopupMenuButton<ReceiptRowType>(
                   icon: const Icon(Icons.add_circle_outline,
-                      color: Colors.blue, size: 22),
+                      color: SdColors.primary, size: 22),
                   tooltip: 'إضافة صف',
                   onSelected: _addRow,
                   itemBuilder: (_) => [
@@ -535,18 +525,18 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
       key: ValueKey(row.id),
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: isSelected
-            ? color.withOpacity(0.2)
-            : Colors.white.withOpacity(0.05),
+        color: isSelected ? color.withOpacity(0.12) : SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(8),
-        border: isSelected ? Border.all(color: color, width: 1.5) : null,
+        border: Border.all(
+            color: isSelected ? color : SdColors.divider,
+            width: isSelected ? 1.5 : 1),
       ),
       child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.only(left: 4, right: 8),
         leading: ReorderableDragStartListener(
           index: index,
-          child: Icon(Icons.drag_handle, color: Colors.white38, size: 18),
+          child: const Icon(Icons.drag_handle, color: SdColors.faint, size: 18),
         ),
         title: Row(
           children: [
@@ -555,8 +545,11 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
             Expanded(
               child: Text(
                 row.displayLabel,
-                style: TextStyle(
-                    color: Colors.white.withOpacity(0.9), fontSize: 12),
+                style: const TextStyle(
+                    fontFamily: SdText.family,
+                    color: SdColors.ink,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -572,15 +565,14 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
               child: Icon(
                 row.visible ? Icons.visibility : Icons.visibility_off,
                 size: 16,
-                color:
-                    row.visible ? Colors.green.shade300 : Colors.red.shade300,
+                color: row.visible ? SdColors.success : SdColors.danger,
               ),
             ),
             const SizedBox(width: 6),
             // حذف
             InkWell(
               onTap: () => _deleteRow(row.id),
-              child: Icon(Icons.close, size: 16, color: Colors.red.shade300),
+              child: const Icon(Icons.close, size: 16, color: SdColors.danger),
             ),
           ],
         ),
@@ -598,32 +590,31 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
 
   Widget _buildPreview() {
     return Container(
-      color: const Color(0xFF2a2a3e),
+      color: SdColors.ground,
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: const Color(0xFF16213e),
+            decoration: const BoxDecoration(
+              color: SdColors.surfaceAlt,
+              border: Border(bottom: BorderSide(color: SdColors.divider)),
+            ),
             child: Row(
               children: [
-                const Icon(Icons.preview, color: Colors.white70, size: 18),
+                const Icon(Icons.preview, color: SdColors.muted, size: 18),
                 const SizedBox(width: 8),
-                const Text('المعاينة',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold)),
+                const Text('المعاينة', style: SdText.titleSm),
                 const Spacer(),
                 if (_isLoadingPreview)
                   const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.blue)),
+                          strokeWidth: 2, color: SdColors.primary)),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.refresh,
-                      color: Colors.white54, size: 18),
+                      color: SdColors.muted, size: 18),
                   tooltip: 'تحديث المعاينة',
                   onPressed: _regeneratePreview,
                 ),
@@ -634,6 +625,8 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
             child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
+                // ملاحظة: حاوية المعاينة تمثّل الوصل كما يُطبع (ورق أبيض بنص
+                // أسود) — تُترك ألوانها كما هي عمداً ولا تُحوّل لنمط sd.
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 400),
                   decoration: BoxDecoration(
@@ -665,21 +658,20 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
 
   Widget _buildPropertiesPanel() {
     return Container(
-      color: const Color(0xFF1a1a2e),
+      color: SdColors.surface,
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: const Color(0xFF16213e),
+            decoration: const BoxDecoration(
+              color: SdColors.surfaceAlt,
+              border: Border(bottom: BorderSide(color: SdColors.divider)),
+            ),
             child: const Row(
               children: [
-                Icon(Icons.tune, color: Colors.white70, size: 18),
+                Icon(Icons.tune, color: SdColors.muted, size: 18),
                 SizedBox(width: 8),
-                Text('الخصائص',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold)),
+                Text('الخصائص', style: SdText.titleSm),
               ],
             ),
           ),
@@ -687,7 +679,11 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
             child: _selectedRowId == null
                 ? const Center(
                     child: Text('اختر صفاً لتعديل خصائصه',
-                        style: TextStyle(color: Colors.white38, fontSize: 13)),
+                        style: TextStyle(
+                            fontFamily: SdText.family,
+                            color: SdColors.faint,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600)),
                   )
                 : _buildSelectedProperties(),
           ),
@@ -746,23 +742,20 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
           if (row.cells.length < 4 && row.type == ReceiptRowType.cells)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: OutlinedButton.icon(
+              child: SdButton(
+                label: 'إضافة خلية',
+                icon: Icons.add,
+                kind: SdButtonKind.secondary,
+                height: 40,
+                expand: true,
                 onPressed: () => _addCellToRow(row.id),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('إضافة خلية', style: TextStyle(fontSize: 12)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.blue.shade300,
-                  side: BorderSide(color: Colors.blue.shade700),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                ),
               ),
             ),
 
           // خصائص الخلية المختارة
           if (_selectedCellId != null) ...[
             const SizedBox(height: 16),
-            const Divider(color: Colors.white24),
+            const Divider(color: SdColors.divider),
             const SizedBox(height: 8),
             _buildCellProperties(row),
           ],
@@ -782,13 +775,11 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 3),
       decoration: BoxDecoration(
-        color: isSelected
-            ? Colors.blue.withOpacity(0.15)
-            : Colors.white.withOpacity(0.05),
+        color: isSelected ? SdColors.primaryTint : SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(6),
-        border: isSelected
-            ? Border.all(color: Colors.blue.shade400, width: 1)
-            : null,
+        border: Border.all(
+            color: isSelected ? SdColors.primary : SdColors.divider,
+            width: 1),
       ),
       child: InkWell(
         onTap: () => setState(() => _selectedCellId = cell.id),
@@ -808,8 +799,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
                           : () => _moveCellInRow(row.id, index, index - 1),
                       child: Icon(Icons.arrow_upward,
                           size: 14,
-                          color:
-                              isFirst ? Colors.white12 : Colors.amber.shade300),
+                          color: isFirst ? SdColors.faint : SdColors.warning),
                     ),
                     InkWell(
                       onTap: isLast
@@ -817,8 +807,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
                           : () => _moveCellInRow(row.id, index, index + 1),
                       child: Icon(Icons.arrow_downward,
                           size: 14,
-                          color:
-                              isLast ? Colors.white12 : Colors.amber.shade300),
+                          color: isLast ? SdColors.faint : SdColors.warning),
                     ),
                   ],
                 ),
@@ -832,12 +821,18 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
                       cell.content.length > 25
                           ? '${cell.content.substring(0, 25)}...'
                           : cell.content,
-                      style: TextStyle(
-                          color: Colors.white.withOpacity(0.85), fontSize: 11),
+                      style: const TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.ink,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700),
                     ),
                     Text(
                       'flex: ${cell.flex} | ${_alignmentName(cell.alignment)}',
-                      style: TextStyle(color: Colors.white38, fontSize: 10),
+                      style: const TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.muted,
+                          fontSize: 11.5),
                     ),
                   ],
                 ),
@@ -846,8 +841,8 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
               if (row.cells.length > 1)
                 InkWell(
                   onTap: () => _deleteCellFromRow(row.id, cell.id),
-                  child: Icon(Icons.remove_circle_outline,
-                      size: 16, color: Colors.red.shade300),
+                  child: const Icon(Icons.remove_circle_outline,
+                      size: 16, color: SdColors.danger),
                 ),
             ],
           ),
@@ -871,7 +866,10 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
             Expanded(
               child: TextField(
                 controller: TextEditingController(text: cell.content),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+                style: const TextStyle(
+                    fontFamily: SdText.family,
+                    color: SdColors.ink,
+                    fontSize: 12.5),
                 decoration: _inputDecoration('المحتوى'),
                 onSubmitted: (v) {
                   _updateCell(row.id, cell.id, (c) => c.copyWith(content: v));
@@ -924,6 +922,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
             Expanded(
               child: CheckboxListTile(
                 dense: true,
+                activeColor: SdColors.primary,
                 value: cell.textStyle.bold,
                 onChanged: (v) {
                   _updateCell(
@@ -934,7 +933,10 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
                           ));
                 },
                 title: const Text('عريض',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        color: SdColors.ink,
+                        fontSize: 12)),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -942,13 +944,17 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
             Expanded(
               child: CheckboxListTile(
                 dense: true,
+                activeColor: SdColors.primary,
                 value: cell.isLabel,
                 onChanged: (v) {
                   _updateCell(
                       row.id, cell.id, (c) => c.copyWith(isLabel: v ?? false));
                 },
                 title: const Text('تسمية',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        color: SdColors.ink,
+                        fontSize: 12)),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -963,7 +969,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
 
   Widget _buildVariableInsertButton(String rowId, String cellId) {
     return PopupMenuButton<String>(
-      icon: Icon(Icons.data_object, color: Colors.amber.shade400, size: 20),
+      icon: const Icon(Icons.data_object, color: SdColors.warning, size: 20),
       tooltip: 'إدراج متغير',
       onSelected: (variable) {
         _updateCell(rowId, cellId, (c) => c.copyWith(content: '{{$variable}}'));
@@ -975,8 +981,9 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
             enabled: false,
             child: Text(
               TemplateVariableRegistry.categoryDisplayName(category),
-              style: TextStyle(
-                  color: Colors.blue.shade700,
+              style: const TextStyle(
+                  fontFamily: SdText.family,
+                  color: SdColors.primary,
                   fontWeight: FontWeight.bold,
                   fontSize: 13),
             ),
@@ -1003,6 +1010,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     return SwitchListTile(
       dense: true,
       contentPadding: EdgeInsets.zero,
+      activeColor: SdColors.primary,
       value: hasBorder,
       onChanged: (v) {
         _updateRow(
@@ -1012,7 +1020,8 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
                 ));
       },
       title: Text(hasBorder ? 'مفعّلة' : 'بدون حدود',
-          style: const TextStyle(color: Colors.white60, fontSize: 12)),
+          style: const TextStyle(
+              fontFamily: SdText.family, color: SdColors.muted, fontSize: 12)),
     );
   }
 
@@ -1052,8 +1061,9 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
   Widget _buildConditionDropdown(ReceiptRow row) {
     return DropdownButtonFormField<String?>(
       value: row.conditionVariable,
-      dropdownColor: const Color(0xFF2a2a3e),
-      style: const TextStyle(color: Colors.white, fontSize: 12),
+      dropdownColor: SdColors.surface,
+      style: const TextStyle(
+          fontFamily: SdText.family, color: SdColors.ink, fontSize: 12.5),
       decoration: _inputDecoration(''),
       items: const [
         DropdownMenuItem(
@@ -1099,13 +1109,12 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1e1e2e),
+          backgroundColor: SdColors.surface,
           title: const Row(
             children: [
-              Icon(Icons.business, color: Colors.cyan, size: 22),
+              Icon(Icons.business, color: SdColors.accent, size: 22),
               SizedBox(width: 8),
-              Text('معلومات الشركة',
-                  style: TextStyle(color: Colors.white, fontSize: 16)),
+              Text('معلومات الشركة', style: SdText.titleSm),
             ],
           ),
           content: SizedBox(
@@ -1115,28 +1124,40 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
               children: [
                 TextField(
                   controller: TextEditingController(text: companyName),
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
+                      color: SdColors.ink,
+                      fontSize: 13),
                   decoration: _companyInputDecoration('اسم الشركة'),
                   onChanged: (v) => companyName = v,
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: TextEditingController(text: companySubtitle),
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
+                      color: SdColors.ink,
+                      fontSize: 13),
                   decoration: _companyInputDecoration('السطر الفرعي'),
                   onChanged: (v) => companySubtitle = v,
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: TextEditingController(text: contactInfo),
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
+                      color: SdColors.ink,
+                      fontSize: 13),
                   decoration: _companyInputDecoration('معلومات الاتصال'),
                   onChanged: (v) => contactInfo = v,
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: TextEditingController(text: footerMessage),
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
+                      color: SdColors.ink,
+                      fontSize: 13),
                   decoration: _companyInputDecoration('رسالة التذييل'),
                   maxLines: 2,
                   onChanged: (v) => footerMessage = v,
@@ -1145,16 +1166,16 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
             ),
           ),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء')),
-            ElevatedButton(
+            SdButton(
+              label: 'إلغاء',
+              kind: SdButtonKind.secondary,
+              height: 44,
+              onPressed: () => Navigator.pop(ctx, false),
+            ),
+            SdButton(
+              label: 'حفظ',
+              height: 44,
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade700,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('حفظ'),
             ),
           ],
         ),
@@ -1201,18 +1222,19 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
   InputDecoration _companyInputDecoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Colors.white54, fontSize: 12),
+      labelStyle: const TextStyle(
+          fontFamily: SdText.family, color: SdColors.muted, fontSize: 12),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
+      fillColor: SdColors.surfaceAlt,
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.white24)),
+          borderSide: const BorderSide(color: SdColors.divider)),
       enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.white24)),
+          borderSide: const BorderSide(color: SdColors.divider)),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.cyan.shade400)),
+          borderSide: const BorderSide(color: SdColors.accent, width: 2)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       isDense: true,
     );
@@ -1226,9 +1248,8 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1e1e2e),
-          title: const Text('إعدادات الصفحة',
-              style: TextStyle(color: Colors.white)),
+          backgroundColor: SdColors.surface,
+          title: const Text('إعدادات الصفحة', style: SdText.titleSm),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1236,11 +1257,17 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
               Row(
                 children: [
                   const Text('حجم الخط الأساسي:',
-                      style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      style: TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.muted,
+                          fontSize: 13)),
                   const Spacer(),
                   Text(ps.baseFontSize.toStringAsFixed(1),
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 13)),
+                      style: const TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.ink,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800)),
                 ],
               ),
               Slider(
@@ -1248,6 +1275,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
                 min: 6,
                 max: 18,
                 divisions: 24,
+                activeColor: SdColors.primary,
                 onChanged: (v) =>
                     setDialogState(() => ps = ps.copyWith(baseFontSize: v)),
               ),
@@ -1255,11 +1283,17 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
               Row(
                 children: [
                   const Text('عرض الورق (mm):',
-                      style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      style: TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.muted,
+                          fontSize: 13)),
                   const Spacer(),
                   Text(ps.paperWidthMm.toStringAsFixed(0),
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 13)),
+                      style: const TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.ink,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800)),
                 ],
               ),
               Slider(
@@ -1267,33 +1301,42 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
                 min: 48,
                 max: 80,
                 divisions: 32,
+                activeColor: SdColors.primary,
                 onChanged: (v) =>
                     setDialogState(() => ps = ps.copyWith(paperWidthMm: v)),
               ),
               // عناوين عريضة
               CheckboxListTile(
                 value: ps.boldHeaders,
+                activeColor: SdColors.primary,
                 onChanged: (v) => setDialogState(
                     () => ps = ps.copyWith(boldHeaders: v ?? true)),
                 title: const Text('عناوين عريضة',
-                    style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        color: SdColors.ink,
+                        fontSize: 13)),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
             ],
           ),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('إلغاء')),
-            ElevatedButton(
+            SdButton(
+              label: 'إلغاء',
+              kind: SdButtonKind.secondary,
+              height: 44,
+              onPressed: () => Navigator.pop(ctx),
+            ),
+            SdButton(
+              label: 'تطبيق',
+              height: 44,
               onPressed: () {
                 setState(
                     () => _template = _template.copyWith(pageSettings: ps));
                 _onTemplateChanged();
                 Navigator.pop(ctx);
               },
-              child: const Text('تطبيق'),
             ),
           ],
         ),
@@ -1307,10 +1350,11 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4, top: 2),
       child: Text(label,
-          style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 11,
-              fontWeight: FontWeight.w600)),
+          style: const TextStyle(
+              fontFamily: SdText.family,
+              color: SdColors.muted,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700)),
     );
   }
 
@@ -1322,20 +1366,25 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withOpacity(0.4)),
       ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 12)),
+      child: Text(text,
+          style: TextStyle(
+              fontFamily: SdText.family,
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w800)),
     );
   }
 
   Widget _buildSlider(
       double value, double min, double max, ValueChanged<double> onChanged) {
     return SliderTheme(
-      data: SliderThemeData(
+      data: const SliderThemeData(
         trackHeight: 3,
-        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-        activeTrackColor: Colors.blue.shade400,
-        inactiveTrackColor: Colors.white12,
-        thumbColor: Colors.blue.shade300,
+        thumbShape: RoundSliderThumbShape(enabledThumbRadius: 7),
+        overlayShape: RoundSliderOverlayShape(overlayRadius: 14),
+        activeTrackColor: SdColors.primary,
+        inactiveTrackColor: SdColors.divider,
+        thumbColor: SdColors.primary,
       ),
       child: Slider(
         value: value.clamp(min, max),
@@ -1359,15 +1408,14 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
-              color:
-                  isActive ? Colors.blue.withOpacity(0.2) : Colors.transparent,
+              color: isActive ? SdColors.primaryTint : SdColors.surfaceAlt,
               borderRadius: BorderRadius.circular(6),
-              border:
-                  Border.all(color: isActive ? Colors.blue : Colors.white24),
+              border: Border.all(
+                  color: isActive ? SdColors.primary : SdColors.divider),
             ),
             child: Icon(icon,
                 size: 16,
-                color: isActive ? Colors.blue.shade300 : Colors.white38),
+                color: isActive ? SdColors.primary : SdColors.faint),
           ),
         ),
       ),
@@ -1377,18 +1425,19 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.white24, fontSize: 12),
+      hintStyle: const TextStyle(
+          fontFamily: SdText.family, color: SdColors.faint, fontSize: 12),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
+      fillColor: SdColors.surfaceAlt,
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: Colors.white24)),
+          borderSide: const BorderSide(color: SdColors.divider)),
       enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: Colors.white24)),
+          borderSide: const BorderSide(color: SdColors.divider)),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: Colors.blue.shade400)),
+          borderSide: const BorderSide(color: SdColors.primary, width: 2)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       isDense: true,
     );
@@ -1414,15 +1463,15 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
   Color _getRowTypeColor(ReceiptRowType type) {
     switch (type) {
       case ReceiptRowType.cells:
-        return Colors.blue.shade300;
+        return SdColors.info;
       case ReceiptRowType.centeredText:
-        return Colors.amber.shade300;
+        return SdColors.warning;
       case ReceiptRowType.divider:
-        return Colors.grey.shade400;
+        return SdColors.muted;
       case ReceiptRowType.spacer:
-        return Colors.teal.shade300;
+        return SdColors.accent;
       case ReceiptRowType.image:
-        return Colors.purple.shade300;
+        return SdColors.platformBase;
     }
   }
 

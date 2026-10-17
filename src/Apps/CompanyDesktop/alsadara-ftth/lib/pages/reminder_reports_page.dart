@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/api/api_client.dart';
 
 class ReminderReportsPage extends StatefulWidget {
@@ -44,35 +45,30 @@ class _ReminderReportsPageState extends State<ReminderReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF6A1B9A),
-          foregroundColor: Colors.white,
-          title: const Text('تقارير التذكير التلقائي'),
-          centerTitle: true,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'تقارير التذكير التلقائي',
           actions: [
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _load,
+            ),
           ],
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _logs.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade300),
-                        const SizedBox(height: 12),
-                        Text('لا توجد تقارير', style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
-                      ],
-                    ),
+                ? const SdEmptyState(
+                    title: 'لا توجد تقارير',
+                    icon: Icons.inbox_rounded,
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: _logs.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (_, i) => _buildCard(_logs[i]),
                   ),
       ),
@@ -97,85 +93,69 @@ class _ReminderReportsPageState extends State<ReminderReportsPage> {
     }
 
     final successRate = total > 0 ? (sent / total * 100) : 0.0;
+    final Color rateColor = successRate >= 90
+        ? SdColors.success
+        : successRate >= 50
+            ? SdColors.warning
+            : SdColors.danger;
 
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                // نوع (تلقائي/يدوي)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: isManual ? Colors.orange.shade50 : Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isManual ? Colors.orange : Colors.blue, width: 0.5),
-                  ),
-                  child: Text(
-                    isManual ? 'يدوي' : 'تلقائي',
-                    style: TextStyle(fontSize: 11, color: isManual ? Colors.orange.shade800 : Colors.blue.shade800, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // الفئة
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(_daysLabel(days), style: TextStyle(fontSize: 11, color: Colors.purple.shade800)),
-                ),
-                if (isManual && triggeredBy.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Text('بواسطة: $triggeredBy', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-                ],
-                const Spacer(),
-                Text(timeStr, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // إحصائيات
-            Row(
-              children: [
-                _stat(Icons.groups, '$total', 'الإجمالي', Colors.blue),
-                const SizedBox(width: 16),
-                _stat(Icons.check_circle, '$sent', 'نجح', Colors.green),
-                const SizedBox(width: 16),
-                _stat(Icons.error, '$failed', 'فشل', Colors.red),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text('${successRate.toStringAsFixed(0)}%',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: successRate >= 90 ? Colors.green : successRate >= 50 ? Colors.orange : Colors.red,
-                          )),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: successRate / 100,
-                          backgroundColor: Colors.grey.shade200,
-                          valueColor: AlwaysStoppedAnimation(
-                            successRate >= 90 ? Colors.green : successRate >= 50 ? Colors.orange : Colors.red,
-                          ),
-                          minHeight: 6,
-                        ),
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              // نوع (تلقائي/يدوي)
+              SdStatusChip(
+                isManual ? 'يدوي' : 'تلقائي',
+                status: isManual ? SdStatus.warning : SdStatus.info,
+              ),
+              // الفئة
+              SdStatusChip(_daysLabel(days), status: SdStatus.neutral),
+              if (isManual && triggeredBy.isNotEmpty)
+                Text('بواسطة: $triggeredBy', style: SdText.caption),
+              Text(timeStr, style: SdText.caption),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // إحصائيات
+          Row(
+            children: [
+              _stat(Icons.groups, '$total', 'الإجمالي', SdColors.info),
+              const SizedBox(width: 16),
+              _stat(Icons.check_circle, '$sent', 'نجح', SdColors.success),
+              const SizedBox(width: 16),
+              _stat(Icons.error, '$failed', 'فشل', SdColors.danger),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text('${successRate.toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontFamily: SdText.family,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                          color: rateColor,
+                        )),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: successRate / 100,
+                        backgroundColor: SdColors.divider,
+                        valueColor: AlwaysStoppedAnimation(rateColor),
+                        minHeight: 6,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -185,8 +165,13 @@ class _ReminderReportsPageState extends State<ReminderReportsPage> {
       children: [
         Icon(icon, color: color, size: 20),
         const SizedBox(height: 2),
-        Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 14)),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+        Text(value,
+            style: TextStyle(
+                fontFamily: SdText.family,
+                fontWeight: FontWeight.w900,
+                color: color,
+                fontSize: 14)),
+        Text(label, style: SdText.caption),
       ],
     );
   }

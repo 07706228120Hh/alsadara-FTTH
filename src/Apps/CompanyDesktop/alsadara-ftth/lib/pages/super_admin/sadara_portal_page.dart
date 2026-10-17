@@ -9,6 +9,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/accounting_theme.dart';
+import '../../frontend/frontend.dart';
 import '../../services/sadara_api_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../citizen_portal/models/citizen_portal_models.dart';
@@ -258,10 +259,9 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Container(
-        color: AccountingTheme.bgPrimary,
+        color: SdColors.ground,
         child: Column(
           children: [
             _buildHeader(),

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:webview_windows/webview_windows.dart' as wvwin;
 
+import '../../frontend/frontend.dart';
 import '../models/device_models.dart';
 import '../models/quality_models.dart';
 import '../services/device_credentials_service.dart';
@@ -179,19 +180,20 @@ class _QualityScanPageState extends State<QualityScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Nq3d.ground,
-        appBar: nq3dAppBar('فحص جودة الإنترنت'),
-        body: Stack(
+    return SdPage(
+      padding: EdgeInsets.zero,
+      scrollable: false,
+      maxWidth: double.infinity,
+      appBar: const SdAppBar(title: 'فحص جودة الإنترنت'),
+      body: SizedBox.expand(
+        child: Stack(
           children: [
             // الواجهة الطبيعية هي الطبقة الأساسية (كاملة الشاشة).
             // أثناء الفحص: تملأ شاشة واحدة بلا تمرير (تحجيم متجاوب). عند الخطأ:
             // محتوى قصير مُوسَّط (قابل للتمرير احتياطاً فقط).
             Positioned.fill(
               child: Container(
-                color: Nq3d.ground,
+                color: SdColors.ground,
                 child: SafeArea(
                   child: _running
                       ? _buildRunning()
@@ -237,47 +239,25 @@ class _QualityScanPageState extends State<QualityScanPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Icon(Icons.error_outline_rounded,
-            color: Color(0xFFC62828), size: 56),
+            color: SdColors.danger, size: 56),
         const SizedBox(height: 14),
         const Text('تعذّر إكمال الفحص',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontWeight: FontWeight.w900, fontSize: 19, color: Nq3d.ink)),
+                fontWeight: FontWeight.w900, fontSize: 19, color: SdColors.ink)),
         const SizedBox(height: 6),
         Text(
           _error.isNotEmpty ? _error : 'حدث خطأ غير متوقّع أثناء الفحص.',
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: Nq3d.muted, height: 1.7),
+          style: const TextStyle(fontSize: 13, color: SdColors.muted, height: 1.7),
         ),
         const SizedBox(height: 22),
-        Raised3D(
-          onTap: _start,
-          radius: 16,
-          depth: 6,
-          padding: EdgeInsets.zero,
-          edgeColor: Nq3d.indigoDark,
-          glowColor: const Color(0x990F1660),
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF283593), Nq3d.indigo],
-          ),
-          semanticLabel: 'إعادة المحاولة',
-          child: const SizedBox(
-            height: 56,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.refresh_rounded, color: Colors.white),
-                SizedBox(width: 8),
-                Text('إعادة المحاولة',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 17)),
-              ],
-            ),
-          ),
+        SdButton(
+          label: 'إعادة المحاولة',
+          icon: Icons.refresh_rounded,
+          expand: true,
+          height: 56,
+          onPressed: _start,
         ),
       ],
     );
@@ -355,14 +335,14 @@ class _QualityScanPageState extends State<QualityScanPage> {
                   children: [
                     if (_webBusy)
                       Icon(Icons.fiber_manual_record,
-                          color: Nq3d.teal, size: pctSize * 0.85)
+                          color: SdColors.accent, size: pctSize * 0.85)
                     else
                       Text('$pct%',
                           style: TextStyle(
                               fontWeight: FontWeight.w900,
                               fontSize: pctSize,
                               height: 1.05,
-                              color: Nq3d.indigo)),
+                              color: SdColors.primary)),
                     if (showSpeed)
                       Text(
                         '${_liveMbps.toStringAsFixed(1)} Mbps ${_stage == QualityStage.upload ? '↑' : '↓'}',
@@ -370,7 +350,7 @@ class _QualityScanPageState extends State<QualityScanPage> {
                         style: TextStyle(
                             fontSize: (discW * 0.06).clamp(12.0, 16.0),
                             fontWeight: FontWeight.w800,
-                            color: Nq3d.teal),
+                            color: SdColors.accent),
                       ),
                   ],
                 ),
@@ -404,7 +384,7 @@ class _QualityScanPageState extends State<QualityScanPage> {
                             style: TextStyle(
                                 fontWeight: FontWeight.w900,
                                 fontSize: isPhone ? 15 : 17,
-                                color: Nq3d.ink)),
+                                color: SdColors.ink)),
                       ),
                       const SizedBox(height: 2),
                       Text(hint,
@@ -412,7 +392,7 @@ class _QualityScanPageState extends State<QualityScanPage> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              fontSize: 11.5, color: Nq3d.muted)),
+                              fontSize: 11.5, color: SdColors.muted)),
                     ],
                   ),
                 ),
@@ -446,7 +426,7 @@ class _QualityScanPageState extends State<QualityScanPage> {
                       style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
-                          color: Nq3d.indigo),
+                          color: SdColors.primary),
                     ),
                   ],
                 ),

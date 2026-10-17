@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../frontend/frontend.dart';
 import '../services/dns_benchmark_service.dart';
 import '../services/quality_scorer.dart';
 import '../widgets/depth_3d.dart';
@@ -58,31 +59,30 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Nq3d.ground,
-        appBar: nq3dAppBar('اختبار ومقارنة DNS'),
-        body: LayoutBuilder(
-          builder: (ctx, c) {
-            final w = c.maxWidth;
-            final isPhone = w < 600;
-            final maxContentWidth = isPhone ? w : (w >= 1024 ? 640.0 : 560.0);
-            return Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxContentWidth),
-                  child: _running
-                      ? _loading()
-                      : _results == null
-                          ? const SizedBox.shrink()
-                          : _body(_results!, isPhone),
-                ),
+    return SdPage(
+      padding: EdgeInsets.zero,
+      scrollable: false,
+      maxWidth: double.infinity,
+      appBar: const SdAppBar(title: 'اختبار ومقارنة DNS'),
+      body: LayoutBuilder(
+        builder: (ctx, c) {
+          final w = c.maxWidth;
+          final isPhone = w < 600;
+          final maxContentWidth = isPhone ? w : (w >= 1024 ? 640.0 : 560.0);
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                child: _running
+                    ? _loading()
+                    : _results == null
+                        ? const SizedBox.shrink()
+                        : _body(_results!, isPhone),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -95,12 +95,14 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
           const SizedBox(
             width: 34,
             height: 34,
-            child: CircularProgressIndicator(strokeWidth: 3, color: Nq3d.indigo),
+            child:
+                CircularProgressIndicator(strokeWidth: 3, color: SdColors.primary),
           ),
           const SizedBox(height: 16),
-          Text('جارٍ اختبار مزوّدات DNS...',
+          const Text('جارٍ اختبار مزوّدات DNS...',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Nq3d.muted)),
+              style: TextStyle(
+                  fontFamily: SdText.family, fontSize: 13, color: SdColors.muted)),
         ],
       ),
     );
@@ -157,12 +159,14 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Icon(Icons.info_outline_rounded,
-                  size: 16, color: Color(0xFFC62828)),
+                  size: 16, color: SdColors.danger),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(_error!,
-                    style:
-                        const TextStyle(fontSize: 12, color: Color(0xFFC62828))),
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 12.5,
+                        color: SdColors.danger)),
               ),
             ],
           ),
@@ -172,34 +176,11 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
         ...List.generate(
             results.length, (i) => _dnsRow(i, results[i], results[i].provider.ip == fastest)),
         const SizedBox(height: 16),
-        Raised3D(
-          onTap: _run,
-          radius: 16,
-          depth: 6,
-          padding: EdgeInsets.zero,
-          edgeColor: Nq3d.indigoDark,
-          glowColor: const Color(0x990F1660),
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF283593), Nq3d.indigo],
-          ),
-          semanticLabel: 'إعادة الاختبار',
-          child: const SizedBox(
-            height: 52,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.refresh_rounded, color: Colors.white),
-                SizedBox(width: 8),
-                Text('إعادة الاختبار',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16)),
-              ],
-            ),
-          ),
+        SdButton(
+          label: 'إعادة الاختبار',
+          icon: Icons.refresh_rounded,
+          expand: true,
+          onPressed: _run,
         ),
       ],
     );
@@ -234,15 +215,17 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w800, color: Nq3d.ink)),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: SdColors.ink)),
           Text(
             r.reachable ? '${r.avgMs!.toStringAsFixed(0)} ms' : '—',
             textDirection: TextDirection.ltr,
             style: TextStyle(
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w900,
                 fontFamily: 'monospace',
-                color: r.reachable ? ratingColor(rating) : Nq3d.faint),
+                color: r.reachable ? ratingColor(rating) : SdColors.faint),
           ),
         ],
       ),
@@ -251,17 +234,17 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
 
   Widget _dnsRow(int index, DnsResult r, bool isFastest) {
     final rating = QualityScorer.rateDns(r.avgMs);
-    final c = r.reachable ? ratingColor(rating) : const Color(0xFF9E9E9E);
+    final c = r.reachable ? ratingColor(rating) : SdColors.faint;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F9FA),
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
             color: isFastest
                 ? const Color(0xFFF9A825).withValues(alpha: 0.6)
-                : Colors.grey.withValues(alpha: 0.12),
+                : SdColors.divider,
             width: isFastest ? 1.4 : 1),
       ),
       child: Row(
@@ -271,13 +254,13 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
             height: 24,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-                color: Nq3d.indigo.withValues(alpha: 0.1),
+                color: SdColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle),
             child: Text('${index + 1}',
                 style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
-                    color: Nq3d.indigo)),
+                    color: SdColors.primary)),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -302,9 +285,9 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
                   ],
                 ),
                 Text(r.provider.ip,
-                    style: TextStyle(
-                        fontSize: 10.5,
-                        color: Colors.grey.shade600,
+                    style: const TextStyle(
+                        fontSize: 11.5,
+                        color: SdColors.muted,
                         fontFamily: 'monospace')),
               ],
             ),
@@ -326,7 +309,7 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
                 isFastest
                     ? 'الأسرع — موصى به'
                     : (r.reachable ? '${r.ok}/${r.total} استجابة' : 'محجوب/خطأ'),
-                style: TextStyle(fontSize: 9.5, color: Colors.grey.shade500),
+                style: const TextStyle(fontSize: 11.5, color: SdColors.faint),
               ),
             ],
           ),

@@ -6,6 +6,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import '../services/thermal_printer_service.dart';
+import '../frontend/frontend.dart';
 
 class PrinterSettingsPage extends StatefulWidget {
   const PrinterSettingsPage({super.key});
@@ -91,7 +92,7 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, textAlign: TextAlign.right),
-      backgroundColor: ok ? Colors.green[700] : Colors.red[700],
+      backgroundColor: ok ? SdColors.success : SdColors.danger,
     ));
   }
 
@@ -99,151 +100,126 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
   Widget build(BuildContext context) {
     final savedMissing = _selectedName != null &&
         !_printers.any((p) => p.name == _selectedName);
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('إعدادات طابعة الإيصالات'),
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              onPressed: _loading ? null : _load,
-              icon: const Icon(Icons.refresh),
-              tooltip: 'تحديث القائمة',
-            ),
-          ],
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Icon(Icons.print, size: 64, color: Colors.orange),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'اختر الطابعة التي تُطبع عليها الإيصالات. الطباعة صامتة '
-                      'ومباشرة (بلا حوار ويندوز)، وتُتخطّى بأمان إن كانت الطابعة '
-                      'غير متاحة.',
-                      style: TextStyle(fontSize: 13.5, height: 1.5),
+    return SdPage(
+      maxWidth: SdSpace.formMax,
+      scrollable: !_loading,
+      appBar: SdAppBar(
+        title: 'إعدادات طابعة الإيصالات',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث القائمة',
+            onPressed: _loading ? null : _load,
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Icon(Icons.print, size: 64, color: SdColors.warning),
+                const SizedBox(height: SdSpace.md),
+                const Text(
+                  'اختر الطابعة التي تُطبع عليها الإيصالات. الطباعة صامتة '
+                  'ومباشرة (بلا حوار ويندوز)، وتُتخطّى بأمان إن كانت الطابعة '
+                  'غير متاحة.',
+                  style: SdText.body,
+                ),
+                const SizedBox(height: SdSpace.lg),
+                if (_printers.isEmpty)
+                  const SdEmptyState(
+                    title: 'لا توجد طابعات مثبّتة',
+                    message: 'لا توجد طابعات مثبّتة على النظام. ثبّت طابعة ثم اضغط تحديث.',
+                    icon: Icons.print_disabled_rounded,
+                    status: SdStatus.danger,
+                  )
+                else ...[
+                  DropdownButtonFormField<String?>(
+                    initialValue: _printers.any((p) => p.name == _selectedName)
+                        ? _selectedName
+                        : null,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'طابعة الإيصالات',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 20),
-                    if (_printers.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.red[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red[200]!),
-                        ),
-                        child: const Text(
-                            '❌ لا توجد طابعات مثبّتة على النظام. ثبّت طابعة ثم '
-                            'اضغط تحديث.'),
-                      )
-                    else ...[
-                      DropdownButtonFormField<String?>(
-                        initialValue: _printers.any((p) => p.name == _selectedName)
-                            ? _selectedName
-                            : null,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'طابعة الإيصالات',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('الطابعة الافتراضية المتاحة (تلقائي)'),
-                          ),
-                          ..._printers.map((p) => DropdownMenuItem<String?>(
-                                value: p.name,
-                                child: Text(
-                                  '${p.name}'
-                                  '${p.isDefault ? ' (افتراضية)' : ''}'
-                                  '${p.isAvailable ? '' : ' — غير متاحة'}',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: p.isAvailable
-                                        ? null
-                                        : Colors.red[700],
-                                  ),
-                                ),
-                              )),
-                        ],
-                        onChanged: _busy
-                            ? null
-                            : (v) => setState(() => _selectedName = v),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('الطابعة الافتراضية المتاحة (تلقائي)'),
                       ),
-                      if (savedMissing) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          '⚠️ الطابعة المحفوظة «$_selectedName» غير موجودة حالياً — '
-                          'اختر طابعة أخرى واحفظ.',
-                          style: TextStyle(
-                              color: Colors.orange[800],
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12.5),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _busy ? null : _save,
-                              icon: const Icon(Icons.save),
-                              label: const Text('حفظ'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                      ..._printers.map((p) => DropdownMenuItem<String?>(
+                            value: p.name,
+                            child: Text(
+                              '${p.name}'
+                              '${p.isDefault ? ' (افتراضية)' : ''}'
+                              '${p.isAvailable ? '' : ' — غير متاحة'}',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: p.isAvailable ? null : SdColors.danger,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _busy ? null : _test,
-                              icon: const Icon(Icons.print_outlined),
-                              label: const Text('تجربة طباعة'),
-                              style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                          )),
                     ],
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.yellow[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange[200]!),
-                      ),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('ملاحظات:',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          SizedBox(height: 8),
-                          Text('• اختر طابعة الإيصالات الحرارية — لا طابعة A4.'),
-                          Text('• «غير متاحة» تعني أن النظام يراها غير جاهزة؛ '
-                              'لن تُرسَل لها الإيصالات تفادياً لتعليق الطباعة.'),
-                          Text('• «تلقائي» يستخدم الطابعة الافتراضية إن كانت '
-                              'متاحة، وإلا أول طابعة متاحة.'),
-                        ],
-                      ),
+                    onChanged: _busy
+                        ? null
+                        : (v) => setState(() => _selectedName = v),
+                  ),
+                  if (savedMissing) ...[
+                    const SizedBox(height: SdSpace.sm),
+                    Text(
+                      '⚠️ الطابعة المحفوظة «$_selectedName» غير موجودة حالياً — '
+                      'اختر طابعة أخرى واحفظ.',
+                      style: SdText.caption.copyWith(color: SdColors.warningText),
                     ),
                   ],
+                  const SizedBox(height: SdSpace.lg),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SdButton(
+                          label: 'حفظ',
+                          icon: Icons.save,
+                          expand: true,
+                          onPressed: _busy ? null : _save,
+                        ),
+                      ),
+                      const SizedBox(width: SdSpace.sm),
+                      Expanded(
+                        child: SdButton(
+                          label: 'تجربة طباعة',
+                          icon: Icons.print_outlined,
+                          kind: SdButtonKind.secondary,
+                          expand: true,
+                          onPressed: _busy ? null : _test,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: SdSpace.lg),
+                SdCard(
+                  title: 'ملاحظات',
+                  icon: Icons.info_outline_rounded,
+                  tone: SdStatus.warning.tone,
+                  padding: const EdgeInsets.all(SdSpace.sm),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('• اختر طابعة الإيصالات الحرارية — لا طابعة A4.',
+                          style: SdText.body),
+                      Text('• «غير متاحة» تعني أن النظام يراها غير جاهزة؛ '
+                          'لن تُرسَل لها الإيصالات تفادياً لتعليق الطباعة.',
+                          style: SdText.body),
+                      Text('• «تلقائي» يستخدم الطابعة الافتراضية إن كانت '
+                          'متاحة، وإلا أول طابعة متاحة.',
+                          style: SdText.body),
+                    ],
+                  ),
                 ),
-              ),
-      ),
+              ],
+            ),
     );
   }
 }

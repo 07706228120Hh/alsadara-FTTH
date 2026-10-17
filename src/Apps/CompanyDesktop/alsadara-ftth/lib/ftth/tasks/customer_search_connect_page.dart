@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/ftth_connect_service.dart';
 import '../../services/pending_subscribers_service.dart';
 import '../../task/add_task_api_dialog.dart';
@@ -63,11 +64,11 @@ class _State extends State<CustomerSearchConnectPage> {
   // style
   static const _bdr = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(10)),
-    borderSide: BorderSide(color: Colors.black, width: 1.2),
+    borderSide: BorderSide(color: SdColors.cardEdge, width: 1.2),
   );
   static const _bdrF = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(10)),
-    borderSide: BorderSide(color: Colors.black, width: 2),
+    borderSide: BorderSide(color: SdColors.primary, width: 2),
   );
 
   @override
@@ -86,9 +87,15 @@ class _State extends State<CustomerSearchConnectPage> {
 
   double _fs(double b) {
     final w = MediaQuery.of(context).size.width;
-    if (w < 360) return b * 0.85;
-    if (w < 400) return b * 0.92;
-    return b;
+    double v;
+    if (w < 360) {
+      v = b * 0.85;
+    } else if (w < 400) {
+      v = b * 0.92;
+    } else {
+      v = b;
+    }
+    return v < 11.5 ? 11.5 : v; // أصغر خط مسموح 11.5 (نظام التصميم الموحّد)
   }
 
   double get _pad {
@@ -307,7 +314,7 @@ class _State extends State<CustomerSearchConnectPage> {
   void _snack(String m, bool e) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(m, textDirection: TextDirection.rtl),
-      backgroundColor: e ? Colors.red.shade700 : Colors.green.shade700,
+      backgroundColor: e ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating, duration: Duration(seconds: e ? 5 : 3),
     ));
   }
@@ -319,41 +326,48 @@ class _State extends State<CustomerSearchConnectPage> {
   Widget build(BuildContext context) {
     final labels = ['بحث', 'المنطقة', 'الجهاز', 'التثبيت'];
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F6FA),
-        appBar: AppBar(
-          title: Text(labels[_step], style: TextStyle(fontSize: _fs(17))),
-          centerTitle: true,
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white, elevation: 0,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: labels[_step],
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
-              if (_step > 0) setState(() => _step--);
-              else Navigator.of(context).pop();
+              if (_step > 0) {
+                setState(() => _step--);
+              } else {
+                Navigator.of(context).pop();
+              }
             },
           ),
         ),
         body: SafeArea(
+          top: false,
           child: LayoutBuilder(builder: (ctx, c) {
             return SingleChildScrollView(
               padding: EdgeInsets.all(_pad),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: c.maxHeight - _pad * 2),
-                child: Column(
-                  children: [
-                    _buildSteps(labels),
-                    SizedBox(height: _pad),
-                    // بطاقة المشترك (تظهر في خطوات 1-3)
-                    if (_step >= 1) ...[_customerBar(), SizedBox(height: _pad * 0.75)],
-                    // المحتوى
-                    if (_step == 0) _searchCard(),
-                    if (_step == 1) _zoneCard(),
-                    if (_step == 2) _deviceCard(),
-                    if (_step == 3) _codeCard(),
-                  ],
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                      minHeight: c.maxHeight - _pad * 2,
+                      maxWidth: SdSpace.formMax),
+                  child: Column(
+                    children: [
+                      _buildSteps(labels),
+                      SizedBox(height: _pad),
+                      // بطاقة المشترك (تظهر في خطوات 1-3)
+                      if (_step >= 1) ...[
+                        _customerBar(),
+                        SizedBox(height: _pad * 0.75)
+                      ],
+                      // المحتوى
+                      if (_step == 0) _searchCard(),
+                      if (_step == 1) _zoneCard(),
+                      if (_step == 2) _deviceCard(),
+                      if (_step == 3) _codeCard(),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -372,16 +386,16 @@ class _State extends State<CustomerSearchConnectPage> {
         final cur = _step == i;
         return Expanded(child: Column(children: [
           Row(children: [
-            if (i > 0) Expanded(child: Container(height: 2.5, color: active ? Colors.indigo : Colors.grey.shade300)),
+            if (i > 0) Expanded(child: Container(height: 2.5, color: active ? SdColors.primary : SdColors.divider)),
             CircleAvatar(
               radius: _fs(14),
-              backgroundColor: cur ? Colors.indigo : active ? Colors.indigo.shade200 : Colors.grey.shade300,
-              child: Text('${i + 1}', style: TextStyle(fontSize: fs, color: active ? Colors.white : Colors.grey.shade600, fontWeight: FontWeight.bold)),
+              backgroundColor: cur ? SdColors.primary : active ? SdColors.primarySoft : SdColors.divider,
+              child: Text('${i + 1}', style: TextStyle(fontSize: fs, color: active ? Colors.white : SdColors.muted, fontWeight: FontWeight.bold)),
             ),
-            if (i < 3) Expanded(child: Container(height: 2.5, color: _step > i ? Colors.indigo : Colors.grey.shade300)),
+            if (i < 3) Expanded(child: Container(height: 2.5, color: _step > i ? SdColors.primary : SdColors.divider)),
           ]),
           const SizedBox(height: 4),
-          Text(labels[i], style: TextStyle(fontSize: fs, color: cur ? Colors.indigo : Colors.grey.shade500, fontWeight: cur ? FontWeight.bold : FontWeight.normal)),
+          Text(labels[i], style: TextStyle(fontSize: fs, color: cur ? SdColors.primary : SdColors.muted, fontWeight: cur ? FontWeight.bold : FontWeight.normal)),
         ]));
       }),
     );
@@ -398,19 +412,16 @@ class _State extends State<CustomerSearchConnectPage> {
       zone = (_subs.first['zone'] as Map?)?['displayValue'] ?? '-';
       sub = (_subs.first['self'] as Map?)?['displayValue'] ?? '-';
     }
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Colors.black, width: 0.5)),
-      child: Padding(
-        padding: EdgeInsets.all(_pad),
-        child: Row(children: [
-          CircleAvatar(radius: _fs(18), backgroundColor: Colors.indigo.shade50, child: Icon(Icons.person, size: _fs(20), color: Colors.indigo.shade700)),
-          SizedBox(width: _pad * 0.6),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, style: TextStyle(fontSize: _fs(13), fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text('$phone  •  $zone  •  $sub', style: TextStyle(fontSize: _fs(11), color: Colors.grey.shade600), maxLines: 1, overflow: TextOverflow.ellipsis),
-          ])),
-        ]),
-      ),
+    return SdCard(
+      padding: EdgeInsets.all(_pad),
+      child: Row(children: [
+        CircleAvatar(radius: _fs(18), backgroundColor: SdColors.primaryTint, child: Icon(Icons.person, size: _fs(20), color: SdColors.primary)),
+        SizedBox(width: _pad * 0.6),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name, style: TextStyle(fontSize: _fs(13), fontWeight: FontWeight.bold, color: SdColors.ink), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text('$phone  •  $zone  •  $sub', style: TextStyle(fontSize: _fs(11.5), color: SdColors.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+        ])),
+      ]),
     );
   }
 
@@ -419,9 +430,9 @@ class _State extends State<CustomerSearchConnectPage> {
   // ═══════════════════════════════════════════
   Widget _searchCard() {
     return _card(child: Column(children: [
-      Icon(Icons.person_search, size: _fs(48), color: Colors.indigo.shade200),
+      Icon(Icons.person_search, size: _fs(48), color: SdColors.primarySoft),
       SizedBox(height: _pad * 0.75),
-      Text('بحث عن مشترك', style: TextStyle(fontSize: _fs(15), fontWeight: FontWeight.bold)),
+      Text('بحث عن مشترك', style: TextStyle(fontSize: _fs(15), fontWeight: FontWeight.bold, color: SdColors.ink)),
       SizedBox(height: _pad),
       TextField(
         controller: _phoneController,
@@ -443,7 +454,7 @@ class _State extends State<CustomerSearchConnectPage> {
       ),
       if (_searchError != null) ...[
         const SizedBox(height: 8),
-        Text(_searchError!, style: TextStyle(color: Colors.red.shade700, fontSize: _fs(12))),
+        Text(_searchError!, style: TextStyle(color: SdColors.danger, fontSize: _fs(12))),
       ],
       SizedBox(height: _pad),
       _actionBtn(
@@ -462,7 +473,7 @@ class _State extends State<CustomerSearchConnectPage> {
     final fs = _fs(13);
     final gap = SizedBox(height: _pad * 0.75);
     return _card(child: Form(key: _step1Key, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _header(Icons.location_on, 'بيانات المنطقة', Colors.teal.shade700),
+      _header(Icons.location_on, 'بيانات المنطقة', SdColors.accent),
       gap,
       _dd('FDT', _selFdt, _fdts, fs, (v) { setState(() { _selFdt = v; _selFat = null; _fats = []; }); if (v != null) _loadFats(v); }),
       gap,
@@ -481,7 +492,7 @@ class _State extends State<CustomerSearchConnectPage> {
     final fs = _fs(13);
     final gap = SizedBox(height: _pad * 0.75);
     return _card(child: Form(key: _step2Key, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _header(Icons.router, 'معلومات الجهاز', Colors.indigo.shade700),
+      _header(Icons.router, 'معلومات الجهاز', SdColors.primary),
       gap,
       _dd('نوع الجهاز (ONT)', _selVendor, _vendors, fs, (v) => setState(() => _selVendor = v)),
       gap,
@@ -489,12 +500,12 @@ class _State extends State<CustomerSearchConnectPage> {
       gap,
       _tf(_userCtl, 'اسم المستخدم (PPPoE)', Icons.person_outline, fs,
         onChanged: _onUserChanged,
-        suffix: _userOk == null ? null : Icon(_userOk! ? Icons.check_circle : Icons.cancel, color: _userOk! ? Colors.green : Colors.red, size: 18),
+        suffix: _userOk == null ? null : Icon(_userOk! ? Icons.check_circle : Icons.cancel, color: _userOk! ? SdColors.success : SdColors.danger, size: 18),
         helper: _userHint),
       gap,
       _tf(_passCtl, 'كلمة المرور', Icons.lock_outline, fs,
         onChanged: _onPassChanged,
-        suffix: _passOk == null ? null : Icon(_passOk! ? Icons.check_circle : Icons.cancel, color: _passOk! ? Colors.green : Colors.red, size: 18),
+        suffix: _passOk == null ? null : Icon(_passOk! ? Icons.check_circle : Icons.cancel, color: _passOk! ? SdColors.success : SdColors.danger, size: 18),
         helper: _passHint),
       SizedBox(height: _pad * 1.5),
       _actionBtn(label: 'التالي', icon: Icons.arrow_back, onPressed: _next),
@@ -507,7 +518,7 @@ class _State extends State<CustomerSearchConnectPage> {
   Widget _codeCard() {
     final fs = _fs(13);
     return _card(child: Form(key: _step3Key, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _header(Icons.vpn_key, 'كود التثبيت', Colors.orange.shade800),
+      _header(Icons.vpn_key, 'كود التثبيت', SdColors.warning),
       SizedBox(height: _pad * 0.75),
       _tf(_codeCtl, 'كود التثبيت (Onboarding Code)', Icons.pin, fs, isNum: true),
       SizedBox(height: _pad * 2),
@@ -516,7 +527,7 @@ class _State extends State<CustomerSearchConnectPage> {
         icon: Icons.cable,
         loading: _submitting,
         onPressed: _submitting ? null : _submit,
-        color: Colors.green.shade700,
+        accent: true,
       ),
     ])));
   }
@@ -526,10 +537,9 @@ class _State extends State<CustomerSearchConnectPage> {
   // ═══════════════════════════════════════════
 
   Widget _card({required Widget child}) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: const BorderSide(color: Colors.black, width: 0.5)),
-      elevation: 2,
-      child: Padding(padding: EdgeInsets.all(_pad + 2), child: child),
+    return SdCard(
+      padding: EdgeInsets.all(_pad + 2),
+      child: child,
     );
   }
 
@@ -541,23 +551,14 @@ class _State extends State<CustomerSearchConnectPage> {
     ]);
   }
 
-  Widget _actionBtn({required String label, required IconData icon, VoidCallback? onPressed, bool loading = false, Color? color}) {
-    return SizedBox(
-      width: double.infinity,
+  Widget _actionBtn({required String label, required IconData icon, VoidCallback? onPressed, bool loading = false, bool accent = false}) {
+    return SdButton(
+      label: label,
+      icon: loading ? null : icon,
+      expand: true,
       height: _fs(48),
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color ?? const Color(0xFF1A237E),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 2,
-        ),
-        icon: loading
-            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-            : Icon(icon, size: _fs(20)),
-        label: Text(label, style: TextStyle(fontSize: _fs(15), fontWeight: FontWeight.bold)),
-      ),
+      kind: accent ? SdButtonKind.accent : SdButtonKind.primary,
+      onPressed: onPressed,
     );
   }
 
@@ -567,23 +568,23 @@ class _State extends State<CustomerSearchConnectPage> {
       prefixIcon: icon != null ? Icon(icon) : null,
       contentPadding: EdgeInsets.symmetric(horizontal: _pad, vertical: 12),
       border: _bdr, enabledBorder: _bdr, focusedBorder: _bdrF,
-      filled: true, fillColor: Colors.white,
+      filled: true, fillColor: SdColors.surface,
     );
   }
 
   Widget _dd(String label, String? value, List<Map<String, dynamic>> items, double fs, ValueChanged<String?> onChanged, {bool loading = false}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w600)),
+      Text(label, style: TextStyle(fontSize: fs, fontWeight: FontWeight.w600, color: SdColors.ink)),
       const SizedBox(height: 4),
       loading
           ? const LinearProgressIndicator()
           : DropdownButtonFormField<String>(
               value: value, isExpanded: true,
-              style: TextStyle(fontSize: fs, color: Colors.black),
+              style: TextStyle(fontSize: fs, color: SdColors.ink),
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: _bdr, enabledBorder: _bdr, focusedBorder: _bdrF,
-                filled: true, fillColor: Colors.white,
+                filled: true, fillColor: SdColors.surface,
               ),
               hint: Text('اختر $label', style: TextStyle(fontSize: fs)),
               items: items.map((m) => DropdownMenuItem(value: m['id'] as String, child: Text(m['displayValue'] as String? ?? '-', style: TextStyle(fontSize: fs)))).toList(),
@@ -595,7 +596,7 @@ class _State extends State<CustomerSearchConnectPage> {
 
   Widget _searchableFat(double fs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('FAT', style: TextStyle(fontSize: fs, fontWeight: FontWeight.w600)),
+      Text('FAT', style: TextStyle(fontSize: fs, fontWeight: FontWeight.w600, color: SdColors.ink)),
       const SizedBox(height: 4),
       _isLoadingFats
           ? const LinearProgressIndicator()
@@ -624,7 +625,7 @@ class _State extends State<CustomerSearchConnectPage> {
                         : null,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     border: _bdr, enabledBorder: _bdr, focusedBorder: _bdrF,
-                    filled: true, fillColor: Colors.white,
+                    filled: true, fillColor: SdColors.surface,
                   ),
                   validator: (_) => _selFat == null ? 'مطلوب' : null,
                 );
@@ -668,10 +669,10 @@ class _State extends State<CustomerSearchConnectPage> {
       decoration: InputDecoration(
         labelText: label, labelStyle: TextStyle(fontSize: fs),
         prefixIcon: Icon(icon, size: fs + 4), suffixIcon: suffix,
-        helperText: helper, helperStyle: TextStyle(color: Colors.red.shade700, fontSize: fs - 2), helperMaxLines: 2,
+        helperText: helper, helperStyle: TextStyle(color: SdColors.danger, fontSize: fs - 2 < 11.5 ? 11.5 : fs - 2), helperMaxLines: 2,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: _bdr, enabledBorder: _bdr, focusedBorder: _bdrF,
-        filled: true, fillColor: Colors.white,
+        filled: true, fillColor: SdColors.surface,
       ),
       validator: (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
       onChanged: onChanged,

@@ -6,6 +6,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/employee_profile_service.dart';
 import '../../permissions/permissions.dart';
 import '../../services/api/api_client.dart';
@@ -198,27 +199,24 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
   }
 
   // ═══════════════ ألوان ═══════════════
-  static const _bgPage = Color(0xFFF5F6FA);
-  static const _headerBg = Color(0xFF2C3E50);
-  static const _accent = Color(0xFF3498DB);
-  static const _textDark = Color(0xFF333333);
-  static const _textGray = Color(0xFF7F8C8D);
+  static const _headerBg = SdColors.primary;
+  static const _accent = SdColors.accent;
+  static const _textGray = SdColors.muted;
 
   bool get _isSmallScreen => MediaQuery.of(context).size.width < 600;
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _bgPage,
-        body: Column(
-          children: [
-            _buildHeader(),
-            _buildTabBar(),
-            Expanded(child: _buildTabContent()),
-          ],
-        ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      body: Column(
+        children: [
+          _buildHeader(),
+          _buildTabBar(),
+          Expanded(child: _buildTabContent()),
+        ],
       ),
     );
   }
@@ -614,7 +612,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                               SnackBar(
                                 content: Text('تم تغيير كلمة المرور بنجاح',
                                     style: GoogleFonts.cairo()),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                             _loadFullProfile();
@@ -627,7 +625,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                   content: Text('خطأ'),
-                                  backgroundColor: Colors.red),
+                                  backgroundColor: SdColors.danger),
                             );
                           }
                         }
@@ -692,7 +690,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: SdColors.danger,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
@@ -715,7 +713,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('تم حذف الموظف بنجاح', style: GoogleFonts.cairo()),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
           Navigator.of(context).pop(); // العودة لقائمة الموظفين
@@ -724,14 +722,14 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
             SnackBar(
               content: Text(response.message ?? 'فشل في حذف الموظف',
                   style: GoogleFonts.cairo()),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+            SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
           );
         }
       }
@@ -758,7 +756,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
   Widget _buildTabBar() {
     final isSmall = _isSmallScreen;
     return Container(
-      color: Colors.white,
+      color: SdColors.surface,
       child: TabBar(
         controller: _tabController,
         isScrollable: true,
@@ -799,22 +797,14 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 12),
-            Text(_error!, style: GoogleFonts.cairo(color: _textGray)),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _loadFullProfile,
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              label: Text('إعادة المحاولة',
-                  style: GoogleFonts.cairo(color: Colors.white)),
-              style: ElevatedButton.styleFrom(backgroundColor: _accent),
-            ),
-          ],
+      return SdEmptyState(
+        icon: Icons.error_outline,
+        status: SdStatus.danger,
+        title: _error!,
+        action: SdButton(
+          label: 'إعادة المحاولة',
+          icon: Icons.refresh,
+          onPressed: _loadFullProfile,
         ),
       );
     }

@@ -4,10 +4,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../models/tenant.dart';
 import '../../permissions/permission_registry.dart';
-import '../../theme/energy_dashboard_theme.dart';
+import '../../frontend/frontend.dart';
 
 class TenantFeaturesPage extends StatefulWidget {
   final Tenant tenant;
@@ -70,11 +69,9 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'تم حفظ التغييرات بنجاح',
-              style: GoogleFonts.cairo(),
-            ),
-            backgroundColor: Colors.green,
+            content: Text('تم حفظ التغييرات بنجاح',
+                style: SdText.body.copyWith(color: Colors.white)),
+            backgroundColor: SdColors.success,
           ),
         );
         setState(() => _hasChanges = false);
@@ -83,11 +80,9 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'حدث خطأ',
-              style: GoogleFonts.cairo(),
-            ),
-            backgroundColor: Colors.red,
+            content: Text('حدث خطأ',
+                style: SdText.body.copyWith(color: Colors.white)),
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -120,74 +115,42 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'إدارة ميزات الشركة',
-              style: GoogleFonts.cairo(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+    return SdTheme.scope(
+      child: Scaffold(
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'إدارة ميزات الشركة',
+          subtitle: widget.tenant.name,
+          actions: [
+            if (_hasChanges)
+              SdAppBarAction(
+                icon: Icons.save,
+                label: 'حفظ التغييرات',
+                onPressed: _isLoading ? null : _saveChanges,
               ),
-            ),
-            Text(
-              widget.tenant.name,
-              style: GoogleFonts.cairo(
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
           ],
+          bottom: SdTabBar(
+            controller: _tabController,
+            height: 72,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.looks_one),
+                text: 'النظام الأول',
+              ),
+              Tab(
+                icon: Icon(Icons.looks_two),
+                text: 'النظام الثاني',
+              ),
+            ],
+          ),
         ),
-        backgroundColor: const Color(0xFF1a237e),
-        foregroundColor: Colors.white,
-        actions: [
-          if (_hasChanges)
-            _isLoading
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.save),
-                    tooltip: 'حفظ التغييرات',
-                    onPressed: _saveChanges,
-                  ),
-        ],
-        bottom: TabBar(
+        body: TabBarView(
           controller: _tabController,
-          indicatorColor: const Color(0xFF00E5FF),
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          tabs: [
-            Tab(
-              icon: const Icon(Icons.looks_one),
-              text: 'النظام الأول',
-            ),
-            Tab(
-              icon: const Icon(Icons.looks_two),
-              text: 'النظام الثاني',
-            ),
+          children: [
+            _buildFeaturesList(_firstSystemFeatures, true),
+            _buildFeaturesList(_secondSystemFeatures, false),
           ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildFeaturesList(_firstSystemFeatures, true),
-          _buildFeaturesList(_secondSystemFeatures, false),
-        ],
       ),
     );
   }
@@ -200,35 +163,30 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
         // أزرار تفعيل/تعطيل الكل
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+          decoration: const BoxDecoration(
+            color: SdColors.surfaceAlt,
             border: Border(
-              bottom: BorderSide(color: Colors.grey.shade300),
+              bottom: BorderSide(color: SdColors.divider),
             ),
           ),
           child: Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
+                child: SdButton(
+                  label: 'تفعيل الكل',
+                  icon: Icons.check_circle,
+                  expand: true,
                   onPressed: () => _enableAll(isFirstSystem),
-                  icon: const Icon(Icons.check_circle, size: 18),
-                  label: Text('تفعيل الكل', style: GoogleFonts.cairo()),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: ElevatedButton.icon(
+                child: SdButton(
+                  label: 'تعطيل الكل',
+                  icon: Icons.cancel,
+                  kind: SdButtonKind.danger,
+                  expand: true,
                   onPressed: () => _disableAll(isFirstSystem),
-                  icon: const Icon(Icons.cancel, size: 18),
-                  label: Text('تعطيل الكل', style: GoogleFonts.cairo()),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
                 ),
               ),
             ],
@@ -237,17 +195,14 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
         // عداد الميزات
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: const Color(0xFF1a237e).withOpacity(0.1),
+          color: SdColors.primaryTint,
           child: Row(
             children: [
-              Icon(Icons.info_outline, size: 18, color: Colors.grey.shade600),
+              const Icon(Icons.info_outline, size: 18, color: SdColors.muted),
               const SizedBox(width: 8),
               Text(
                 'الميزات المفعلة: ${features.values.where((v) => v).length} من ${features.length}',
-                style: GoogleFonts.cairo(
-                  fontSize: 13,
-                  color: Colors.grey.shade700,
-                ),
+                style: SdText.bodySm,
               ),
             ],
           ),
@@ -255,6 +210,7 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
         // قائمة الميزات
         Expanded(
           child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: features.length,
             itemBuilder: (context, index) {
               final key = features.keys.elementAt(index);
@@ -262,43 +218,43 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
               final name = featureNames[key] ?? key;
               final icon = _getFeatureIcon(key);
 
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: SwitchListTile(
-                  value: value,
-                  onChanged: (newValue) {
-                    setState(() {
-                      features[key] = newValue;
-                      _hasChanges = true;
-                    });
-                  },
-                  title: Row(
-                    children: [
-                      Icon(
-                        icon,
-                        size: 20,
-                        color: value ? Colors.green : Colors.grey,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        name,
-                        style: GoogleFonts.cairo(
-                          fontWeight: FontWeight.w500,
-                          color: value
-                              ? EnergyDashboardTheme.textPrimary
-                              : EnergyDashboardTheme.textMuted,
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: SdCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: value,
+                    onChanged: (newValue) {
+                      setState(() {
+                        features[key] = newValue;
+                        _hasChanges = true;
+                      });
+                    },
+                    title: Row(
+                      children: [
+                        Icon(
+                          icon,
+                          size: 20,
+                          color: value ? SdColors.success : SdColors.faint,
                         ),
-                      ),
-                    ],
-                  ),
-                  subtitle: Text(
-                    value ? 'مفعل للشركة' : 'معطل للشركة',
-                    style: GoogleFonts.cairo(
-                      fontSize: 12,
-                      color: value ? Colors.green : Colors.red,
+                        const SizedBox(width: 12),
+                        Text(
+                          name,
+                          style: SdText.label.copyWith(
+                            color: value ? SdColors.ink : SdColors.muted,
+                          ),
+                        ),
+                      ],
                     ),
+                    subtitle: Text(
+                      value ? 'مفعل للشركة' : 'معطل للشركة',
+                      style: SdText.caption.copyWith(
+                        color: value ? SdColors.success : SdColors.danger,
+                      ),
+                    ),
+                    activeColor: SdColors.success,
                   ),
-                  activeColor: Colors.green,
                 ),
               );
             },
@@ -309,21 +265,18 @@ class _TenantFeaturesPageState extends State<TenantFeaturesPage>
           padding: const EdgeInsets.all(16),
           margin: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.orange.shade50,
+            color: SdColors.warningTint,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.orange.shade200),
+            border: Border.all(color: SdColors.warningTintEdge),
           ),
           child: Row(
             children: [
-              Icon(Icons.warning_amber, color: Colors.orange.shade700),
+              const Icon(Icons.warning_amber, color: SdColors.warning),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'الميزات المعطلة لن تظهر لأي مستخدم في الشركة، حتى المدراء',
-                  style: GoogleFonts.cairo(
-                    fontSize: 12,
-                    color: Colors.orange.shade800,
-                  ),
+                  style: SdText.caption.copyWith(color: SdColors.warningText),
                 ),
               ),
             ],

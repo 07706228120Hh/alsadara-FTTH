@@ -6,7 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../widgets/responsive_body.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/zone_statistics_api_service.dart';
 
 class ChartsPage extends StatefulWidget {
@@ -71,51 +71,46 @@ class _ChartsPageState extends State<ChartsPage> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'المخططات',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
-        ),
-        backgroundColor: Colors.blue[800],
-        centerTitle: true,
+    return SdTheme.scope(
+      child: Scaffold(
+        backgroundColor: SdColors.ground,
+        appBar: const SdAppBar(title: 'المخططات'),
+        body: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : errorMessage != null
+                ? SdEmptyState(
+                    title: errorMessage!,
+                    icon: Icons.bar_chart_rounded,
+                    status: SdStatus.danger,
+                  )
+                : SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: _buildChart(
+                              'مخطط الزونات وعدد المستخدمين الكلي',
+                              totalUsersPerZone,
+                              isTotalUsers: true,
+                              chartWidth: width,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: _buildChart(
+                              'مخطط الزونات وعدد المستخدمين غير المجددين',
+                              nonSubscribedUsersPerZone,
+                              isTotalUsers: false,
+                              chartWidth: width,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage != null
-              ? Center(
-                  child: Text(
-                    errorMessage!,
-                    style: const TextStyle(
-                        color: Colors.red,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
-                  ),
-                )
-              : ResponsiveBody(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: _buildChart(
-                          'مخطط الزونات وعدد المستخدمين الكلي',
-                          totalUsersPerZone,
-                          isTotalUsers: true,
-                          chartWidth: width,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: _buildChart(
-                          'مخطط الزونات وعدد المستخدمين غير المجددين',
-                          nonSubscribedUsersPerZone,
-                          isTotalUsers: false,
-                          chartWidth: width,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
     );
   }
 
@@ -125,23 +120,17 @@ class _ChartsPageState extends State<ChartsPage> {
     double barWidth = chartWidth / (count * 3); // ضبط عرض الأعمدة
     barWidth = barWidth.clamp(6.0, 28.0); // تأمين قيمة معقولة للعرض
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-            Expanded(
-              child: BarChart(
+    return SdCard(
+      child: Column(
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: SdText.titleSm,
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: BarChart(
                 BarChartData(
                   barGroups: List.generate(data.length, (index) {
                     return BarChartGroupData(
@@ -206,7 +195,6 @@ class _ChartsPageState extends State<ChartsPage> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }

@@ -5,3 +5,183 @@
 | التاريخ | الملف | ما تغيّر | analyze | العروض |
 |---|---|---|---|---|
 | 2026-10-16 | lib/frontend/ (جديد) | إنشاء نظام التصميم الموحّد والتجاوب والمعرض | لم يُشغَّل بعد | — |
+| 2026-10-16 | lib/frontend/ (الموجة 1) | تشغيل flutter analyze lib/frontend عبر mobile-agent؛ لا تعديلات لزمت | No issues found! | معلّق: مراجعة المعرض بصرياً من المستخدم |
+| 2026-10-16 | widgets/permissions_gate.dart (م2) | SdPage+SdCard+SdEmptyState+SdButton؛ حذف ألوان يدوية؛ المنطق/الأذونات/التنقّل بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/login/premium_login_page.dart (م2) | SdTheme.scope+SdCard موحّدة+SdButton/SdStatusChip؛ حذف google_fonts والتدرّجات اليدوية؛ توحيد التخطيطات الثلاثة في بطاقة واحدة (حُذف hero المنقسم)؛ المصادقة/API/التنقّل بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/home_page.dart (م2) | SdAppBar+بطاقة التعليمات+3 SdStatPedestal+SdFilterChips+SdTileGrid/SdMenuTile+رفّ جانبي مجسّم؛ خلفية سادة وإزالة الزخارف الباهتة؛ الشريط العائم والصلاحيات والعدّادات الحيّة والتنقّل بلا مساس؛ دوال/رسّامون قدامى باقون خاملين | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | ftth/core/home_page.dart (م3-E) | قشرة: SdAppBar+SdAppBarAction+خلفية سادة بدل Aurora؛ الجسم legacy؛ تحسينات الأداء محفوظة (لا تحريك مُعاد) | analyze نظيف | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/reports/agents_details_page.dart (م3-E) | قشرة: SdTheme.scope+SdAppBar؛ نقل بيانات المستخدم إلى subtitle؛ الجسم legacy | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/requests/customer_onboarding_page.dart (م3-E) | ترحيل أعمق: SdTheme.scope+استبدال كل hex محلي بألوان sd؛ الخطوات/OCR/OTP/التوقيع بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/transactions/transactions_page.dart (م3-E) | قشرة: SdAppBar+badge للفلاتر+خلفية سادة؛ الجسم legacy | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | ftth/subscriptions/expiring_soon_page.dart (م3-C) | ترحيل واجهة كامل: SdPage+SdAppBar+SdCard+SdStatusChip+SdEmptyState؛ حدّ خط 11.5؛ الجلب/التصدير/pagination بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/subscriptions/subscription_details_page.dart (م3-C) | قشرة+حالات (13k سطر)؛ SdAppBar للشاشات الثلاث+SdEmptyState؛ منطق التجديد/الباقات/bundles بلا مساس؛ الجسم العميق legacy | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/subscriptions/subscriptions_page.dart (م3-C) | قشرة+بطاقات+حالات بألوان sd؛ أبقى AppBar قديم (bottom فلاتر)؛ التصدير المحمي/الإرسال الجماعي بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | ftth/users/quick_search_users_page.dart (م3-B) | SdPage+SdAppBar+SdRaised+SdEmptyState؛ debounce/pagination/التنقّل بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/users/user_details_page.dart (م3-B) | قشرة SdAppBar + EditDevicePage كامل (5855 سطر)؛ منطق items[]/pill محفوظ؛ جسم البطاقات legacy (دَين) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/users/users_page.dart (م3-B) | SdAppBar+SdAppBarAction؛ نقل شريط كلمة مرور التصدير من bottom للمحتوى؛ التصدير/الصلاحيات/الترقيم بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/search_users_page.dart (م3-B) | SdPage+SdAppBar+SdButton؛ المدقّقات/البحث بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | ftth/tickets/create_ticket_page.dart (م3-A) | SdPage+SdAppBar+SdFilterChips+SdButton (نبرة comms)؛ الرفع/الإرسال/401 بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/tickets/tktat_details_page.dart (م3-A) | SdPage+SdAppBar+SdCard+SLA SdStatusChip؛ SLA الحيّ/التعليقات بلا مساس؛ أزرار التحميل بلا spinner (تعطيل+نص) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/tickets/tktats_page.dart (م3-A) | SdPage+SdAppBar+SdFilterChips+SdRaised+SdEmptyState؛ fetch/401/FCM/الإخفاء المحلي بلا مساس؛ 3 حوارات ثانوية legacy | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | task/add_task_api_dialog.dart (م3-D) | حوار موحّد (SdCard/SdButton/SdStatusChip)؛ مسار الهاتف Scaffold+SdAppBar؛ التحقّق/الصرف/واتساب بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | task/follow_up_page.dart (م3-D) | SdPage+SdAppBar+SdCard+SdEmptyState؛ رفع الخطوط ≥11.5؛ التدقيق/النجوم بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | task/home_page_tasks.dart (م3-D) | شلّ موحّد+كنس ألوان شامل (3573 سطر، 240 موضع)؛ بطاقات/أزرار اللوحة الداخلية موحّدة-الرموز لا SdCard/SdButton (دَين) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | task/task_list_screen.dart (م3-D) | ألوان المؤشّر/SnackBar → SdColors؛ لا منطق ممسوس | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | pages/chat/chat_conversation_page.dart (م4-F) | قشرة (2985 سطر)؛ شريط نيلي+خلفية ground+حقول sd؛ شريط مخصّص مُبقى للتفاعلات؛ الفقاعات/stream/الإرسال بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/chat/chat_rooms_page.dart (م4-F) | SdPage+SdAppBar؛ embeddedMode محفوظ؛ ألوان النوع/الشارات → sd | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/whatsapp_chat_page.dart (م4-F) | قشرة؛ شريط نيلي + هوية واتساب للأفاتار فقط + زر إرسال comms؛ الفقاعات/الإرسال بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/whatsapp_conversations_page.dart (م4-F) | SdPage+SdAppBar؛ الفلترة/التنظيف/العدّاد بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | lib/frontend/tokens/sd_colors.dart (م4-F) | إضافة SdColors.whatsappEdge=0xFF128C7E (لون ناقص لحافّة شعار واتساب) — مسموح | No issues found! | — |
+| 2026-10-16 | pages/attendance_page.dart (م4-G) | SdPage+SdAppBar+SdStatPedestal؛ منطق البصمة/الموقع/السيلفي بلا مساس؛ أُزيلت AnimationControllers ميتة؛ شاشة الكاميرا داكنة عمداً | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/hr_hub_page.dart (م4-G) | SdPage+SdAppBar+SdTileGrid/SdMenuTile (admin)؛ التنقّل/العدّادات بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/my_dashboard_page.dart (م4-G) | شلّ موحّد+توجيه ثوابت الألوان لـ SdColors (3428 سطر)؛ الاستدعاءات/الحوارات بلا مساس؛ بنى عميقة GoogleFonts/hex (دَين) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/users_page_vps.dart (م4-G) | شلّ+توجيه ثوابت لـ SdColors (2203 سطر)؛ canAdd/useInternalKey/الصلاحيات بلا مساس؛ بطاقات/حوارات داخلية دَين | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/announcements/announcements_page.dart (م4-H) | comms؛ SdPage+SdAppBar+SdRaised+SdStatusChip+SdEmptyState؛ الخدمات/الصلاحيات/الاستهداف بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | pages/kml_zones_map_page.dart (م4-H) | ⏸️ لم يُنفَّذ — تضارب: خريطة غامرة داكنة ملء الشاشة × نظام sd فاتح؛ يحتاج قرار تصميم؛ تُركت سليمة | baseline نظيف | بانتظار قرار صاحب المشروع |
+
+| 2026-10-16 | accounting/accounting_dashboard_page.dart (م5-I) | قشرة (SdPage+SdAppBar)؛ العملة/البطاقات/الدرج بلا مساس؛ AccountingTheme غير مستورد | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | accounting/chart_of_accounts_page.dart (م5-I) | قشرة؛ البحث نُقل لجسم الصفحة؛ AccountingTheme سليم | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | accounting/journal_entries_page.dart (م5-I) | قشرة؛ عمليات جماعية/ترحيل/صلاحيات بلا مساس؛ AccountingTheme سليم | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | accounting/compound_journal_entry_page.dart (م5-I) | قشرة (2993 سطر)؛ التوازن/الحفظ/الترحيل بلا مساس؛ أزرار الحفظ → SdAppBarAction (ملاحظة ui-ux) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | accounting/trial_balance_page.dart (م5-I) | قشرة كاملة نظيفة؛ الإجماليات/التوازن/التصدير بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | accounting/client_accounts..withdrawal_requests (م5-J ×5) | قشرة (Scaffold+SdColors.ground+SdAppBar+SdEmptyState)؛ كل المحتوى المالي/AccountingTheme بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | accounting/operator_transactions+linking+funds_overview (م5-L ×3) | مُرحَّلة (SdPage/Scaffold+SdAppBar+SdEmptyState)؛ الجداول/الأرصدة/ترميز الألوان بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | accounting/ftth_operators_dashboard + settlement_reports (م5-L) | ⏸️ مؤجّلتان: مبنيّتان على AccountingTheme + شريط تبويبات/فلتر؛ تحتاجان قراراً | baseline نظيف | بانتظار قرار |
+
+| 2026-10-16 | accounting/expenses..employee_adjustments (م5-K ×6) | قشرة (SdTheme.scope+Scaffold ground+SdAppBar+SdEmptyState/SdFilterChips)؛ كل الأرقام/الصيغ/AccountingTheme بلا مساس؛ حوارات+خلايا رواتب legacy (دَين) | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | accounting/activation_profitability..year_comparison (م5-N ×5) | قشرة (Scaffold ground+SdAppBar+SdEmptyState)؛ المخططات/الرسّامون/القيم/النسب بلا مساس؛ ألوان رسوم المقارنة → sd دلالية (قابل للعكس)؛ AccountingTheme سليم | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | accounting/balance_sheet..budget (م5-M ×5) | قشرة (SdPage/Scaffold+SdAppBar)؛ شريط الحالة/التاريخ منقول للـbody؛ الجداول/النسب/التصدير/AccountingTheme بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+
+| 2026-10-16 | accounting/audit_trail..zone_maintenance_fees (م5-O ×5) | مُرحَّل (SdAppBar+SdFilterChips)؛ منطق إقفال الفترات محفوظ حرفياً؛ الأرقام/الصيغ بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ⚠️ ملاحظة أمنية قديمة (ليست من الترحيل) | zone_maintenance_fees_page: X-Api-Key مضمّن في الكود داخل _fetchZoneNames — موجود أصلاً؛ يستحق مراجعة security-auditor لاحقاً | — | — |
+
+| 2026-10-16 | ftth/requests/customer_hub_page.dart (م6) | ترحيل كامل: SdPage+SdAppBar+SdMenuTile (field)؛ التنقّل/التوكن بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/subscriptions/connections_list_page.dart (م6) | قشرة+حالات: SdTheme.scope+SdAppBar+SdAppBarAction+SdEmptyState؛ منطق التسديد/الفلاتر/الأرقام بلا مساس؛ جسم البطاقات/الفلاتر legacy (دَين) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/tasks/ftth_tasks_page.dart (م6) | ترحيل جسم: SdAppBar+SdFilterChips(الحالة)+SdRaised+SdStatusChip+SdEmptyState؛ حدّ خط 11.5؛ الجلب/الفلاتر/pagination بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/tasks/ftth_connect_form.dart (م6) | ترحيل جسم: SdAppBar+SdCard+SdInfoRow+SdButton؛ حدّ خط 11.5؛ التحقّق/connectCustomer/dropdowns بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/tasks/customer_search_connect_page.dart (م6) | ترحيل جسم (ويزارد 4 خطوات): SdAppBar+SdCard+SdButton+مؤشّر خطوات/حقول sd؛ حدّ خط 11.5؛ البحث/التوصيل/الحفظ المحلي/حوار المهمة بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/tickets/customer_tickets_page.dart (م6) | ترحيل كامل: SdAppBar+SdRaised+SdStatusChip+SdEmptyState؛ ألوان الحالة→SdStatus؛ الجلب/401/البحث بلا مساس | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/reports/zones_page.dart (م6) | قشرة+قائمة+حالات: SdAppBar+SdAppBarAction+SdRaised+SdEmptyState؛ حذف smart_text_color؛ التصدير VPS/الجلب بلا مساس؛ حوارات التفاصيل legacy (دَين) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/reports/profits_page.dart (م6) | قشرة فقط (3363 سطر): SdAppBar+خلفية ground+حالة تحميل sd؛ **كل** منطق/أرقام الأرباح وجدول الفئات الملوّن بلا أي مساس (دَين مقصود) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/reports/audit_log_page.dart (م6) | قشرة: SdAppBar+SdEmptyState+خلفية ground+شريط ملخّص/فارغ بألوان sd؛ بطاقات الأحداث بألوانها الدلالية + الأنيميشن legacy (دَين) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/transactions/daily_settlement_page.dart (م6) | قشرة: SdTheme.scope+خلفية ground+شريط نيلي؛ منطق التسديدات/المقارنة/الأرقام بلا مساس؛ جسم التبويبات legacy (دَين). ⚠️ _vpsApiKey مضمّن في الكود أصلاً — يستحق مراجعة security-auditor | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/transactions/account_records_page.dart (م6) | قشرة دنيا (4314 سطر): خلفية ground+شريط نيلي؛ كل الجداول/الأرقام/الفلاتر بلا مساس (دَين كبير) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/users/users_data_page.dart (م6 اختياري) | قشرة: SdAppBar+خلفية ground؛ Cloudflare/الجلب بلا مساس؛ جسم legacy (دَين) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/users/user_records_page.dart (م6 اختياري) | قشرة: SdAppBar+خلفية ground؛ الإحصائيات/الفلاتر/الأرقام بلا مساس؛ جسم legacy (دَين) | No issues found! | معلّق: مراجعة بصرية |
+| 2026-10-16 | ftth/auth/login_page.dart (م6) | ⏸️ لم يُرحَّل — يعتمد AnimationControllers + خلفية مرسومة (fiber-optic)؛ الترحيل الكامل محفوف بكسر سلوك الدخول؛ يحتاج قراراً | baseline نظيف | — |
+
+## 🔧 تصغير مركزي للأحجام (2026-10-16، بطلب المستخدم: بلاطات/أيقونات أصغر وتمرير أقل)
+يسري على كل الشاشات المُرحَّلة (تغيير أحجام/حشو فقط، بلا منطق). مؤكّد بالتشغيل: 0 أخطاء تخطيط/تجاوز.
+- **sd_responsive.dart**: cubeSize 44/50/52→32/36/40 · gridGap 12/16/18→10/12/14 · sectionGap 18/22/28→12/14/18 · gutter 14/20/24→12/16/20.
+- **sd_menu_tile.dart**: minHeight أفقي 84→66 (هاتف 72→58)، عمودي 120→96 · حشو أقل · عنوان أفقي 16→14.5، عمودي 14→12.5 · minTileWidth 250→210.
+- **sd_stat_pedestal.dart**: عمود سطح المكتب 96×120→76×96 (هاتف 64×80→54×70) · الرقم 36/28→25/22 · إصلاح تجاوز 1px (FittedBox+maxLines).
+
+## 🧩 ترحيل الأجسام الكامل لنمط sd (2026-10-16، بطلب المستخدم: «تغيّر الشريط فقط»)
+ترحيل **جسم** الشاشات (لا القشرة فقط) إلى sd المجسّم — واجهة فقط، analyze نظيف، بلا مساس أرقام/منطق/صلاحيات. (قرار المستخدم: الأجسام غير المحاسبية نعم؛ المحاسبة تبقى على AccountingTheme.)
+- `task/home_page_tasks.dart` — بطاقات إحصائية → SdRaised، جدول الفنيين بنمط sd، أزرار سفلية مجسّمة.
+- `ftth/core/home_page.dart` — بطاقات إحصائية/محفظة → SdRaised، أزرار سريعة، بحث/شريط جانبي/درج بألوان sd (أداء محفوظ).
+- `ftth/users/user_details_page.dart` — بطاقات → SdCard، أزرار → SdButton، منتقي الاشتراكات المتعددة بنبرات sd (منطقه محفوظ).
+- `ftth/transactions/transactions_page.dart` — بطاقات الملخّص/المعاملات → SdRaised، حوارات/شريط سفلي → sd.
+- `pages/my_dashboard_page.dart` + `pages/users_page_vps.dart` — بطاقات/شرائح/أزرار/حوارات → sd؛ حذف GoogleFonts.
+- **مؤجّل**: `subscription_details` (13k، جسم عميق) + شاشات المحادثة (فقاعاتها صحيحة أصلاً).
+
+## 🔧 إحكام الرئيسية بلا تمرير (2026-10-16، بطلب المستخدم)
+- حذف شريط الفلاتر (كل الأقسام تظهر دائماً بالصلاحيات).
+- بطاقة التعليمات قابلة للطيّ، مطوية افتراضياً (شريط رفيع) — نقر الجسم يطوي/يوسّع، وزر «عرض التعليمات» يفتح النافذة.
+- شبكة الرئيسية: maxColumns 6، minTileWidth 185 (عند مواضع استدعاء الرئيسية فقط).
+- SdStatPedestal (عام): عمود سطح المكتب 96×76→74×68 (هاتف 70×54→62×52)، حشو أقل.
+- sd_menu_tile minHeight أفقي 66→62 (عام). فجوات الرئيسية الرأسية قُلّصت (أقسام 18→12 محلياً).
+- النتيجة: ارتفاع محتوى ≈610px < 800px ⇒ يتّسع بلا تمرير على 1440×900. مؤكّد run = 0 أخطاء تخطيط.
+
+## 🔴 انحدار تشغيلي اكتُشف وأُصلح (2026-10-16)
+- **العطل**: التطبيق يتوقّف على «جاري التحميل...» بعد الدخول. السبب: في `pages/home_page.dart` صفّ العدّادات `_buildCountersRow()` (سطح المكتب) كان `Row(crossAxisAlignment: stretch)` داخل `SingleChildScrollView` عمودي ⇒ `BoxConstraints forces an infinite height` يتكرّر كل إطار فلا يُرسم الجسم.
+- **الإصلاح**: لفّ الصفّ بـ `IntrinsicHeight` (تخطيط بحت، بلا مساس منطق). analyze + build release نجحا.
+- **تحقّق حيّ (flutter run)**: الخطأ اللانهائي = **0**، التطبيق تجاوز الدخول ورسم الرئيسية (جلب الإحصائيات/الصلاحيات/العدّادات نجح). ✅ مؤكّد.
+- متبقٍّ تجميلي غير حاجب: `RenderFlex overflowed by 1.00px on the bottom` (مكوّن sd داخلي — SdStatPedestal/SdMenuTile) — يُعالَج في فحص الدخان.
+- **الدرس الحاسم**: `flutter analyze` **لا يكشف أخطاء التخطيط وقت التشغيل** (الارتفاع اللانهائي). الاعتماد على analyze وحده غير كافٍ ⇒ **كل الشاشات المُرحَّلة تحتاج تشغيلاً فعلياً (build+run) للتحقّق**، لا analyze فقط. يُضاف فحص تشغيل دخان لبقية الشاشات.
+
+## اعتماد الموجة 5 (2026-10-16)
+- **مراجعة مالية مستقلّة + تحقّق git**: اعتماد — لا P0/P1/P2. المنطق المالي محقّق سطراً بسطر (توازن القيد _isBalanced، الترحيل postJournalEntry، الإقفال _togglePeriod، فحوص الفترة، الصلاحيات canEdit/canAdd، معادلة الميزانية، النسب المحمية من القسمة على صفر). AccountingTheme لم يُعدَّل. 65 ملف .dart، لا main.dart/pubspec.
+- P3 تجميلي (تنظيف لاحق): withOpacity→withValues + hex داخل محتوى compound mobile (موروث).
+
+## ملاحظات معمارية على نظام sd (من الموجة 5)
+
+- **SdPage يلفّ المحتوى بـ Center** (يفكّ قيد الارتفاع) ⇒ يكسر جداول Expanded كاملة الارتفاع؛ البديل المعتمد للشاشات ذات الجداول الطويلة: `Scaffold + SdColors.ground + SdAppBar` (بلا SdPage). يُقترح إضافة وضع `SdPage(stretch/fill)` لاحقاً.
+- **شاشات AccountingTheme-native**: بعض شاشات المحاسبة مبنية كلياً على AccountingTheme (خلفية/بطاقات/شريط)؛ تحت حارس «لا تلمس AccountingTheme» لا يمكن توحيد هيكلها ⇒ تُؤجَّل وتُجمَّع لقرار واحد.
+
+## بنود P3 تجميلية (مراجعة الموجة 4 — اختيارية، موجة تنظيف)
+
+- whatsapp_chat_page.dart:391/446/572 — استبدال `Color(0xFF25D366)` بـ `SdColors.whatsapp` (توكن موجود بنفس القيمة).
+- users_page_vps.dart:1186/1188 — استبدال `0xFFFFF3E0`/`0xFFFFE0B2` بـ `SdColors.warningTint`/`warningTintEdge`.
+- دوال خاملة قديمة (ليست من هذه الموجة): attendance `_getCenterLocation`/`_isWithinAllowedDistance`، hr_hub `_parsePermissions`.
+- استكمال كنس hex البنى العميقة: my_dashboard (50) · users_page_vps (19) · chat_conversation (11) — دَين مُسجَّل.
+
+## تحسينات مطلوبة على نظام التصميم sd (من الموجة 3)
+
+- **SdAppBar يحتاج دعم `bottom` اختياري** (PreferredSize) ليحمل شريط فلاتر/تبويبات تحته — ظهر في subscriptions_page/users_page؛ قرار لمالك lib/frontend عبر project-manager.
+- **SdButton يحتاج حالة تحميل (spinner/isLoading)** — حالياً الأزرار أثناء التنفيذ تُعطَّل وتغيّر النص بلا مؤشّر دوّار (ظهر في tktat_details)؛ تحسين على نظام التصميم. (PreferredSize) ليحمل شريط فلاتر/تبويبات تحته — ظهر في subscriptions_page؛ قرار لمالك lib/frontend عبر project-manager.
+
+## دَين متبقٍّ من الموجة 2 (مراجعة code-reviewer-agent 2026-10-16 — لا أثر وظيفي، مؤجّل لموجة تنظيف)
+
+- **home_page.dart**: الترحيل جزئي (القشرة + الأقسام العلوية بـ sd)؛ الدرج ولوحة الإشعارات وبعض بطاقات الجسم ما زالت legacy (ألوان hex يدوية + context.responsive + withOpacity المهجور). كود خامل: `_buildFiberBeam`/`_buildPhoton`/`_fiberColor` (لا يُنتج تحذيراً بسبب unused_element: ignore).
+- **premium_login_page.dart**: خطّان بحجم 10/11 (أحرف أفاتار الحسابات المحفوظة) تحت حدّ 11.5؛ زر حذف الحساب المحفوظ هدف لمسه قد يقل عن 48.
+- جرد أمني: لا P0/P1، لا مخالفة نطاق، لا مساس بالباكند/sas. النطاق مؤكّد: 3 ملفات فقط تغيّرت.
+
+## الموجة 7 — مدير النظام والإعدادات (2026-10-16)
+
+مُرحَّل بالكامل (SdPage/SdAppBar/SdCard/SdButton/SdInfoRow/SdFilterChips/SdEmptyState):
+- `settings_page.dart` · `settings_text_scale_page.dart` · `printer_settings_page.dart` — نماذج/إعدادات صغيرة؛ المنطق (AppTextScale/الطابعة/رقم رسول) بلا مساس.
+- `super_admin/edit_company_page.dart` — ترحيل أعمق (استبدال EnergyDashboardTheme ببطاقات sd + SdButton)؛ **put/useInternalKey/العزل بلا أي مساس**.
+- `super_admin/tenant_features_page.dart` — SdTheme.scope + شريط نيلي + TabBar موحّد + SdButton/SdCard (استبدال GoogleFonts/EnergyDashboardTheme)؛ **مفاتيح الميزات + حفظ Firestore بلا أي مساس**.
+
+شلّ (SdTheme.scope/SdAppBar + خلفية SdColors.ground + كنس ألوان؛ الجسم العميق legacy — دَين):
+- `super_admin/add_company_page.dart` (أُبقي Stepper) · `super_admin/unified_companies_page.dart` · `super_admin/company_details_page.dart` · `super_admin/agents_management_page.dart` (فروع build الثلاثة) · `super_admin/sadara_portal_page.dart` · `super_admin/vps_data_manager_page.dart` · `super_admin/permissions_management_v2_page.dart` · `settings/ftth_sync_settings_page.dart` · `company_settings_page.dart` (ثوابت الثيم الداخلية → sd).
+- **كلها شاشات SuperAdmin/DatabaseAdmin حسّاسة: لم يُمَسّ أي منطق تجاوز عزل / إدارة شركات / صلاحيات / مصادقة / استدعاء API / تنقّل — واجهة فقط (ألوان/قشرة).**
+
+استثناء:
+- `super_admin/super_admin_dashboard.dart` — ⛔ **غير مُرحَّل**: تصميم Energy Dashboard غامر داكن (تدرّج أسود + نيون + Glassmorphism) يتعارض مع نظام sd الفاتح، تماماً كشاشة `kml_zones_map_page` المستثناة؛ يحتاج قرار صاحب المشروع (لوحة sd داكنة أو إبقاؤه). لم يُلمس.
+
+ملاحظات على نظام التصميم (مكرّرة من موجات سابقة، تظهر هنا بقوة):
+- شاشات AccountingTheme/EnergyDashboardTheme الفاتحة (agents_management/sadara_portal/unified_companies/company_details/vps_data_manager) تبقى بجسمها الأصلي تحت حارس «لا تلمس الثيمات المشتركة»؛ التوحيد الكامل يحتاج قرار توجيه AccountingTheme/EnergyDashboardTheme → sd.
+- SdAppBar ما زال لا يدعم `bottom` (TabBar)؛ لذا ftth_sync/permissions_v2/tenant_features أبقت AppBar مُنسّق يدوياً بلون sd بدل SdAppBar.
+
+analyze: كل الملفات الأربعة عشر المُرحَّلة = No issues found (مجمّعة).
+
+## 2026-10-17 — مشهد تسجيل الدخول ثلاثي الأبعاد التفاعلي
+- استُبدل `lib/frontend/components/sd_login_scene.dart` بمحرّك 3D برمجي (منظور + إضاءة + ترتيب عمق) — نفس الواجهة `SdLoginScene(maxWidth:)`.
+- تفاعل: ميلان مع الفأرة، سحب للتدوير، عجلة/قرص للتكبير، ضغط على مبنى = دخول (سقف يرتفع، جدران زجاجية، طوابق ونقاط مشتركين) + بطاقة تفاصيل، Esc للعودة.
+- نسخة احتياطية من الملف السابق: `_backups/login-scene-2026-10-17/`.
+- النموذج التجريبي: `design/login/login_3d_interactive.html`.
+- مطلوب: `flutter analyze lib/frontend/components/sd_login_scene.dart` ثم تجربة على ويندوز وأندرويد.
+
+## 2026-10-17 — إطار أسود موحّد
+- قرار المالك: كل الحقول والبطاقات والأزرار بإطار أسود.
+- الرموز: `SdColors.outline` (#000000) و `SdOutline` (عرض 1.5، تركيز 2.2) في `sd_metrics.dart`.
+- مطبّق في: SdTheme (حقول، قوائم منسدلة، بطاقات، أزرار، شرائح، مربعات اختيار، مفاتيح)، AppTheme العام، SdRaised/SdButton/SdFilterChips، SdCard، SdMenuTile، SdSegmented، SdToggle، أزرار الشريط العلوي، وصفحة تسجيل الدخول.
+- قاعدة للترحيل: أي Container يمثّل حقلاً/بطاقة/زراً يضيف `border: SdOutline.all`.
+- نسخة احتياطية: `_backups/black-outline-2026-10-17/`.
+
+## 2026-10-17 — القائمة الجانبية الموحّدة (SdSideNav)
+- مكوّن جديد `lib/frontend/components/sd_side_nav.dart`: SdNavItem/SdNavSection/SdSideNav/SdNavShell. هاتف=درج، آيباد=شريط مطوي 80، سطح مكتب=لوحة 272 قابلة للطي (حالة مشتركة).
+- SdAppBar: زر قائمة موحّد تلقائي عند وجود درج (مكان الرجوع في الصفحة الجذرية، أو آخر الإجراءات إن أمكن الرجوع).
+- مُرحَّل: pages/home_page، ftth/core/home_page، super_admin_dashboard (+ بوابة المواطن)، agents_management، accounting_dashboard، task/home_page_tasks، local_storage (endDrawer)، user_details (endDrawer)، subscription_details (endDrawer)، chat_rooms (مظهر اللوحة فقط).
+- لم يُغيَّر: employee_tracking_report (فلتر + قائمة موظفين)، database_admin (قائمة جداول بثيم داكن).
+- نسخ احتياطية: `_backups/side-nav-2026-10-17/`.
+
+## 2026-10-17 — SdSideNav v2
+- أزرار مستقلة ملوّنة ثلاثية الأبعاد (تدرّج + حافة + إطار أسود + مكعّب أيقونة أبيض، ارتفاع/ضغط).
+- إخفاء تلقائي: شريط أيقونات 84 دائماً، والقائمة الكاملة 272 تنبثق فوق المحتوى عند اقتراب الماوس (تأخير 140ms) وتختفي عند الإبعاد (260ms). زر تثبيت 📌 مشترك بين الصفحات (`SdSideNav.pinned`).
+- النسخة السابقة: `_backups/side-nav-2026-10-17/sd_side_nav.v1.dart`.
+- v3: عرض 224 (مطوية 72)، التوسّع يدفع الصفحة بدل التغطية، تفاعل أقوى مع المؤشّر (رفع + تكبير + سطوع + ميلان المكعّب).
+
+## 2026-10-17 — تنعيم الإطار
+- الإطار صار كحلياً رمادياً #3D4466 بعرض 1.2 بدل الأسود 1.5، والتركيز باللون الأساسي #1A237E بعرض 2.

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
@@ -48,134 +48,54 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
   @override
   Widget build(BuildContext context) {
     final isMobile = context.accR.isMobile;
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(isMobile),
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
-                    : _errorMessage != null
-                        ? Center(
-                            child: Text(_errorMessage!,
-                                style: const TextStyle(
-                                    color: AccountingTheme.danger)))
-                        : _policies.isEmpty
-                            ? _buildEmpty()
-                            : _buildPoliciesList(isMobile),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'سياسات الرواتب',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _loadData,
+            ),
+            if (PermissionManager.instance.canAdd('accounting.salaries'))
+              SdAppBarAction(
+                icon: Icons.add,
+                label: 'سياسة جديدة',
+                onPressed: () => _showPolicyDialog(null),
               ),
-            ],
-          ),
+          ],
+        ),
+        body: SafeArea(
+          top: false,
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage != null
+                  ? Center(
+                      child: Text(_errorMessage!,
+                          style: const TextStyle(
+                              color: SdColors.danger)))
+                  : _policies.isEmpty
+                      ? _buildEmpty()
+                      : _buildPoliciesList(isMobile),
         ),
       ),
     );
   }
 
-  Widget _buildToolbar(bool isMobile) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : context.accR.spaceXL,
-          vertical: isMobile ? 6 : context.accR.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            iconSize: isMobile ? 20 : 24,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          if (!isMobile) SizedBox(width: context.accR.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMobile ? 4 : context.accR.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonPinkGradient,
-              borderRadius: BorderRadius.circular(isMobile ? 6 : 8),
-            ),
-            child: Icon(Icons.policy_rounded,
-                color: Colors.white, size: isMobile ? 16 : context.accR.iconM),
-          ),
-          SizedBox(width: isMobile ? 6 : context.accR.spaceM),
-          Expanded(
-            child: Text('سياسات الرواتب',
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
-                    fontSize: isMobile ? 14 : context.accR.headingMedium,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary)),
-          ),
-          IconButton(
-            onPressed: _loadData,
-            icon: Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          if (PermissionManager.instance.canAdd('accounting.salaries')) ...[
-            SizedBox(width: context.accR.spaceS),
-            isMobile
-                ? SizedBox(
-                    height: 28,
-                    child: ElevatedButton(
-                      onPressed: () => _showPolicyDialog(null),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AccountingTheme.neonGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        minimumSize: const Size(28, 28),
-                      ),
-                      child: const Icon(Icons.add, size: 16),
-                    ),
-                  )
-                : ElevatedButton.icon(
-                    onPressed: () => _showPolicyDialog(null),
-                    icon: Icon(Icons.add, size: context.accR.iconM),
-                    label: const Text('سياسة جديدة'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AccountingTheme.neonGreen,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                          horizontal: context.accR.paddingH,
-                          vertical: context.accR.spaceM),
-                    ),
-                  ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.policy_outlined,
-              color: AccountingTheme.textMuted, size: context.accR.iconEmpty),
-          SizedBox(height: context.accR.spaceXL),
-          const Text('لا توجد سياسات رواتب',
-              style: TextStyle(color: AccountingTheme.textMuted)),
-          SizedBox(height: context.accR.spaceM),
-          ElevatedButton.icon(
-            onPressed: () => _showPolicyDialog(null),
-            icon: const Icon(Icons.add),
-            label: const Text('إنشاء سياسة'),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AccountingTheme.neonGreen,
-                foregroundColor: Colors.white),
-          ),
-        ],
+    return SingleChildScrollView(
+      child: SdEmptyState(
+        title: 'لا توجد سياسات رواتب',
+        icon: Icons.policy_outlined,
+        action: PermissionManager.instance.canAdd('accounting.salaries')
+            ? SdButton(
+                label: 'إنشاء سياسة',
+                icon: Icons.add,
+                onPressed: () => _showPolicyDialog(null),
+              )
+            : null,
       ),
     );
   }
@@ -195,13 +115,12 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
     return Container(
       margin: EdgeInsets.only(bottom: context.accR.spaceM),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        borderRadius: BorderRadius.circular(context.accR.cardRadius),
-        border: Border.all(
-          color: isDefault
-              ? AccountingTheme.neonGreen.withValues(alpha: 0.5)
-              : AccountingTheme.borderColor,
-        ),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
+        border: isDefault
+            ? Border.all(color: SdStatus.success.tone.tintEdge)
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,50 +132,34 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
                 vertical: context.accR.spaceM),
             decoration: BoxDecoration(
               color: isDefault
-                  ? AccountingTheme.neonGreen.withValues(alpha: 0.1)
-                  : AccountingTheme.bgCardHover,
-              borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(context.accR.cardRadius)),
+                  ? SdStatus.success.tone.tint
+                  : SdColors.surfaceAlt,
+              borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(SdRadius.md)),
             ),
             child: Row(
               children: [
                 Icon(Icons.policy,
                     color: isDefault
-                        ? AccountingTheme.neonGreen
-                        : AccountingTheme.textSecondary,
+                        ? SdStatus.success.tone.base
+                        : SdColors.muted,
                     size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(name,
-                      style: TextStyle(
-                          color: AccountingTheme.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: context.accR.body)),
+                  child: Text(name, style: SdText.label),
                 ),
                 if (isDefault)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AccountingTheme.neonGreen.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text('افتراضية',
-                        style: TextStyle(
-                            color: AccountingTheme.neonGreen,
-                            fontSize: context.accR.caption,
-                            fontWeight: FontWeight.bold)),
-                  ),
+                  const SdStatusChip('افتراضية', status: SdStatus.success),
                 const SizedBox(width: 8),
                 if (PermissionManager.instance
                     .canEdit('accounting.salaries'))
                   InkWell(
                     onTap: () => _showPolicyDialog(policy),
                     borderRadius: BorderRadius.circular(4),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
                       child: Icon(Icons.edit,
-                          size: 18, color: AccountingTheme.info),
+                          size: 18, color: SdStatus.info.tone.base),
                     ),
                   ),
                 if (PermissionManager.instance
@@ -264,10 +167,10 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
                   InkWell(
                     onTap: () => _confirmDelete(policy),
                     borderRadius: BorderRadius.circular(4),
-                    child: const Padding(
-                      padding: EdgeInsets.all(4),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
                       child: Icon(Icons.delete_outline,
-                          size: 18, color: AccountingTheme.danger),
+                          size: 18, color: SdStatus.danger.tone.base),
                     ),
                   ),
               ],
@@ -318,25 +221,24 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgPrimary,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AccountingTheme.borderColor),
+        color: SdColors.groundAlt,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        border: Border.all(color: SdColors.edge),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AccountingTheme.textMuted),
+          Icon(icon, size: 14, color: SdColors.faint),
           const SizedBox(width: 4),
           Text(label,
-              style: TextStyle(
-                  color: AccountingTheme.textMuted,
-                  fontSize: context.accR.caption)),
+              style: SdText.caption),
           const SizedBox(width: 6),
           Text(value,
-              style: TextStyle(
-                  color: AccountingTheme.textPrimary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.accR.small)),
+              style: const TextStyle(
+                  fontFamily: SdText.family,
+                  color: SdColors.ink,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12.5)),
         ],
       ),
     );

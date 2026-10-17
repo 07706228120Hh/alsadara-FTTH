@@ -14,6 +14,7 @@ import '../../services/agents_auth_service.dart';
 import '../../services/auth_service.dart';
 import '../../pages/webview_page.dart';
 import '../auth/auth_error_handler.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 
 class AgentsDetailsPage extends StatefulWidget {
   final String authToken;
@@ -1550,26 +1551,18 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
   Widget build(BuildContext context) {
     // لوج تشخيصي لطباعة الرولز في الواجهة
     debugPrint('userRoles in UI: ${userRoles?['roles']?.toString() ?? 'null'}');
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 50,
-        backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(size: 20, color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
-            ),
-          ),
-        ),
-        title: const Text(
-          'تفاصيل الوكلاء',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: 'تفاصيل الوكلاء',
+        subtitle: userRoles != null
+            ? 'المستخدم: ${userRoles?['username'] ?? "-"}'
+                ' · الدور: ${userRoles?['roles'] != null ? (userRoles!['roles'] as Map).keys.join(", ") : "غير محدد"}'
+            : (guestToken != null ? 'متصل بالخادم' : null),
+        subtitleOk: userRoles != null ? null : (guestToken != null ? true : null),
         actions: [
-          // مؤشر حالة التوكن
+          // مؤشر تحميل التوكن
           if (isLoading)
             const Padding(
               padding: EdgeInsets.all(16.0),
@@ -1581,19 +1574,10 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                   color: Colors.white,
                 ),
               ),
-            )
-          else if (guestToken != null)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 20,
-              ),
             ),
-          IconButton(
-            icon: const Icon(Icons.dashboard, size: 20),
-            tooltip: 'فتح الداشبورد',
+          SdAppBarAction(
+            icon: Icons.dashboard,
+            label: 'الداشبورد',
             onPressed: () async {
               debugPrint('🎯 تم الضغط على زر الداشبورد');
               debugPrint(
@@ -1651,9 +1635,9 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
             },
           ),
           // زر فتح الداشبورد بدون توكن (للاختبار)
-          IconButton(
-            icon: const Icon(Icons.web, size: 20),
-            tooltip: 'داشبورد مباشر (اختبار)',
+          SdAppBarAction(
+            icon: Icons.web,
+            label: 'داشبورد مباشر',
             onPressed: () {
               Navigator.push(
                 context,
@@ -1666,59 +1650,35 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh, size: 20),
-            tooltip: 'إعادة تحميل البيانات',
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
             onPressed: () async {
               await _initializeData();
             },
           ),
           // زر جلب كل البيانات بدون فلاتر
-          IconButton(
-            icon: isFetchingAllData
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.cloud_download, size: 20),
-            tooltip: 'جلب كل البيانات (بدون فلاتر)',
-            onPressed: isFetchingAllData
-                ? null
-                : () async {
-                    await _fetchAllDataWithoutFilters();
-                  },
-          ),
-        ],
-        bottom: userRoles != null
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(60),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'المستخدم: ${userRoles?['username'] ?? "-"}',
-                        style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'الدور الحالي: ${userRoles?['roles'] != null ? (userRoles!['roles'] as Map).keys.join(", ") : "غير محدد"}',
-                        style: const TextStyle(
-                            fontSize: 14, color: Colors.white70),
-                      ),
-                    ],
-                  ),
+          if (isFetchingAllData)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
                 ),
-              )
-            : null,
+              ),
+            )
+          else
+            SdAppBarAction(
+              icon: Icons.cloud_download,
+              label: 'جلب كل البيانات',
+              onPressed: () async {
+                await _fetchAllDataWithoutFilters();
+              },
+            ),
+        ],
       ),
       body: waitingForApiUrls
           ? Center(
@@ -2367,6 +2327,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
               child: const Icon(Icons.add),
             )
           : null,
+    ),
     );
   }
 }

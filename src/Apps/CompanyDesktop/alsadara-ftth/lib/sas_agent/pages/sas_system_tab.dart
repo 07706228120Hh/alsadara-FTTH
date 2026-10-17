@@ -1,9 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
@@ -101,15 +100,15 @@ class _SasSystemTabState extends State<SasSystemTab>
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
         children: [
           _actionChip('أسعار الباقات', Icons.sell_rounded,
-              const [AppTheme.warningColor, Color(0xFFFFB74D)],
+              const [SdColors.warning, Color(0xFFFFB74D)],
               () => _open(SasPackagePricesPage(account: widget.account))),
           SizedBox(width: 8.w),
           _actionChip('الترخيص', Icons.verified_user_rounded,
-              AppTheme.orangeGradient,
+              SdColors.orangeGradient,
               () => _open(SasLicensePage(account: widget.account))),
           SizedBox(width: 8.w),
           _actionChip('مستكشف الساس', Icons.travel_explore_rounded,
-              const [AppTheme.infoColor, AppTheme.secondaryColor],
+              const [SdColors.info, SdColors.primaryLight],
               () => _open(SasExplorerPage(account: widget.account))),
         ],
       ),
@@ -147,7 +146,7 @@ class _SasSystemTabState extends State<SasSystemTab>
               Icon(icon, size: 16.sp, color: Colors.white),
               SizedBox(width: 6.w),
               Text(label,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.5.sp,
                       fontWeight: FontWeight.w800,
                       color: Colors.white)),
@@ -174,15 +173,15 @@ class _SasSystemTabState extends State<SasSystemTab>
         dividerColor: Colors.transparent,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          gradient: const LinearGradient(colors: AppTheme.blueGradient),
+          gradient: const LinearGradient(colors: SdColors.blueGradient),
           borderRadius: BorderRadius.circular(10.r),
         ),
         labelColor: Colors.white,
         unselectedLabelColor: const Color(0xFF64748B),
         labelStyle:
-            GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 12.5.sp),
+            TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 12.5.sp),
         unselectedLabelStyle:
-            GoogleFonts.cairo(fontWeight: FontWeight.w600, fontSize: 12.5.sp),
+            TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600, fontSize: 12.5.sp),
         tabs: [
           for (final t in _subTabs)
             Tab(
@@ -318,7 +317,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
           const SasSectionHeader(
             title: 'صحّة النظام',
             icon: Icons.health_and_safety_rounded,
-            gradient: AppTheme.greenGradient,
+            gradient: SdColors.greenGradient,
           ),
           SizedBox(height: 10.h),
           _healthSection(),
@@ -326,7 +325,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
           const SasSectionHeader(
             title: 'الملخّص المالي',
             icon: Icons.account_balance_wallet_rounded,
-            gradient: AppTheme.orangeGradient,
+            gradient: SdColors.orangeGradient,
           ),
           SizedBox(height: 10.h),
           _financeSection(),
@@ -389,7 +388,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
             if (cpu != null || mem != null || disk != null)
               SizedBox(height: 6.h),
             Text('حالة الخدمات',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.5.sp,
                     fontWeight: FontWeight.w700,
                     color: Colors.grey[700])),
@@ -494,7 +493,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
         children: [
           SasUi.gradientBadge(
             icon: Icons.wifi_tethering_rounded,
-            colors: const [AppTheme.infoColor, AppTheme.secondaryColor],
+            colors: const [SdColors.info, SdColors.primaryLight],
             size: 40,
             iconSize: 20,
           ),
@@ -505,7 +504,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
               children: [
                 Text(name.isEmpty ? '-' : name,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF1A1A2E))),
@@ -518,7 +517,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
                     ].join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 11.5.sp, color: Colors.grey[600]),
                   ),
                 ],
@@ -555,7 +554,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
           Expanded(
             flex: 2,
             child: Text(label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.5.sp,
                     color: Colors.grey[700],
                     fontWeight: FontWeight.w600)),
@@ -565,10 +564,10 @@ class _SystemOverviewState extends State<_SystemOverview> {
             flex: 3,
             child: Text(value,
                 textAlign: TextAlign.end,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.primaryColor)),
+                    color: SdColors.primary)),
           ),
         ],
       ),
@@ -623,39 +622,39 @@ class _SystemOverviewState extends State<_SystemOverview> {
     if (key.contains('income') ||
         key.contains('revenue') ||
         key.contains('profit')) {
-      return AppTheme.successColor;
+      return SdColors.success;
     }
     if (key.contains('debt') || key.contains('expense')) {
-      return AppTheme.errorColor;
+      return SdColors.danger;
     }
     if (key.contains('balance') || key.contains('credit')) {
       return const Color(0xFF009688);
     }
-    if (key.contains('subscription')) return AppTheme.secondaryColor;
-    if (key.contains('user')) return AppTheme.infoColor;
+    if (key.contains('subscription')) return SdColors.primaryLight;
+    if (key.contains('user')) return SdColors.info;
     return Colors.blueGrey;
   }
 
   Widget _inlineError(String msg) => Container(
         padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
-          color: AppTheme.errorColor.withValues(alpha: 0.06),
+          color: SdColors.danger.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12.r),
           border:
-              Border.all(color: AppTheme.errorColor.withValues(alpha: 0.28)),
+              Border.all(color: SdColors.danger.withValues(alpha: 0.28)),
         ),
         child: Row(
           children: [
             Icon(Icons.error_outline_rounded,
-                color: AppTheme.errorColor, size: 20.sp),
+                color: SdColors.danger, size: 20.sp),
             SizedBox(width: 8.w),
             Expanded(
                 child: Text(msg,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.5.sp, color: Colors.grey[800]))),
             TextButton(
                 onPressed: _loadAll,
-                child: Text('إعادة', style: GoogleFonts.cairo())),
+                child: Text('إعادة', style: TextStyle(fontFamily: 'Cairo', ))),
           ],
         ),
       );
@@ -673,7 +672,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
             SizedBox(width: 8.w),
             Expanded(
                 child: Text(msg,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.5.sp, color: Colors.grey[600]))),
           ],
         ),
@@ -727,7 +726,7 @@ class _SystemLogsState extends State<_SystemLogs>
             showSelectedIcon: false,
             style: ButtonStyle(
               textStyle: WidgetStatePropertyAll(
-                  GoogleFonts.cairo(fontSize: 12.sp, fontWeight: FontWeight.w700)),
+                  TextStyle(fontFamily: 'Cairo', fontSize: 12.sp, fontWeight: FontWeight.w700)),
             ),
             onSelectionChanged: (s) {
               setState(() => _tab.index = s.first);
@@ -826,7 +825,7 @@ class _LogListState extends State<_LogList> {
         action: OutlinedButton.icon(
             onPressed: _load,
             icon: const Icon(Icons.refresh_rounded),
-            label: Text('إعادة', style: GoogleFonts.cairo())),
+            label: Text('إعادة', style: TextStyle(fontFamily: 'Cairo', ))),
       );
     }
     if (_error != null) return SasErrorView(message: _error!, onRetry: _load);
@@ -837,7 +836,7 @@ class _LogListState extends State<_LogList> {
         action: OutlinedButton.icon(
             onPressed: _load,
             icon: const Icon(Icons.refresh_rounded),
-            label: Text('تحديث', style: GoogleFonts.cairo())),
+            label: Text('تحديث', style: TextStyle(fontFamily: 'Cairo', ))),
       );
     }
     return RefreshIndicator(
@@ -860,7 +859,7 @@ class _LogListState extends State<_LogList> {
     if (widget.kind == _LogKind.auth) {
       final reply = _s(row['reply']);
       final accepted = reply.toLowerCase().contains('accept');
-      final color = accepted ? AppTheme.successColor : AppTheme.errorColor;
+      final color = accepted ? SdColors.success : SdColors.danger;
       return Container(
         padding: EdgeInsets.all(12.w),
         decoration: SasUi.card(),
@@ -874,11 +873,11 @@ class _LogListState extends State<_LogList> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(_s(row['username']),
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w800, fontSize: 13.sp)),
                   SizedBox(height: 2.h),
                   Text(reply.isEmpty ? '-' : reply,
-                      style: GoogleFonts.cairo(fontSize: 11.5.sp, color: color)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5.sp, color: color)),
                   if (_s(row['mac']).isNotEmpty ||
                       _s(row['nas_ip_address']).isNotEmpty)
                     Text(
@@ -887,14 +886,14 @@ class _LogListState extends State<_LogList> {
                         if (_s(row['nas_ip_address']).isNotEmpty)
                           'NAS ${_s(row['nas_ip_address'])}',
                       ].join(' · '),
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 11.sp, color: Colors.grey[600]),
                     ),
                 ],
               ),
             ),
             Text(_s(row['created_at']),
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 10.5.sp, color: Colors.grey[500])),
           ],
         ),
@@ -919,12 +918,12 @@ class _LogListState extends State<_LogList> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title.isEmpty ? '-' : title,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontWeight: FontWeight.w700, fontSize: 12.5.sp)),
                 if (_s(row['description']).isNotEmpty &&
                     _s(row['event']).isNotEmpty)
                   Text(_s(row['description']),
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 11.5.sp, color: Colors.grey[700])),
                 SizedBox(height: 2.h),
                 Text(
@@ -932,7 +931,7 @@ class _LogListState extends State<_LogList> {
                     if (byName.isNotEmpty) 'بواسطة $byName',
                     if (_s(row['ip']).isNotEmpty) 'IP ${_s(row['ip'])}',
                   ].join(' · '),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 11.sp, color: Colors.grey[600]),
                 ),
               ],
@@ -940,7 +939,7 @@ class _LogListState extends State<_LogList> {
           ),
           Text(_s(row['created_at']),
               style:
-                  GoogleFonts.cairo(fontSize: 10.5.sp, color: Colors.grey[500])),
+                  TextStyle(fontFamily: 'Cairo', fontSize: 10.5.sp, color: Colors.grey[500])),
         ],
       ),
     );

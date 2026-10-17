@@ -18,6 +18,7 @@ import '../../permissions/permission_manager.dart';
 import 'employee_profile_card.dart';
 import '../../ftth/users/quick_search_users_page.dart';
 import '../../services/dual_auth_service.dart';
+import '../../frontend/frontend.dart';
 
 /// ═══════════════════════════════════════════════════════════════
 /// صفحة المحادثة — واجهة مشابهة لـ WhatsApp
@@ -46,11 +47,12 @@ class ChatConversationPage extends StatefulWidget {
 
 class _ChatConversationPageState extends State<ChatConversationPage> {
   // ═══ Constants ═══
-  static const _bubbleSentColor = Color(0xFF1976D2);
-  static const _bubbleReceivedColor = Color(0xFFFFFFFF);
-  static const _bgColor = Color(0xFFECE5DD);
-  static const _appBarColor = Color(0xFF075E54);
-  static const _inputBarColor = Color(0xFFFFFFFF);
+  // فقاعات الرسائل — بنية الفقاعة (شكل الدردشة) كما هي، بألوان نظام sd.
+  // المُرسَل: نبرة نيلي خفيفة. المُستقبَل: سطح أبيض بحافّة divider.
+  static const _bubbleSentColor = SdColors.primaryTint;
+  static const _bubbleReceivedColor = SdColors.surface;
+  // لون التمييز داخل الفقاعة (أيقونات الوسائط/حدود الرد/المؤشّرات).
+  static const _bubbleAccent = SdColors.primary;
 
   // ═══ Controllers ═══
   final _scrollController = ScrollController();
@@ -1386,7 +1388,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: _appBarColor,
+                            backgroundColor: SdColors.primary,
                             child: Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(color: Colors.white)),
                           ),
                           title: Row(
@@ -1758,7 +1760,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: _bgColor,
+        backgroundColor: SdColors.ground,
         appBar: _buildAppBar(),
         body: Column(
           children: [
@@ -1767,14 +1769,14 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             if (!ChatService.instance.isConnected)
               Container(
                 width: double.infinity,
-                color: Colors.red[50],
+                color: SdColors.dangerTint,
                 padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
+                child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.wifi_off, size: 13, color: Colors.red[400]),
-                    const SizedBox(width: 4),
-                    Text('غير متصل — الرسائل تتحدث كل 5 ثوانٍ', style: TextStyle(fontSize: 10, color: Colors.red[400])),
+                    Icon(Icons.wifi_off, size: 13, color: SdColors.danger),
+                    SizedBox(width: 4),
+                    Text('غير متصل — الرسائل تتحدث كل 5 ثوانٍ', style: TextStyle(fontSize: 11.5, color: SdColors.danger)),
                   ],
                 ),
               ),
@@ -1800,9 +1802,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: SdColors.surface,
                               borderRadius: BorderRadius.circular(20),
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 8, offset: const Offset(0, 2))],
+                              boxShadow: const [BoxShadow(color: SdColors.cardEdge, blurRadius: 8, offset: Offset(0, 2))],
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1810,12 +1812,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                                 if (_newMessagesSinceScrolled > 0) ...[
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
+                                    decoration: BoxDecoration(color: SdColors.danger, borderRadius: BorderRadius.circular(10)),
                                     child: Text('$_newMessagesSinceScrolled', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                                   ),
                                   const SizedBox(width: 6),
                                 ],
-                                const Icon(Icons.keyboard_arrow_down, size: 20, color: Color(0xFF075E54)),
+                                const Icon(Icons.keyboard_arrow_down, size: 20, color: SdColors.primary),
                               ],
                             ),
                           ),
@@ -1839,7 +1841,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   Widget _buildSearchBar() {
     return Container(
-      color: Colors.white,
+      color: SdColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(
         children: [
@@ -1903,10 +1905,20 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     final isMobile = MediaQuery.of(context).size.width < 600;
     final isDesktopSplit = !isMobile && MediaQuery.of(context).size.width > 768;
     return AppBar(
-      backgroundColor: _appBarColor,
+      backgroundColor: SdColors.primary,
       foregroundColor: Colors.white,
+      elevation: 0,
+      scrolledUnderElevation: 0,
       toolbarHeight: isMobile ? 48 : 56,
       automaticallyImplyLeading: !isDesktopSplit,
+      bottom: const PreferredSize(
+        preferredSize: Size.fromHeight(6),
+        child: SizedBox(
+          height: 6,
+          width: double.infinity,
+          child: ColoredBox(color: SdColors.primaryEdge),
+        ),
+      ),
       title: GestureDetector(
         onTap: isGroup ? _editGroupName : null,
         child: Column(
@@ -1960,16 +1972,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     }
 
     if (_messages.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 12),
-            Text('لا توجد رسائل بعد', style: TextStyle(color: Colors.grey[500], fontSize: 16, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 4),
-            Text('أرسل رسالة لبدء المحادثة 👋', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-          ],
+      return const Center(
+        child: SdEmptyState(
+          icon: Icons.chat_bubble_outline,
+          title: 'لا توجد رسائل بعد',
+          message: 'أرسل رسالة لبدء المحادثة 👋',
         ),
       );
     }
@@ -2115,19 +2122,22 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 ),
                 decoration: BoxDecoration(
                   color: isSent ? _bubbleSentColor : _bubbleReceivedColor,
+                  border: Border.all(
+                    color: isSent ? SdColors.primaryTintEdge : SdColors.divider,
+                  ),
                   borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(12),
-                    topRight: const Radius.circular(12),
+                    topLeft: const Radius.circular(SdRadius.sm),
+                    topRight: const Radius.circular(SdRadius.sm),
                     bottomLeft:
-                        isSent ? const Radius.circular(12) : Radius.zero,
+                        isSent ? const Radius.circular(SdRadius.sm) : Radius.zero,
                     bottomRight:
-                        isSent ? Radius.zero : const Radius.circular(12),
+                        isSent ? Radius.zero : const Radius.circular(SdRadius.sm),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: SdColors.cardEdge.withValues(alpha: 0.5),
                       blurRadius: 2,
-                      offset: const Offset(0, 1),
+                      offset: const Offset(0, SdDepth.chip / 2),
                     ),
                   ],
                 ),
@@ -2140,12 +2150,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
                           '\u21A9\uFE0F رسالة محولة',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 11,
                             fontStyle: FontStyle.italic,
-                            color: isSent
-                                ? Colors.white70
-                                : Colors.grey.shade600,
+                            color: SdColors.muted,
                           ),
                         ),
                       ),
@@ -2277,15 +2285,15 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(time, style: TextStyle(fontSize: 9, color: isSent ? Colors.white60 : Colors.grey.shade500)),
+        Text(time, style: const TextStyle(fontSize: 9, color: SdColors.muted)),
         if (isSent) ...[
           const SizedBox(width: 3),
           if (msg['_status'] == 'failed')
-            const Icon(Icons.error_outline, size: 12, color: Colors.redAccent)
+            const Icon(Icons.error_outline, size: 12, color: SdColors.danger)
           else if ((msg['id']?.toString() ?? '').startsWith('temp_'))
-            const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white60))
+            const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: SdColors.faint))
           else
-            Icon(isRead ? Icons.done_all : Icons.done, size: 13, color: isRead ? Colors.lightBlueAccent : Colors.white60),
+            Icon(isRead ? Icons.done_all : Icons.done, size: 13, color: isRead ? SdColors.success : SdColors.faint),
         ],
       ],
     );
@@ -2324,7 +2332,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     String content,
     bool isSent,
   ) {
-    final textColor = isSent ? Colors.white : Colors.black87;
+    const textColor = SdColors.ink;
 
     switch (msgType) {
       case 1: // Image
@@ -2389,12 +2397,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.location_on, color: Colors.red.shade400, size: 20),
+              const Icon(Icons.location_on, color: SdColors.danger, size: 20),
               const SizedBox(width: 6),
-              Text('موقع مشترك', style: TextStyle(color: textColor, fontSize: 13)),
+              const Text('موقع مشترك', style: TextStyle(color: textColor, fontSize: 13)),
               if (mapUrl != null) ...[
                 const SizedBox(width: 6),
-                Icon(Icons.open_in_new, size: 13, color: isSent ? Colors.white54 : Colors.blue.shade300),
+                const Icon(Icons.open_in_new, size: 13, color: _bubbleAccent),
               ],
             ],
           ),
@@ -2414,8 +2422,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         return Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: isSent ? Colors.blue.shade700 : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(10),
+            color: SdColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(SdRadius.xs),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2424,15 +2432,15 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.person, color: isSent ? Colors.white : Colors.orange, size: 24),
+                  const Icon(Icons.person, color: _bubbleAccent, size: 24),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(contactName, style: TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 14)),
+                        Text(contactName, style: const TextStyle(fontWeight: FontWeight.bold, color: textColor, fontSize: 14)),
                         if (contactPhone.isNotEmpty)
-                          Text(contactPhone, style: TextStyle(fontSize: 12, color: isSent ? Colors.white70 : Colors.grey.shade600), textDirection: TextDirection.ltr),
+                          Text(contactPhone, style: const TextStyle(fontSize: 12, color: SdColors.muted), textDirection: TextDirection.ltr),
                       ],
                     ),
                   ),
@@ -2446,10 +2454,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _searchInFtth(phone: contactPhone),
-                        icon: Icon(Icons.search, size: 14, color: isSent ? Colors.white70 : Colors.blue),
-                        label: Text('بحث بالرقم', style: TextStyle(fontSize: 11, color: isSent ? Colors.white : Colors.blue)),
+                        icon: const Icon(Icons.search, size: 14, color: SdColors.primary),
+                        label: const Text('بحث بالرقم', style: TextStyle(fontSize: 11, color: SdColors.primary)),
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: isSent ? Colors.white30 : Colors.blue.shade200),
+                          side: const BorderSide(color: SdColors.primaryTintEdge),
                           padding: const EdgeInsets.symmetric(vertical: 4),
                         ),
                       ),
@@ -2459,10 +2467,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _searchInFtth(name: contactName),
-                        icon: Icon(Icons.person_search, size: 14, color: isSent ? Colors.white70 : Colors.teal),
-                        label: Text('بحث بالاسم', style: TextStyle(fontSize: 11, color: isSent ? Colors.white : Colors.teal)),
+                        icon: const Icon(Icons.person_search, size: 14, color: SdColors.accent),
+                        label: const Text('بحث بالاسم', style: TextStyle(fontSize: 11, color: SdColors.accent)),
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: isSent ? Colors.white30 : Colors.teal.shade200),
+                          side: const BorderSide(color: SdColors.accentTintEdge),
                           padding: const EdgeInsets.symmetric(vertical: 4),
                         ),
                       ),
@@ -2485,21 +2493,19 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isSent
-                  ? Colors.blue.shade700
-                  : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
+              color: SdColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(SdRadius.xs),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.insert_drive_file,
-                    color: isSent ? Colors.white : Colors.purple, size: 28),
+                const Icon(Icons.insert_drive_file,
+                    color: _bubbleAccent, size: 28),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
                     fileName,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: textColor,
                       decoration: TextDecoration.underline,
                     ),
@@ -2623,7 +2629,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       Map<String, dynamic> msg, String url, bool isSent) {
     final msgId = _getMessageId(msg);
     final player = _getPlayer(msgId);
-    final textColor = isSent ? Colors.white : Colors.black87;
 
     return StreamBuilder<PlayerState>(
       stream: player.playerStateStream,
@@ -2639,7 +2644,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               child: Icon(
                 isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
                 size: 36,
-                color: isSent ? Colors.white : _bubbleSentColor,
+                color: _bubbleAccent,
               ),
             ),
             const SizedBox(width: 8),
@@ -2660,11 +2665,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                         height: 4,
                         child: LinearProgressIndicator(
                           value: progress.clamp(0.0, 1.0),
-                          backgroundColor: isSent
-                              ? Colors.white24
-                              : Colors.grey.shade300,
-                          valueColor: AlwaysStoppedAnimation(
-                            isSent ? Colors.white : _bubbleSentColor,
+                          backgroundColor: SdColors.divider,
+                          valueColor: const AlwaysStoppedAnimation(
+                            _bubbleAccent,
                           ),
                         ),
                       ),
@@ -2672,11 +2675,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       Text(
                         _formatDuration(
                             isPlaying ? position : duration),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
-                          color: isSent
-                              ? Colors.white70
-                              : Colors.grey.shade600,
+                          color: SdColors.muted,
                         ),
                       ),
                     ],
@@ -2709,13 +2710,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: isSent
-            ? Colors.blue.shade800.withOpacity(0.5)
-            : Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(6),
-        border: Border(
+        color: isSent ? SdColors.surface : SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        border: const Border(
           right: BorderSide(
-            color: isSent ? Colors.white54 : _bubbleSentColor,
+            color: _bubbleAccent,
             width: 3,
           ),
         ),
@@ -2726,19 +2725,19 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           if (replySender.isNotEmpty)
             Text(
               replySender,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: isSent ? Colors.white70 : _bubbleSentColor,
+                color: _bubbleAccent,
               ),
             ),
           Text(
             replyContent.length > 80
                 ? '${replyContent.substring(0, 80)}...'
                 : replyContent,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
-              color: isSent ? Colors.white60 : Colors.grey.shade700,
+              color: SdColors.muted,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -2756,7 +2755,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     final content = msg['content']?.toString() ?? '';
 
     return Container(
-      color: Colors.grey.shade200,
+      color: SdColors.surfaceAlt,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
@@ -2764,7 +2763,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             width: 4,
             height: 40,
             decoration: BoxDecoration(
-              color: _bubbleSentColor,
+              color: _bubbleAccent,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -2777,17 +2776,17 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 if (sender.isNotEmpty)
                   Text(
                     sender,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
-                      color: _bubbleSentColor,
+                      color: _bubbleAccent,
                     ),
                   ),
                 Text(
                   content.length > 60
                       ? '${content.substring(0, 60)}...'
                       : content,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: const TextStyle(fontSize: 12, color: SdColors.muted),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2808,7 +2807,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   Widget _buildMentionDropdown() {
     return Container(
       constraints: const BoxConstraints(maxHeight: 180),
-      color: Colors.white,
+      color: SdColors.surface,
       child: ListView.builder(
         shrinkWrap: true,
         itemCount: _filteredMembers.length,
@@ -2821,7 +2820,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             dense: true,
             leading: CircleAvatar(
               radius: 14,
-              backgroundColor: _appBarColor,
+              backgroundColor: SdColors.primary,
               child: Text(
                 name.isNotEmpty ? name[0] : '?',
                 style: const TextStyle(color: Colors.white, fontSize: 11),
@@ -2839,7 +2838,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   Widget _buildUploadIndicator() {
     return Container(
-      color: Colors.white,
+      color: SdColors.surface,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
@@ -2863,7 +2862,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   Widget _buildInputBar() {
     final isMobile = MediaQuery.of(context).size.width < 600;
     return Container(
-      color: _inputBarColor,
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
+        boxShadow: [BoxShadow(color: SdColors.cardEdge, offset: Offset(0, -2))],
+      ),
       padding: EdgeInsets.only(
         left: isMobile ? 4 : 6,
         right: isMobile ? 4 : 6,
@@ -2874,7 +2876,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         children: [
           // Attachment button
           IconButton(
-            icon: const Icon(Icons.attach_file, color: Colors.grey),
+            icon: const Icon(Icons.attach_file, color: SdColors.faint),
             onPressed: _showAttachmentSheet,
           ),
 
@@ -2885,32 +2887,32 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.red.shade50,
+                      color: SdColors.dangerTint,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.red.shade200),
+                      border: Border.all(color: SdColors.dangerTintEdge),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.mic, color: Colors.red.shade400, size: 20),
+                        const Icon(Icons.mic, color: SdColors.danger, size: 20),
                         const SizedBox(width: 8),
                         const Text(
                           'جاري التسجيل...',
-                          style: TextStyle(color: Colors.red, fontSize: 14),
+                          style: TextStyle(color: SdColors.danger, fontSize: 14),
                         ),
                         const Spacer(),
                         InkWell(
                           onTap: () {
                             if (mounted) setState(() => _isRecording = false);
                           },
-                          child: Icon(Icons.delete,
-                              color: Colors.red.shade400, size: 20),
+                          child: const Icon(Icons.delete,
+                              color: SdColors.danger, size: 20),
                         ),
                       ],
                     ),
                   )
                 : Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: TextField(
@@ -2934,23 +2936,31 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
           const SizedBox(width: 4),
 
-          // زر إرسال / ميكروفون (يتبدل حسب النص)
-          CircleAvatar(
-            backgroundColor: _appBarColor,
-            radius: isMobile ? 19 : 22,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: Icon(
-                _isRecording ? Icons.stop
-                    : _textController.text.trim().isNotEmpty ? Icons.send : Icons.mic,
-                color: Colors.white,
-                size: isMobile ? 18 : 20,
-              ),
-              onPressed: _isRecording
-                  ? _stopRecordingAndSend
+          // زر إرسال / ميكروفون (يتبدل حسب النص) — سطح بارز بنمط sd
+          SdRaised(
+            onTap: _isRecording
+                ? _stopRecordingAndSend
+                : _textController.text.trim().isNotEmpty
+                    ? _sendTextMessage
+                    : _startRecording,
+            radius: SdRadius.pill,
+            depth: SdDepth.button,
+            padding: EdgeInsets.all(isMobile ? 11 : 13),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [SdColors.primaryMid, SdColors.primary],
+            ),
+            edgeColor: SdColors.primaryEdge,
+            semanticLabel: 'إرسال',
+            child: Icon(
+              _isRecording
+                  ? Icons.stop
                   : _textController.text.trim().isNotEmpty
-                      ? _sendTextMessage
-                      : _startRecording,
+                      ? Icons.send
+                      : Icons.mic,
+              color: Colors.white,
+              size: isMobile ? 18 : 20,
             ),
           ),
         ],
@@ -2961,15 +2971,16 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   // ─── Sender Color (deterministic by userId) ───
 
   Color _getSenderColor(String userId) {
-    final colors = [
-      const Color(0xFF1976D2),
-      const Color(0xFF388E3C),
-      const Color(0xFFD32F2F),
-      const Color(0xFF7B1FA2),
-      const Color(0xFFF57C00),
-      const Color(0xFF0097A7),
-      const Color(0xFF5D4037),
-      const Color(0xFFC2185B),
+    // لوحة متمايزة مشتقّة من نبرات sd (أسماء المشاركين/الأفاتار).
+    const colors = [
+      SdColors.primary,
+      SdColors.success,
+      SdColors.danger,
+      SdColors.platformBase,
+      SdColors.warning,
+      SdColors.accent,
+      SdColors.info,
+      SdColors.primaryLight,
     ];
     final hash = userId.hashCode.abs();
     return colors[hash % colors.length];

@@ -6,6 +6,7 @@ import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة النسب المالية - تحليل 7 نسب مالية أساسية مع رسم بياني
 class FinancialRatiosPage extends StatefulWidget {
@@ -285,78 +286,30 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(),
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonBlue))
-                    : _errorMessage != null
-                        ? AccountingTheme.errorView(
-                            _errorMessage!, _loadAllData)
-                        : _buildContent(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ══════════════════════ TOOLBAR ══════════════════════
-
-  Widget _buildToolbar() {
-    final isMobile = context.accR.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 8 : context.accR.paddingH,
-        vertical: isMobile ? 4 : context.accR.spaceS,
-      ),
-      decoration: AccountingTheme.toolbar,
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_forward_rounded,
-                size: isMobile ? 20 : context.accR.iconM),
-            tooltip: 'رجوع',
-            style: IconButton.styleFrom(foregroundColor: Colors.white70),
-          ),
-          SizedBox(width: context.accR.spaceXS),
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonPurpleGradient,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.analytics_rounded,
-                color: Colors.white, size: isMobile ? 16 : context.accR.iconM),
-          ),
-          SizedBox(width: context.accR.spaceS),
-          Expanded(
-            child: Text(
-              isMobile ? 'النسب المالية' : 'النسب المالية',
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.cairo(
-                fontSize: isMobile ? 14 : context.accR.headingSmall,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          IconButton(
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'النسب المالية',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
             onPressed: _loadAllData,
-            icon:
-                Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(foregroundColor: Colors.white70),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: AccountingTheme.neonBlue))
+                : _errorMessage != null
+                    ? AccountingTheme.errorView(_errorMessage!, _loadAllData)
+                    : _buildContent(),
           ),
         ],
       ),

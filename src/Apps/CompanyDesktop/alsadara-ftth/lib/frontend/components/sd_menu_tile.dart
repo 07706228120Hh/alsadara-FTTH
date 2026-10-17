@@ -89,12 +89,12 @@ class _SdMenuTileState extends State<SdMenuTile> {
             mainAxisSize: MainAxisSize.min,
             children: [
               cube,
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(widget.title,
                   maxLines: 2,
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
-                  style: SdText.label.copyWith(fontWeight: FontWeight.w900)),
+                  style: SdText.label.copyWith(fontWeight: FontWeight.w900, fontSize: 12.5)),
               if (showSubtitle)
                 Text(widget.subtitle!,
                     maxLines: 1,
@@ -106,7 +106,7 @@ class _SdMenuTileState extends State<SdMenuTile> {
         : Row(
             children: [
               cube,
-              const SizedBox(width: 14),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,7 +115,7 @@ class _SdMenuTileState extends State<SdMenuTile> {
                     Text(widget.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: SdText.titleSm),
+                        style: SdText.titleSm.copyWith(fontSize: 14.5)),
                     if (showSubtitle)
                       Text(widget.subtitle!,
                           maxLines: 2,
@@ -138,11 +138,13 @@ class _SdMenuTileState extends State<SdMenuTile> {
           curve: SdMotion.standard,
           transform: m,
           transformAlignment: Alignment.center,
-          constraints: BoxConstraints(minHeight: vertical ? 120 : (l.isPhone ? 72 : 84)),
+          constraints: BoxConstraints(minHeight: vertical ? 96 : (l.isPhone ? 58 : 62)),
           decoration: BoxDecoration(
             color: SdColors.surface,
             borderRadius: r,
-            border: _focus ? Border.all(color: SdColors.accentGlow, width: 2) : null,
+            border: _focus
+                ? Border.all(color: SdColors.accentGlow, width: SdOutline.focusWidth)
+                : SdOutline.all,
             boxShadow: [
               BoxShadow(color: SdColors.cardEdge, offset: Offset(0, depth)),
               BoxShadow(
@@ -167,8 +169,8 @@ class _SdMenuTileState extends State<SdMenuTile> {
               onFocusChange: (v) => setState(() => _focus = v),
               child: Padding(
                 padding: vertical
-                    ? const EdgeInsets.fromLTRB(10, 16, 10, 12)
-                    : EdgeInsets.symmetric(horizontal: l.isPhone ? 12 : 16, vertical: l.isPhone ? 12 : 14),
+                    ? const EdgeInsets.fromLTRB(8, 12, 8, 10)
+                    : EdgeInsets.symmetric(horizontal: l.isPhone ? 12 : 14, vertical: l.isPhone ? 9 : 10),
                 child: content,
               ),
             ),
@@ -187,7 +189,7 @@ class SdTileGrid extends StatelessWidget {
   const SdTileGrid({
     super.key,
     required this.children,
-    this.minTileWidth = 250,
+    this.minTileWidth = 210,
     this.maxColumns = 4,
     this.phoneColumns = 2,
     this.spacing,

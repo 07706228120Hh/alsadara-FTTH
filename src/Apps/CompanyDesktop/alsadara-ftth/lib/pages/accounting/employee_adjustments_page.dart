@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
@@ -36,9 +36,14 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
 
   final _typeLabels = {0: 'خصم', 1: 'مكافأة', 2: 'بدل'};
   final _typeColors = {
-    0: AccountingTheme.danger,
-    1: AccountingTheme.success,
-    2: const Color(0xFF2196F3),
+    0: SdStatus.danger.tone.base,
+    1: SdStatus.success.tone.base,
+    2: SdStatus.info.tone.base,
+  };
+  final _typeStatus = {
+    0: SdStatus.danger,
+    1: SdStatus.success,
+    2: SdStatus.info,
   };
   final _typeIcons = {
     0: Icons.remove_circle_outline,
@@ -91,27 +96,40 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
   @override
   Widget build(BuildContext context) {
     final isMobile = context.accR.isMobile;
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'الخصومات والمكافآت',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _loadData,
+            ),
+            if (PermissionManager.instance.canAdd('accounting.salaries'))
+              SdAppBarAction(
+                icon: Icons.add,
+                label: 'إضافة',
+                onPressed: () => _showAddDialog(),
+              ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildToolbar(isMobile),
               _buildMonthSelector(),
               _buildSummaryBar(),
               _buildTypeFilter(),
               Expanded(
                 child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
+                    ? const Center(child: CircularProgressIndicator())
                     : _errorMessage != null
                         ? Center(
                             child: Text(_errorMessage!,
                                 style: const TextStyle(
-                                    color: AccountingTheme.danger)))
+                                    color: SdColors.danger)))
                         : _adjustments.isEmpty
                             ? _buildEmpty()
                             : _buildList(isMobile),
@@ -123,95 +141,15 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
     );
   }
 
-  Widget _buildToolbar(bool isMobile) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : context.accR.spaceXL,
-          vertical: isMobile ? 6 : context.accR.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            iconSize: isMobile ? 20 : 24,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          if (!isMobile) SizedBox(width: context.accR.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMobile ? 4 : context.accR.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonPinkGradient,
-              borderRadius: BorderRadius.circular(isMobile ? 6 : 8),
-            ),
-            child: Icon(Icons.tune_rounded,
-                color: Colors.white, size: isMobile ? 16 : context.accR.iconM),
-          ),
-          SizedBox(width: isMobile ? 6 : context.accR.spaceM),
-          Expanded(
-            child: Text('الخصومات والمكافآت',
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
-                    fontSize: isMobile ? 14 : context.accR.headingMedium,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary)),
-          ),
-          IconButton(
-            onPressed: _loadData,
-            icon: Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          if (PermissionManager.instance.canAdd('accounting.salaries')) ...[
-            SizedBox(width: context.accR.spaceS),
-            isMobile
-                ? SizedBox(
-                    height: 28,
-                    child: ElevatedButton(
-                      onPressed: () => _showAddDialog(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AccountingTheme.neonGreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        minimumSize: const Size(28, 28),
-                      ),
-                      child: const Icon(Icons.add, size: 16),
-                    ),
-                  )
-                : ElevatedButton.icon(
-                    onPressed: () => _showAddDialog(),
-                    icon: Icon(Icons.add, size: context.accR.iconM),
-                    label: const Text('إضافة'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AccountingTheme.neonGreen,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                          horizontal: context.accR.paddingH,
-                          vertical: context.accR.spaceM),
-                    ),
-                  ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildMonthSelector() {
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: context.accR.paddingH, vertical: context.accR.spaceM),
-      color: AccountingTheme.bgCard,
+      color: SdColors.surface,
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_right,
-                color: AccountingTheme.textSecondary),
+            icon: const Icon(Icons.chevron_right, color: SdColors.muted),
             onPressed: () {
               setState(() {
                 if (_selectedMonth == 12) {
@@ -227,16 +165,12 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
           Expanded(
             child: Text(
               '${_months[_selectedMonth - 1]} $_selectedYear',
-              style: TextStyle(
-                  color: AccountingTheme.textPrimary,
-                  fontSize: context.accR.headingSmall,
-                  fontWeight: FontWeight.bold),
+              style: SdText.titleSm,
               textAlign: TextAlign.center,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_left,
-                color: AccountingTheme.textSecondary),
+            icon: const Icon(Icons.chevron_left, color: SdColors.muted),
             onPressed: () {
               setState(() {
                 if (_selectedMonth == 1) {
@@ -269,118 +203,84 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
         children: [
           Expanded(
               child: _summaryChip(
-                  'خصومات', _fmt(totalDeductions), AccountingTheme.danger)),
+                  'خصومات', _fmt(totalDeductions), SdStatus.danger.tone)),
           SizedBox(width: context.accR.spaceS),
           Expanded(
               child: _summaryChip(
-                  'مكافآت', _fmt(totalBonuses), AccountingTheme.success)),
+                  'مكافآت', _fmt(totalBonuses), SdStatus.success.tone)),
           SizedBox(width: context.accR.spaceS),
           Expanded(
               child: _summaryChip(
-                  'بدلات', _fmt(totalAllowances), const Color(0xFF2196F3))),
+                  'بدلات', _fmt(totalAllowances), SdStatus.info.tone)),
           SizedBox(width: context.accR.spaceS),
           Expanded(
-              child:
-                  _summaryChip('العدد', '$count', AccountingTheme.textPrimary)),
+              child: _summaryChip('العدد', '$count', SdGroup.admin.tone)),
         ],
       ),
     );
   }
 
-  Widget _summaryChip(String label, String value, Color color) {
+  Widget _summaryChip(String label, String value, SdTone tone) {
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: context.accR.spaceL, vertical: context.accR.spaceS),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
       ),
       child: Column(
         children: [
           Text(label,
               style: TextStyle(
-                  color: color.withValues(alpha: 0.8),
-                  fontSize: context.accR.small)),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5)),
           const SizedBox(height: 2),
           Text(value,
               style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.accR.body)),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13.5)),
         ],
       ),
     );
   }
 
   Widget _buildTypeFilter() {
-    return Container(
+    return Padding(
       padding: EdgeInsets.symmetric(
           horizontal: context.accR.paddingH, vertical: 4),
-      child: Row(
-        children: [
-          _filterChip('الكل', null),
-          const SizedBox(width: 6),
-          _filterChip('خصومات', 0),
-          const SizedBox(width: 6),
-          _filterChip('مكافآت', 1),
-          const SizedBox(width: 6),
-          _filterChip('بدلات', 2),
+      child: SdFilterChips<int?>(
+        selected: _filterType,
+        onSelected: (v) {
+          setState(() => _filterType = v);
+          _loadData();
+        },
+        options: const [
+          SdFilterOption(null, 'الكل'),
+          SdFilterOption(0, 'خصومات'),
+          SdFilterOption(1, 'مكافآت'),
+          SdFilterOption(2, 'بدلات'),
         ],
-      ),
-    );
-  }
-
-  Widget _filterChip(String label, int? type) {
-    final selected = _filterType == type;
-    return GestureDetector(
-      onTap: () {
-        setState(() => _filterType = type);
-        _loadData();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: selected
-              ? AccountingTheme.neonGreen.withValues(alpha: 0.2)
-              : AccountingTheme.bgCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: selected
-                  ? AccountingTheme.neonGreen
-                  : AccountingTheme.borderColor),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                color: selected
-                    ? AccountingTheme.neonGreen
-                    : AccountingTheme.textSecondary,
-                fontSize: context.accR.small,
-                fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
       ),
     );
   }
 
   Widget _buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.tune_outlined,
-              color: AccountingTheme.textMuted, size: context.accR.iconEmpty),
-          SizedBox(height: context.accR.spaceXL),
-          const Text('لا توجد تعديلات لهذا الشهر',
-              style: TextStyle(color: AccountingTheme.textMuted)),
-          SizedBox(height: context.accR.spaceM),
-          ElevatedButton.icon(
-            onPressed: () => _showAddDialog(),
-            icon: const Icon(Icons.add),
-            label: const Text('إضافة تعديل'),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AccountingTheme.neonGreen,
-                foregroundColor: Colors.white),
-          ),
-        ],
+    return SingleChildScrollView(
+      child: SdEmptyState(
+        title: 'لا توجد تعديلات لهذا الشهر',
+        icon: Icons.tune_outlined,
+        action: PermissionManager.instance.canAdd('accounting.salaries')
+            ? SdButton(
+                label: 'إضافة تعديل',
+                icon: Icons.add,
+                onPressed: () => _showAddDialog(),
+              )
+            : null,
       ),
     );
   }
@@ -395,7 +295,8 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
 
   Widget _buildAdjustmentTile(dynamic adj) {
     final typeVal = (adj['TypeValue'] ?? 0) as int;
-    final color = _typeColors[typeVal] ?? AccountingTheme.textMuted;
+    final color = _typeColors[typeVal] ?? SdColors.muted;
+    final tone = (_typeStatus[typeVal] ?? SdStatus.neutral).tone;
     final icon = _typeIcons[typeVal] ?? Icons.help;
     final label = _typeLabels[typeVal] ?? '';
     final isApplied = adj['IsApplied'] == true;
@@ -404,20 +305,18 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        borderRadius: BorderRadius.circular(context.accR.cardRadius),
-        border: Border.all(
-            color: isApplied
-                ? color.withValues(alpha: 0.3)
-                : AccountingTheme.borderColor),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
+        border: isApplied ? Border.all(color: tone.tintEdge) : null,
       ),
       child: ListTile(
         leading: Container(
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
+            color: tone.tint,
+            borderRadius: BorderRadius.circular(SdRadius.xs),
           ),
           child: Icon(icon, color: color, size: 18),
         ),
@@ -426,58 +325,50 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
             Expanded(
               child: Text(
                 adj['UserName'] ?? '',
-                style: TextStyle(
-                    color: AccountingTheme.textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: context.accR.body),
+                style: SdText.label,
               ),
             ),
             Text('${_fmt(adj['Amount'])} د.ع',
                 style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: context.accR.body)),
+                    fontFamily: SdText.family,
+                    color: tone.text,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14)),
           ],
         ),
         subtitle: Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: tone.tint,
+                borderRadius: BorderRadius.circular(SdRadius.xs),
               ),
               child: Text(label,
                   style: TextStyle(
-                      color: color,
-                      fontSize: context.accR.caption,
-                      fontWeight: FontWeight.bold)),
+                      fontFamily: SdText.family,
+                      color: tone.text,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700)),
             ),
             if (adj['Category'] != null &&
                 (adj['Category'] as String).isNotEmpty) ...[
               const SizedBox(width: 6),
-              Text(adj['Category'],
-                  style: TextStyle(
-                      color: AccountingTheme.textMuted,
-                      fontSize: context.accR.caption)),
+              Text(adj['Category'], style: SdText.caption),
             ],
             if (isRecurring) ...[
               const SizedBox(width: 6),
-              Icon(Icons.repeat, size: 12, color: AccountingTheme.info),
+              Icon(Icons.repeat, size: 12, color: SdStatus.info.tone.base),
               const SizedBox(width: 2),
               Text('متكرر',
-                  style: TextStyle(
-                      color: AccountingTheme.info,
-                      fontSize: context.accR.caption)),
+                  style: SdText.caption.copyWith(color: SdStatus.info.tone.text)),
             ],
             if (isApplied) ...[
               const SizedBox(width: 6),
-              Icon(Icons.check_circle, size: 12, color: AccountingTheme.success),
+              Icon(Icons.check_circle, size: 12, color: SdStatus.success.tone.base),
               const SizedBox(width: 2),
               Text('مُطبّق',
-                  style: TextStyle(
-                      color: AccountingTheme.success,
-                      fontSize: context.accR.caption)),
+                  style: SdText.caption.copyWith(color: SdStatus.success.tone.text)),
             ],
           ],
         ),
@@ -491,10 +382,10 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                     InkWell(
                       onTap: () => _showEditDialog(adj),
                       borderRadius: BorderRadius.circular(4),
-                      child: const Padding(
-                        padding: EdgeInsets.all(4),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
                         child: Icon(Icons.edit,
-                            size: 18, color: AccountingTheme.info),
+                            size: 18, color: SdStatus.info.tone.base),
                       ),
                     ),
                   if (PermissionManager.instance
@@ -502,10 +393,10 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                     InkWell(
                       onTap: () => _confirmDelete(adj),
                       borderRadius: BorderRadius.circular(4),
-                      child: const Padding(
-                        padding: EdgeInsets.all(4),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
                         child: Icon(Icons.delete_outline,
-                            size: 18, color: AccountingTheme.danger),
+                            size: 18, color: SdStatus.danger.tone.base),
                       ),
                     ),
                 ],

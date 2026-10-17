@@ -7,9 +7,9 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../frontend/frontend.dart';
 import '../services/router_wifi_service.dart';
 import '../services/url_opener.dart';
-import '../widgets/depth_3d.dart';
 
 class RouterWifiEditPage extends StatefulWidget {
   const RouterWifiEditPage({super.key, this.gatewayIp, this.api});
@@ -198,14 +198,18 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
             ],
           ),
           actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء')),
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('تأكيد',
-                    style: TextStyle(
-                        color: Color(0xFFC62828), fontWeight: FontWeight.w900))),
+            SdButton(
+              label: 'إلغاء',
+              kind: SdButtonKind.secondary,
+              height: 44,
+              onPressed: () => Navigator.pop(ctx, false),
+            ),
+            SdButton(
+              label: 'تأكيد',
+              kind: SdButtonKind.danger,
+              height: 44,
+              onPressed: () => Navigator.pop(ctx, true),
+            ),
           ],
         ),
       ),
@@ -214,63 +218,62 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Nq3d.ground,
-        appBar: nq3dAppBar('تعديل WiFi الراوتر'),
-        body: LayoutBuilder(
-          builder: (ctx, c) {
-            final w = c.maxWidth;
-            final isPhone = w < 600;
-            final maxContentWidth = isPhone ? w : (w >= 1024 ? 640.0 : 560.0);
-            return Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxContentWidth),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _securityNote(),
-                      const SizedBox(height: 12),
-                      _credentialsCard(),
-                      if (_config != null) ...[
-                        const SizedBox(height: 14),
-                        _editCard(),
-                      ],
-                      if (_error != null) ...[
-                        const SizedBox(height: 12),
-                        _banner(_error!, const Color(0xFFC62828),
-                            Icons.error_outline_rounded),
-                        const SizedBox(height: 10),
-                        // عند الفشل: اجعل فتح المتصفح بارزاً (حلّ مضمون).
-                        _accessWebButton(prominent: true),
-                      ],
-                      if (_resultMsg != null) ...[
-                        const SizedBox(height: 12),
-                        // أخضر: نجاح مؤكَّد (SSID تحقّق). أصفر: أُرسل بلا تأكيد
-                        // (كلمة مرور فقط). أحمر: فشل.
-                        _banner(
-                            _resultMsg!,
-                            !_resultOk
-                                ? const Color(0xFFC62828)
-                                : _resultVerified
-                                    ? const Color(0xFF2E7D32)
-                                    : const Color(0xFFE65100),
-                            !_resultOk
-                                ? Icons.error_outline_rounded
-                                : _resultVerified
-                                    ? Icons.check_circle_rounded
-                                    : Icons.info_outline_rounded),
-                      ],
+    return SdPage(
+      padding: EdgeInsets.zero,
+      scrollable: false,
+      maxWidth: double.infinity,
+      appBar: const SdAppBar(title: 'تعديل WiFi الراوتر'),
+      body: LayoutBuilder(
+        builder: (ctx, c) {
+          final w = c.maxWidth;
+          final isPhone = w < 600;
+          final maxContentWidth = isPhone ? w : (w >= 1024 ? 640.0 : 560.0);
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _securityNote(),
+                    const SizedBox(height: 12),
+                    _credentialsCard(),
+                    if (_config != null) ...[
+                      const SizedBox(height: 14),
+                      _editCard(),
                     ],
-                  ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      _banner(_error!, SdStatus.danger,
+                          Icons.error_outline_rounded),
+                      const SizedBox(height: 10),
+                      // عند الفشل: اجعل فتح المتصفح بارزاً (حلّ مضمون).
+                      _accessWebButton(prominent: true),
+                    ],
+                    if (_resultMsg != null) ...[
+                      const SizedBox(height: 12),
+                      // أخضر: نجاح مؤكَّد (SSID تحقّق). أصفر: أُرسل بلا تأكيد
+                      // (كلمة مرور فقط). أحمر: فشل.
+                      _banner(
+                          _resultMsg!,
+                          !_resultOk
+                              ? SdStatus.danger
+                              : _resultVerified
+                                  ? SdStatus.success
+                                  : SdStatus.warning,
+                          !_resultOk
+                              ? Icons.error_outline_rounded
+                              : _resultVerified
+                                  ? Icons.check_circle_rounded
+                                  : Icons.info_outline_rounded),
+                    ],
+                  ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -278,23 +281,25 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
   Widget _securityNote() => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF3E0),
+          color: SdColors.warningTint,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFFFCC80)),
+          border: Border.all(color: SdColors.warningTintEdge),
         ),
         child: Row(
           children: [
             const Icon(Icons.shield_outlined,
-                color: Color(0xFFE65100), size: 20),
+                color: SdColors.warning, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 'ميزة حسّاسة تكتب إلى راوترك. أدخل اعتماد مدير الراوتر صراحةً. '
                 'يدعم حالياً Huawei/ZTE/Tenda؛ راوترات TP‑Link/Mercusys تستخدم '
                 'دخولاً مشفّراً غير مدعوم بعد — استخدم واجهة الراوتر لها.',
-                style: TextStyle(
+                style: const TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: 11.5,
-                    color: const Color(0xFF8A4B00),
+                    fontWeight: FontWeight.w700,
+                    color: SdColors.warningText,
                     height: 1.4),
               ),
             ),
@@ -351,7 +356,7 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
         labelStyle: const TextStyle(fontSize: 12.5),
         isDense: true,
         filled: true,
-        fillColor: const Color(0xFFF5F7FB),
+        fillColor: SdColors.surfaceAlt,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none),
@@ -367,37 +372,12 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
   }
 
   Widget _accessWebButton({required bool prominent}) {
-    return Material(
-      color: prominent
-          ? const Color(0xFF00695C)
-          : const Color(0xFF00695C).withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: _openRouterWeb,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.open_in_browser_rounded,
-                  size: 20,
-                  color: prominent ? Colors.white : const Color(0xFF00695C)),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text('فتح واجهة الراوتر في المتصفح',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            prominent ? Colors.white : const Color(0xFF00695C))),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return SdButton(
+      label: 'فتح واجهة الراوتر في المتصفح',
+      icon: Icons.open_in_browser_rounded,
+      kind: prominent ? SdButtonKind.accent : SdButtonKind.secondary,
+      expand: true,
+      onPressed: _openRouterWeb,
     );
   }
 
@@ -411,12 +391,18 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
         children: [
           Text('الاسم الحالي: ${cfg.ssid}',
               style: const TextStyle(
-                  fontSize: 12.5, fontWeight: FontWeight.w700, color: Nq3d.ink)),
+                  fontFamily: SdText.family,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: SdColors.ink)),
           if (cfg.security.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text('التأمين: ${cfg.security}',
-                  style: TextStyle(fontSize: 11, color: Nq3d.muted)),
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
+                      fontSize: 11.5,
+                      color: SdColors.muted)),
             ),
           const Divider(height: 22),
           _field(_newSsid, 'اسم الشبكة الجديد (SSID)'),
@@ -427,7 +413,7 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
                   setState(() => _obscureNewPass = !_obscureNewPass)),
           const SizedBox(height: 6),
           Text('اترك كلمة المرور فارغة للإبقاء عليها دون تغيير.',
-              style: TextStyle(fontSize: 10.5, color: Nq3d.muted)),
+              style: SdText.caption),
           const SizedBox(height: 14),
           _primaryButton(
             label: 'تطبيق التغييرات',
@@ -446,33 +432,10 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
       {required IconData icon,
       required String title,
       required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: raisedShadow(depth: 5, glow: const Color(0x661A237E)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: Nq3d.indigo),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        color: Nq3d.ink)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          child,
-        ],
-      ),
+    return SdCard(
+      icon: icon,
+      title: title,
+      child: child,
     );
   }
 
@@ -484,13 +447,13 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
       controller: ctrl,
       obscureText: obscure,
       keyboardType: keyboard,
-      style: const TextStyle(fontSize: 13.5),
+      style: const TextStyle(fontFamily: SdText.family, fontSize: 13.5),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(fontSize: 12.5),
+        labelStyle: const TextStyle(fontFamily: SdText.family, fontSize: 12.5),
         isDense: true,
         filled: true,
-        fillColor: const Color(0xFFF5F7FB),
+        fillColor: SdColors.surfaceAlt,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none),
@@ -515,70 +478,36 @@ class _RouterWifiEditPageState extends State<RouterWifiEditPage> {
     required VoidCallback onTap,
     bool danger = false,
   }) {
-    return Raised3D(
-      onTap: busy ? null : onTap,
-      radius: 14,
-      depth: 5,
-      padding: EdgeInsets.zero,
-      edgeColor: danger ? const Color(0xFF9B1C1C) : Nq3d.indigoDark,
-      glowColor: const Color(0x990F1660),
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: danger
-            ? const [Color(0xFFE53935), Color(0xFFB71C1C)]
-            : const [Color(0xFF283593), Nq3d.indigo],
-      ),
-      semanticLabel: label,
-      child: SizedBox(
-        height: 50,
-        child: Center(
-          child: busy
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: Colors.white),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15)),
-                    ),
-                  ],
-                ),
-        ),
-      ),
+    return SdButton(
+      label: busy ? 'جارٍ التنفيذ...' : label,
+      icon: busy ? Icons.hourglass_top_rounded : icon,
+      kind: danger ? SdButtonKind.danger : SdButtonKind.primary,
+      expand: true,
+      onPressed: busy ? null : onTap,
     );
   }
 
-  Widget _banner(String msg, Color color, IconData icon) {
+  Widget _banner(String msg, SdStatus status, IconData icon) {
+    final t = status.tone;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: t.tint,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        border: Border.all(color: t.tintEdge),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 18),
+          Icon(icon, color: t.base, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(msg,
                 style: TextStyle(
-                    fontSize: 12, color: color, fontWeight: FontWeight.w700)),
+                    fontFamily: SdText.family,
+                    fontSize: 12.5,
+                    color: t.text,
+                    fontWeight: FontWeight.w700)),
           ),
         ],
       ),

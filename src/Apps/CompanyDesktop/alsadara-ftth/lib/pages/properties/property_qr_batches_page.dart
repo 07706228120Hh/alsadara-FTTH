@@ -14,7 +14,7 @@ import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/property_api_service.dart';
-import '../../theme/app_theme.dart';
+import '../../frontend/tokens/sd_colors.dart';
 import 'property_sticker.dart';
 import 'property_ui.dart';
 
@@ -70,7 +70,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor,
+        backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -167,7 +167,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
         child: AlertDialog(
           title: Row(
             children: [
-              const Icon(Icons.phone_rounded, color: AppTheme.primaryColor),
+              const Icon(Icons.phone_rounded, color: SdColors.primary),
               const SizedBox(width: 8),
               Text('هاتف الطباعة',
                   style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
@@ -194,7 +194,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
             FilledButton(
               onPressed: () => Navigator.pop(context, ctrl.text.trim()),
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
               ),
               child: Text('حفظ',
@@ -354,7 +354,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _loading ? null : _generate,
-          backgroundColor: AppTheme.primaryColor,
+          backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.add_box_rounded, color: Colors.white),
           label: Text('توليد دفعة',
@@ -375,7 +375,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                           action: FilledButton.icon(
                             onPressed: _generate,
                             style: FilledButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
+                              backgroundColor: SdColors.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 22, vertical: 12),
@@ -409,7 +409,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
         children: [
           PropUi.gradientBadge(
             icon: Icons.qr_code_2_rounded,
-            colors: AppTheme.blueGradient,
+            colors: SdColors.blueGradient,
             size: 46,
             iconSize: 23,
           ),
@@ -439,13 +439,13 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                   spacing: 6,
                   runSpacing: 4,
                   children: [
-                    _tag('العدد ${b.count}', AppTheme.primaryColor),
-                    _tag('المستخدَم ${b.usedCount}', AppTheme.warningColor),
+                    _tag('العدد ${b.count}', SdColors.primary),
+                    _tag('المستخدَم ${b.usedCount}', SdColors.warning),
                     _tag(
                         fullyUsed ? 'مكتملة' : 'المتبقّي ${b.remaining}',
                         fullyUsed
                             ? Colors.grey
-                            : AppTheme.successColor),
+                            : SdColors.success),
                   ],
                 ),
               ],
@@ -459,9 +459,9 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                 onPressed:
                     b.count > 0 ? () => _runPrint(b, preview: true) : null,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor,
+                  foregroundColor: SdColors.primary,
                   side: BorderSide(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.4)),
+                      color: SdColors.primary.withValues(alpha: 0.4)),
                   minimumSize: const Size(118, 36),
                 ),
                 icon: const Icon(Icons.visibility_rounded, size: 18),
@@ -473,9 +473,9 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                 onPressed:
                     b.count > 0 ? () => _runPrint(b, preview: false) : null,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor,
+                  foregroundColor: SdColors.primary,
                   side: BorderSide(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.4)),
+                      color: SdColors.primary.withValues(alpha: 0.4)),
                   minimumSize: const Size(118, 36),
                 ),
                 icon: const Icon(Icons.print_rounded, size: 18),
@@ -486,9 +486,9 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
               OutlinedButton.icon(
                 onPressed: b.count > 0 ? () => _openTokens(b) : null,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.successColor,
+                  foregroundColor: SdColors.success,
                   side: BorderSide(
-                      color: AppTheme.successColor.withValues(alpha: 0.4)),
+                      color: SdColors.success.withValues(alpha: 0.4)),
                   minimumSize: const Size(118, 36),
                 ),
                 icon: const Icon(Icons.fact_check_rounded, size: 18),
@@ -585,7 +585,7 @@ class _GenerateDialogState extends State<_GenerateDialog> {
       child: AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.add_box_rounded, color: AppTheme.primaryColor),
+            const Icon(Icons.add_box_rounded, color: SdColors.primary),
             const SizedBox(width: 8),
             Text('توليد دفعة رموز QR',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
@@ -603,7 +603,7 @@ class _GenerateDialogState extends State<_GenerateDialog> {
                 labelText: 'عدد الرموز (حتى ${widget.maxCount})',
                 labelStyle: GoogleFonts.cairo(),
                 prefixIcon: const Icon(Icons.numbers_rounded,
-                    color: AppTheme.primaryColor),
+                    color: SdColors.primary),
                 errorText: _err,
                 isDense: true,
               ),
@@ -617,7 +617,7 @@ class _GenerateDialogState extends State<_GenerateDialog> {
                 labelText: 'رقم الهاتف (يُطبع تحت كل رمز — يُحفظ محلياً)',
                 labelStyle: GoogleFonts.cairo(),
                 prefixIcon: const Icon(Icons.phone_rounded,
-                    color: AppTheme.primaryColor),
+                    color: SdColors.primary),
                 isDense: true,
               ),
             ),
@@ -629,7 +629,7 @@ class _GenerateDialogState extends State<_GenerateDialog> {
                 labelText: 'ملاحظة (اختياري)',
                 labelStyle: GoogleFonts.cairo(),
                 prefixIcon: const Icon(Icons.notes_rounded,
-                    color: AppTheme.primaryColor),
+                    color: SdColors.primary),
                 isDense: true,
               ),
             ),
@@ -644,7 +644,7 @@ class _GenerateDialogState extends State<_GenerateDialog> {
           FilledButton(
             onPressed: _submit,
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
+              backgroundColor: SdColors.primary,
               foregroundColor: Colors.white,
             ),
             child: Text('توليد',
@@ -719,7 +719,7 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
       child: AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.print_rounded, color: AppTheme.primaryColor),
+            const Icon(Icons.print_rounded, color: SdColors.primary),
             const SizedBox(width: 8),
             Text('نطاق الطباعة',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
@@ -770,7 +770,7 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
               const SizedBox(height: 10),
               Text(_err!,
                   style: GoogleFonts.cairo(
-                      color: AppTheme.errorColor,
+                      color: SdColors.danger,
                       fontWeight: FontWeight.w600,
                       fontSize: 12)),
             ],
@@ -785,7 +785,7 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
           FilledButton.icon(
             onPressed: _submit,
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
+              backgroundColor: SdColors.primary,
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.print_rounded, size: 18, color: Colors.white),
@@ -814,7 +814,7 @@ class _PdfPreviewScreen extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: AppTheme.primaryColor,
+          backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
           title: Text('معاينة $title',
               style: GoogleFonts.cairo(
@@ -927,7 +927,7 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: AppTheme.primaryColor,
+          backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
           title: Text('حالات رموز الدفعة',
               style: GoogleFonts.cairo(
@@ -978,7 +978,7 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
                       FilledButton(
                         onPressed: _loading ? null : _load,
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
+                          backgroundColor: SdColors.primary,
                           foregroundColor: Colors.white,
                         ),
                         child: Text('تحميل',
@@ -1007,7 +1007,7 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(_error!,
                     style: GoogleFonts.cairo(
-                        color: AppTheme.errorColor,
+                        color: SdColors.danger,
                         fontWeight: FontWeight.w700)),
               ),
             const Divider(height: 1),
@@ -1041,16 +1041,16 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
           style: GoogleFonts.cairo(
               fontWeight: FontWeight.w700,
               fontSize: 12,
-              color: sel ? Colors.white : AppTheme.primaryColor)),
+              color: sel ? Colors.white : SdColors.primary)),
       selected: sel,
-      selectedColor: AppTheme.primaryColor,
+      selectedColor: SdColors.primary,
       onSelected: (_) => setState(() => _filter = f),
     );
   }
 
   Widget _tokenTile(PropertyQrToken t) {
     final used = t.isUsed;
-    final c = used ? AppTheme.successColor : Colors.grey;
+    final c = used ? SdColors.success : Colors.grey;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../models/sas_renewal.dart';
 import '../services/sas_agent_api_service.dart';
@@ -146,8 +145,8 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -203,30 +202,12 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          toolbarHeight: 56,
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          iconTheme: const IconThemeData(color: Colors.white),
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          title: Text('الإشعارات والتذكير',
-              style:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 17)),
-        ),
-        body: SasContentWrap(
+    return SdPage(
+      maxWidth: 1000,
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: const SdAppBar(title: 'الإشعارات والتذكير'),
+      body: SasContentWrap(
           maxWidth: 1000,
           child: Column(
             children: [
@@ -238,7 +219,6 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -286,16 +266,16 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
           Row(
             children: [
               Icon(Icons.schedule_rounded,
-                  size: 19.sp, color: AppTheme.primaryColor),
+                  size: 19.sp, color: SdColors.primary),
               SizedBox(width: 8.w),
               Expanded(
                 child: Text('التذكير التلقائي اليومي',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 14.sp, fontWeight: FontWeight.w800)),
               ),
               Switch(
                 value: _auto.enabled,
-                activeThumbColor: AppTheme.primaryColor,
+                activeThumbColor: SdColors.primary,
                 onChanged: (v) => _saveAuto(_auto.copyWith(enabled: v)),
               ),
             ],
@@ -305,7 +285,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
           _hintRow(
             Icons.info_outline_rounded,
             'يعمل أثناء فتح التطبيق فقط — إن أُغلق التطبيق لا يُرسَل التذكير.',
-            AppTheme.primaryColor,
+            SdColors.primary,
           ),
           // تحذير النمط اليدوي.
           if (_auto.enabled && !_autoMode) ...[
@@ -314,7 +294,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
               Icons.warning_amber_rounded,
               'نمط الواتساب الحالي يدوي — الإرسال التلقائي لن يعمل. '
               'فعّل نمط «الخادم» من إعدادات الواتساب ليُرسَل تلقائياً.',
-              AppTheme.warningColor,
+              SdColors.warning,
             ),
           ],
           if (_auto.enabled) ...[
@@ -328,29 +308,29 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                 OutlinedButton.icon(
                   onPressed: _pickTime,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primaryColor,
+                    foregroundColor: SdColors.primary,
                     side: BorderSide(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.5)),
+                        color: SdColors.primary.withValues(alpha: 0.5)),
                     shape: RoundedRectangleBorder(
                         borderRadius:
                             BorderRadius.circular(SasUi.radiusSm.r)),
                   ),
                   icon: Icon(Icons.access_time_rounded, size: 17.sp),
                   label: Text('الموعد: ${_auto.timeLabel}',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
                 ),
                 Container(
                   padding:
                       EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                    color: SdColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
                   ),
                   child: Text('قبل الانتهاء بـ ${_auto.days} يوم',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w800,
-                          color: AppTheme.primaryColor)),
+                          color: SdColors.primary)),
                 ),
               ],
             ),
@@ -360,7 +340,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
               children: [
                 Expanded(
                   child: _infoChip('التشغيل القادم', _nextRunLabel(),
-                      Icons.event_rounded, AppTheme.primaryColor),
+                      Icons.event_rounded, SdColors.primary),
                 ),
                 SizedBox(width: 8.w),
                 Expanded(
@@ -368,14 +348,14 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                       'آخر تشغيل',
                       _autoLastRun ?? 'لم يُشغَّل بعد',
                       Icons.history_rounded,
-                      AppTheme.successColor),
+                      SdColors.success),
                 ),
               ],
             ),
             if (_autoLog.isNotEmpty) ...[
               SizedBox(height: 12.h),
               Text('سجلّ آخر العمليات',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w800,
                       color: Colors.grey[700])),
@@ -396,7 +376,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
         SizedBox(width: 6.w),
         Expanded(
           child: Text(text,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.sp,
                   fontWeight: FontWeight.w600,
                   color: color)),
@@ -422,14 +402,14 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                         color: Colors.grey[600])),
                 Text(value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 11.5.sp,
                         fontWeight: FontWeight.w800,
                         color: color)),
@@ -454,7 +434,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
           Icon(
             ok ? Icons.check_circle_rounded : Icons.info_outline_rounded,
             size: 15.sp,
-            color: ok ? AppTheme.successColor : Colors.grey[500],
+            color: ok ? SdColors.success : Colors.grey[500],
           ),
           SizedBox(width: 6.w),
           Expanded(
@@ -463,7 +443,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
               children: [
                 Text(
                   '$when · إجمالي ${e.total} · أُرسل ${e.sent} · فشل ${e.failed}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 10.5.sp,
                       fontWeight: FontWeight.w700,
                       color: Colors.grey[800]),
@@ -472,7 +452,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   Text(e.note,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 10.sp, color: Colors.grey[600])),
               ],
             ),
@@ -495,12 +475,12 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
           Row(
             children: [
               Icon(Icons.notifications_active_rounded,
-                  size: 18.sp, color: AppTheme.primaryColor),
+                  size: 18.sp, color: SdColors.primary),
               SizedBox(width: 8.w),
               Expanded(
                 child: Text(
                   'تذكير المشتركين قبل انتهاء اشتراكهم بـ:',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 13.sp, fontWeight: FontWeight.w700),
                 ),
               ),
@@ -517,10 +497,10 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   selected: _days == d,
                   onSelected: _loading ? null : (_) => _setDays(d),
                   label: Text('$d يوم',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w700,
                           color: _days == d ? Colors.white : Colors.grey[700])),
-                  selectedColor: AppTheme.primaryColor,
+                  selectedColor: SdColors.primary,
                   backgroundColor: Colors.grey.withValues(alpha: 0.10),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -534,7 +514,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                   ],
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w700, fontSize: 13.sp),
                   onSubmitted: (v) {
                     final n = int.tryParse(v.trim());
@@ -542,7 +522,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   },
                   decoration: InputDecoration(
                     labelText: 'عدد مخصّص',
-                    labelStyle: GoogleFonts.cairo(
+                    labelStyle: TextStyle(fontFamily: 'Cairo', 
                         color: Colors.grey[600], fontSize: 11.5.sp),
                     isDense: true,
                     suffixIcon: IconButton(
@@ -565,14 +545,14 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                 padding:
                     EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                  color: SdColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20.r),
                 ),
                 child: Text('المحدّد: $_days يوم',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w800,
-                        color: AppTheme.primaryColor)),
+                        color: SdColors.primary)),
               ),
             ],
           ),
@@ -582,7 +562,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
             child: FilledButton.icon(
               onPressed: _loading ? null : _fetch,
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: SdColors.primary,
                 padding: EdgeInsets.symmetric(vertical: 13.h),
               ),
               icon: _loading
@@ -594,7 +574,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                     )
                   : Icon(Icons.search_rounded, size: 19.sp),
               label: Text('جلب قائمة قرب الانتهاء',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ),
           ),
         ],
@@ -655,20 +635,20 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
         children: [
           SasStatusBadge(
             label: 'الإجمالي: $total',
-            color: AppTheme.primaryColor,
+            color: SdColors.primary,
             icon: Icons.people_rounded,
           ),
           SizedBox(width: 8.w),
           SasStatusBadge(
             label: 'سيصلهم: $_sendableCount',
-            color: AppTheme.successColor,
+            color: SdColors.success,
             icon: Icons.chat_rounded,
           ),
           if (noPhone > 0) ...[
             SizedBox(width: 8.w),
             SasStatusBadge(
               label: 'بلا رقم: $noPhone',
-              color: AppTheme.warningColor,
+              color: SdColors.warning,
               icon: Icons.phone_disabled_rounded,
             ),
           ],
@@ -688,7 +668,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
         border: Border.all(
           color: sendable
               ? Colors.grey.withValues(alpha: 0.16)
-              : AppTheme.warningColor.withValues(alpha: 0.40),
+              : SdColors.warning.withValues(alpha: 0.40),
           width: sendable ? 1.2 : 1.4,
         ),
         boxShadow: SasUi.cardShadow(),
@@ -700,7 +680,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
             size: 22.sp,
             color: sendable
                 ? const Color(0xFF25D366)
-                : AppTheme.warningColor,
+                : SdColors.warning,
           ),
           SizedBox(width: 12.w),
           Expanded(
@@ -713,7 +693,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                       child: Text(
                         c.displayName,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(fontFamily: 'Cairo', 
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w800,
                             color: const Color(0xFF1A1A2E)),
@@ -725,10 +705,10 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                             ? 'منتهٍ'
                             : 'باقٍ $daysLeft يوم',
                         color: daysLeft <= 0
-                            ? AppTheme.errorColor
+                            ? SdColors.danger
                             : (daysLeft <= 2
-                                ? AppTheme.warningColor
-                                : AppTheme.primaryColor),
+                                ? SdColors.warning
+                                : SdColors.primary),
                       ),
                   ],
                 ),
@@ -743,7 +723,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   ].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 11.5.sp, color: Colors.grey[600]),
                 ),
                 SizedBox(height: 2.h),
@@ -755,12 +735,12 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                           : 'لا يوجد رقم هاتف — لن يصله التذكير'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w600,
                     color: sendable
                         ? Colors.grey[700]
-                        : AppTheme.warningColor,
+                        : SdColors.warning,
                   ),
                 ),
               ],
@@ -811,7 +791,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                 sendable > 0
                     ? 'سيُرسَل التذكير إلى $sendable مشترك عبر واتساب'
                     : 'لا يوجد أرقام صالحة لإرسال التذكير',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w700,
                     color: Colors.grey[700]),
@@ -829,7 +809,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
               ),
               icon: Icon(Icons.send_rounded, size: 18.sp),
               label: Text('إرسال التذكير الآن',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ),
           ],
         ),

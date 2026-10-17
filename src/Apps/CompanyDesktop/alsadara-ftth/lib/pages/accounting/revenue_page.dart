@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
@@ -163,101 +163,40 @@ class _RevenuePageState extends State<RevenuePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildPageToolbar(),
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
-                    : _errorMessage != null
-                        ? Center(
-                            child: Text(_errorMessage!,
-                                style: const TextStyle(
-                                    color: AccountingTheme.danger)))
-                        : Column(
-                            children: [
-                              _buildSummaryAndFilters(),
-                              Expanded(child: _buildEntriesList()),
-                            ],
-                          ),
-              ),
-            ],
-          ),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'الإيرادات',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _loadData,
+            ),
+            SdAppBarAction(
+              icon: Icons.add,
+              label: 'إضافة إيراد',
+              onPressed: _showAddRevenueDialog,
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildPageToolbar() {
-    final ar = context.accR;
-    final isMob = MediaQuery.of(context).size.width < 700;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 20),
-            tooltip: 'رجوع',
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            padding: EdgeInsets.zero,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonGreenGradient,
-              borderRadius: BorderRadius.circular(ar.btnRadius),
-            ),
-            child: Icon(Icons.trending_up_rounded,
-                color: Colors.white, size: isMob ? 18 : ar.iconM),
-          ),
-          SizedBox(width: isMob ? 6 : ar.spaceM),
-          Text('الإيرادات',
-              style: GoogleFonts.cairo(
-                  fontSize: isMob ? 14 : ar.headingMedium,
-                  fontWeight: FontWeight.bold,
-                  color: AccountingTheme.textPrimary)),
-          const Spacer(),
-          IconButton(
-            onPressed: _loadData,
-            icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
-            tooltip: 'تحديث',
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            padding: EdgeInsets.zero,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          ElevatedButton.icon(
-            onPressed: _showAddRevenueDialog,
-            icon: Icon(Icons.add, size: isMob ? 16 : ar.iconM),
-            label: Text(isMob ? 'إضافة إيراد' : 'إضافة إيراد',
-                style: GoogleFonts.cairo(fontSize: isMob ? 11 : ar.buttonText)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonGreen,
-              foregroundColor: Colors.white,
-              padding: isMob
-                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-                  : ar.buttonPadding,
-              minimumSize: isMob ? const Size(0, 30) : null,
-            ),
-          ),
-        ],
+        body: SafeArea(
+          top: false,
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage != null
+                  ? Center(
+                      child: Text(_errorMessage!,
+                          style: const TextStyle(
+                              color: SdColors.danger)))
+                  : Column(
+                      children: [
+                        _buildSummaryAndFilters(),
+                        Expanded(child: _buildEntriesList()),
+                      ],
+                    ),
+        ),
       ),
     );
   }
@@ -272,10 +211,9 @@ class _RevenuePageState extends State<RevenuePage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 10 : context.accR.spaceM,
           vertical: isMob ? 8 : context.accR.spaceS),
-      decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: const Border(
-            bottom: BorderSide(color: AccountingTheme.borderColor)),
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: Column(
         children: [
@@ -285,13 +223,19 @@ class _RevenuePageState extends State<RevenuePage> {
             padding: EdgeInsets.symmetric(
                 horizontal: isMob ? 14 : 20, vertical: isMob ? 10 : 14),
             decoration: BoxDecoration(
-              gradient: AccountingTheme.neonGreenGradient,
-              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  SdStatus.success.tone.light,
+                  SdStatus.success.tone.base,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(SdRadius.md),
               boxShadow: [
                 BoxShadow(
-                  color: AccountingTheme.neonGreen.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
+                  color: SdStatus.success.tone.edge,
+                  offset: const Offset(0, SdDepth.button),
                 ),
               ],
             ),
@@ -344,7 +288,7 @@ class _RevenuePageState extends State<RevenuePage> {
                         'من ${_revenueEntries.length}',
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: isMob ? 10 : 12),
+                            fontSize: isMob ? 11.5 : 12),
                       ),
                   ],
                 ),
@@ -394,13 +338,12 @@ class _RevenuePageState extends State<RevenuePage> {
                   child: Container(
                     padding: EdgeInsets.all(isMob ? 6 : 8),
                     decoration: BoxDecoration(
-                      color: AccountingTheme.danger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: AccountingTheme.danger.withValues(alpha: 0.3)),
+                      color: SdStatus.danger.tone.tint,
+                      borderRadius: BorderRadius.circular(SdRadius.xs),
+                      border: Border.all(color: SdStatus.danger.tone.tintEdge),
                     ),
                     child: Icon(Icons.clear_all,
-                        color: AccountingTheme.danger, size: isMob ? 18 : 20),
+                        color: SdStatus.danger.tone.base, size: isMob ? 18 : 20),
                   ),
                 ),
               ],
@@ -418,13 +361,13 @@ class _RevenuePageState extends State<RevenuePage> {
       padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 12),
       decoration: BoxDecoration(
         color: _selectedRevenueType != 'الكل'
-            ? AccountingTheme.accent.withValues(alpha: 0.1)
-            : AccountingTheme.bgCardHover,
-        borderRadius: BorderRadius.circular(8),
+            ? SdColors.primaryTint
+            : SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
         border: Border.all(
           color: _selectedRevenueType != 'الكل'
-              ? AccountingTheme.accent.withValues(alpha: 0.4)
-              : AccountingTheme.borderColor,
+              ? SdColors.primaryTintEdge
+              : SdColors.edge,
           width: 1.2,
         ),
       ),
@@ -433,16 +376,17 @@ class _RevenuePageState extends State<RevenuePage> {
           value: _selectedRevenueType,
           isExpanded: true,
           icon: Icon(Icons.filter_list,
-              size: isMob ? 16 : 18, color: AccountingTheme.textSecondary),
+              size: isMob ? 16 : 18, color: SdColors.muted),
           style: TextStyle(
-              color: Colors.black87,
-              fontSize: isMob ? 12 : 14,
+              fontFamily: SdText.family,
+              color: SdColors.ink,
+              fontSize: isMob ? 12.5 : 14,
               fontWeight: FontWeight.w600),
           dropdownColor: Colors.white,
           items: types.map((t) {
             return DropdownMenuItem(
               value: t,
-              child: Text(t, style: TextStyle(fontSize: isMob ? 12 : 14)),
+              child: Text(t, style: TextStyle(fontSize: isMob ? 12.5 : 14)),
             );
           }).toList(),
           onChanged: (v) {
@@ -468,13 +412,11 @@ class _RevenuePageState extends State<RevenuePage> {
         padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 12),
         decoration: BoxDecoration(
           color: isActive
-              ? AccountingTheme.info.withValues(alpha: 0.1)
-              : AccountingTheme.bgCardHover,
-          borderRadius: BorderRadius.circular(8),
+              ? SdStatus.info.tone.tint
+              : SdColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(SdRadius.xs),
           border: Border.all(
-            color: isActive
-                ? AccountingTheme.info.withValues(alpha: 0.4)
-                : AccountingTheme.borderColor,
+            color: isActive ? SdStatus.info.tone.tintEdge : SdColors.edge,
             width: 1.2,
           ),
         ),
@@ -483,14 +425,13 @@ class _RevenuePageState extends State<RevenuePage> {
           children: [
             Icon(icon,
                 size: isMob ? 14 : 16,
-                color: isActive
-                    ? AccountingTheme.info
-                    : AccountingTheme.textSecondary),
+                color: isActive ? SdStatus.info.tone.base : SdColors.muted),
             SizedBox(width: isMob ? 4 : 6),
             Text(label,
                 style: TextStyle(
-                    color: isActive ? AccountingTheme.info : Colors.black87,
-                    fontSize: isMob ? 11 : 13,
+                    fontFamily: SdText.family,
+                    color: isActive ? SdStatus.info.tone.text : SdColors.ink,
+                    fontSize: isMob ? 11.5 : 13,
                     fontWeight: isActive ? FontWeight.w600 : FontWeight.w500)),
           ],
         ),
@@ -534,46 +475,35 @@ class _RevenuePageState extends State<RevenuePage> {
   Widget _buildEntriesList() {
     final filtered = _filteredEntries;
     if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.trending_up,
-                color: AccountingTheme.textMuted, size: context.accR.iconEmpty),
-            SizedBox(height: context.accR.spaceXL),
-            Text('لا توجد قيود إيرادات',
-                style: TextStyle(
-                    color: AccountingTheme.textSecondary,
-                    fontSize: context.accR.headingSmall)),
-            SizedBox(height: 8),
-            Text('اضغط + لإضافة إيراد جديد',
-                style: TextStyle(
-                    color: AccountingTheme.textMuted,
-                    fontSize: context.accR.financialSmall)),
-          ],
+      return const SingleChildScrollView(
+        child: SdEmptyState(
+          title: 'لا توجد قيود إيرادات',
+          message: 'اضغط + لإضافة إيراد جديد',
+          icon: Icons.trending_up,
+          status: SdStatus.success,
         ),
       );
     }
 
     return ListView.builder(
-      padding: EdgeInsets.symmetric(horizontal: context.accR.spaceM),
+      padding: EdgeInsets.fromLTRB(context.accR.spaceM, SdSpace.xs, context.accR.spaceM, SdSpace.md),
       itemCount: filtered.length,
       itemBuilder: (_, i) {
         final entry = filtered[i];
         final lines = entry['Lines'] as List? ?? [];
         final status = entry['Status']?.toString() ?? 'Draft';
-        final statusInfo = _statusInfo(status);
+        final statusTone = _statusTone(status);
         final totalDebit = (entry['TotalDebit'] ?? 0 as num).toDouble();
 
         return Container(
-          margin: EdgeInsets.only(bottom: 6),
-          padding: EdgeInsets.all(context.accR.spaceL),
+          margin: const EdgeInsets.only(bottom: SdSpace.xs),
+          padding: const EdgeInsets.all(SdSpace.md),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
-            borderRadius: BorderRadius.circular(context.accR.cardRadius),
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.md),
+            boxShadow: SdDepth.raised(depth: SdDepth.small),
             border: Border(
-                right:
-                    BorderSide(color: statusInfo['color'] as Color, width: 3)),
+                right: BorderSide(color: statusTone.base, width: 3)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -583,35 +513,19 @@ class _RevenuePageState extends State<RevenuePage> {
                   Expanded(
                     child: Text(
                       entry['Description'] ?? '',
-                      style: TextStyle(
-                          color: AccountingTheme.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: context.accR.body),
+                      style: SdText.label,
                     ),
                   ),
                   // الحالة
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: (statusInfo['color'] as Color)
-                          .withValues(alpha: 0.15),
-                      borderRadius:
-                          BorderRadius.circular(context.accR.cardRadius),
-                    ),
-                    child: Text(
-                      statusInfo['label'] as String,
-                      style: TextStyle(
-                          color: statusInfo['color'] as Color,
-                          fontSize: context.accR.small),
-                    ),
-                  ),
+                  SdStatusChip(_statusLabel(status), status: _statusEnum(status)),
                   SizedBox(width: context.accR.spaceS),
                   Text(
                     '${_fmt(totalDebit)} د.ع',
                     style: TextStyle(
-                      color: AccountingTheme.neonGreen,
-                      fontWeight: FontWeight.bold,
-                      fontSize: context.accR.body,
+                      fontFamily: SdText.family,
+                      color: SdStatus.success.tone.base,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
                     ),
                   ),
                 ],
@@ -632,29 +546,29 @@ class _RevenuePageState extends State<RevenuePage> {
                         Icon(
                           credit > 0 ? Icons.arrow_back : Icons.arrow_forward,
                           color: credit > 0
-                              ? AccountingTheme.accent
-                              : AccountingTheme.info,
+                              ? SdColors.accent
+                              : SdStatus.info.tone.base,
                           size: context.accR.iconS,
                         ),
                         SizedBox(width: context.accR.spaceXS),
                         Expanded(
                           child: Text(
                             accName.toString(),
-                            style: TextStyle(
-                                color: AccountingTheme.textMuted,
-                                fontSize: context.accR.small),
+                            style: SdText.caption,
                           ),
                         ),
                         if (debit > 0)
                           Text('مدين: ${_fmt(debit)}',
                               style: TextStyle(
-                                  color: AccountingTheme.info,
-                                  fontSize: context.accR.small)),
+                                  fontFamily: SdText.family,
+                                  color: SdStatus.info.tone.text,
+                                  fontSize: 11.5)),
                         if (credit > 0)
                           Text('دائن: ${_fmt(credit)}',
-                              style: TextStyle(
-                                  color: AccountingTheme.accent,
-                                  fontSize: context.accR.small)),
+                              style: const TextStyle(
+                                  fontFamily: SdText.family,
+                                  color: SdColors.accentEdge,
+                                  fontSize: 11.5)),
                       ],
                     ),
                   );
@@ -663,31 +577,27 @@ class _RevenuePageState extends State<RevenuePage> {
               SizedBox(height: context.accR.spaceXS),
               Row(
                 children: [
-                  Icon(Icons.access_time,
-                      color: AccountingTheme.textMuted,
-                      size: context.accR.iconXS),
+                  const Icon(Icons.access_time,
+                      color: SdColors.faint, size: 14),
                   SizedBox(width: context.accR.spaceXS),
                   Text(
                     _formatDate(entry['EntryDate'] ?? entry['CreatedAt']),
-                    style: TextStyle(
-                        color: AccountingTheme.textMuted,
-                        fontSize: context.accR.small),
+                    style: SdText.caption,
                   ),
                   if (entry['Notes'] != null &&
                       entry['Notes'].toString().isNotEmpty) ...[
                     SizedBox(width: context.accR.spaceM),
                     Tooltip(
                       message: entry['Notes'].toString(),
-                      child: Icon(Icons.notes,
-                          color: AccountingTheme.textMuted,
-                          size: context.accR.iconXS),
+                      child: const Icon(Icons.notes,
+                          color: SdColors.faint, size: 14),
                     ),
                   ],
                   const Spacer(),
-                  _actionBtn(Icons.edit, AccountingTheme.info,
+                  _actionBtn(Icons.edit, SdStatus.info.tone.base,
                       () => _showEditRevenueDialog(entry)),
                   SizedBox(width: context.accR.spaceXS),
-                  _actionBtn(Icons.delete_outline, AccountingTheme.danger,
+                  _actionBtn(Icons.delete_outline, SdStatus.danger.tone.base,
                       () => _confirmDeleteRevenue(entry)),
                 ],
               ),
@@ -1206,14 +1116,27 @@ class _RevenuePageState extends State<RevenuePage> {
     );
   }
 
-  Map<String, dynamic> _statusInfo(String status) {
+  SdStatus _statusEnum(String status) {
     switch (status) {
       case 'Posted':
-        return {'label': 'مرحل', 'color': AccountingTheme.success};
+        return SdStatus.success;
       case 'Voided':
-        return {'label': 'ملغي', 'color': AccountingTheme.danger};
+        return SdStatus.danger;
       default:
-        return {'label': 'مسودة', 'color': AccountingTheme.textMuted};
+        return SdStatus.neutral;
+    }
+  }
+
+  SdTone _statusTone(String status) => _statusEnum(status).tone;
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'Posted':
+        return 'مرحل';
+      case 'Voided':
+        return 'ملغي';
+      default:
+        return 'مسودة';
     }
   }
 

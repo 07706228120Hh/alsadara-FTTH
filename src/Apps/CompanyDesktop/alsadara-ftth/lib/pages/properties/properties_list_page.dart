@@ -1,16 +1,17 @@
 /// قائمة سجل العقارات — بحث + تصفية (نوع/ملكية) + ترقيم + بطاقات + إضافة.
 ///
-/// نظام أساسي ينادي بوّابة الصدارة `/api/properties`. بثيم الصدارة (Cairo/
-/// AppTheme) ومتجاوب مع سطح المكتب، RTL.
+/// نظام أساسي ينادي بوّابة الصدارة `/api/properties`. بنظام تصميم الصدارة
+/// الموحّد (sd: Cairo + SdColors) ومتجاوب مع سطح المكتب، RTL.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../frontend/components/sd_raised.dart';
+import '../../frontend/tokens/sd_colors.dart';
 import '../../models/property.dart';
 import '../../permissions/permission_manager.dart';
 import '../../services/property_api_service.dart';
-import '../../theme/app_theme.dart';
 import 'location_master_page.dart';
 import 'property_detail_page.dart';
 import 'property_form_page.dart';
@@ -198,7 +199,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor,
+        backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -248,7 +249,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
         floatingActionButton: _canManage
             ? FloatingActionButton.extended(
                 onPressed: _scanQr,
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
                 icon: const Icon(Icons.qr_code_scanner_rounded,
                     color: Colors.white),
@@ -283,10 +284,10 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
           hintText: 'بحث: رقم وطني / عنوان / نقطة دالة',
           hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
           prefixIcon:
-              const Icon(Icons.search_rounded, color: AppTheme.primaryColor),
+              const Icon(Icons.search_rounded, color: SdColors.primary),
           suffixIcon: IconButton(
             icon: const Icon(Icons.arrow_back_rounded,
-                color: AppTheme.primaryColor),
+                color: SdColors.primary),
             onPressed: () => _load(),
           ),
           isDense: true,
@@ -333,10 +334,10 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
         onSelected: (_) => onTap(),
         showCheckmark: false,
         backgroundColor: Colors.white,
-        selectedColor: AppTheme.primaryColor,
+        selectedColor: SdColors.primary,
         side: BorderSide(
             color: selected
-                ? AppTheme.primaryColor
+                ? SdColors.primary
                 : Colors.grey.withValues(alpha: 0.25)),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(PropUi.radiusPill)),
@@ -358,16 +359,10 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
             : 'لا عقارات بعد — امسح رمز العنوان الوطني لبدء إدخال عقار',
         icon: Icons.maps_home_work_outlined,
         action: _canManage && _page == 1
-            ? FilledButton.icon(
+            ? SdButton(
+                label: 'مسح رمز العقار',
+                icon: Icons.qr_code_scanner_rounded,
                 onPressed: _scanQr,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                ),
-                icon: const Icon(Icons.qr_code_scanner_rounded),
-                label: Text('مسح رمز العقار',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
               )
             : null,
       );
@@ -416,7 +411,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
 
   Widget _card(Property p) {
     final commercial = p.isCommercial;
-    final tint = commercial ? AppTheme.warningColor : AppTheme.primaryColor;
+    final tint = commercial ? SdColors.warning : SdColors.primary;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -432,8 +427,8 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                     ? Icons.storefront_rounded
                     : Icons.home_rounded,
                 colors: commercial
-                    ? AppTheme.orangeGradient
-                    : AppTheme.blueGradient,
+                    ? SdColors.orangeGradient
+                    : SdColors.blueGradient,
                 size: 46,
                 iconSize: 23,
               ),
@@ -466,9 +461,9 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                       runSpacing: 4,
                       children: [
                         _tag(p.propertyTypeLabel, tint),
-                        _tag(p.ownershipLabel, AppTheme.successColor),
+                        _tag(p.ownershipLabel, SdColors.success),
                         _tag('${p.serviceCount} خدمة',
-                            AppTheme.secondaryColor),
+                            SdColors.primaryLight),
                       ],
                     ),
                   ],
@@ -544,7 +539,7 @@ class _QrInputDialogState extends State<_QrInputDialog> {
         title: Row(
           children: [
             const Icon(Icons.qr_code_scanner_rounded,
-                color: AppTheme.primaryColor),
+                color: SdColors.primary),
             const SizedBox(width: 8),
             Text('مسح/إدخال رمز QR',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
@@ -570,7 +565,7 @@ class _QrInputDialogState extends State<_QrInputDialog> {
                 hintText: 'SADARA|P:… أو الرمز',
                 hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
                 prefixIcon: const Icon(Icons.qr_code_rounded,
-                    color: AppTheme.primaryColor),
+                    color: SdColors.primary),
                 isDense: true,
               ),
             ),
@@ -580,9 +575,9 @@ class _QrInputDialogState extends State<_QrInputDialog> {
               child: OutlinedButton.icon(
                 onPressed: _openCamera,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor,
+                  foregroundColor: SdColors.primary,
                   side: BorderSide(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.5)),
+                      color: SdColors.primary.withValues(alpha: 0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
                 icon: const Icon(Icons.photo_camera_rounded, size: 20),
@@ -601,7 +596,7 @@ class _QrInputDialogState extends State<_QrInputDialog> {
           FilledButton.icon(
             onPressed: _submit,
             style:
-                FilledButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                FilledButton.styleFrom(backgroundColor: SdColors.primary),
             icon: const Icon(Icons.search_rounded, size: 18),
             label: Text('بحث',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),

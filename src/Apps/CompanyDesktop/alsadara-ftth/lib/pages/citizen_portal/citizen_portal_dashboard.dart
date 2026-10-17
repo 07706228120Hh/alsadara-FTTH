@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../utils/responsive_helper.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
@@ -91,22 +92,15 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
+        backgroundColor: SdColors.ground,
         appBar: AppBar(
-          title: const Row(
-            children: [
-              Icon(Icons.people_alt_rounded, size: 28),
-              SizedBox(width: 12),
-              Text(
-                'نظام المواطن',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.teal,
+          title: const Text('نظام المواطن'),
+          backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
           bottom: TabBar(
             controller: _tabController,
             isScrollable: true,
@@ -148,40 +142,31 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Colors.teal),
+            CircularProgressIndicator(color: SdColors.primary),
             SizedBox(height: 16),
-            Text('جاري تحميل البيانات...'),
+            Text('جاري تحميل البيانات...', style: SdText.bodySm),
           ],
         ),
       );
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              style: const TextStyle(fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _loadStats,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ],
+      return SdEmptyState(
+        title: _error!,
+        icon: Icons.error_outline_rounded,
+        status: SdStatus.danger,
+        action: SdButton(
+          label: 'إعادة المحاولة',
+          icon: Icons.refresh,
+          kind: SdButtonKind.secondary,
+          onPressed: _loadStats,
         ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _loadStats,
-      color: Colors.teal,
+      color: SdColors.primary,
       child: Builder(builder: (context) {
         final isMobile = context.responsive.isMobile;
         return SingleChildScrollView(
@@ -194,17 +179,14 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
             Container(
               padding: EdgeInsets.all(isMobile ? 12 : 20),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.teal.shade400, Colors.teal.shade600],
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [SdColors.primaryMid, SdColors.primary],
                 ),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.teal.withAlpha((0.3 * 255).round()),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                boxShadow: SdDepth.raised(
+                    edge: SdColors.primaryEdge, depth: SdDepth.hero),
               ),
               child: Row(
                 children: [
@@ -225,21 +207,15 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'مرحباً بك في نظام المواطن',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                          style: SdText.title.copyWith(color: Colors.white),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'إدارة المواطنين وطلباتهم واشتراكاتهم',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white.withAlpha((0.9 * 255).round()),
-                          ),
+                          style: SdText.body.copyWith(
+                              color: Colors.white.withAlpha((0.9 * 255).round())),
                         ),
                       ],
                     ),
@@ -299,13 +275,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
             const SizedBox(height: 24),
 
             // روابط سريعة
-            const Text(
-              'إجراءات سريعة',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const SdSectionHeader(title: 'إجراءات سريعة'),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
@@ -347,34 +317,26 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
             const SizedBox(height: 24),
 
             // أحدث الطلبات
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'أحدث الطلبات',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => _tabController.animateTo(2),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('عرض الكل'),
-                ),
-              ],
+            SdSectionHeader(
+              title: 'أحدث الطلبات',
+              trailing: TextButton.icon(
+                onPressed: () => _tabController.animateTo(2),
+                icon: const Icon(Icons.arrow_back, size: 18),
+                label: const Text('عرض الكل'),
+              ),
             ),
             const SizedBox(height: 8),
             Container(
               height: 200,
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: SdColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: SdColors.divider),
               ),
               child: const Center(
                 child: Text(
                   'سيتم عرض أحدث الطلبات هنا',
-                  style: TextStyle(color: Colors.grey),
+                  style: SdText.bodySm,
                 ),
               ),
             ),
@@ -391,36 +353,30 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(
-            color: color.withAlpha((0.1 * 255).round()),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: color.withAlpha((0.3 * 255).round()),
+    return SdRaised(
+      onTap: onTap,
+      radius: SdRadius.sm,
+      depth: SdDepth.small,
+      color: color.withAlpha((0.1 * 255).round()),
+      edgeColor: color.withAlpha((0.3 * 255).round()),
+      glowColor: color.withAlpha((0.18 * 255).round()),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      semanticLabel: label,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: color,
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 24),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }

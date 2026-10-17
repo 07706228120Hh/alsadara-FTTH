@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 
 // ─────────────────────────────────────────────
@@ -171,7 +172,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل تحميل البيانات: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -218,6 +219,36 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   double get _netTotal => _subtotal - _discountAmount + _taxAmount;
 
   // ═══════════════════════════════════════════
+  //  أنماط الإدخال الموحّدة
+  // ═══════════════════════════════════════════
+
+  InputDecoration _dec(String? label, {bool dense = false, Widget? suffixIcon}) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: SdText.bodySm,
+      filled: true,
+      fillColor: SdColors.surface,
+      isDense: dense,
+      suffixIcon: suffixIcon,
+      contentPadding: dense
+          ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
+          : null,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.cardEdge),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.cardEdge),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════
   //  تحديد متعدد للمواد
   // ═══════════════════════════════════════════
 
@@ -244,15 +275,17 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                   return CheckboxListTile(
                     value: selected.contains(itemId) || alreadyAdded,
                     enabled: !alreadyAdded,
+                    activeColor: SdColors.primary,
                     title: Text(itemName,
                         style: TextStyle(
+                            fontFamily: SdText.family,
                             fontSize: 13,
                             color:
-                                alreadyAdded ? Colors.grey : null)),
+                                alreadyAdded ? SdColors.faint : SdColors.ink)),
                     subtitle: alreadyAdded
                         ? const Text('مضاف مسبقاً',
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey))
+                                fontFamily: SdText.family, fontSize: 11, color: SdColors.faint))
                         : null,
                     dense: true,
                     onChanged: alreadyAdded
@@ -273,6 +306,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text('إلغاء')),
               FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
                 onPressed: selected.isEmpty
                     ? null
                     : () {
@@ -334,7 +368,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('أضف مادة واحدة على الأقل'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -387,7 +421,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
             content: Text(_isSales
                 ? 'تم إنشاء فاتورة البيع وتأكيدها'
                 : 'تم إنشاء فاتورة الشراء وتأكيدها'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         Navigator.pop(context);
@@ -398,7 +432,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل الحفظ: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -411,40 +445,28 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F6FA),
-          foregroundColor: const Color(0xFF1A1A2E),
-          iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
-          titleTextStyle: const TextStyle(
-            color: Color(0xFF1A1A2E),
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-          elevation: 0,
-          title: Text(
-              _isSales ? 'فاتورة بيع جديدة' : 'فاتورة شراء جديدة'),
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _buildHeaderSection(),
-                    const SizedBox(height: 20),
-                    _buildItemsSection(),
-                    const SizedBox(height: 20),
-                    _buildTotalsSection(),
-                    const SizedBox(height: 24),
-                    _buildSaveButton(),
-                  ],
-                ),
+    return SdPage(
+      scrollable: false,
+      maxWidth: SdSpace.formMax,
+      appBar: SdAppBar(title: _isSales ? 'فاتورة بيع جديدة' : 'فاتورة شراء جديدة'),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildHeaderSection(),
+                  const SizedBox(height: SdSpace.lg),
+                  _buildItemsSection(),
+                  const SizedBox(height: SdSpace.lg),
+                  _buildTotalsSection(),
+                  const SizedBox(height: SdSpace.xl),
+                  _buildSaveButton(),
+                  const SizedBox(height: SdSpace.md),
+                ],
               ),
-      ),
+            ),
     );
   }
 
@@ -453,169 +475,147 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   // ═══════════════════════════════════════════
 
   Widget _buildHeaderSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          children: [
-            // ── العميل أو المورد ──
-            if (_isSales)
-              SizedBox(
-                width: 300,
-                child: DropdownButtonFormField<String>(
-                  value: _selectedCustomerId,
-                  decoration: const InputDecoration(
-                    labelText: 'العميل *',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) => v == null ? 'اختر العميل' : null,
-                  isExpanded: true,
-                  items: _customers
-                      .map((c) => DropdownMenuItem(
-                            value:
-                                '${c['Id'] ?? c['id'] ?? ''}',
-                            child: Text(
-                                '${c['FullName'] ?? c['fullName'] ?? c['Name'] ?? c['name'] ?? ''}',
-                                overflow: TextOverflow.ellipsis),
-                          ))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedCustomerId = v),
-                ),
-              )
-            else
-              SizedBox(
-                width: 300,
-                child: DropdownButtonFormField<String>(
-                  value: _selectedSupplierId,
-                  decoration: const InputDecoration(
-                    labelText: 'المورد *',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (v) => v == null ? 'اختر المورد' : null,
-                  isExpanded: true,
-                  items: _suppliers
-                      .map((s) => DropdownMenuItem(
-                            value:
-                                '${s['Id'] ?? s['id'] ?? ''}',
-                            child: Text(
-                                '${s['Name'] ?? s['name'] ?? ''}',
-                                overflow: TextOverflow.ellipsis),
-                          ))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedSupplierId = v),
-                ),
-              ),
-
-            // ── المستودع ──
+    return SdCard(
+      title: 'بيانات الفاتورة',
+      icon: Icons.description_rounded,
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 12,
+        children: [
+          // ── العميل أو المورد ──
+          if (_isSales)
             SizedBox(
-              width: 250,
+              width: 300,
               child: DropdownButtonFormField<String>(
-                value: _selectedWarehouseId,
-                decoration: const InputDecoration(
-                  labelText: 'المستودع *',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) => v == null ? 'اختر المستودع' : null,
+                value: _selectedCustomerId,
+                decoration: _dec('العميل *'),
+                validator: (v) => v == null ? 'اختر العميل' : null,
                 isExpanded: true,
-                items: _warehouses
-                    .map((w) => DropdownMenuItem(
+                items: _customers
+                    .map((c) => DropdownMenuItem(
                           value:
-                              '${w['Id'] ?? w['id'] ?? ''}',
+                              '${c['Id'] ?? c['id'] ?? ''}',
                           child: Text(
-                              '${w['Name'] ?? w['name'] ?? ''}',
+                              '${c['FullName'] ?? c['fullName'] ?? c['Name'] ?? c['name'] ?? ''}',
                               overflow: TextOverflow.ellipsis),
                         ))
                     .toList(),
                 onChanged: (v) =>
-                    setState(() => _selectedWarehouseId = v),
+                    setState(() => _selectedCustomerId = v),
+              ),
+            )
+          else
+            SizedBox(
+              width: 300,
+              child: DropdownButtonFormField<String>(
+                value: _selectedSupplierId,
+                decoration: _dec('المورد *'),
+                validator: (v) => v == null ? 'اختر المورد' : null,
+                isExpanded: true,
+                items: _suppliers
+                    .map((s) => DropdownMenuItem(
+                          value:
+                              '${s['Id'] ?? s['id'] ?? ''}',
+                          child: Text(
+                              '${s['Name'] ?? s['name'] ?? ''}',
+                              overflow: TextOverflow.ellipsis),
+                        ))
+                    .toList(),
+                onChanged: (v) =>
+                    setState(() => _selectedSupplierId = v),
               ),
             ),
 
-            // ── نوع الدفع ──
+          // ── المستودع ──
+          SizedBox(
+            width: 250,
+            child: DropdownButtonFormField<String>(
+              value: _selectedWarehouseId,
+              decoration: _dec('المستودع *'),
+              validator: (v) => v == null ? 'اختر المستودع' : null,
+              isExpanded: true,
+              items: _warehouses
+                  .map((w) => DropdownMenuItem(
+                        value:
+                            '${w['Id'] ?? w['id'] ?? ''}',
+                        child: Text(
+                            '${w['Name'] ?? w['name'] ?? ''}',
+                            overflow: TextOverflow.ellipsis),
+                      ))
+                  .toList(),
+              onChanged: (v) =>
+                  setState(() => _selectedWarehouseId = v),
+            ),
+          ),
+
+          // ── نوع الدفع ──
+          SizedBox(
+            width: 200,
+            child: DropdownButtonFormField<int>(
+              value: _paymentType,
+              decoration: _dec('نوع الدفع *'),
+              items: _paymentTypes.entries
+                  .map((e) => DropdownMenuItem(
+                      value: e.key, child: Text(e.value)))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _paymentType = v);
+              },
+            ),
+          ),
+
+          // ── حقول مشروطة حسب نوع الدفع ──
+          if (_paymentType == 0) // نقد → صندوق
             SizedBox(
               width: 200,
-              child: DropdownButtonFormField<int>(
-                value: _paymentType,
-                decoration: const InputDecoration(
-                  labelText: 'نوع الدفع *',
-                  border: OutlineInputBorder(),
-                ),
-                items: _paymentTypes.entries
-                    .map((e) => DropdownMenuItem(
-                        value: e.key, child: Text(e.value)))
+              child: DropdownButtonFormField<String>(
+                value: _selectedCashBoxId,
+                decoration: _dec('الصندوق'),
+                isExpanded: true,
+                items: _cashBoxes
+                    .map((b) => DropdownMenuItem(
+                          value:
+                              '${b['Id'] ?? b['id'] ?? ''}',
+                          child: Text(
+                              '${b['Name'] ?? b['name'] ?? ''}',
+                              overflow: TextOverflow.ellipsis),
+                        ))
                     .toList(),
-                onChanged: (v) {
-                  if (v != null) setState(() => _paymentType = v);
-                },
+                onChanged: (v) =>
+                    setState(() => _selectedCashBoxId = v),
               ),
             ),
 
-            // ── حقول مشروطة حسب نوع الدفع ──
-            if (_paymentType == 0) // نقد → صندوق
-              SizedBox(
-                width: 200,
-                child: DropdownButtonFormField<String>(
-                  value: _selectedCashBoxId,
-                  decoration: const InputDecoration(
-                    labelText: 'الصندوق',
-                    border: OutlineInputBorder(),
+          if (_paymentType == 1) // آجل → تاريخ استحقاق
+            SizedBox(
+              width: 200,
+              child: InkWell(
+                onTap: _pickDueDate,
+                child: InputDecorator(
+                  decoration: _dec('تاريخ الاستحقاق',
+                      suffixIcon: const Icon(Icons.calendar_today, size: 18, color: SdColors.faint)),
+                  child: Text(
+                    _dueDate != null
+                        ? '${_dueDate!.year}/${_dueDate!.month.toString().padLeft(2, '0')}/${_dueDate!.day.toString().padLeft(2, '0')}'
+                        : 'اختر تاريخ',
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        color: _dueDate != null ? SdColors.ink : SdColors.faint),
                   ),
-                  isExpanded: true,
-                  items: _cashBoxes
-                      .map((b) => DropdownMenuItem(
-                            value:
-                                '${b['Id'] ?? b['id'] ?? ''}',
-                            child: Text(
-                                '${b['Name'] ?? b['name'] ?? ''}',
-                                overflow: TextOverflow.ellipsis),
-                          ))
-                      .toList(),
-                  onChanged: (v) =>
-                      setState(() => _selectedCashBoxId = v),
                 ),
               ),
+            ),
 
-            if (_paymentType == 1) // آجل → تاريخ استحقاق
-              SizedBox(
-                width: 200,
-                child: InkWell(
-                  onTap: _pickDueDate,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'تاريخ الاستحقاق',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.calendar_today, size: 18),
-                    ),
-                    child: Text(
-                      _dueDate != null
-                          ? '${_dueDate!.year}/${_dueDate!.month.toString().padLeft(2, '0')}/${_dueDate!.day.toString().padLeft(2, '0')}'
-                          : 'اختر تاريخ',
-                      style: TextStyle(
-                          color:
-                              _dueDate != null ? null : Colors.grey),
-                    ),
-                  ),
-                ),
+          if (_paymentType == 2) // جزئي → المبلغ المدفوع
+            SizedBox(
+              width: 200,
+              child: TextFormField(
+                controller: _paidAmountController,
+                decoration: _dec('المبلغ المدفوع'),
+                keyboardType: TextInputType.number,
               ),
-
-            if (_paymentType == 2) // جزئي → المبلغ المدفوع
-              SizedBox(
-                width: 200,
-                child: TextFormField(
-                  controller: _paidAmountController,
-                  decoration: const InputDecoration(
-                    labelText: 'المبلغ المدفوع',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -625,59 +625,125 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   // ═══════════════════════════════════════════
 
   Widget _buildItemsSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text('المواد',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                OutlinedButton.icon(
-                  onPressed: _showMultiSelectDialog,
-                  icon:
-                      const Icon(Icons.checklist_rounded, size: 18),
-                  label: const Text('تحديد متعدد'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonalIcon(
-                  onPressed: _addLineItem,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('إضافة مادة'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // رؤوس الأعمدة
+    final phone = context.sd.isPhone;
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SdSectionHeader(title: 'المواد'),
+              const Spacer(),
+              _toolbarBtn(Icons.checklist_rounded, 'تحديد متعدد', _showMultiSelectDialog),
+              const SizedBox(width: 8),
+              _toolbarBtn(Icons.add, 'إضافة مادة', _addLineItem),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!phone) ...[
+            // رؤوس الأعمدة (سطح المكتب/الآيباد فقط)
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: const [
                   SizedBox(width: 28), // # col
-                  Expanded(flex: 4, child: Text('المادة', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.grey))),
+                  Expanded(flex: 4, child: Text('المادة', style: SdText.caption)),
                   SizedBox(width: 8),
-                  SizedBox(width: 90, child: Text('الكمية', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.grey))),
+                  SizedBox(width: 90, child: Text('الكمية', style: SdText.caption)),
                   SizedBox(width: 8),
-                  SizedBox(width: 120, child: Text('السعر', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.grey))),
+                  SizedBox(width: 120, child: Text('السعر', style: SdText.caption)),
                   SizedBox(width: 8),
-                  SizedBox(width: 80, child: Text('خصم%', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.grey))),
+                  SizedBox(width: 80, child: Text('خصم%', style: SdText.caption)),
                   SizedBox(width: 8),
-                  SizedBox(width: 110, child: Text('المجموع', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.grey))),
+                  SizedBox(width: 110, child: Text('المجموع', style: SdText.caption)),
                   SizedBox(width: 40), // delete btn
                 ],
               ),
             ),
-            for (int i = 0; i < _lineItems.length; i++)
-              _buildItemRow(i),
           ],
-        ),
+          for (int i = 0; i < _lineItems.length; i++)
+            phone ? _buildItemCardPhone(i) : _buildItemRow(i),
+        ],
       ),
     );
   }
+
+  Widget _toolbarBtn(IconData icon, String label, VoidCallback onTap) {
+    return SdRaised(
+      onTap: onTap,
+      semanticLabel: label,
+      radius: SdRadius.sm,
+      depth: 3,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: SdColors.surfaceAlt,
+      edgeColor: SdColors.cardEdge,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17, color: SdColors.primary),
+          const SizedBox(width: 6),
+          Text(label,
+              style: const TextStyle(
+                  fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w800, color: SdColors.primary)),
+        ],
+      ),
+    );
+  }
+
+  Widget _itemDropdown(_InvoiceItemEntry entry, int index) {
+    return DropdownButtonFormField<String>(
+      value: entry.inventoryItemId,
+      isExpanded: true,
+      decoration: _dec('المادة', dense: true),
+      items: _items
+          .map((item) => DropdownMenuItem(
+                value: '${item['Id'] ?? item['id'] ?? ''}',
+                child: Text('${item['Name'] ?? item['name'] ?? ''}', overflow: TextOverflow.ellipsis),
+              ))
+          .toList(),
+      onChanged: (v) {
+        setState(() {
+          entry.inventoryItemId = v;
+          final found = _items.where((i) => '${i['Id'] ?? i['id']}' == v);
+          if (found.isNotEmpty) {
+            final item = found.first;
+            entry.itemName = '${item['Name'] ?? item['name'] ?? ''}';
+            // تعبئة السعر تلقائياً
+            if (_isSales) {
+              entry.priceController.text = '${item['SellingPrice'] ?? item['sellingPrice'] ?? 0}';
+            } else {
+              entry.priceController.text = '${item['CostPrice'] ?? item['costPrice'] ?? 0}';
+            }
+            // إذا آخر سطر → أضف سطر جديد تلقائياً
+            if (index == _lineItems.length - 1) {
+              _addLineItem();
+            }
+          }
+        });
+      },
+    );
+  }
+
+  Widget _qtyField(_InvoiceItemEntry entry) => TextFormField(
+        controller: entry.qtyController,
+        decoration: _dec('الكمية', dense: true),
+        keyboardType: TextInputType.number,
+        onChanged: (_) => setState(() {}),
+      );
+
+  Widget _priceField(_InvoiceItemEntry entry) => TextFormField(
+        controller: entry.priceController,
+        decoration: _dec('السعر', dense: true),
+        keyboardType: TextInputType.number,
+        onChanged: (_) => setState(() {}),
+      );
+
+  Widget _discField(_InvoiceItemEntry entry) => TextFormField(
+        controller: entry.discountController,
+        decoration: _dec('خصم%', dense: true),
+        keyboardType: TextInputType.number,
+        onChanged: (_) => setState(() {}),
+      );
 
   Widget _buildItemRow(int index) {
     final entry = _lineItems[index];
@@ -691,137 +757,85 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
             width: 28,
             child: Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text('${index + 1}.',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 13)),
+              child: Text('${index + 1}.', style: SdText.label),
             ),
           ),
           // المادة
-          Expanded(
-            flex: 4,
-            child: DropdownButtonFormField<String>(
-              value: entry.inventoryItemId,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'المادة',
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-              items: _items
-                  .map((item) => DropdownMenuItem(
-                        value:
-                            '${item['Id'] ?? item['id'] ?? ''}',
-                        child: Text(
-                            '${item['Name'] ?? item['name'] ?? ''}',
-                            overflow: TextOverflow.ellipsis),
-                      ))
-                  .toList(),
-              onChanged: (v) {
-                setState(() {
-                  entry.inventoryItemId = v;
-                  final found = _items.where(
-                      (i) => '${i['Id'] ?? i['id']}' == v);
-                  if (found.isNotEmpty) {
-                    final item = found.first;
-                    entry.itemName =
-                        '${item['Name'] ?? item['name'] ?? ''}';
-                    // تعبئة السعر تلقائياً
-                    if (_isSales) {
-                      entry.priceController.text =
-                          '${item['SellingPrice'] ?? item['sellingPrice'] ?? 0}';
-                    } else {
-                      entry.priceController.text =
-                          '${item['CostPrice'] ?? item['costPrice'] ?? 0}';
-                    }
-                    // إذا آخر سطر → أضف سطر جديد تلقائياً
-                    if (index == _lineItems.length - 1) {
-                      _addLineItem();
-                    }
-                  }
-                });
-              },
-            ),
-          ),
+          Expanded(flex: 4, child: _itemDropdown(entry, index)),
           const SizedBox(width: 8),
           // الكمية
-          SizedBox(
-            width: 90,
-            child: TextFormField(
-              controller: entry.qtyController,
-              decoration: const InputDecoration(
-                labelText: 'الكمية',
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
+          SizedBox(width: 90, child: _qtyField(entry)),
           const SizedBox(width: 8),
           // السعر
-          SizedBox(
-            width: 120,
-            child: TextFormField(
-              controller: entry.priceController,
-              decoration: const InputDecoration(
-                labelText: 'السعر',
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
+          SizedBox(width: 120, child: _priceField(entry)),
           const SizedBox(width: 8),
           // خصم%
-          SizedBox(
-            width: 80,
-            child: TextFormField(
-              controller: entry.discountController,
-              decoration: const InputDecoration(
-                labelText: 'خصم%',
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: (_) => setState(() {}),
-            ),
-          ),
+          SizedBox(width: 80, child: _discField(entry)),
           const SizedBox(width: 8),
           // المجموع (محسوب)
           SizedBox(
             width: 110,
             child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'المجموع',
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-              child: Text(fmtN(entry.lineTotal),
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              decoration: _dec('المجموع', dense: true),
+              child: Text(fmtN(entry.lineTotal), style: SdText.label),
             ),
           ),
           const SizedBox(width: 4),
           // حذف
           IconButton(
             icon: Icon(Icons.delete_outline,
-                color: _lineItems.length > 1
-                    ? Colors.red
-                    : Colors.grey.shade400),
-            onPressed: _lineItems.length > 1
-                ? () => _removeLineItem(index)
-                : null,
+                color: _lineItems.length > 1 ? SdColors.danger : SdColors.faint),
+            onPressed: _lineItems.length > 1 ? () => _removeLineItem(index) : null,
             tooltip: 'حذف',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemCardPhone(int index) {
+    final entry = _lineItems[index];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(SdSpace.sm),
+      decoration: BoxDecoration(
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        border: Border.all(color: SdColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('${index + 1}.', style: SdText.label),
+              const SizedBox(width: 6),
+              Expanded(child: _itemDropdown(entry, index)),
+              IconButton(
+                icon: Icon(Icons.delete_outline,
+                    color: _lineItems.length > 1 ? SdColors.danger : SdColors.faint),
+                onPressed: _lineItems.length > 1 ? () => _removeLineItem(index) : null,
+                tooltip: 'حذف',
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _qtyField(entry)),
+              const SizedBox(width: 8),
+              Expanded(child: _priceField(entry)),
+              const SizedBox(width: 8),
+              Expanded(child: _discField(entry)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text('المجموع', style: SdText.bodySm),
+              const Spacer(),
+              Text(fmtN(entry.lineTotal), style: SdText.label),
+            ],
           ),
         ],
       ),
@@ -833,150 +847,128 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   // ═══════════════════════════════════════════
 
   Widget _buildTotalsSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            // المجموع الفرعي
-            _buildTotalLine('المجموع الفرعي', fmtN(_subtotal)),
-            const SizedBox(height: 10),
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // المجموع الفرعي
+          _buildTotalLine('المجموع الفرعي', fmtN(_subtotal)),
+          const SizedBox(height: 10),
 
-            // الخصم
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Text('الخصم',
-                    style: TextStyle(fontSize: 14)),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 110,
-                  child: DropdownButtonFormField<int>(
-                    value: _discountType,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 8),
-                    ),
-                    items: _discountTypes.entries
-                        .map((e) => DropdownMenuItem(
-                            value: e.key, child: Text(e.value)))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(() => _discountType = v);
-                      }
-                    },
-                  ),
+          // الخصم
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              const Text('الخصم', style: SdText.body),
+              SizedBox(
+                width: 110,
+                child: DropdownButtonFormField<int>(
+                  value: _discountType,
+                  decoration: _dec(null, dense: true),
+                  items: _discountTypes.entries
+                      .map((e) => DropdownMenuItem(
+                          value: e.key, child: Text(e.value)))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() => _discountType = v);
+                    }
+                  },
                 ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 120,
-                  child: TextFormField(
-                    controller: _discountValueController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 100,
-                  child: Text(fmtN(_discountAmount),
-                      textAlign: TextAlign.left,
-                      style: const TextStyle(
-                          color: Colors.red, fontSize: 14)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // الضريبة
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Text('الضريبة %',
-                    style: TextStyle(fontSize: 14)),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 120,
-                  child: TextFormField(
-                    controller: _taxRateController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 100,
-                  child: Text(fmtN(_taxAmount),
-                      textAlign: TextAlign.left,
-                      style: const TextStyle(
-                          color: Colors.blue, fontSize: 14)),
-                ),
-              ],
-            ),
-
-            const Divider(height: 24),
-
-            // الصافي النهائي
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Text('الصافي النهائي',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(width: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A2E).withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    fmtN(_netTotal),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // ملاحظات
-            SizedBox(
-              width: double.infinity,
-              child: TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'ملاحظات',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
-                ),
-                maxLines: 3,
               ),
+              SizedBox(
+                width: 120,
+                child: TextFormField(
+                  controller: _discountValueController,
+                  decoration: _dec(null, dense: true),
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              SizedBox(
+                width: 100,
+                child: Text(fmtN(_discountAmount),
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(
+                        fontFamily: SdText.family, color: SdColors.danger, fontSize: 14, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // الضريبة
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              const Text('الضريبة %', style: SdText.body),
+              SizedBox(
+                width: 120,
+                child: TextFormField(
+                  controller: _taxRateController,
+                  decoration: _dec(null, dense: true),
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              SizedBox(
+                width: 100,
+                child: Text(fmtN(_taxAmount),
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(
+                        fontFamily: SdText.family, color: SdColors.info, fontSize: 14, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+
+          const Divider(height: 24, color: SdColors.divider),
+
+          // الصافي النهائي
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 8,
+            children: [
+              const Text('الصافي النهائي',
+                  style: TextStyle(
+                      fontFamily: SdText.family, fontSize: 18, fontWeight: FontWeight.w900, color: SdColors.ink)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: SdColors.primaryTint,
+                  borderRadius: BorderRadius.circular(SdRadius.sm),
+                ),
+                child: Text(
+                  fmtN(_netTotal),
+                  style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: SdColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // ملاحظات
+          SizedBox(
+            width: double.infinity,
+            child: TextFormField(
+              controller: _notesController,
+              decoration: _dec('ملاحظات'),
+              maxLines: 3,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -985,14 +977,14 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14)),
+        Text(label, style: SdText.body),
         const SizedBox(width: 16),
         SizedBox(
           width: 100,
           child: Text(value,
               textAlign: TextAlign.left,
               style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w600)),
+                  fontFamily: SdText.family, fontSize: 14, fontWeight: FontWeight.w700, color: SdColors.ink)),
         ),
       ],
     );
@@ -1003,25 +995,34 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   // ═══════════════════════════════════════════
 
   Widget _buildSaveButton() {
-    return SizedBox(
-      height: 50,
-      child: FilledButton.icon(
-        onPressed: _saving ? null : _save,
-        icon: _saving
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2))
-            : const Icon(Icons.save_rounded),
-        label: Text(
-          _isSales ? 'حفظ فاتورة البيع' : 'حفظ فاتورة الشراء',
-          style: const TextStyle(fontSize: 16),
+    if (_saving) {
+      return Opacity(
+        opacity: .7,
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(SdRadius.md),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [SdColors.primaryMid, SdColors.primary],
+            ),
+            boxShadow: const [BoxShadow(color: SdColors.primaryEdge, offset: Offset(0, 6))],
+          ),
+          child: const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+          ),
         ),
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF1A1A2E),
-        ),
-      ),
+      );
+    }
+    return SdButton(
+      label: _isSales ? 'حفظ فاتورة البيع' : 'حفظ فاتورة الشراء',
+      icon: Icons.save_rounded,
+      expand: true,
+      onPressed: _save,
     );
   }
 }

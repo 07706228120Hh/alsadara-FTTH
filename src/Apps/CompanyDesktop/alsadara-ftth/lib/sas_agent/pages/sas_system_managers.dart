@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
@@ -79,7 +78,7 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
         action: OutlinedButton.icon(
           onPressed: _load,
           icon: const Icon(Icons.refresh_rounded),
-          label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+          label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo', )),
         ),
       );
     }
@@ -91,7 +90,7 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
         action: OutlinedButton.icon(
           onPressed: _load,
           icon: const Icon(Icons.refresh_rounded),
-          label: Text('تحديث', style: GoogleFonts.cairo()),
+          label: Text('تحديث', style: TextStyle(fontFamily: 'Cairo', )),
         ),
       );
     }
@@ -108,7 +107,7 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
               padding: EdgeInsets.symmetric(vertical: 12.h),
               child: Center(
                 child: Text('إجمالي الوكلاء: ${_rows.length}',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.5.sp,
                         fontWeight: FontWeight.w700,
                         color: Colors.grey[700])),
@@ -142,7 +141,7 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
                   SasUi.gradientBadge(
                     icon: Icons.badge_rounded,
                     colors: enabled
-                        ? const [AppTheme.secondaryColor, AppTheme.primaryColor]
+                        ? const [SdColors.primaryLight, SdColors.primary]
                         : const [Color(0xFF9E9E9E), Color(0xFF757575)],
                     size: 40,
                     iconSize: 20,
@@ -153,11 +152,11 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('${m['username'] ?? '-'}',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: 'Cairo', 
                                 fontWeight: FontWeight.w800, fontSize: 14.sp)),
                         if (name.isNotEmpty)
                           Text(name,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(fontFamily: 'Cairo', 
                                   fontSize: 11.5.sp, color: Colors.grey[600])),
                       ],
                     ),
@@ -180,12 +179,12 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
                       icon: Icons.account_balance_wallet_rounded,
                       label: 'الرصيد',
                       value: '${m['balance'] ?? 0}',
-                      color: AppTheme.successColor),
+                      color: SdColors.success),
                   SasInfoChip(
                       icon: Icons.stars_rounded,
                       label: 'النقاط',
                       value: '${m['reward_points'] ?? 0}',
-                      color: AppTheme.warningColor),
+                      color: SdColors.warning),
                   if (m['city'] != null)
                     SasInfoChip(
                         icon: Icons.location_city_rounded,
@@ -269,7 +268,7 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
               children: [
                 SasUi.gradientBadge(
                     icon: Icons.badge_rounded,
-                    colors: const [AppTheme.secondaryColor, AppTheme.primaryColor],
+                    colors: const [SdColors.primaryLight, SdColors.primary],
                     size: 40,
                     iconSize: 20),
                 SizedBox(width: 10.w),
@@ -278,11 +277,11 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('${m['username'] ?? '-'}',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(fontFamily: 'Cairo', 
                               fontWeight: FontWeight.w800, fontSize: 15.sp)),
                       if (name.isNotEmpty)
                         Text(name,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(fontFamily: 'Cairo', 
                                 fontSize: 11.5.sp, color: Colors.grey[600])),
                     ],
                   ),
@@ -297,9 +296,9 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
               spacing: 8.w,
               runSpacing: 8.h,
               children: [
-                _act('إيداع رصيد', Icons.add_card_rounded, AppTheme.successColor,
+                _act('إيداع رصيد', Icons.add_card_rounded, SdColors.success,
                     () => _amount('deposit', 'إيداع رصيد')),
-                _act('سحب رصيد', Icons.money_off_rounded, AppTheme.warningColor,
+                _act('سحب رصيد', Icons.money_off_rounded, SdColors.warning,
                     () => _amount('withdraw', 'سحب رصيد')),
                 _act('إضافة نقاط', Icons.stars_rounded, const Color(0xFFFFB300),
                     () => _points('addRewardPoints', 'إضافة نقاط مكافأة')),
@@ -309,9 +308,9 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
                 _act('سداد دين', Icons.receipt_long_rounded,
                     const Color(0xFF009688),
                     () => _amount('payDebt', 'سداد دين')),
-                _act('تعديل', Icons.edit_rounded, AppTheme.secondaryColor,
+                _act('تعديل', Icons.edit_rounded, SdColors.primaryLight,
                     _edit),
-                _act('حذف', Icons.delete_forever_rounded, AppTheme.errorColor,
+                _act('حذف', Icons.delete_forever_rounded, SdColors.danger,
                     _delete),
               ],
             ),
@@ -330,15 +329,15 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
       ),
       icon: Icon(icon, size: 18),
       label: Text(label,
-          style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 12.5.sp)),
+          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 12.5.sp)),
     );
   }
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo()),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: TextStyle(fontFamily: 'Cairo', )),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
     ));
   }
 
@@ -403,7 +402,7 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('تعديل بيانات الوكيل',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -417,10 +416,10 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: Text('إلغاء', style: GoogleFonts.cairo())),
+                child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', ))),
             FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: Text('حفظ', style: GoogleFonts.cairo())),
+                child: Text('حفظ', style: TextStyle(fontFamily: 'Cairo', ))),
           ],
         ),
       ),
@@ -462,10 +461,10 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
     return TextField(
       controller: ctl,
       keyboardType: keyboard,
-      style: GoogleFonts.cairo(fontSize: 13.sp),
+      style: TextStyle(fontFamily: 'Cairo', fontSize: 13.sp),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.cairo(fontSize: 12.5.sp),
+        labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12.5.sp),
       ),
     );
   }
@@ -479,15 +478,15 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title:
-              Text(title, style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              Text(title, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           content: _field(ctl, fieldLabel, keyboard: keyboard),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: Text('إلغاء', style: GoogleFonts.cairo())),
+                child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', ))),
             FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: Text('متابعة', style: GoogleFonts.cairo())),
+                child: Text('متابعة', style: TextStyle(fontFamily: 'Cairo', ))),
           ],
         ),
       ),
@@ -501,19 +500,19 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title:
-              Text(title, style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
-          content: Text(body, style: GoogleFonts.cairo()),
+              Text(title, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
+          content: Text(body, style: TextStyle(fontFamily: 'Cairo', )),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: Text('إلغاء', style: GoogleFonts.cairo())),
+                child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', ))),
             FilledButton(
               style: danger
-                  ? FilledButton.styleFrom(backgroundColor: AppTheme.errorColor)
+                  ? FilledButton.styleFrom(backgroundColor: SdColors.danger)
                   : null,
               onPressed: () => Navigator.pop(context, true),
               child: Text(danger ? 'تأكيد الحذف' : 'تأكيد',
-                  style: GoogleFonts.cairo()),
+                  style: TextStyle(fontFamily: 'Cairo', )),
             ),
           ],
         ),

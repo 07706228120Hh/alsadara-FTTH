@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_account.dart';
 import '../whatsapp/whatsapp.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 import 'sas_bulk_message_page.dart';
 import 'sas_reminders_page.dart';
@@ -38,7 +36,7 @@ class SasMessagingTab extends StatelessWidget {
         builder: (context, c) {
           // شبكة بطاقات تكيّفية: عمود واحد على الضيّق وعمودان على العريض.
           final cols = c.maxWidth >= 720 ? 2 : 1;
-          const waGradient = [Color(0xFF25D366), Color(0xFF128C7E)];
+          final commsTone = SdGroup.comms.tone;
 
           final messagingTiles = <Widget>[
             _tile(
@@ -47,7 +45,7 @@ class SasMessagingTab extends StatelessWidget {
               subtitle:
                   'تذكير المشتركين قرب الانتهاء عبر واتساب + المجدوِل التلقائي',
               icon: Icons.notifications_active_rounded,
-              gradient: waGradient,
+              tone: commsTone,
               onTap: () => _open(context, SasRemindersPage(account: account)),
             ),
             _tile(
@@ -56,7 +54,7 @@ class SasMessagingTab extends StatelessWidget {
               subtitle:
                   'رسالة واتساب لمجموعة مشتركين مفلترة (الباقة/المدير/الحالة)',
               icon: Icons.send_rounded,
-              gradient: waGradient,
+              tone: commsTone,
               onTap: () => _open(context, SasBulkMessagePage(account: account)),
             ),
             _tile(
@@ -65,7 +63,7 @@ class SasMessagingTab extends StatelessWidget {
               subtitle:
                   'محاكاة رسالة ما بعد التفعيل على رقم تختاره لاختبار القالب والإرسال',
               icon: Icons.bug_report_rounded,
-              gradient: waGradient,
+              tone: commsTone,
               onTap: () => _open(context, const SasTestMessagePage()),
             ),
           ];
@@ -76,34 +74,27 @@ class SasMessagingTab extends StatelessWidget {
               title: 'قوالب الرسائل',
               subtitle: 'قوالب التذكير/التجديد القابلة للتعديل بالمتغيّرات',
               icon: Icons.description_rounded,
-              gradient: AppTheme.orangeGradient,
+              tone: SdStatus.warning.tone,
               onTap: () => _open(context, const WaTemplatesScreen()),
             ),
           ];
 
           return ListView(
-            padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
             children: [
               Align(
                 alignment: AlignmentDirectional.centerEnd,
                 child: _settingsButton(context),
               ),
-              SizedBox(height: 10.h),
+              const SizedBox(height: SdSpace.xs),
               _banner(),
-              SizedBox(height: 16.h),
-              const SasSectionHeader(
-                title: 'الإرسال',
-                icon: Icons.outgoing_mail,
-                gradient: [Color(0xFF25D366), Color(0xFF128C7E)],
-              ),
-              SizedBox(height: 10.h),
+              const SizedBox(height: SdSpace.md),
+              SdSectionHeader(title: 'الإرسال', tone: SdGroup.comms.tone),
+              const SizedBox(height: SdSpace.xs),
               _grid(messagingTiles, cols),
-              SizedBox(height: 20.h),
-              const SasSectionHeader(
-                title: 'الإعداد والقوالب',
-                icon: Icons.tune_rounded,
-              ),
-              SizedBox(height: 10.h),
+              const SizedBox(height: SdSpace.lg),
+              const SdSectionHeader(title: 'الإعداد والقوالب'),
+              const SizedBox(height: SdSpace.xs),
               _grid(setupTiles, cols),
             ],
           );
@@ -118,7 +109,7 @@ class SasMessagingTab extends StatelessWidget {
       return Column(
         children: [
           for (int i = 0; i < tiles.length; i++) ...[
-            if (i > 0) SizedBox(height: 8.h),
+            if (i > 0) const SizedBox(height: SdSpace.xs),
             tiles[i],
           ],
         ],
@@ -129,12 +120,12 @@ class SasMessagingTab extends StatelessWidget {
       final cells = <Widget>[];
       for (int j = 0; j < cols; j++) {
         final idx = i + j;
-        if (j > 0) cells.add(SizedBox(width: 10.w));
+        if (j > 0) cells.add(const SizedBox(width: SdSpace.xs));
         cells.add(Expanded(
           child: idx < tiles.length ? tiles[idx] : const SizedBox.shrink(),
         ));
       }
-      if (rows.isNotEmpty) rows.add(SizedBox(height: 10.h));
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: SdSpace.xs));
       rows.add(IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -146,86 +137,77 @@ class SasMessagingTab extends StatelessWidget {
   }
 
   /// زر «الإعدادات» العلوي البارز — يفتح شاشة إعدادات الواتساب
-  /// (وضع الإرسال + QR + ضبط الاتصال). نُقل من بطاقة ضمن القائمة إلى
-  /// زرّ علوي بمحاذاة اليمين (RTL) بنمط منصّة الصدارة.
+  /// (وضع الإرسال + QR + ضبط الاتصال).
   Widget _settingsButton(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(SasUi.radius.r),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        onTap: () => _open(context, const WaSettingsScreen()),
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: AppTheme.greenGradient),
-            borderRadius: BorderRadius.circular(SasUi.radius.r),
-            boxShadow: SasUi.cardShadow(AppTheme.greenGradient.first),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.settings_rounded, color: Colors.white, size: 18.sp),
-              SizedBox(width: 7.w),
-              Text(
-                'الإعدادات',
-                style: GoogleFonts.cairo(
-                  fontSize: 13.sp,
+    return SdRaised(
+      onTap: () => _open(context, const WaSettingsScreen()),
+      radius: SdRadius.md,
+      depth: SdDepth.button,
+      color: SdColors.primary,
+      edgeColor: SdColors.primaryEdge,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      semanticLabel: 'الإعدادات',
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.settings_rounded, color: Colors.white, size: 18),
+          SizedBox(width: 7),
+          Text('الإعدادات',
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
+                  color: Colors.white)),
+        ],
       ),
     );
   }
 
   Widget _banner() {
+    final tone = SdGroup.comms.tone;
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+        gradient: LinearGradient(
+          colors: [tone.light, tone.base],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        boxShadow: SasUi.cardShadow(const Color(0xFF25D366)),
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: [BoxShadow(color: tone.edge, offset: const Offset(0, 5))],
       ),
       child: Row(
         children: [
           Container(
-            width: 46.w,
-            height: 46.w,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.18),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
             ),
-            child: Icon(Icons.forum_rounded, color: Colors.white, size: 24.sp),
+            child:
+                const Icon(Icons.forum_rounded, color: Colors.white, size: 24),
           ),
-          SizedBox(width: 12.w),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'الرسائل والواتساب',
-                  style: GoogleFonts.cairo(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: 2.h),
+                const Text('الرسائل والواتساب',
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+                const SizedBox(height: 2),
                 Text(
                   'تذكير · إرسال جماعي · إعدادات وقوالب — للحساب «${account.displayName}»',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
-                    fontSize: 11.5.sp,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
                     color: Colors.white.withValues(alpha: 0.80),
                     fontWeight: FontWeight.w500,
                   ),
@@ -243,48 +225,47 @@ class SasMessagingTab extends StatelessWidget {
     required String title,
     String? subtitle,
     required IconData icon,
-    required List<Color> gradient,
+    required SdTone tone,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(SasUi.radius.r),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.all(12.w),
-          decoration: SasUi.card(),
-          child: Row(
-            children: [
-              SasUi.gradientBadge(
-                  icon: icon, colors: gradient, size: 42, iconSize: 21),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: GoogleFonts.cairo(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1A1A2E))),
-                    if (subtitle != null) ...[
-                      SizedBox(height: 2.h),
-                      Text(subtitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.cairo(
-                              fontSize: 11.sp, color: Colors.grey[600])),
-                    ],
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_left_rounded,
-                  color: Colors.grey[400], size: 20.sp),
-            ],
+    return SdRaised(
+      onTap: onTap,
+      radius: SdRadius.lg,
+      padding: const EdgeInsets.all(12),
+      semanticLabel: title,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: tone.tint,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: tone.tintEdge, offset: const Offset(0, 3))
+              ],
+            ),
+            child: Icon(icon, color: tone.base, size: 21),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: SdText.label),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: SdText.caption),
+                ],
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_left_rounded,
+              color: SdColors.faint, size: 20),
+        ],
       ),
     );
   }

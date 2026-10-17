@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/property.dart';
 import '../../services/property_api_service.dart';
-import '../../theme/app_theme.dart';
+import '../../frontend/tokens/sd_colors.dart';
 import 'location_master_page.dart';
 import 'property_ui.dart';
 
@@ -372,7 +372,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor,
+        backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -403,7 +403,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                       child: PropSectionHeader(
                           title: 'العنوان الوصفي',
                           icon: Icons.location_city_rounded,
-                          gradient: AppTheme.blueGradient),
+                          gradient: SdColors.blueGradient),
                     ),
                     TextButton.icon(
                       onPressed: _openLocationMaster,
@@ -436,7 +436,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 const PropSectionHeader(
                     title: 'صاحب الدار',
                     icon: Icons.person_pin_circle_rounded,
-                    gradient: AppTheme.orangeGradient),
+                    gradient: SdColors.orangeGradient),
                 const SizedBox(height: 10),
                 _panel([
                   _text(_ownerName, 'اسم صاحب الدار',
@@ -449,14 +449,14 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 const PropSectionHeader(
                     title: 'الموقع الجغرافي',
                     icon: Icons.my_location_rounded,
-                    gradient: AppTheme.greenGradient),
+                    gradient: SdColors.greenGradient),
                 const SizedBox(height: 10),
                 _panel([_locationRow()]),
                 const SizedBox(height: 16),
                 const PropSectionHeader(
                     title: 'التصنيف',
                     icon: Icons.category_rounded,
-                    gradient: AppTheme.orangeGradient),
+                    gradient: SdColors.orangeGradient),
                 const SizedBox(height: 10),
                 _panel([
                   _chipsLabel('نوع العقار'),
@@ -471,7 +471,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 const PropSectionHeader(
                     title: 'معلومات إضافية',
                     icon: Icons.notes_rounded,
-                    gradient: AppTheme.blueGradient),
+                    gradient: SdColors.blueGradient),
                 const SizedBox(height: 10),
                 _panel([
                   _text(_notes, 'ملاحظات',
@@ -481,7 +481,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 FilledButton.icon(
                   onPressed: _saving ? null : _save,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
+                    backgroundColor: SdColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 15),
                   ),
                   icon: _saving
@@ -511,14 +511,14 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withValues(alpha: 0.08),
+        color: SdColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.30)),
+        border: Border.all(color: SdColors.primary.withValues(alpha: 0.30)),
       ),
       child: Row(
         children: [
           const Icon(Icons.qr_code_2_rounded,
-              color: AppTheme.primaryColor, size: 24),
+              color: SdColors.primary, size: 24),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -564,7 +564,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         labelText: 'المحافظة',
         labelStyle: GoogleFonts.cairo(),
         prefixIcon:
-            const Icon(Icons.location_on_rounded, color: AppTheme.primaryColor),
+            const Icon(Icons.location_on_rounded, color: SdColors.primary),
         isDense: true,
       ),
       items: [
@@ -600,14 +600,14 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     return Row(
       children: [
         const Icon(Icons.error_outline_rounded,
-            size: 18, color: AppTheme.errorColor),
+            size: 18, color: SdColors.danger),
         const SizedBox(width: 8),
         Expanded(
           child: Text('تعذّر تحميل المناطق — $_locError',
               style: GoogleFonts.cairo(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.errorColor)),
+                  color: SdColors.danger)),
         ),
         TextButton(
           onPressed: _loadRegions,
@@ -629,7 +629,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         prefixIcon: _loadingRegions
             ? const _MiniSpinner()
             : const Icon(Icons.location_on_outlined,
-                color: AppTheme.primaryColor),
+                color: SdColors.primary),
         isDense: true,
       ),
       items: [
@@ -672,7 +672,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         labelStyle: GoogleFonts.cairo(),
         prefixIcon: _loadingA2
             ? const _MiniSpinner()
-            : const Icon(Icons.signpost_rounded, color: AppTheme.primaryColor),
+            : const Icon(Icons.signpost_rounded, color: SdColors.primary),
         isDense: true,
       ),
       items: [
@@ -713,7 +713,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         labelStyle: GoogleFonts.cairo(),
         prefixIcon: _loadingA3
             ? const _MiniSpinner()
-            : const Icon(Icons.add_road_rounded, color: AppTheme.primaryColor),
+            : const Icon(Icons.add_road_rounded, color: SdColors.primary),
         isDense: true,
       ),
       items: [
@@ -740,15 +740,15 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.warningColor.withValues(alpha: 0.08),
+        color: SdColors.warning.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
         border:
-            Border.all(color: AppTheme.warningColor.withValues(alpha: 0.30)),
+            Border.all(color: SdColors.warning.withValues(alpha: 0.30)),
       ),
       child: Row(
         children: [
           const Icon(Icons.payments_rounded,
-              color: AppTheme.warningColor, size: 22),
+              color: SdColors.warning, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -772,14 +772,14 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               width: 18,
               height: 18,
               child: CircularProgressIndicator(
-                  strokeWidth: 2, color: AppTheme.warningColor),
+                  strokeWidth: 2, color: SdColors.warning),
             )
           else
             Text('${_fmtFee(_totalFee ?? 0)} د.ع',
                 style: GoogleFonts.cairo(
                     fontWeight: FontWeight.w900,
                     fontSize: 16,
-                    color: AppTheme.warningColor)),
+                    color: SdColors.warning)),
         ],
       ),
     );
@@ -793,7 +793,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         Row(
           children: [
             Icon(hasLoc ? Icons.place_rounded : Icons.location_off_rounded,
-                color: hasLoc ? AppTheme.successColor : Colors.grey),
+                color: hasLoc ? SdColors.success : Colors.grey),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -808,7 +808,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
             FilledButton.icon(
               onPressed: _locating ? null : _useMyLocation,
               style:
-                  FilledButton.styleFrom(backgroundColor: AppTheme.successColor),
+                  FilledButton.styleFrom(backgroundColor: SdColors.success),
               icon: _locating
                   ? const SizedBox(
                       width: 16,
@@ -830,10 +830,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                 _lon = null;
               }),
               icon: const Icon(Icons.clear_rounded,
-                  size: 16, color: AppTheme.errorColor),
+                  size: 16, color: SdColors.danger),
               label: Text('مسح الموقع',
                   style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.w700, color: AppTheme.errorColor)),
+                      fontWeight: FontWeight.w700, color: SdColors.danger)),
             ),
           ),
       ],
@@ -867,10 +867,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
             selected: value == e.key,
             showCheckmark: false,
             backgroundColor: Colors.white,
-            selectedColor: AppTheme.primaryColor,
+            selectedColor: SdColors.primary,
             side: BorderSide(
                 color: value == e.key
-                    ? AppTheme.primaryColor
+                    ? SdColors.primary
                     : Colors.grey.withValues(alpha: 0.25)),
             onSelected: (_) => onSet(e.key),
           ),
@@ -897,7 +897,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
           labelStyle: GoogleFonts.cairo(),
           prefixIcon: icon == null
               ? null
-              : Icon(icon, color: AppTheme.primaryColor, size: 20),
+              : Icon(icon, color: SdColors.primary, size: 20),
           isDense: true,
         ),
       ),
@@ -917,7 +917,7 @@ class _MiniSpinner extends StatelessWidget {
         width: 18,
         height: 18,
         child: CircularProgressIndicator(
-            strokeWidth: 2, color: AppTheme.primaryColor),
+            strokeWidth: 2, color: SdColors.primary),
       ),
     );
   }

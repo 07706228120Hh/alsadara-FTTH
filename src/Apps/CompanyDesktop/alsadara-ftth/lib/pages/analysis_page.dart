@@ -6,7 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'charts_page.dart';
-import '../widgets/responsive_body.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/zone_statistics_api_service.dart';
 
 class AnalysisPage extends StatefulWidget {
@@ -184,16 +184,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
       curve: Curves.easeOut,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.12),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-        border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(),
       ),
       child: Row(
         children: [
@@ -201,7 +194,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(SdRadius.sm),
             ),
             child: Icon(icon, color: color, size: 24),
           ),
@@ -212,19 +205,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[700],
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: SdText.caption.copyWith(fontSize: 13),
                 ),
                 const SizedBox(height: 6),
                 _animatedNumber(
                   value,
                   decimals: decimals,
-                  style: TextStyle(
+                  style: SdText.numberSm.copyWith(
                     fontSize: 20,
-                    fontWeight: FontWeight.w800,
                     color: color,
                   ),
                   duration: const Duration(milliseconds: 700),
@@ -248,15 +236,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.12),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -267,7 +249,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(SdRadius.sm),
                 ),
                 child: Icon(icon, color: color, size: 22),
               ),
@@ -275,19 +257,12 @@ class _AnalysisPageState extends State<AnalysisPage> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: SdText.label,
                 ),
               ),
               Text(
                 '${(percent * 100).toStringAsFixed(1)}%',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+                style: SdText.label.copyWith(color: color),
               ),
             ],
           ),
@@ -308,223 +283,75 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.purple[800]!,
-                Colors.purple[600]!,
-                Colors.purple[400]!,
-              ],
-            ),
-          ),
-        ),
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.analytics,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'تحليل المعلومات',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(20),
-          ),
-        ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: 'تحليل المعلومات',
         actions: [
-          IconButton(
-            tooltip: 'تحديث',
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
             onPressed: () async {
               setState(() => isLoading = true);
               await fetchAnalysisData();
             },
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.refresh, color: Colors.white, size: 20),
-            ),
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.purple[50]!,
-              Colors.white,
-            ],
-          ),
-        ),
-        child: ResponsiveBody(
-          child: isLoading
-              ? Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(30),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.purple.withValues(alpha: 0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.purple[600]!),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'جاري تحليل البيانات...',
-                          style: TextStyle(
-                            color: Colors.purple[600],
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
+      body: isLoading
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(SdSpace.xxl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: SdColors.primary),
+                    SizedBox(height: 20),
+                    Text('جاري تحليل البيانات...', style: SdText.titleSm),
+                  ],
+                ),
+              ),
+            )
+          : errorMessage != null
+              ? SdEmptyState(
+                  icon: Icons.error_outline,
+                  status: SdStatus.danger,
+                  title: 'حدث خطأ',
+                  message: errorMessage!,
+                  action: SdButton(
+                    label: 'إعادة المحاولة',
+                    icon: Icons.refresh,
+                    kind: SdButtonKind.danger,
+                    onPressed: () async {
+                      setState(() => isLoading = true);
+                      await fetchAnalysisData();
+                    },
                   ),
                 )
-              : errorMessage != null
-                  ? Center(
-                      child: Container(
-                        margin: const EdgeInsets.all(20),
-                        padding: const EdgeInsets.all(30),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withValues(alpha: 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: Colors.red[600],
-                              size: 50,
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              'حدث خطأ',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red[600],
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              errorMessage!,
-                              style: TextStyle(
-                                color: Colors.red[400],
-                                fontSize: 16,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () async {
-                                setState(() => isLoading = true);
-                                await fetchAnalysisData();
-                              },
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('إعادة المحاولة'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red[600],
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: () async => fetchAnalysisData(),
-                      child: ListView(
-                        padding: const EdgeInsets.all(16.0),
-                        children: [
+              : RefreshIndicator(
+                  onRefresh: () async => fetchAnalysisData(),
+                  child: ListView(
+                    padding: const EdgeInsets.all(16.0),
+                    children: [
                           // ملخص سريع
                           Container(
                             padding: const EdgeInsets.all(18),
                             margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
+                              gradient: const LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: [
-                                  Colors.purple[600]!,
-                                  Colors.purple[700]!,
-                                  Colors.purple[800]!,
+                                  SdColors.primaryLight,
+                                  SdColors.primaryMid,
+                                  SdColors.primary,
                                 ],
                               ),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.purple.withValues(alpha: 0.25),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
+                              borderRadius: BorderRadius.circular(SdRadius.lg),
+                              boxShadow: SdDepth.raised(
+                                  edge: SdColors.primaryEdge,
+                                  glow: const Color(0x401A237E)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -734,7 +561,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                 },
                               ),
                             ],
-                            Colors.deepPurple[400]!,
+                            SdGroup.platform.tone.base,
                           ),
 
                           // عرض المخططات مع تصميم محسن (منقول لأسفل الصفحة)
@@ -742,22 +569,18 @@ class _AnalysisPageState extends State<AnalysisPage> {
                             padding: const EdgeInsets.all(16),
                             margin: const EdgeInsets.only(top: 8),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
+                              gradient: const LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: [
-                                  Colors.purple[600]!,
-                                  Colors.purple[800]!,
+                                  SdColors.primaryMid,
+                                  SdColors.primary,
                                 ],
                               ),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.purple.withValues(alpha: 0.3),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
+                              borderRadius: BorderRadius.circular(SdRadius.lg),
+                              boxShadow: SdDepth.raised(
+                                  edge: SdColors.primaryEdge,
+                                  glow: const Color(0x401A237E)),
                             ),
                             child: Column(
                               children: [
@@ -804,7 +627,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
-                                      foregroundColor: Colors.purple[600],
+                                      foregroundColor: SdColors.primary,
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 16),
                                       shape: RoundedRectangleBorder(
@@ -819,7 +642,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                         Icon(
                                           Icons.bar_chart,
                                           size: 24,
-                                          color: Colors.purple[600],
+                                          color: SdColors.primary,
                                         ),
                                         const SizedBox(width: 12),
                                         Text(
@@ -827,7 +650,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.purple[600],
+                                            color: SdColors.primary,
                                           ),
                                         ),
                                       ],
@@ -840,8 +663,6 @@ class _AnalysisPageState extends State<AnalysisPage> {
                         ],
                       ),
                     ),
-        ),
-      ),
     );
   }
 }

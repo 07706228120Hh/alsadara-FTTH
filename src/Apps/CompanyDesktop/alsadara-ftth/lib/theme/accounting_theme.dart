@@ -6,6 +6,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../frontend/tokens/sd_colors.dart';
+
 /// ثيم المحاسبة الفاتح - XONEPROO Style
 /// Drop-in replacement لـ EnergyDashboardTheme في صفحات المحاسبة
 class AccountingTheme {
@@ -16,64 +18,64 @@ class AccountingTheme {
   // ═══════════════════════════════════════════════════════════════
 
   // الخلفيات (فاتحة)
-  static const Color bgPrimary = Color(0xFFF5F6FA);
-  static const Color bgSecondary = Color(0xFFEEEFF5);
-  static const Color bgCard = Colors.white;
-  static const Color bgCardHover = Color(0xFFF0F4FF);
-  static const Color bgSidebar = Color(0xFF2C3E50);
+  static const Color bgPrimary = SdColors.ground;
+  static const Color bgSecondary = SdColors.groundAlt;
+  static const Color bgCard = SdColors.surface;
+  static const Color bgCardHover = SdColors.surfaceAlt;
+  static const Color bgSidebar = SdColors.primary;
 
   // ألوان حيوية (XONEPROO)
-  static const Color neonGreen = Color(0xFF2ECC71);
-  static const Color neonBlue = Color(0xFF3498DB);
-  static const Color neonPurple = Color(0xFF8E44AD);
-  static const Color neonOrange = Color(0xFFE67E22);
-  static const Color neonPink = Color(0xFFE91E63);
-  static const Color neonYellow = Color(0xFFF1C40F);
+  static const Color neonGreen = SdColors.success;
+  static const Color neonBlue = SdColors.primary;
+  static const Color neonPurple = SdColors.platformBase;
+  static const Color neonOrange = SdColors.warning;
+  static const Color neonPink = SdColors.platformLight;
+  static const Color neonYellow = SdColors.warning;
 
   // ألوان الحالة
-  static const Color success = Color(0xFF2ECC71);
-  static const Color warning = Color(0xFFF39C12);
-  static const Color danger = Color(0xFFE74C3C);
-  static const Color info = Color(0xFF3498DB);
+  static const Color success = SdColors.success;
+  static const Color warning = SdColors.warning;
+  static const Color danger = SdColors.danger;
+  static const Color info = SdColors.info;
 
   // ألوان النصوص (داكنة - للخلفية الفاتحة)
-  static const Color textPrimary = Color(0xFF1A1A2E);
-  static const Color textSecondary = Color(0xFF444444);
-  static const Color textMuted = Color(0xFF777777);
-  static const Color textAccent = Color(0xFF2ECC71);
+  static const Color textPrimary = SdColors.ink;
+  static const Color textSecondary = SdColors.muted;
+  static const Color textMuted = SdColors.faint;
+  static const Color textAccent = SdColors.success;
 
   // على الخلفية الداكنة (toolbar)
-  static const Color textOnDark = Color(0xFFFFFFFF);
-  static const Color textOnDarkSecondary = Color(0xFFCBD5E1);
-  static const Color textOnDarkMuted = Color(0xFF94A3B8);
+  static const Color textOnDark = SdColors.surface;
+  static const Color textOnDarkSecondary = SdColors.sideShade;
+  static const Color textOnDarkMuted = SdColors.faint;
 
   // حدود
-  static const Color borderColor = Color(0xFFE8E8E8);
-  static const Color borderGlow = Color(0xFF3498DB);
+  static const Color borderColor = SdColors.divider;
+  static const Color borderGlow = SdColors.info;
 
   // ═══════════════════════════════════════════════════════════════
   // 💰 ألوان مالية
   // ═══════════════════════════════════════════════════════════════
 
-  static const Color debitFill = Color(0xFFE8F8F0);
-  static const Color creditFill = Color(0xFFFDE8E8);
-  static const Color debitText = Color(0xFF27AE60);
-  static const Color creditText = Color(0xFFE74C3C);
+  static const Color debitFill = SdColors.successTint;
+  static const Color creditFill = SdColors.dangerTint;
+  static const Color debitText = SdColors.success;
+  static const Color creditText = SdColors.danger;
 
   static const Map<String, Color> salaryStatusColors = {
-    'Pending': Color(0xFFF39C12),
-    'Paid': Color(0xFF2ECC71),
-    'PartiallyPaid': Color(0xFF3498DB),
-    'Cancelled': Color(0xFFE74C3C),
+    'Pending': SdColors.warning,
+    'Paid': SdColors.success,
+    'PartiallyPaid': SdColors.info,
+    'Cancelled': SdColors.danger,
   };
 
   static Color statusColor(String status) =>
       salaryStatusColors[status] ?? textMuted;
 
   // الجداول
-  static const Color tableHeaderBg = Color(0xFF2C3E50);
-  static const Color tableHeaderText = Color(0xFFFFFFFF);
-  static const Color tableRowAlt = Color(0x08000000);
+  static const Color tableHeaderBg = SdColors.primary;
+  static const Color tableHeaderText = SdColors.surface;
+  static const Color tableRowAlt = SdColors.surfaceAlt;
 
   // ═══════════════════════════════════════════════════════════════
   // 🔗 أسماء بديلة للتوافق مع EnergyDashboardTheme
@@ -103,21 +105,21 @@ class AccountingTheme {
   // ═══════════════════════════════════════════════════════════════
 
   static const LinearGradient neonGreenGradient = LinearGradient(
-    colors: [Color(0xFF2ECC71), Color(0xFF27AE60)],
+    colors: [SdColors.success, SdColors.successEdge],
   );
   static const LinearGradient neonBlueGradient = LinearGradient(
-    colors: [Color(0xFF3498DB), Color(0xFF2980B9)],
+    colors: [SdColors.primary, SdColors.primaryEdge],
   );
   static const LinearGradient primaryGradient = neonBlueGradient;
   static const LinearGradient accentGradient = neonGreenGradient;
   static const LinearGradient neonPurpleGradient = LinearGradient(
-    colors: [Color(0xFF8E44AD), Color(0xFF7D3C98)],
+    colors: [SdColors.platformBase, SdColors.platformEdge],
   );
   static const LinearGradient neonOrangeGradient = LinearGradient(
-    colors: [Color(0xFFE67E22), Color(0xFFD35400)],
+    colors: [SdColors.warning, SdColors.warningEdge],
   );
   static const LinearGradient neonPinkGradient = LinearGradient(
-    colors: [Color(0xFFE91E63), Color(0xFFC2185B)],
+    colors: [SdColors.platformLight, SdColors.platformBase],
   );
 
   // ═══════════════════════════════════════════════════════════════

@@ -6,6 +6,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../frontend/tokens/sd_colors.dart';
+
 /// ثيم Energy Dashboard - تصميم عصري مع تأثيرات Neon
 class EnergyDashboardTheme {
   EnergyDashboardTheme._();
@@ -14,65 +16,65 @@ class EnergyDashboardTheme {
   // 🎨 الألوان الرئيسية - Modern Bright Dashboard
   // ═══════════════════════════════════════════════════════════════
 
-  // الخلفيات (فاتحة - Clean White)
-  static const Color bgPrimary = Color(0xFFF8FAFC); // أبيض رمادي فاتح
-  static const Color bgSecondary = Color(0xFFF1F5F9); // رمادي فاتح
-  static const Color bgCard = Color(0xFFFFFFFF); // أبيض للبطاقات
-  static const Color bgCardHover = Color(0xFFF8FAFC); // رمادي hover
-  static const Color bgSidebar = Color(0xFF1E3A5F); // الشريط الجانبي كحلي متوسط
+  // الخلفيات (موجَّهة إلى نظام تصميم الصدارة الفاتح — sd)
+  static const Color bgPrimary = SdColors.ground; // خلفية الصفحات
+  static const Color bgSecondary = SdColors.groundAlt; // رمادي فاتح
+  static const Color bgCard = SdColors.surface; // أبيض للبطاقات
+  static const Color bgCardHover = SdColors.surfaceAlt; // رمادي hover
+  static const Color bgSidebar = SdColors.surface; // الشريط الجانبي (مُوحَّد فاتح)
 
-  // ألوان حيوية مبهجة
-  static const Color neonGreen = Color(0xFF10B981); // أخضر زمردي
-  static const Color neonBlue = Color(0xFF3B82F6); // أزرق حيوي
-  static const Color neonPurple = Color(0xFF8B5CF6); // بنفسجي مشرق
-  static const Color neonOrange = Color(0xFFF59E0B); // برتقالي ذهبي
-  static const Color neonPink = Color(0xFFEC4899); // وردي جميل
-  static const Color neonYellow = Color(0xFFFBBF24); // أصفر مشمس
+  // ألوان حيوية مبهجة (موجَّهة لنبرات sd)
+  static const Color neonGreen = SdColors.success; // أخضر
+  static const Color neonBlue = SdColors.info; // أزرق
+  static const Color neonPurple = SdColors.platformBase; // بنفسجي
+  static const Color neonOrange = SdColors.warning; // برتقالي
+  static const Color neonPink = SdColors.platformLight; // وردي/بنفسجي فاتح
+  static const Color neonYellow = SdColors.warning; // أصفر/برتقالي
 
-  // ألوان الحالة (حيوية ومبهجة)
-  static const Color success = Color(0xFF10B981); // أخضر زمردي
-  static const Color warning = Color(0xFFF59E0B); // برتقالي ذهبي
-  static const Color danger = Color(0xFFEF4444); // أحمر حيوي
-  static const Color info = Color(0xFF3B82F6); // أزرق سماوي
+  // ألوان الحالة (sd الدلالية)
+  static const Color success = SdColors.success;
+  static const Color warning = SdColors.warning;
+  static const Color danger = SdColors.danger;
+  static const Color info = SdColors.info;
 
   // ألوان النصوص (داكنة - للخلفية الفاتحة)
-  static const Color textPrimary = Color(0xFF1E293B); // كحلي غامق
-  static const Color textSecondary = Color(0xFF475569); // رمادي غامق
-  static const Color textMuted = Color(0xFF94A3B8); // رمادي متوسط
-  static const Color textAccent = Color(0xFF10B981); // أخضر زمردي
+  static const Color textPrimary = SdColors.ink; // النص الأساسي
+  static const Color textSecondary = SdColors.muted; // نص ثانوي
+  static const Color textMuted = SdColors.faint; // نص معطّل/تلميح
+  static const Color textAccent = SdColors.success;
 
-  // ألوان النصوص (فاتحة - للشريط الجانبي)
-  static const Color textOnDark = Color(0xFFFFFFFF); // أبيض
-  static const Color textOnDarkSecondary = Color(0xFFCBD5E1); // رمادي فاتح
-  static const Color textOnDarkMuted = Color(0xFF94A3B8); // رمادي
-  static const Color textOnDarkAccent = Color(0xFF10B981); // أخضر زمردي
+  // ألوان النصوص (الشريط الجانبي أصبح فاتحاً موحَّداً ⇒ نص داكن)
+  static const Color textOnDark = SdColors.ink;
+  static const Color textOnDarkSecondary = SdColors.muted;
+  static const Color textOnDarkMuted = SdColors.faint;
+  static const Color textOnDarkAccent = SdColors.success;
 
   // ألوان الحدود
-  static const Color borderColor = Color(0xFFE2E8F0); // رمادي فاتح
-  static const Color borderGlow = Color(0xFF10B981);
+  static const Color borderColor = SdColors.divider; // رمادي فاتح
+  static const Color borderGlow = SdColors.success;
 
   // ═══════════════════════════════════════════════════════════════
   // � ألوان مالية / محاسبية - Financial / Accounting Colors
   // ═══════════════════════════════════════════════════════════════
 
   /// خلفية حقل المدين (أخضر فاتح)
-  static const Color debitFill = Color(0xFFECFDF5);
+  static const Color debitFill = SdColors.successTint;
 
   /// خلفية حقل الدائن (أحمر فاتح)
-  static const Color creditFill = Color(0xFFFEF2F2);
+  static const Color creditFill = SdColors.dangerTint;
 
   /// لون نص المدين
-  static const Color debitText = Color(0xFF059669);
+  static const Color debitText = SdColors.success;
 
   /// لون نص الدائن
-  static const Color creditText = Color(0xFFDC2626);
+  static const Color creditText = SdColors.danger;
 
   /// ألوان الحالة المالية (رواتب / عمليات)
   static const Map<String, Color> salaryStatusColors = {
-    'Pending': Color(0xFFF59E0B),
-    'Paid': Color(0xFF10B981),
-    'PartiallyPaid': Color(0xFF3B82F6),
-    'Cancelled': Color(0xFFEF4444),
+    'Pending': SdColors.warning,
+    'Paid': SdColors.success,
+    'PartiallyPaid': SdColors.info,
+    'Cancelled': SdColors.danger,
   };
 
   /// الحصول على لون الحالة
@@ -80,8 +82,8 @@ class EnergyDashboardTheme {
       salaryStatusColors[status] ?? textMuted;
 
   // الجداول
-  static const Color tableHeaderBg = Color(0xFFF1F5F9);
-  static const Color tableHeaderText = Color(0xFF1E293B);
+  static const Color tableHeaderBg = SdColors.surfaceAlt;
+  static const Color tableHeaderText = SdColors.ink;
   static const Color tableRowAlt = Color(0x08000000);
 
   /// رأس الجدول
@@ -407,14 +409,14 @@ class EnergyDashboardTheme {
   static const LinearGradient neonGreenGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF10B981), Color(0xFF059669)],
+    colors: [SdColors.success, SdColors.successEdge],
   );
 
   // تدرج أزرق حيوي
   static const LinearGradient neonBlueGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+    colors: [SdColors.info, SdColors.infoEdge],
   );
 
   /// اسم بديل للتوافق
@@ -425,21 +427,21 @@ class EnergyDashboardTheme {
   static const LinearGradient neonPurpleGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF7C3AED), Color(0xFF5B21B6)],
+    colors: [SdColors.platformBase, SdColors.platformEdge],
   );
 
   // تدرج نيون برتقالي
   static const LinearGradient neonOrangeGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+    colors: [SdColors.warning, SdColors.warningEdge],
   );
 
   // تدرج نيون وردي
   static const LinearGradient neonPinkGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFEC4899), Color(0xFFBE185D)],
+    colors: [SdColors.platformLight, SdColors.platformBase],
   );
 
   // تدرج البطاقات الزجاجية
@@ -452,11 +454,11 @@ class EnergyDashboardTheme {
     ],
   );
 
-  // تدرج الشريط الجانبي (كحلي متوسط)
+  // تدرج الشريط الجانبي (مُوحَّد فاتح)
   static const LinearGradient sidebarGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFF2A4A72), Color(0xFF1E3A5F)],
+    colors: [SdColors.surface, SdColors.surfaceAlt],
   );
 
   // تدرج بطاقة الطاقة (فاتح)

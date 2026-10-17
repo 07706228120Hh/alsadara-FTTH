@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -54,6 +55,23 @@ class _SuppliersPageState extends State<SuppliersPage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  InputDecoration _dec(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: SdText.bodySm,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+      );
+
   // --------------- CRUD ---------------
 
   Future<void> _showAddEditDialog([Supplier? sup]) async {
@@ -68,83 +86,47 @@ class _SuppliersPageState extends State<SuppliersPage> {
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          title: Text(sup == null ? 'إضافة مورد' : 'تعديل مورد'),
-          content: SizedBox(
-            width: 450,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'اسم المورد *',
-                        border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: contactCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'الشخص المسؤول',
-                        border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: phoneCtrl,
-                          decoration: const InputDecoration(
-                              labelText: 'الهاتف',
-                              border: OutlineInputBorder()),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: emailCtrl,
-                          decoration: const InputDecoration(
-                              labelText: 'البريد الإلكتروني',
-                              border: OutlineInputBorder()),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: addressCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'العنوان',
-                        border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: taxCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'الرقم الضريبي',
-                        border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: notesCtrl,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                        labelText: 'ملاحظات',
-                        border: OutlineInputBorder()),
-                  ),
-                ],
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: Text(sup == null ? 'إضافة مورد' : 'تعديل مورد'),
+            content: SizedBox(
+              width: 450,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(controller: nameCtrl, decoration: _dec('اسم المورد *')),
+                    const SizedBox(height: 10),
+                    TextField(controller: contactCtrl, decoration: _dec('الشخص المسؤول')),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: TextField(controller: phoneCtrl, decoration: _dec('الهاتف'))),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextField(controller: emailCtrl, decoration: _dec('البريد الإلكتروني'))),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(controller: addressCtrl, decoration: _dec('العنوان')),
+                    const SizedBox(height: 10),
+                    TextField(controller: taxCtrl, decoration: _dec('الرقم الضريبي')),
+                    const SizedBox(height: 10),
+                    TextField(controller: notesCtrl, maxLines: 2, decoration: _dec('ملاحظات')),
+                  ],
+                ),
               ),
             ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('إلغاء')),
+              FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('حفظ')),
+            ],
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء')),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('حفظ')),
-          ],
         );
       },
     );
@@ -194,18 +176,21 @@ class _SuppliersPageState extends State<SuppliersPage> {
   Future<void> _confirmDelete(Supplier sup) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: Text('هل تريد حذف المورد "${sup.name}"؟'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء')),
-          FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('حذف')),
-        ],
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد الحذف'),
+          content: Text('هل تريد حذف المورد "${sup.name}"؟'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('إلغاء')),
+            FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('حذف')),
+          ],
+        ),
       ),
     );
     if (confirmed != true) return;
@@ -224,136 +209,177 @@ class _SuppliersPageState extends State<SuppliersPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
-          title: const Text('الموردين'),
-          actions: [
-            IconButton(
-                icon: const Icon(Icons.add),
-                tooltip: 'إضافة مورد',
-                onPressed: () => _showAddEditDialog()),
-            IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: 'تحديث',
-                onPressed: _loadData),
-          ],
-        ),
-        body: Column(
-          children: [
-            _buildSearchBar(),
-            const Divider(height: 1),
-            Expanded(child: _buildBody()),
-          ],
-        ),
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'الموردين',
+        actions: [
+          SdAppBarAction(icon: Icons.add_rounded, label: 'إضافة مورد', onPressed: () => _showAddEditDialog()),
+          SdAppBarAction(icon: Icons.refresh_rounded, label: 'تحديث', onPressed: _loadData),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSearchBar(),
+          const SizedBox(height: SdSpace.sm),
+          Expanded(child: _buildBody()),
+        ],
       ),
     );
   }
 
   Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: TextField(
-        controller: _searchCtrl,
-        decoration: InputDecoration(
-          hintText: 'بحث بالاسم أو الهاتف...',
-          prefixIcon: const Icon(Icons.search),
-          border: const OutlineInputBorder(),
-          isDense: true,
-          suffixIcon: _searchCtrl.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, size: 18),
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    _loadData();
-                  },
-                )
-              : null,
+    return TextField(
+      controller: _searchCtrl,
+      style: SdText.body,
+      decoration: InputDecoration(
+        hintText: 'بحث بالاسم أو الهاتف...',
+        hintStyle: SdText.bodySm,
+        prefixIcon: const Icon(Icons.search, color: SdColors.faint),
+        filled: true,
+        fillColor: SdColors.surface,
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
         ),
-        onSubmitted: (_) => _loadData(),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+        suffixIcon: _searchCtrl.text.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear, size: 18, color: SdColors.faint),
+                onPressed: () {
+                  _searchCtrl.clear();
+                  _loadData();
+                },
+              )
+            : null,
       ),
+      onSubmitted: (_) => _loadData(),
     );
   }
 
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     if (_error != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-                onPressed: _loadData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة')),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل الموردين',
+          message: _error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(label: 'إعادة المحاولة', icon: Icons.refresh_rounded, kind: SdButtonKind.secondary, onPressed: _loadData),
         ),
       );
     }
     if (_suppliers.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.local_shipping_outlined,
-                size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
-            const Text('لا يوجد موردين',
-                style: TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-                onPressed: () => _showAddEditDialog(),
-                icon: const Icon(Icons.add),
-                label: const Text('إضافة مورد')),
-          ],
+        child: SdEmptyState(
+          title: 'لا يوجد موردين',
+          icon: Icons.local_shipping_outlined,
+          action: SdButton(label: 'إضافة مورد', icon: Icons.add_rounded, onPressed: () => _showAddEditDialog()),
         ),
       );
     }
 
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: _suppliers.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _buildCard(_suppliers[i]),
+      );
+    }
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-          columns: const [
-            DataColumn(label: Text('الاسم')),
-            DataColumn(label: Text('المسؤول')),
-            DataColumn(label: Text('الهاتف')),
-            DataColumn(label: Text('البريد')),
-            DataColumn(label: Text('عدد المشتريات'), numeric: true),
-            DataColumn(label: Text('إجمالي المشتريات'), numeric: true),
-            DataColumn(label: Text('إجراءات')),
-          ],
-          rows: _suppliers.map((sup) {
-            return DataRow(cells: [
-              DataCell(Text(sup.name)),
-              DataCell(Text(sup.contactPerson ?? '-')),
-              DataCell(Text(sup.phone ?? '-')),
-              DataCell(Text(sup.email ?? '-')),
-              DataCell(Text('${sup.purchaseOrdersCount ?? 0}')),
-              DataCell(Text(
-                  fmtNullable(sup.totalPurchases))),
-              DataCell(Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                      icon: const Icon(Icons.edit, size: 20),
-                      tooltip: 'تعديل',
-                      onPressed: () => _showAddEditDialog(sup)),
-                  IconButton(
-                      icon: const Icon(Icons.delete,
-                          size: 20, color: Colors.red),
-                      tooltip: 'حذف',
-                      onPressed: () => _confirmDelete(sup)),
-                ],
-              )),
-            ]);
-          }).toList(),
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: DataTable(
+            headingRowColor: WidgetStateProperty.all(SdColors.primary),
+            headingTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white),
+            dataTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w500, color: SdColors.ink),
+            columns: const [
+              DataColumn(label: Text('الاسم')),
+              DataColumn(label: Text('المسؤول')),
+              DataColumn(label: Text('الهاتف')),
+              DataColumn(label: Text('البريد')),
+              DataColumn(label: Text('عدد المشتريات'), numeric: true),
+              DataColumn(label: Text('إجمالي المشتريات'), numeric: true),
+              DataColumn(label: Text('إجراءات')),
+            ],
+            rows: [
+              for (int i = 0; i < _suppliers.length; i++) _buildDataRow(_suppliers[i], i),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  DataRow _buildDataRow(Supplier sup, int index) {
+    return DataRow(
+      color: WidgetStateProperty.all(index.isEven ? SdColors.surface : SdColors.surfaceAlt),
+      cells: [
+        DataCell(Text(sup.name)),
+        DataCell(Text(sup.contactPerson ?? '-')),
+        DataCell(Text(sup.phone ?? '-')),
+        DataCell(Text(sup.email ?? '-')),
+        DataCell(Text('${sup.purchaseOrdersCount ?? 0}')),
+        DataCell(Text(fmtNullable(sup.totalPurchases))),
+        DataCell(Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+                icon: const Icon(Icons.edit, size: 20, color: SdColors.primary),
+                tooltip: 'تعديل',
+                onPressed: () => _showAddEditDialog(sup)),
+            IconButton(
+                icon: const Icon(Icons.delete, size: 20, color: SdColors.danger),
+                tooltip: 'حذف',
+                onPressed: () => _confirmDelete(sup)),
+          ],
+        )),
+      ],
+    );
+  }
+
+  Widget _buildCard(Supplier sup) {
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(sup.name, style: SdText.label, maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
+          if ((sup.contactPerson ?? '').isNotEmpty) SdInfoRow(label: 'المسؤول', value: sup.contactPerson!),
+          if ((sup.phone ?? '').isNotEmpty) SdInfoRow(label: 'الهاتف', value: sup.phone!, ltrValue: true),
+          if ((sup.email ?? '').isNotEmpty) SdInfoRow(label: 'البريد', value: sup.email!, ltrValue: true),
+          SdInfoRow(label: 'عدد المشتريات', value: '${sup.purchaseOrdersCount ?? 0}'),
+          SdInfoRow(label: 'إجمالي المشتريات', value: fmtNullable(sup.totalPurchases)),
+          const Divider(color: SdColors.divider, height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(icon: const Icon(Icons.edit, size: 20, color: SdColors.primary), tooltip: 'تعديل', onPressed: () => _showAddEditDialog(sup)),
+              IconButton(icon: const Icon(Icons.delete, size: 20, color: SdColors.danger), tooltip: 'حذف', onPressed: () => _confirmDelete(sup)),
+            ],
+          ),
+        ],
       ),
     );
   }

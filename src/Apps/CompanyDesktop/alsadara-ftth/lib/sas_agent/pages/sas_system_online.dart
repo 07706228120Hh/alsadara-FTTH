@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
 import '../widgets/sas_format.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 
 /// قسم «المتصلون الآن» ضمن نظام الساس — جدول جلسات نشطة عبر [getOnline]:
@@ -62,13 +60,14 @@ class _SasSystemOnlineState extends State<SasSystemOnline> {
     }
     if (_error != null) return SasErrorView(message: _error!, onRetry: _load);
     if (_rows.isEmpty) {
-      return SasEmptyView(
-        message: 'لا جلسات متصلة الآن',
+      return SdEmptyState(
+        title: 'لا جلسات متصلة الآن',
         icon: Icons.wifi_off_rounded,
-        action: OutlinedButton.icon(
+        action: SdButton(
+          label: 'تحديث',
+          icon: Icons.refresh_rounded,
+          kind: SdButtonKind.secondary,
           onPressed: _load,
-          icon: const Icon(Icons.refresh_rounded),
-          label: Text('تحديث', style: GoogleFonts.cairo()),
         ),
       );
     }
@@ -76,19 +75,16 @@ class _SasSystemOnlineState extends State<SasSystemOnline> {
       onRefresh: _load,
       child: SasContentWrap(
         child: ListView.separated(
-          padding: EdgeInsets.all(12.w),
+          padding: const EdgeInsets.all(SdSpace.sm),
           itemCount: _rows.length + 1,
-          separatorBuilder: (_, __) => SizedBox(height: 8.h),
+          separatorBuilder: (_, __) => const SizedBox(height: SdSpace.xs),
           itemBuilder: (context, i) {
             if (i == _rows.length) {
               return Padding(
-                padding: EdgeInsets.symmetric(vertical: 12.h),
+                padding: const EdgeInsets.symmetric(vertical: SdSpace.sm),
                 child: Center(
                   child: Text('الإجمالي المتصل: ${_rows.length}',
-                      style: GoogleFonts.cairo(
-                          fontSize: 12.5.sp,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.grey[700])),
+                      style: SdText.caption),
                 ),
               );
             }
@@ -100,47 +96,34 @@ class _SasSystemOnlineState extends State<SasSystemOnline> {
   }
 
   Widget _sessionCard(Map<String, dynamic> s) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
-      decoration: SasUi.card(),
+    return SdCard(
+      tone: SdGroup.field.tone,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // اسم المستخدم + الباقة
           Row(
             children: [
-              Icon(Icons.wifi_rounded,
-                  size: 18.sp, color: AppTheme.successColor),
-              SizedBox(width: 8.w),
+              const Icon(Icons.wifi_rounded, size: 18, color: SdColors.success),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text('${s['username'] ?? '-'}',
-                    style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.w800, fontSize: 14.sp),
-                    overflow: TextOverflow.ellipsis),
+                    style: SdText.label, overflow: TextOverflow.ellipsis),
               ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: AppTheme.successColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Text(
-                  '${s['user_profile_name'] ?? s['profile_id'] ?? '-'}',
-                  style: GoogleFonts.cairo(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF2E7D32)),
-                ),
+              SdStatusChip(
+                '${s['user_profile_name'] ?? s['profile_id'] ?? '-'}',
+                status: SdStatus.success,
               ),
             ],
           ),
-          SizedBox(height: 8.h),
+          const SizedBox(height: 8),
           // عناوين الشبكة (LTR دائماً)
           Directionality(
             textDirection: TextDirection.ltr,
             child: Wrap(
-              spacing: 16.w,
-              runSpacing: 4.h,
+              spacing: 16,
+              runSpacing: 4,
               children: [
                 _mono('IP', '${s['framedipaddress'] ?? '-'}'),
                 _mono('NAS', '${s['nasipaddress'] ?? '-'}'),
@@ -151,11 +134,11 @@ class _SasSystemOnlineState extends State<SasSystemOnline> {
               ],
             ),
           ),
-          SizedBox(height: 6.h),
+          const SizedBox(height: 6),
           // مدّة/رفع/تنزيل
           Wrap(
-            spacing: 16.w,
-            runSpacing: 4.h,
+            spacing: 16,
+            runSpacing: 4,
             children: [
               SasInfoChip(
                   icon: Icons.timer_outlined,
@@ -165,12 +148,12 @@ class _SasSystemOnlineState extends State<SasSystemOnline> {
                   icon: Icons.download_rounded,
                   label: 'تنزيل',
                   value: sasBytes(s['acctoutputoctets']),
-                  color: AppTheme.infoColor),
+                  color: SdColors.info),
               SasInfoChip(
                   icon: Icons.upload_rounded,
                   label: 'رفع',
                   value: sasBytes(s['acctinputoctets']),
-                  color: AppTheme.warningColor),
+                  color: SdColors.warning),
               if (s['fup'] != null)
                 SasInfoChip(
                     icon: Icons.data_usage_rounded,
@@ -188,12 +171,15 @@ class _SasSystemOnlineState extends State<SasSystemOnline> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: GoogleFonts.cairo(fontSize: 9.5.sp, color: Colors.grey[500])),
+            style: const TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 11.5,
+                color: SdColors.faint)),
         Text(value,
-            style: TextStyle(
+            style: const TextStyle(
                 fontFamily: 'monospace',
-                fontSize: 11.5.sp,
-                color: Colors.grey[800])),
+                fontSize: 11.5,
+                color: SdColors.ink)),
       ],
     );
   }

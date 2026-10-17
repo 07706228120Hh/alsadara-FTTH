@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_account.dart';
-import 'sas_metrics.dart';
 
 /// نتيجة نموذج حساب الساس (إنشاء/تعديل).
 class SasAccountFormResult {
@@ -30,7 +28,7 @@ class SasAccountFormResult {
   });
 }
 
-/// حوار ربط/تعديل حساب ساس بثيم الصدارة.
+/// حوار ربط/تعديل حساب ساس بثيم الصدارة الموحّد (sd).
 ///
 /// ⚠️ كلمة المرور حقل إدخال فقط؛ لا تُعرَض قيمة قائمة ولا تُطبَع في أي مكان.
 class SasAccountFormDialog extends StatefulWidget {
@@ -103,18 +101,19 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Dialog(
-        insetPadding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.r)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(SdRadius.lg)),
         clipBehavior: Clip.antiAlias,
+        backgroundColor: SdColors.surface,
         child: SizedBox(
-          width: 440.w,
+          width: 440,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _header(),
               Padding(
-                padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 4.h),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
                 child: _body(),
               ),
               _actions(),
@@ -125,40 +124,40 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
     );
   }
 
-  /// رأس متدرّج بلون المنصّة مع أيقونة وعنوان.
+  /// رأس نيلي بارز مع أيقونة وعنوان.
   Widget _header() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: AppTheme.blueGradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: SdColors.primary,
+        border: Border(
+          bottom: BorderSide(color: SdColors.primaryEdge, width: 4),
         ),
       ),
       child: Row(
         children: [
           Container(
-            width: 42.w,
-            height: 42.w,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(SdRadius.sm),
               border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
             ),
             child: Icon(
               _isEdit ? Icons.edit_rounded : Icons.add_link_rounded,
               color: Colors.white,
-              size: 22.sp,
+              size: 22,
             ),
           ),
-          SizedBox(width: 12.w),
+          const SizedBox(width: 12),
           Text(
             _isEdit ? 'تعديل حساب الساس' : 'ربط حساب ساس',
-            style: GoogleFonts.cairo(
-              fontWeight: FontWeight.w800,
-              fontSize: 16.sp,
+            style: const TextStyle(
+              fontFamily: SdText.family,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
               color: Colors.white,
             ),
           ),
@@ -169,35 +168,25 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
 
   Widget _actions() {
     return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 6.h, 20.w, 16.h),
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 16),
       child: Row(
         children: [
           Expanded(
-            child: OutlinedButton(
+            child: SdButton(
+              label: 'إلغاء',
+              kind: SdButtonKind.secondary,
+              height: 48,
               onPressed: () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.grey[700],
-                side: BorderSide(color: Colors.grey.withValues(alpha: 0.35)),
-                padding: EdgeInsets.symmetric(vertical: 13.h),
-              ),
-              child: Text('إلغاء',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
             ),
           ),
-          SizedBox(width: 12.w),
+          const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: FilledButton.icon(
+            child: SdButton(
+              label: _isEdit ? 'حفظ التعديلات' : 'ربط الحساب',
+              icon: _isEdit ? Icons.save_rounded : Icons.link_rounded,
+              height: 48,
               onPressed: _submit,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                padding: EdgeInsets.symmetric(vertical: 13.h),
-              ),
-              icon: Icon(_isEdit ? Icons.save_rounded : Icons.link_rounded,
-                  size: 18.sp),
-              label: Text(_isEdit ? 'حفظ التعديلات' : 'ربط الحساب',
-                  style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.w800, fontSize: 13.5.sp)),
             ),
           ),
         ],
@@ -213,107 +202,114 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _field(
-                    controller: _labelCtrl,
-                    label: 'التسمية',
-                    icon: Icons.label_outline_rounded,
-                    hint: 'اسم يميّز الحساب (اختياري)',
+              controller: _labelCtrl,
+              label: 'التسمية',
+              icon: Icons.label_outline_rounded,
+              hint: 'اسم يميّز الحساب (اختياري)',
+            ),
+            const SizedBox(height: 12),
+            _field(
+              controller: _serverCtrl,
+              label: 'عنوان خادم الساس',
+              icon: Icons.dns_rounded,
+              hint: 'https://sas.example.com',
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'عنوان الخادم مطلوب'
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            _field(
+              controller: _userCtrl,
+              label: 'اسم المستخدم',
+              icon: Icons.person_outline_rounded,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'اسم المستخدم مطلوب'
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _passCtrl,
+              obscureText: _obscure,
+              style: const TextStyle(fontFamily: SdText.family),
+              decoration: InputDecoration(
+                labelText: 'كلمة المرور',
+                hintText: _isEdit ? 'اتركها فارغة لعدم التغيير' : null,
+                hintStyle: const TextStyle(
+                    fontFamily: SdText.family, color: SdColors.faint),
+                prefixIcon: const Icon(Icons.lock_outline_rounded,
+                    color: SdColors.primary, size: 20),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscure
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    color: SdColors.muted,
                   ),
-                  SizedBox(height: 12.h),
-                  _field(
-                    controller: _serverCtrl,
-                    label: 'عنوان خادم الساس',
-                    icon: Icons.dns_rounded,
-                    hint: 'https://sas.example.com',
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'عنوان الخادم مطلوب'
-                        : null,
-                  ),
-                  SizedBox(height: 12.h),
-                  _field(
-                    controller: _userCtrl,
-                    label: 'اسم المستخدم',
-                    icon: Icons.person_outline_rounded,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'اسم المستخدم مطلوب'
-                        : null,
-                  ),
-                  SizedBox(height: 12.h),
-                  TextFormField(
-                    controller: _passCtrl,
-                    obscureText: _obscure,
-                    style: GoogleFonts.cairo(),
-                    decoration: InputDecoration(
-                      labelText: 'كلمة المرور',
-                      hintText: _isEdit ? 'اتركها فارغة لعدم التغيير' : null,
-                      hintStyle: GoogleFonts.cairo(color: Colors.grey[400]),
-                      prefixIcon: Icon(Icons.lock_outline_rounded,
-                          color: AppTheme.primaryColor, size: 20.sp),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscure
-                              ? Icons.visibility_off_rounded
-                              : Icons.visibility_rounded,
-                          color: Colors.grey[500],
-                        ),
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                      ),
-                    ),
-                    validator: (v) {
-                      // في الإنشاء كلمة المرور مطلوبة؛ في التعديل اختيارية.
-                      if (!_isEdit && (v == null || v.isEmpty)) {
-                        return 'كلمة المرور مطلوبة';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 12.h),
-                  DropdownButtonFormField<SasAccountType>(
-                    initialValue: _accountType,
-                    decoration: InputDecoration(
-                      labelText: 'نوع الحساب',
-                      prefixIcon: Icon(Icons.category_outlined,
-                          color: AppTheme.primaryColor, size: 20.sp),
-                      labelStyle: GoogleFonts.cairo(),
-                    ),
-                    style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.w600, color: Colors.black87),
-                    items: SasAccountType.values
-                        .map((t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(t.labelAr, style: GoogleFonts.cairo()),
-                            ))
-                        .toList(),
-                    onChanged: (v) =>
-                        setState(() => _accountType = v ?? _accountType),
-                  ),
-                  SizedBox(height: 12.h),
-                  TextFormField(
-                    controller: _multiplierCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    style: GoogleFonts.cairo(),
-                    decoration: InputDecoration(
-                      labelText: 'مُضاعِف القيمة المالية',
-                      helperText:
-                          'قيم الساس تُضرب بهذا الرقم للدينار الحقيقي (16 → 16000). الافتراضي 1000.',
-                      helperStyle: GoogleFonts.cairo(
-                          fontSize: 11, color: Colors.grey[600]),
-                      prefixIcon: Icon(Icons.calculate_outlined,
-                          color: AppTheme.primaryColor, size: 20.sp),
-                      labelStyle: GoogleFonts.cairo(),
-                    ),
-                    validator: (v) {
-                      final n = num.tryParse((v ?? '').trim());
-                      if (n == null || n <= 0) return 'أدخل رقماً موجباً (مثل 1000)';
-                      return null;
-                    },
-                  ),
-            SizedBox(height: 4.h),
+                  onPressed: () => setState(() => _obscure = !_obscure),
+                ),
+              ),
+              validator: (v) {
+                // في الإنشاء كلمة المرور مطلوبة؛ في التعديل اختيارية.
+                if (!_isEdit && (v == null || v.isEmpty)) {
+                  return 'كلمة المرور مطلوبة';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<SasAccountType>(
+              initialValue: _accountType,
+              decoration: const InputDecoration(
+                labelText: 'نوع الحساب',
+                prefixIcon: Icon(Icons.category_outlined,
+                    color: SdColors.primary, size: 20),
+                labelStyle: TextStyle(fontFamily: SdText.family),
+              ),
+              style: const TextStyle(
+                  fontFamily: SdText.family,
+                  fontWeight: FontWeight.w600,
+                  color: SdColors.ink),
+              items: SasAccountType.values
+                  .map((t) => DropdownMenuItem(
+                        value: t,
+                        child: Text(t.labelAr,
+                            style: const TextStyle(fontFamily: SdText.family)),
+                      ))
+                  .toList(),
+              onChanged: (v) =>
+                  setState(() => _accountType = v ?? _accountType),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _multiplierCtrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              style: const TextStyle(fontFamily: SdText.family),
+              decoration: const InputDecoration(
+                labelText: 'مُضاعِف القيمة المالية',
+                helperText:
+                    'قيم الساس تُضرب بهذا الرقم للدينار الحقيقي (16 → 16000). الافتراضي 1000.',
+                helperStyle: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11,
+                    color: SdColors.muted),
+                prefixIcon: Icon(Icons.calculate_outlined,
+                    color: SdColors.primary, size: 20),
+                labelStyle: TextStyle(fontFamily: SdText.family),
+              ),
+              validator: (v) {
+                final n = num.tryParse((v ?? '').trim());
+                if (n == null || n <= 0) return 'أدخل رقماً موجباً (مثل 1000)';
+                return null;
+              },
+            ),
+            const SizedBox(height: 4),
             SwitchListTile(
               value: _isActive,
               onChanged: (v) => setState(() => _isActive = v),
-              title: Text('الحساب مُفعَّل', style: GoogleFonts.cairo()),
-              activeThumbColor: AppTheme.primaryColor,
+              title: const Text('الحساب مُفعَّل',
+                  style: TextStyle(fontFamily: SdText.family)),
+              activeThumbColor: SdColors.primary,
               contentPadding: EdgeInsets.zero,
             ),
           ],
@@ -331,13 +327,15 @@ class _SasAccountFormDialogState extends State<SasAccountFormDialog> {
   }) {
     return TextFormField(
       controller: controller,
-      style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+      style: const TextStyle(
+          fontFamily: SdText.family, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        hintStyle: GoogleFonts.cairo(color: Colors.grey[400]),
-        prefixIcon: Icon(icon, color: AppTheme.primaryColor, size: 20.sp),
-        labelStyle: GoogleFonts.cairo(),
+        hintStyle:
+            const TextStyle(fontFamily: SdText.family, color: SdColors.faint),
+        prefixIcon: Icon(icon, color: SdColors.primary, size: 20),
+        labelStyle: const TextStyle(fontFamily: SdText.family),
       ),
       validator: validator,
     );

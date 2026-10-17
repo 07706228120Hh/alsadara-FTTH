@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_mbtiles/flutter_map_mbtiles.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/api/api_client.dart';
 import '../services/api/api_config.dart';
 import '../permissions/permission_manager.dart';
@@ -426,8 +427,9 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _surfaceColor,
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
       appBar: _buildAppBar(),
       body: Stack(
         children: [
@@ -492,6 +494,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
               ),
             ),
         ],
+      ),
       ),
     );
   }

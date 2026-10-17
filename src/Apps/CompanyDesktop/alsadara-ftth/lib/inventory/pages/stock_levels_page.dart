@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -64,6 +65,26 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  InputDecoration _dec(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: SdText.bodySm,
+        filled: true,
+        fillColor: SdColors.surface,
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+      );
+
   // --------------- Adjust / Transfer Dialogs ---------------
 
   Future<void> _showAdjustDialog() async {
@@ -94,7 +115,7 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
                 children: [
                   DropdownButtonFormField<String>(
                     value: selectedWarehouseId,
-                    decoration: const InputDecoration(labelText: 'المستودع', border: OutlineInputBorder(), isDense: true),
+                    decoration: _dec('المستودع'),
                     items: _warehouses.map((w) => DropdownMenuItem(value: w.id, child: Text(w.name))).toList(),
                     onChanged: (v) => setD(() => selectedWarehouseId = v),
                   ),
@@ -102,20 +123,20 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
                   DropdownButtonFormField<String>(
                     value: selectedItemId,
                     isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
+                    decoration: _dec('المادة'),
                     items: items.map((i) => DropdownMenuItem(value: i.id, child: Text(i.name, overflow: TextOverflow.ellipsis))).toList(),
                     onChanged: (v) => setD(() => selectedItemId = v),
                   ),
                   const SizedBox(height: 12),
-                  TextField(controller: qtyController, decoration: const InputDecoration(labelText: 'الكمية الجديدة', border: OutlineInputBorder(), isDense: true), keyboardType: TextInputType.number),
+                  TextField(controller: qtyController, decoration: _dec('الكمية الجديدة'), keyboardType: TextInputType.number),
                   const SizedBox(height: 12),
-                  TextField(controller: reasonController, decoration: const InputDecoration(labelText: 'السبب', border: OutlineInputBorder(), isDense: true)),
+                  TextField(controller: reasonController, decoration: _dec('السبب')),
                 ],
               ),
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
+              FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
             ],
           ),
         );
@@ -130,10 +151,10 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
         'reason': reasonController.text,
         'companyId': widget.companyId,
       });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تعديل الرصيد'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تعديل الرصيد'), backgroundColor: SdColors.success));
       _loadData();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
   }
 
@@ -164,14 +185,14 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
                 children: [
                   DropdownButtonFormField<String>(
                     value: sourceWarehouseId,
-                    decoration: const InputDecoration(labelText: 'من مستودع', border: OutlineInputBorder(), isDense: true),
+                    decoration: _dec('من مستودع'),
                     items: _warehouses.map((w) => DropdownMenuItem(value: w.id, child: Text(w.name))).toList(),
                     onChanged: (v) => setD(() => sourceWarehouseId = v),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: destWarehouseId,
-                    decoration: const InputDecoration(labelText: 'إلى مستودع', border: OutlineInputBorder(), isDense: true),
+                    decoration: _dec('إلى مستودع'),
                     items: _warehouses.where((w) => w.id != sourceWarehouseId).map((w) => DropdownMenuItem(value: w.id, child: Text(w.name))).toList(),
                     onChanged: (v) => setD(() => destWarehouseId = v),
                   ),
@@ -179,18 +200,18 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
                   DropdownButtonFormField<String>(
                     value: selectedItemId,
                     isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'المادة', border: OutlineInputBorder(), isDense: true),
+                    decoration: _dec('المادة'),
                     items: items.map((i) => DropdownMenuItem(value: i.id, child: Text(i.name, overflow: TextOverflow.ellipsis))).toList(),
                     onChanged: (v) => setD(() => selectedItemId = v),
                   ),
                   const SizedBox(height: 12),
-                  TextField(controller: qtyController, decoration: const InputDecoration(labelText: 'الكمية', border: OutlineInputBorder(), isDense: true), keyboardType: TextInputType.number),
+                  TextField(controller: qtyController, decoration: _dec('الكمية'), keyboardType: TextInputType.number),
                 ],
               ),
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تحويل')),
+              FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('تحويل')),
             ],
           ),
         );
@@ -205,184 +226,190 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
         'quantity': int.tryParse(qtyController.text) ?? 0,
         'companyId': widget.companyId,
       });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم التحويل بنجاح'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم التحويل بنجاح'), backgroundColor: SdColors.success));
       _loadData();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
   }
 
   // --------------- Helpers ---------------
 
-  Widget _statusChip(Map<String, dynamic> row) {
+  SdStatus _statusFor(Map<String, dynamic> row) {
     final current = (row['currentQuantity'] as num?)?.toInt() ?? 0;
     final min = (row['minStockLevel'] as num?)?.toInt() ?? 0;
+    if (min <= 0 || current >= min) return SdStatus.success;
+    if (current >= (min * 0.5).round()) return SdStatus.warning;
+    return SdStatus.danger;
+  }
 
-    String label;
-    Color bg;
-    Color fg;
-
-    if (min <= 0 || current >= min) {
-      label = 'كافي';
-      bg = Colors.green.shade50;
-      fg = Colors.green.shade800;
-    } else if (current >= (min * 0.5).round()) {
-      label = 'منخفض';
-      bg = Colors.orange.shade50;
-      fg = Colors.orange.shade800;
-    } else {
-      label = 'ناقص';
-      bg = Colors.red.shade50;
-      fg = Colors.red.shade800;
-    }
-
-    return Chip(
-      label: Text(label, style: TextStyle(color: fg, fontSize: 12)),
-      backgroundColor: bg,
-      side: BorderSide.none,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-    );
+  Widget _statusChip(Map<String, dynamic> row) {
+    final status = _statusFor(row);
+    final label = status == SdStatus.success
+        ? 'كافي'
+        : status == SdStatus.warning
+            ? 'منخفض'
+            : 'ناقص';
+    return SdStatusChip(label, status: status);
   }
 
   // --------------- Build ---------------
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
-          title: const Text('مستويات المخزون'),
-          actions: [
-            FilledButton.tonalIcon(
-              onPressed: _showAdjustDialog,
-              icon: const Icon(Icons.tune, size: 18),
-              label: const Text('تعديل رصيد'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.tonalIcon(
-              onPressed: _showTransferDialog,
-              icon: const Icon(Icons.swap_horiz, size: 18),
-              label: const Text('تحويل'),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: 'تحديث',
-                onPressed: _loadData),
-          ],
-        ),
-        body: Column(
-          children: [
-            _buildFilter(),
-            const Divider(height: 1),
-            Expanded(child: _buildBody()),
-          ],
-        ),
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'مستويات المخزون',
+        actions: [
+          SdAppBarAction(icon: Icons.tune, label: 'تعديل رصيد', onPressed: _showAdjustDialog),
+          SdAppBarAction(icon: Icons.swap_horiz, label: 'تحويل', onPressed: _showTransferDialog),
+          SdAppBarAction(icon: Icons.refresh_rounded, label: 'تحديث', onPressed: _loadData),
+        ],
       ),
-    );
-  }
-
-  Widget _buildFilter() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            width: 280,
-            child: DropdownButtonFormField<String?>(
-              value: _selectedWarehouseId,
-              decoration: const InputDecoration(
-                  labelText: 'المستودع',
-                  border: OutlineInputBorder(),
-                  isDense: true),
-              items: [
-                const DropdownMenuItem(
-                    value: null, child: Text('جميع المستودعات')),
-                ..._warehouses.map((w) =>
-                    DropdownMenuItem(value: w.id, child: Text(w.name))),
-              ],
-              onChanged: (v) {
-                _selectedWarehouseId = v;
-                _loadData();
-              },
-            ),
-          ),
+          _buildFilter(),
+          const SizedBox(height: SdSpace.sm),
+          Expanded(child: _buildBody()),
         ],
       ),
     );
   }
 
+  Widget _buildFilter() {
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: SizedBox(
+        width: context.sd.isPhone ? double.infinity : 280,
+        child: DropdownButtonFormField<String?>(
+          value: _selectedWarehouseId,
+          decoration: _dec('المستودع'),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('جميع المستودعات')),
+            ..._warehouses.map((w) => DropdownMenuItem(value: w.id, child: Text(w.name))),
+          ],
+          onChanged: (v) {
+            _selectedWarehouseId = v;
+            _loadData();
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     if (_error != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-                onPressed: _loadData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة')),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل المخزون',
+          message: _error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(label: 'إعادة المحاولة', icon: Icons.refresh_rounded, kind: SdButtonKind.secondary, onPressed: _loadData),
         ),
       );
     }
     if (_stockRows.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.inventory_outlined,
-                size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
-            const Text('لا توجد بيانات مخزون',
-                style: TextStyle(fontSize: 16, color: Colors.grey)),
-          ],
-        ),
+      return const Center(
+        child: SdEmptyState(title: 'لا توجد بيانات مخزون', icon: Icons.inventory_outlined),
+      );
+    }
+
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: _stockRows.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _buildStockCard(_stockRows[i]),
       );
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-          columns: const [
-            DataColumn(label: Text('المادة')),
-            DataColumn(label: Text('المستودع')),
-            DataColumn(label: Text('الكمية الحالية'), numeric: true),
-            DataColumn(label: Text('المحجوز'), numeric: true),
-            DataColumn(label: Text('المتاح'), numeric: true),
-            DataColumn(label: Text('متوسط التكلفة'), numeric: true),
-            DataColumn(label: Text('القيمة'), numeric: true),
-            DataColumn(label: Text('الحالة')),
-          ],
-          rows: _stockRows.map((row) {
-            final current = (row['currentQuantity'] as num?)?.toInt() ?? 0;
-            final reserved =
-                (row['reservedQuantity'] as num?)?.toInt() ?? 0;
-            final available = current - reserved;
-            final avgCost =
-                (row['averageCost'] as num?)?.toDouble() ?? 0.0;
-            final value = current * avgCost;
-
-            return DataRow(cells: [
-              DataCell(Text(row['itemName'] as String? ?? '-')),
-              DataCell(Text(row['warehouseName'] as String? ?? '-')),
-              DataCell(Text('$current')),
-              DataCell(Text('$reserved')),
-              DataCell(Text('$available')),
-              DataCell(Text(fmtN(avgCost))),
-              DataCell(Text(fmtN(value))),
-              DataCell(_statusChip(row)),
-            ]);
-          }).toList(),
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: DataTable(
+            headingRowColor: WidgetStateProperty.all(SdColors.primary),
+            headingTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white),
+            dataTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w500, color: SdColors.ink),
+            columns: const [
+              DataColumn(label: Text('المادة')),
+              DataColumn(label: Text('المستودع')),
+              DataColumn(label: Text('الكمية الحالية'), numeric: true),
+              DataColumn(label: Text('المحجوز'), numeric: true),
+              DataColumn(label: Text('المتاح'), numeric: true),
+              DataColumn(label: Text('متوسط التكلفة'), numeric: true),
+              DataColumn(label: Text('القيمة'), numeric: true),
+              DataColumn(label: Text('الحالة')),
+            ],
+            rows: [
+              for (int i = 0; i < _stockRows.length; i++) _buildDataRow(_stockRows[i], i),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  DataRow _buildDataRow(Map<String, dynamic> row, int index) {
+    final current = (row['currentQuantity'] as num?)?.toInt() ?? 0;
+    final reserved = (row['reservedQuantity'] as num?)?.toInt() ?? 0;
+    final available = current - reserved;
+    final avgCost = (row['averageCost'] as num?)?.toDouble() ?? 0.0;
+    final value = current * avgCost;
+
+    return DataRow(
+      color: WidgetStateProperty.all(index.isEven ? SdColors.surface : SdColors.surfaceAlt),
+      cells: [
+        DataCell(Text(row['itemName'] as String? ?? '-')),
+        DataCell(Text(row['warehouseName'] as String? ?? '-')),
+        DataCell(Text('$current')),
+        DataCell(Text('$reserved')),
+        DataCell(Text('$available')),
+        DataCell(Text(fmtN(avgCost))),
+        DataCell(Text(fmtN(value))),
+        DataCell(_statusChip(row)),
+      ],
+    );
+  }
+
+  Widget _buildStockCard(Map<String, dynamic> row) {
+    final current = (row['currentQuantity'] as num?)?.toInt() ?? 0;
+    final reserved = (row['reservedQuantity'] as num?)?.toInt() ?? 0;
+    final available = current - reserved;
+    final avgCost = (row['averageCost'] as num?)?.toDouble() ?? 0.0;
+    final value = current * avgCost;
+
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(row['itemName'] as String? ?? '-', style: SdText.label, maxLines: 2, overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 8),
+              _statusChip(row),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SdInfoRow(label: 'المستودع', value: row['warehouseName'] as String? ?? '-'),
+          SdInfoRow(label: 'الكمية الحالية', value: '$current'),
+          SdInfoRow(label: 'المحجوز', value: '$reserved'),
+          SdInfoRow(label: 'المتاح', value: '$available'),
+          SdInfoRow(label: 'متوسط التكلفة', value: fmtN(avgCost)),
+          SdInfoRow(label: 'القيمة', value: fmtN(value)),
+        ],
       ),
     );
   }

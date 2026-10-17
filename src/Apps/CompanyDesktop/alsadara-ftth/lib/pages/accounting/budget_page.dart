@@ -7,6 +7,7 @@ import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
 import '../../services/accounting_service.dart';
 import '../../services/budget_service.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة إدارة الميزانية التقديرية
 class BudgetPage extends StatefulWidget {
@@ -97,111 +98,44 @@ class _BudgetPageState extends State<BudgetPage> {
   @override
   Widget build(BuildContext context) {
     final r = context.accR;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: Column(
-          children: [
-            _buildToolbar(r),
-            _buildMonthYearSelector(r),
-            const Divider(height: 1, color: AccountingTheme.borderColor),
-            Expanded(child: _buildBody(r)),
-          ],
-        ),
-        floatingActionButton: !_showVariance
-            ? FloatingActionButton.extended(
-                onPressed: _showAddBudgetDialog,
-                icon: const Icon(Icons.add),
-                label: Text('إضافة ميزانية',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                backgroundColor: const Color(0xFF5C6BC0),
-                foregroundColor: Colors.white,
-              )
-            : null,
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'الميزانية التقديرية',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.compare,
+            label: _showVariance ? 'عرض الميزانيات' : 'عرض الانحراف',
+            onPressed: () {
+              setState(() => _showVariance = !_showVariance);
+              _loadData();
+            },
+          ),
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loadData,
+          ),
+        ],
       ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  //  شريط الأدوات (Toolbar)
-  // ═══════════════════════════════════════════════════════════════
-
-  Widget _buildToolbar(AccountingResponsive r) {
-    return Container(
-      decoration: AccountingTheme.toolbar,
-      padding: r.toolbarPadding,
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back,
-                  color: AccountingTheme.textOnDark, size: r.iconM),
-              onPressed: () => Navigator.pop(context),
-            ),
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF5C6BC0), Color(0xFF3F51B5)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.calculate_outlined,
-                  color: Colors.white, size: r.iconS),
-            ),
-            SizedBox(width: r.spaceS),
-            Expanded(
-              child: Text(
-                'الميزانية التقديرية',
-                style: GoogleFonts.cairo(
-                  color: AccountingTheme.textOnDark,
-                  fontSize: r.headingSmall,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            // زر تبديل عرض الانحراف
-            Tooltip(
-              message: _showVariance ? 'عرض الميزانيات' : 'عرض الانحراف',
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    setState(() => _showVariance = !_showVariance);
-                    _loadData();
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: _showVariance
-                          ? AccountingTheme.neonPink.withValues(alpha: 0.2)
-                          : Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.compare,
-                      color: _showVariance
-                          ? AccountingTheme.neonPink
-                          : AccountingTheme.textOnDarkSecondary,
-                      size: r.iconM,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: r.spaceS),
-            IconButton(
-              icon: Icon(Icons.refresh,
-                  color: AccountingTheme.textOnDarkSecondary, size: r.iconM),
-              onPressed: _loadData,
-              tooltip: 'تحديث',
-            ),
-          ],
-        ),
+      floatingActionButton: !_showVariance
+          ? FloatingActionButton.extended(
+              onPressed: _showAddBudgetDialog,
+              icon: const Icon(Icons.add),
+              label: Text('إضافة ميزانية',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              backgroundColor: SdColors.primarySoft,
+              foregroundColor: Colors.white,
+            )
+          : null,
+      body: Column(
+        children: [
+          _buildMonthYearSelector(r),
+          const Divider(height: 1, color: AccountingTheme.borderColor),
+          Expanded(child: _buildBody(r)),
+        ],
       ),
     );
   }

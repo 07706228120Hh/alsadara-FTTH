@@ -46,19 +46,25 @@ class SdStatPedestal extends StatelessWidget {
       semanticLabel: '$label: $value',
       radius: SdRadius.xl,
       depth: 6,
-      padding: EdgeInsetsDirectional.fromSTEB(phone ? 16 : 20, phone ? 4 : 8, phone ? 8 : 12, phone ? 4 : 8),
+      padding: EdgeInsetsDirectional.fromSTEB(phone ? 14 : 16, 4, phone ? 8 : 10, 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('$value',
-                    style: (phone ? SdText.numberSm.copyWith(fontSize: 28) : SdText.number)
-                        .copyWith(color: t.edge)),
-                Text(label, style: SdText.label),
-                if (caption != null) Text(caption!, style: SdText.caption),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text('$value',
+                      maxLines: 1,
+                      style: SdText.numberSm.copyWith(fontSize: phone ? 22 : 25, color: t.edge)),
+                ),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: SdText.label),
+                if (caption != null)
+                  Text(caption!, maxLines: 1, overflow: TextOverflow.ellipsis, style: SdText.caption),
               ],
             ),
           ),
@@ -67,8 +73,8 @@ class SdStatPedestal extends StatelessWidget {
             duration: const Duration(milliseconds: 900),
             curve: SdMotion.bounce,
             builder: (_, v, __) => SizedBox(
-              width: phone ? 64 : 96,
-              height: phone ? 80 : 120,
+              width: phone ? 52 : 68,
+              height: phone ? 62 : 74,
               child: CustomPaint(painter: _PedestalPainter(v.clamp(0.0, 1.0), t)),
             ),
           ),

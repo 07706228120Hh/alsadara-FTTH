@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../frontend/frontend.dart';
 import '../models/device_models.dart';
 import '../models/quality_models.dart';
 import '../services/device_discovery_service.dart';
@@ -33,10 +34,10 @@ class QualityResultsPage extends StatefulWidget {
 }
 
 class _QualityResultsPageState extends State<QualityResultsPage> {
-  static const _indigo = Color(0xFF1A237E);
-  static const _teal = Color(0xFF00838F);
+  static const _indigo = SdColors.primary;
+  static const _teal = SdColors.accent;
   static const _purple = Color(0xFF6A1B9A);
-  static const _green = Color(0xFF2E7D32);
+  static const _green = SdColors.success;
 
   // ألوان البطل: خلفية كحلي/فحمي محايدة + accentان حيويان متمايزان + أبيض.
   static const _traceAccent = Nq3d.trace; // بنفسجي تتبّع المسار
@@ -91,14 +92,16 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Nq3d.groundAlt,
-        appBar: nq3dAppBar('نتيجة فحص الجودة', actions: [
-          IconButton(
-            tooltip: 'فحص متقدم',
-            icon: const Icon(Icons.science_rounded, color: Colors.white),
+    return SdPage(
+      padding: EdgeInsets.zero,
+      scrollable: false,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'نتيجة فحص الجودة',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.science_rounded,
+            label: 'فحص متقدم',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -109,34 +112,33 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
               ),
             ),
           ),
-        ]),
-        body: LayoutBuilder(
-          builder: (ctx, c) {
-            final w = c.maxWidth;
-            // نقاط الفصل: هاتف < 600، آيباد 600–1023، سطح المكتب ≥ 1024.
-            final isPhone = w < 600;
-            final isDesktop = w >= 1024;
-            // عمود واحد دائماً، لكن العرض مُقيَّد ومُوسَّط على الشاشات الكبيرة
-            // ليبدو كتطبيق هاتف أنيق بدل بطاقات ممطوطة.
-            final maxContentWidth =
-                isPhone ? w : (isDesktop ? 700.0 : 620.0);
-            return SingleChildScrollView(
-              padding: EdgeInsets.only(top: isPhone ? 0 : 8, bottom: 28),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxContentWidth),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildHero(isDesktop: isDesktop),
-                      ..._detailCards(context),
-                    ],
-                  ),
+        ],
+      ),
+      body: LayoutBuilder(
+        builder: (ctx, c) {
+          final w = c.maxWidth;
+          // نقاط الفصل: هاتف < 600، آيباد 600–1023، سطح المكتب ≥ 1024.
+          final isPhone = w < 600;
+          final isDesktop = w >= 1024;
+          // عمود واحد دائماً، لكن العرض مُقيَّد ومُوسَّط على الشاشات الكبيرة
+          // ليبدو كتطبيق هاتف أنيق بدل بطاقات ممطوطة.
+          final maxContentWidth = isPhone ? w : (isDesktop ? 700.0 : 620.0);
+          return SingleChildScrollView(
+            padding: EdgeInsets.only(top: isPhone ? 0 : 8, bottom: 28),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildHero(isDesktop: isDesktop),
+                    ..._detailCards(context),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1418,34 +1420,11 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
   Widget _buildActions(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      child: Raised3D(
-        onTap: () => Navigator.of(context).maybePop(),
-        radius: 16,
-        depth: 6,
-        padding: EdgeInsets.zero,
-        edgeColor: Nq3d.indigoDark,
-        glowColor: const Color(0x990F1660),
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF283593), Nq3d.indigo],
-        ),
-        semanticLabel: 'فحص جديد',
-        child: const SizedBox(
-          height: 52,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.refresh_rounded, color: Colors.white),
-              SizedBox(width: 8),
-              Text('فحص جديد',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15)),
-            ],
-          ),
-        ),
+      child: SdButton(
+        label: 'فحص جديد',
+        icon: Icons.refresh_rounded,
+        expand: true,
+        onPressed: () => Navigator.of(context).maybePop(),
       ),
     );
   }
@@ -1454,13 +1433,9 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.info_outline_rounded,
-            size: 16, color: Colors.grey.shade400),
+        const Icon(Icons.info_outline_rounded, size: 16, color: SdColors.faint),
         const SizedBox(width: 8),
-        Expanded(
-          child: Text(text,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-        ),
+        Expanded(child: Text(text, style: SdText.bodySm)),
       ],
     );
   }

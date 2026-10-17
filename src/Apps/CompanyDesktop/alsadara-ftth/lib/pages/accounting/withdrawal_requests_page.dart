@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/attendance_api_service.dart';
 import '../../services/vps_auth_service.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة إدارة طلبات سحب الأموال - قسم الحسابات
 class WithdrawalRequestsPage extends StatefulWidget {
@@ -109,24 +110,13 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: _bgPage,
-        appBar: AppBar(
-          backgroundColor: _bgCard,
-          elevation: 0,
-          centerTitle: true,
-          title: Text('طلبات سحب الأموال',
-              style: GoogleFonts.cairo(
-                  fontSize: context.accR.headingSmall,
-                  fontWeight: FontWeight.bold,
-                  color: _textDark)),
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios,
-                color: _textDark, size: context.accR.iconM),
-            onPressed: () => Navigator.pop(context),
-          ),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'طلبات سحب الأموال',
           actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh, color: _accentBlue),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
               onPressed: _loadAll,
             ),
           ],
@@ -370,22 +360,10 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
     }
 
     if (_requests.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(40),
-        decoration: BoxDecoration(
-          color: _bgCard,
-          borderRadius: BorderRadius.circular(context.accR.cardRadius),
-        ),
-        child: Column(
-          children: [
-            Icon(Icons.inbox_rounded,
-                size: context.accR.iconXL, color: _textGray.withOpacity(0.4)),
-            SizedBox(height: context.accR.spaceS),
-            Text('لا توجد طلبات',
-                style: GoogleFonts.cairo(
-                    color: _textGray, fontSize: context.accR.body)),
-          ],
+      return SdCard(
+        child: const SdEmptyState(
+          title: 'لا توجد طلبات',
+          icon: Icons.inbox_rounded,
         ),
       );
     }

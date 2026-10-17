@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/sas_report.dart';
-import 'sas_metrics.dart';
-import 'sas_state_views.dart';
 
-/// ودجات عرض خاصّة بتبويب «التصريح/البلنك» ومشتركين الانتهاء — عرض فقط.
+/// ودجات عرض خاصّة بتبويب «التصريح/البلنك» ومشتركين الانتهاء — عرض فقط، بنبرة sd.
 
 /// اللون الدلالي لكل حكم مقاطعة (متطابق مع منطق العرض في مرجع الوحدة).
 Color sasVerdictColor(SasVerdict v) {
   switch (v) {
     case SasVerdict.matched:
-      return AppTheme.successColor; // أخضر
+      return SdColors.success; // أخضر
     case SasVerdict.companySuspicious:
-      return AppTheme.warningColor; // برتقالي
+      return SdColors.warning; // برتقالي
     case SasVerdict.agentSuspicious:
-      return AppTheme.errorColor; // أحمر
+      return SdColors.danger; // أحمر
     case SasVerdict.noReport:
-      return Colors.grey.shade500; // رمادي
+      return SdColors.faint; // رمادي
   }
 }
 
@@ -41,37 +38,40 @@ class SasReconciliationCard extends StatelessWidget {
 
   const SasReconciliationCard({super.key, required this.recon});
 
-  static int _abs(int x) => x < 0 ? -x : x;
-
   @override
   Widget build(BuildContext context) {
     final color = sasVerdictColor(recon.verdict);
-    final diffColor =
-        recon.diff == 0 ? AppTheme.successColor : AppTheme.warningColor;
+    final diffColor = recon.diff == 0 ? SdColors.success : SdColors.warning;
 
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: SasUi.card(borderColor: color.withValues(alpha: 0.30)),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        border: Border.all(color: color.withValues(alpha: 0.30), width: 1.2),
+        boxShadow: SdDepth.raised(glow: color.withValues(alpha: 0.18)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // شارة الحكم الكبيرة.
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(SasUi.radiusPill.r),
+              borderRadius: BorderRadius.circular(SdRadius.pill),
               border: Border.all(color: color.withValues(alpha: 0.35)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(_verdictIcon(recon.verdict), size: 18.sp, color: color),
-                SizedBox(width: 7.w),
+                Icon(_verdictIcon(recon.verdict), size: 18, color: color),
+                const SizedBox(width: 7),
                 Text(
                   recon.verdict.labelAr,
-                  style: GoogleFonts.cairo(
-                    fontSize: 13.sp,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 13,
                     fontWeight: FontWeight.w900,
                     color: color,
                   ),
@@ -79,7 +79,7 @@ class SasReconciliationCard extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(height: 14.h),
+          const SizedBox(height: 14),
           // صفوف القيم.
           _kv('ما تنسبه الشركة إليك (فعلي)',
               recon.verdict == SasVerdict.noReport && recon.actual == 0
@@ -103,29 +103,24 @@ class SasReconciliationCard extends StatelessWidget {
             _divider(),
             _kv('المصدر', recon.source),
           ],
-          SizedBox(height: 12.h),
+          const SizedBox(height: 12),
           // الشرح العربي.
           Container(
-            padding: EdgeInsets.all(11.w),
+            padding: const EdgeInsets.all(11),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+              borderRadius: BorderRadius.circular(SdRadius.sm),
               border: Border.all(color: color.withValues(alpha: 0.18)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline_rounded, size: 16.sp, color: color),
-                SizedBox(width: 8.w),
+                Icon(Icons.info_outline_rounded, size: 16, color: color),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     recon.verdict.explanationAr,
-                    style: GoogleFonts.cairo(
-                      fontSize: 12.sp,
-                      height: 1.55,
-                      color: Colors.grey[800],
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: SdText.body,
                   ),
                 ),
               ],
@@ -138,27 +133,21 @@ class SasReconciliationCard extends StatelessWidget {
 
   Widget _kv(String k, String v, {Color? valueColor}) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 7.h),
+      padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
           Expanded(
             flex: 3,
-            child: Text(
-              k,
-              style: GoogleFonts.cairo(
-                fontSize: 12.5.sp,
-                color: Colors.grey[700],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: Text(k, style: SdText.bodySm),
           ),
-          SizedBox(width: 10.w),
+          const SizedBox(width: 10),
           Text(
             v,
-            style: GoogleFonts.cairo(
-              fontSize: 14.sp,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 14,
               fontWeight: FontWeight.w900,
-              color: valueColor ?? AppTheme.primaryColor,
+              color: valueColor ?? SdColors.primary,
             ),
           ),
         ],
@@ -166,10 +155,10 @@ class SasReconciliationCard extends StatelessWidget {
     );
   }
 
-  Widget _divider() => Divider(
+  Widget _divider() => const Divider(
         height: 1,
         thickness: 1,
-        color: Colors.grey.withValues(alpha: 0.10),
+        color: SdColors.divider,
       );
 }
 
@@ -212,14 +201,14 @@ class SasExpiryChips extends StatelessWidget {
         key: 'overdue',
         label: 'منتهٍ',
         count: counts.overdue,
-        color: AppTheme.errorColor,
+        color: SdColors.danger,
         icon: Icons.event_busy_rounded,
       ),
       SasExpiryChipDef(
         key: 'today',
         label: 'اليوم',
         count: counts.today,
-        color: AppTheme.warningColor,
+        color: SdColors.warning,
         icon: Icons.today_rounded,
       ),
       SasExpiryChipDef(
@@ -233,14 +222,14 @@ class SasExpiryChips extends StatelessWidget {
         key: 'soon7',
         label: 'أسبوع',
         count: counts.soon7,
-        color: AppTheme.infoColor,
+        color: SdColors.info,
         icon: Icons.date_range_rounded,
       ),
     ];
 
     return Wrap(
-      spacing: 8.w,
-      runSpacing: 8.h,
+      spacing: 8,
+      runSpacing: 8,
       children: [
         for (final d in defs) _chip(d),
       ],
@@ -252,15 +241,15 @@ class SasExpiryChips extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(SasUi.radiusPill.r),
+        borderRadius: BorderRadius.circular(SdRadius.pill),
         onTap: () => onSelect(isSel ? null : d.key),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             color: isSel
                 ? d.color.withValues(alpha: 0.18)
                 : d.color.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(SasUi.radiusPill.r),
+            borderRadius: BorderRadius.circular(SdRadius.pill),
             border: Border.all(
               color: d.color.withValues(alpha: isSel ? 0.55 : 0.25),
               width: isSel ? 1.6 : 1.2,
@@ -269,27 +258,29 @@ class SasExpiryChips extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(d.icon, size: 14.sp, color: d.color),
-              SizedBox(width: 6.w),
+              Icon(d.icon, size: 14, color: d.color),
+              const SizedBox(width: 6),
               Text(
                 d.label,
-                style: GoogleFonts.cairo(
-                  fontSize: 11.5.sp,
+                style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w800,
                   color: d.color,
                 ),
               ),
-              SizedBox(width: 6.w),
+              const SizedBox(width: 6),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 1.h),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                 decoration: BoxDecoration(
                   color: d.color,
-                  borderRadius: BorderRadius.circular(20.r),
+                  borderRadius: BorderRadius.circular(SdRadius.pill),
                 ),
                 child: Text(
                   '${d.count}',
-                  style: GoogleFonts.cairo(
-                    fontSize: 10.5.sp,
+                  style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                   ),

@@ -8,6 +8,7 @@ import '../../services/accounting_pdf_export_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة قائمة الدخل - Income Statement (الأرباح والخسائر)
 class IncomeStatementPage extends StatefulWidget {
@@ -113,95 +114,16 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
   @override
   Widget build(BuildContext context) {
     final ar = context.accR;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(ar),
-              Expanded(
-                child: _isLoading
-                    ? const AccountingSkeleton(rows: 8, columns: 4)
-                    : _errorMessage != null
-                        ? AccountingTheme.errorView(_errorMessage!, _loadData)
-                        : _buildContent(ar),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolbar(AccountingResponsive ar) {
-    final isMob = ar.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_forward_rounded, size: isMob ? 20 : 24),
-            tooltip: 'رجوع',
-            style:
-                IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonGreenGradient,
-              borderRadius: BorderRadius.circular(isMob ? 6 : 8),
-            ),
-            child: Icon(Icons.trending_up_rounded,
-                color: Colors.white, size: isMob ? 16 : ar.iconM),
-          ),
-          SizedBox(width: isMob ? 6 : ar.spaceM),
-          Text('قائمة الدخل',
-              style: GoogleFonts.cairo(
-                fontSize: isMob ? 14 : ar.headingMedium,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              )),
-          const Spacer(),
-          // فلتر التاريخ
-          InkWell(
-            onTap: () => _pickDateRange(context),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: isMob ? 6 : 10, vertical: isMob ? 3 : 5),
-              decoration: BoxDecoration(
-                color: AccountingTheme.bgSecondary,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AccountingTheme.borderColor),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.calendar_month,
-                      size: isMob ? 12 : 16,
-                      color: AccountingTheme.neonBlue),
-                  SizedBox(width: 4),
-                  Text(
-                    '${DateFormat('yyyy/MM/dd').format(_dateFrom)} - ${DateFormat('yyyy/MM/dd').format(_dateTo)}',
-                    style: GoogleFonts.cairo(
-                        fontSize: isMob ? 9 : ar.small,
-                        color: AccountingTheme.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(width: isMob ? 4 : 8),
-          IconButton(
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'قائمة الدخل',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.file_download_outlined,
+            label: 'تصدير Excel',
             onPressed: _isLoading
                 ? null
                 : () async {
@@ -230,32 +152,86 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
                       }
                     }
                   },
-            icon: Icon(Icons.file_download_outlined, size: isMob ? 18 : 22),
-            tooltip: 'تصدير Excel',
-            style:
-                IconButton.styleFrom(foregroundColor: AccountingTheme.neonGreen),
           ),
-          IconButton(
-            onPressed: _isLoading ? null : () async {
-              await AccountingPdfExportService.exportIncomeStatement(
-                revenue: _revenueAccounts,
-                expenses: _expenseAccounts,
-                totalRevenue: _totalRevenue,
-                totalExpenses: _totalExpenses,
-                netIncome: _netIncome,
-              );
-            },
-            icon: const Icon(Icons.picture_as_pdf),
-            tooltip: 'تصدير PDF',
-            style: IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
+          SdAppBarAction(
+            icon: Icons.picture_as_pdf,
+            label: 'تصدير PDF',
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    await AccountingPdfExportService.exportIncomeStatement(
+                      revenue: _revenueAccounts,
+                      expenses: _expenseAccounts,
+                      totalRevenue: _totalRevenue,
+                      totalExpenses: _totalExpenses,
+                      netIncome: _netIncome,
+                    );
+                  },
           ),
-          IconButton(
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
             onPressed: _loadData,
-            icon: Icon(Icons.refresh_rounded, size: isMob ? 18 : 22),
-            tooltip: 'تحديث',
-            style:
-                IconButton.styleFrom(foregroundColor: AccountingTheme.neonBlue),
           ),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildDateBar(ar),
+          Expanded(
+            child: _isLoading
+                ? const AccountingSkeleton(rows: 8, columns: 4)
+                : _errorMessage != null
+                    ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                    : _buildContent(ar),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// شريط فلتر التاريخ (نُقل من شريط الأدوات القديم — نفس المنطق)
+  Widget _buildDateBar(AccountingResponsive ar) {
+    final isMob = ar.isMobile;
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceS),
+      decoration: const BoxDecoration(
+        color: AccountingTheme.bgCard,
+        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+      ),
+      child: Row(
+        children: [
+          // فلتر التاريخ
+          InkWell(
+            onTap: () => _pickDateRange(context),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: isMob ? 6 : 10, vertical: isMob ? 3 : 5),
+              decoration: BoxDecoration(
+                color: AccountingTheme.bgSecondary,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AccountingTheme.borderColor),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.calendar_month,
+                      size: isMob ? 12 : 16,
+                      color: AccountingTheme.neonBlue),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${DateFormat('yyyy/MM/dd').format(_dateFrom)} - ${DateFormat('yyyy/MM/dd').format(_dateTo)}',
+                    style: GoogleFonts.cairo(
+                        fontSize: isMob ? 9 : ar.small,
+                        color: AccountingTheme.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Spacer(),
         ],
       ),
     );

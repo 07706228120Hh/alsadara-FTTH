@@ -96,19 +96,19 @@ class SdLayout {
   // ── قيم جاهزة ──
 
   /// الحشو الجانبي للصفحة.
-  double get gutter => pick(phone: 14, tablet: 20, desktop: 24);
+  double get gutter => pick(phone: 12, tablet: 16, desktop: 20);
 
   /// المسافة بين أقسام الصفحة.
-  double get sectionGap => pick(phone: 18, tablet: 22, desktop: 28);
+  double get sectionGap => pick(phone: 12, tablet: 14, desktop: 18);
 
   /// المسافة بين البطاقات في الشبكات.
-  double get gridGap => pick(phone: 12, tablet: 16, desktop: 18);
+  double get gridGap => pick(phone: 10, tablet: 12, desktop: 14);
 
   /// أدنى ارتفاع لهدف اللمس/النقر.
   double get touchTarget => touch ? 48 : 44;
 
   /// حجم مكعّب الأيقونة في البلاطات.
-  double get cubeSize => pick(phone: 44, tablet: 50, desktop: 52);
+  double get cubeSize => pick(phone: 32, tablet: 36, desktop: 40);
 
   /// حجم عنوان الصفحة في الشريط العلوي.
   double get appBarTitle => pick(phone: 16, tablet: 17, desktop: 18);

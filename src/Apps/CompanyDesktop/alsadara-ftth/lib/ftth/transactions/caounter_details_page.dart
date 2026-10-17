@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:excel/excel.dart' as excel;
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../permissions/permissions.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
@@ -536,7 +537,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.indigo,
+                                color: SdColors.primary,
                               ),
                             ),
                           ),
@@ -868,11 +869,11 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.lock, color: Colors.indigo),
+              Icon(Icons.lock, color: SdColors.primary),
               SizedBox(width: 8),
               Text(
                 'كلمة المرور المطلوبة',
-                style: TextStyle(color: Colors.indigo),
+                style: TextStyle(color: SdColors.primary),
               ),
             ],
           ),
@@ -887,7 +888,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               SizedBox(height: 8),
               Text(
                 'كلمة المرور موجودة في الصلاحيات > كلمة المرور الافتراضية',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 12, color: SdColors.muted),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 16),
@@ -909,7 +910,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('❌ كلمة المرور غير صحيحة'),
-                        backgroundColor: Colors.red,
+                        backgroundColor: SdColors.danger,
                       ),
                     );
                   }
@@ -920,7 +921,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('إلغاء', style: TextStyle(color: Colors.grey)),
+              child: Text('إلغاء', style: TextStyle(color: SdColors.muted)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -931,13 +932,13 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('❌ كلمة المرور غير صحيحة'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: SdColors.danger,
                     ),
                   );
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
+                backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
               ),
               child: Text('تأكيد'),
@@ -965,7 +966,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('تفاصيل البيانات - ${widget.username}'),
-        backgroundColor: Colors.indigo,
+        backgroundColor: SdColors.primary,
         centerTitle: true,
         actions: [
           IconButton(
@@ -999,7 +1000,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                     child: Container(
                       padding: EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: Colors.red,
+                        color: SdColors.danger,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       constraints: BoxConstraints(
@@ -1024,7 +1025,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                 builder: (context) {
                   return AlertDialog(
                     title: Text('تصفية النتائج',
-                        style: TextStyle(color: Colors.indigo)),
+                        style: TextStyle(color: SdColors.primary)),
                     content: SingleChildScrollView(
                       child: Column(
                         children: [
@@ -1054,7 +1055,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 16),
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.shade400),
+                                border: Border.all(color: SdColors.faint),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Row(
@@ -1071,13 +1072,13 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                         fontSize: 16,
                                         color: _selectedEventTypes.isNotEmpty
                                             ? Colors.black87
-                                            : Colors.grey[600],
+                                            : SdColors.muted,
                                       ),
                                     ),
                                   ),
                                   Icon(
                                     Icons.arrow_drop_down,
-                                    color: Colors.grey[600],
+                                    color: SdColors.muted,
                                   ),
                                 ],
                               ),
@@ -1142,7 +1143,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                       TextButton(
                         onPressed: _resetFilters,
                         child: Text('إلغاء التصفية',
-                            style: TextStyle(color: Colors.red)),
+                            style: TextStyle(color: SdColors.danger)),
                       ),
                       TextButton(
                         onPressed: () {
@@ -1150,7 +1151,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                           Navigator.pop(context);
                         },
                         child: Text('تطبيق التصفية',
-                            style: TextStyle(color: Colors.indigo)),
+                            style: TextStyle(color: SdColors.primary)),
                       ),
                     ],
                   );
@@ -1168,7 +1169,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               const PopupMenuItem<String>(
                 value: 'google_sheets',
                 child: ListTile(
-                  leading: Icon(Icons.cloud_upload, color: Colors.green),
+                  leading: Icon(Icons.cloud_upload, color: SdColors.success),
                   title: Text('تصدير إلى جداول جوجل'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -1176,7 +1177,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               const PopupMenuItem<String>(
                 value: 'excel',
                 child: ListTile(
-                  leading: Icon(Icons.file_download, color: Colors.blue),
+                  leading: Icon(Icons.file_download, color: SdColors.info),
                   title: Text('تصدير إلى Excel'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -1186,7 +1187,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
         ],
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator(color: Colors.indigo))
+          ? Center(child: CircularProgressIndicator(color: SdColors.primary))
           : SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -1199,16 +1200,16 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                             padding: EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               color: message.startsWith('✅')
-                                  ? Colors.green[50]
-                                  : Colors.red[50],
+                                  ? SdColors.successTint
+                                  : SdColors.dangerTint,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: SelectableText(
                               message,
                               style: TextStyle(
                                 color: message.startsWith('✅')
-                                    ? Colors.green[700]
-                                    : Colors.red,
+                                    ? SdColors.successEdge
+                                    : SdColors.danger,
                                 fontSize: 16,
                               ),
                             ),
@@ -1222,9 +1223,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                         margin: EdgeInsets.only(bottom: 20),
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.blue[50],
+                          color: SdColors.infoTint,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.blue[200]!),
+                          border: Border.all(color: SdColors.infoTintEdge),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1232,13 +1233,13 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                             Row(
                               children: [
                                 Icon(Icons.filter_list,
-                                    color: Colors.blue[700], size: 20),
+                                    color: SdColors.infoEdge, size: 20),
                                 SizedBox(width: 8),
                                 Text(
                                   'الفلاتر النشطة:',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blue[700],
+                                    color: SdColors.infoEdge,
                                   ),
                                 ),
                                 Spacer(),
@@ -1246,7 +1247,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                   onPressed: _resetFilters,
                                   child: Text(
                                     'مسح الفلاتر',
-                                    style: TextStyle(color: Colors.red),
+                                    style: TextStyle(color: SdColors.danger),
                                   ),
                                 ),
                               ],
@@ -1259,31 +1260,31 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                 if (_selectedZone != null)
                                   Chip(
                                     label: Text('المنطقة: $_selectedZone'),
-                                    backgroundColor: Colors.blue[100],
+                                    backgroundColor: SdColors.infoTint,
                                   ),
                                 if (_usernameController.text.isNotEmpty)
                                   Chip(
                                     label: Text(
                                         'المستخدم: ${_usernameController.text}'),
-                                    backgroundColor: Colors.green[100],
+                                    backgroundColor: SdColors.successTint,
                                   ),
                                 if (_selectedEventTypes.isNotEmpty)
                                   Chip(
                                     label: Text(
                                         'الأحداث: ${_selectedEventTypes.length}'),
-                                    backgroundColor: Colors.orange[100],
+                                    backgroundColor: SdColors.warningTint,
                                   ),
                                 if (_fromDateController.text.isNotEmpty)
                                   Chip(
                                     label: Text(
                                         'من: ${_fromDateController.text.split('T')[0]}'),
-                                    backgroundColor: Colors.purple[100],
+                                    backgroundColor: SdColors.platformTint,
                                   ),
                                 if (_toDateController.text.isNotEmpty)
                                   Chip(
                                     label: Text(
                                         'إلى: ${_toDateController.text.split('T')[0]}'),
-                                    backgroundColor: Colors.purple[100],
+                                    backgroundColor: SdColors.platformTint,
                                   ),
                               ],
                             ),
@@ -1297,7 +1298,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                           child: _buildInfoCard(
                             title: 'العدد الإجمالي',
                             value: '$_totalCount',
-                            color: Colors.blue[50]!,
+                            color: SdColors.infoTint,
                           ),
                         ),
                         SizedBox(width: 10),
@@ -1305,7 +1306,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                           child: _buildInfoCard(
                             title: 'المجموع الكلي',
                             value: '$formattedTotalAmount  ',
-                            color: Colors.green[50]!,
+                            color: SdColors.successTint,
                           ),
                         ),
                       ],
@@ -1317,9 +1318,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                         width: double.infinity,
                         padding: EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.indigo[50],
+                          color: SdColors.primaryTint,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.indigo[200]!),
+                          border: Border.all(color: SdColors.primaryTintEdge),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1327,20 +1328,20 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                             Row(
                               children: [
                                 Icon(Icons.account_balance_wallet,
-                                    color: Colors.indigo, size: 24),
+                                    color: SdColors.primary, size: 24),
                                 SizedBox(width: 8),
                                 Text(
                                   'بيانات المحفظة الحالية',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.indigo[800],
+                                    color: SdColors.primaryEdge,
                                   ),
                                 ),
                                 Spacer(),
                                 IconButton(
                                   icon:
-                                      Icon(Icons.refresh, color: Colors.indigo),
+                                      Icon(Icons.refresh, color: SdColors.primary),
                                   tooltip: 'تحديث بيانات المحفظة',
                                   onPressed: _fetchWalletBalance,
                                 ),
@@ -1355,7 +1356,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                     NumberFormat('#,###')
                                         .format(_walletBalance.toInt()),
                                     Icons.account_balance,
-                                    Colors.green,
+                                    SdColors.success,
                                   ),
                                 ),
                                 SizedBox(width: 12),
@@ -1365,7 +1366,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                     NumberFormat('#,###')
                                         .format(_commission.toInt()),
                                     Icons.percent,
-                                    Colors.orange,
+                                    SdColors.warning,
                                   ),
                                 ),
                               ],
@@ -1377,7 +1378,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                 NumberFormat('#,###')
                                     .format(_teamMemberWalletBalance.toInt()),
                                 Icons.group,
-                                Colors.blue,
+                                SdColors.info,
                               ),
                             ],
                             SizedBox(height: 12),
@@ -1386,19 +1387,19 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey[300]!),
+                                border: Border.all(color: SdColors.divider),
                               ),
                               child: Row(
                                 children: [
                                   Icon(Icons.info_outline,
-                                      color: Colors.grey[600], size: 16),
+                                      color: SdColors.muted, size: 16),
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       'هذه البيانات محدثة من المصدر ويمكن إعادة تحديثها في أي وقت',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey[600],
+                                        color: SdColors.muted,
                                       ),
                                     ),
                                   ),
@@ -1468,9 +1469,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       CircleAvatar(
-                                        backgroundColor: Colors.indigo.shade100,
+                                        backgroundColor: SdColors.primaryTint,
                                         child: const Icon(Icons.event,
-                                            color: Colors.indigo, size: 20),
+                                            color: SdColors.primary, size: 20),
                                       ),
                                       const SizedBox(width: 10),
                                       Expanded(
@@ -1486,14 +1487,14 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                                     style: const TextStyle(
                                                       fontWeight:
                                                           FontWeight.bold,
-                                                      color: Colors.indigo,
+                                                      color: SdColors.primary,
                                                     ),
                                                   ),
                                                 ),
                                                 PopupMenuButton<String>(
                                                   icon: Icon(Icons.more_vert,
                                                       size: 18,
-                                                      color: Colors.grey[600]),
+                                                      color: SdColors.muted),
                                                   tooltip: 'المزيد من التفاصيل',
                                                   onSelected: (String value) {
                                                     switch (value) {
@@ -1520,7 +1521,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                                       child: ListTile(
                                                         leading: Icon(
                                                             Icons.info_outline,
-                                                            color: Colors.blue),
+                                                            color: SdColors.info),
                                                         title: Text(
                                                             'تفاصيل العملية'),
                                                         contentPadding:
@@ -1534,7 +1535,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                                             Icons
                                                                 .account_balance_wallet,
                                                             color:
-                                                                Colors.green),
+                                                                SdColors.success),
                                                         title: Text(
                                                             'محفظة العميل'),
                                                         contentPadding:
@@ -1547,7 +1548,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                                         leading: Icon(
                                                             Icons.code,
                                                             color:
-                                                                Colors.orange),
+                                                                SdColors.warning),
                                                         title: Text(
                                                             'البيانات الكاملة'),
                                                         contentPadding:
@@ -1568,30 +1569,30 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                             _buildDetailRow('المبلغ', amountStr,
                                                 valueColor: amountNum != null
                                                     ? (amountNum >= 0
-                                                        ? Colors.green.shade700
-                                                        : Colors.red.shade700)
+                                                        ? SdColors.successEdge
+                                                        : SdColors.dangerEdge)
                                                     : Colors.black87,
                                                 isBold: true),
                                             _buildDetailRow('نقدي',
                                                 isMonetary ? '✅ نعم' : '❌ لا',
                                                 valueColor: isMonetary
-                                                    ? Colors.green.shade700
-                                                    : Colors.red.shade700),
+                                                    ? SdColors.successEdge
+                                                    : SdColors.dangerEdge),
                                             _buildDetailRow('ناجح',
                                                 isSuccessful ? '✅ نعم' : '❌ لا',
                                                 valueColor: isSuccessful
-                                                    ? Colors.green.shade700
-                                                    : Colors.red.shade700),
+                                                    ? SdColors.successEdge
+                                                    : SdColors.dangerEdge),
                                             if (walletOwnerType != '-')
                                               _buildDetailRow('نوع المحفظة',
                                                   walletOwnerType,
                                                   valueColor:
-                                                      Colors.blue.shade700),
+                                                      SdColors.infoEdge),
                                             if (walletOwnerTypeId != '-')
                                               _buildDetailRow(
                                                   'معرف ', walletOwnerTypeId,
                                                   valueColor:
-                                                      Colors.blue.shade600,
+                                                      SdColors.info,
                                                   small: true),
                                             _buildDetailRow(
                                                 'التاريخ', createdFmt,
@@ -1619,7 +1620,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.3),
+              color: SdColors.muted.withValues(alpha: 0.3),
               spreadRadius: 1,
               blurRadius: 5,
               offset: Offset(0, -2),
@@ -1641,7 +1642,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                       }
                     : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigo,
+                  backgroundColor: SdColors.primary,
                   foregroundColor: Colors.white,
                 ),
                 child: Text('السابق'),
@@ -1650,15 +1651,15 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.indigo.shade50,
+                  color: SdColors.primaryTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.indigo.shade200),
+                  border: Border.all(color: SdColors.primaryTintEdge),
                 ),
                 child: Text(
                   '$_currentPage / $_totalPages',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.indigo.shade700,
+                    color: SdColors.primaryEdge,
                   ),
                 ),
               ),
@@ -1674,7 +1675,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                       }
                     : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigo,
+                  backgroundColor: SdColors.primary,
                   foregroundColor: Colors.white,
                 ),
                 child: Text('التالي'),
@@ -1703,7 +1704,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.indigo,
+                color: SdColors.primary,
               ),
             ),
             SizedBox(height: 10),
@@ -1733,9 +1734,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: SdColors.divider),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -1761,7 +1762,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               style: TextStyle(
                 fontSize: small ? 11 : 12,
                 fontWeight: FontWeight.w600,
-                color: Colors.indigo.shade700,
+                color: SdColors.primaryEdge,
               ),
             ),
           ),
@@ -1802,7 +1803,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
+                    color: SdColors.ink,
                   ),
                 ),
               ),
@@ -1835,14 +1836,14 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue),
+                  Icon(Icons.info_outline, color: SdColors.info),
                   SizedBox(width: 8),
                   Text(
                     'تفاصيل العملية',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+                      color: SdColors.info,
                     ),
                   ),
                   Spacer(),
@@ -1960,14 +1961,14 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.account_balance_wallet, color: Colors.green),
+                  Icon(Icons.account_balance_wallet, color: SdColors.success),
                   SizedBox(width: 8),
                   Text(
                     'محفظة العميل',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                      color: SdColors.success,
                     ),
                   ),
                   Spacer(),
@@ -1990,7 +1991,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                       return Center(
                         child: Text(
                           'خطأ في جلب البيانات: ${snapshot.error}',
-                          style: TextStyle(color: Colors.red),
+                          style: TextStyle(color: SdColors.danger),
                         ),
                       );
                     }
@@ -2043,14 +2044,14 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.code, color: Colors.orange),
+                  Icon(Icons.code, color: SdColors.warning),
                   SizedBox(width: 8),
                   Text(
                     'البيانات الكاملة (JSON)',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.orange,
+                      color: SdColors.warning,
                     ),
                   ),
                   Spacer(),
@@ -2082,9 +2083,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                     width: double.infinity,
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: SelectableText(
                       const JsonEncoder.withIndent('  ').convert(transaction),
@@ -2109,9 +2110,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
       width: double.infinity,
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2121,7 +2122,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.indigo,
+              color: SdColors.primary,
             ),
           ),
           SizedBox(height: 8),
@@ -2137,7 +2138,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
+                          color: SdColors.ink,
                         ),
                       ),
                     ),
@@ -2188,7 +2189,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                 Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.indigo[50],
+                    color: SdColors.primaryTint,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(8),
                       topRight: Radius.circular(8),
@@ -2196,7 +2197,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.receipt_long, color: Colors.indigo, size: 28),
+                      Icon(Icons.receipt_long, color: SdColors.primary, size: 28),
                       SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -2207,7 +2208,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.indigo[800],
+                                color: SdColors.primaryEdge,
                               ),
                             ),
                             Text(
@@ -2215,14 +2216,14 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                                   transaction['eventType']?.toString() ?? ''),
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.indigo[600],
+                                color: SdColors.primary,
                               ),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close, color: Colors.indigo),
+                        icon: Icon(Icons.close, color: SdColors.primary),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                     ],
@@ -2230,11 +2231,11 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                 ),
                 // Tabs
                 Container(
-                  color: Colors.indigo[50],
+                  color: SdColors.primaryTint,
                   child: TabBar(
-                    labelColor: Colors.indigo[800],
-                    unselectedLabelColor: Colors.indigo[400],
-                    indicatorColor: Colors.indigo,
+                    labelColor: SdColors.primaryEdge,
+                    unselectedLabelColor: SdColors.primaryLight,
+                    indicatorColor: SdColors.primary,
                     tabs: [
                       Tab(icon: Icon(Icons.info), text: 'التفاصيل'),
                       Tab(
@@ -2393,12 +2394,12 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
             width: double.infinity,
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: transactionAmount >= 0 ? Colors.green[50] : Colors.red[50],
+              color: transactionAmount >= 0 ? SdColors.successTint : SdColors.dangerTint,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: transactionAmount >= 0
-                    ? Colors.green[300]!
-                    : Colors.red[300]!,
+                    ? SdColors.successTintEdge
+                    : SdColors.dangerTintEdge,
               ),
             ),
             child: Row(
@@ -2408,8 +2409,8 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                       ? Icons.add_circle
                       : Icons.remove_circle,
                   color: transactionAmount >= 0
-                      ? Colors.green[700]
-                      : Colors.red[700],
+                      ? SdColors.successEdge
+                      : SdColors.dangerEdge,
                   size: 28,
                 ),
                 SizedBox(width: 12),
@@ -2425,8 +2426,8 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: transactionAmount >= 0
-                              ? Colors.green[800]
-                              : Colors.red[800],
+                              ? SdColors.successEdge
+                              : SdColors.dangerEdge,
                         ),
                       ),
                       Text(
@@ -2435,8 +2436,8 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: transactionAmount >= 0
-                              ? Colors.green[700]
-                              : Colors.red[700],
+                              ? SdColors.successEdge
+                              : SdColors.dangerEdge,
                         ),
                       ),
                     ],
@@ -2475,13 +2476,13 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
             width: double.infinity,
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.orange[50],
+              color: SdColors.warningTint,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange[300]!),
+              border: Border.all(color: SdColors.warningTintEdge),
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: Colors.orange[700], size: 20),
+                Icon(Icons.info_outline, color: SdColors.warningEdge, size: 20),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -2490,7 +2491,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                         : 'هذه الأرصدة محسوبة بناءً على الرصيد الحالي ومبلغ العملية. قد تختلف عن الأرصدة الفعلية وقت تنفيذ العملية.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.orange[700],
+                      color: SdColors.warningEdge,
                     ),
                   ),
                 ),
@@ -2527,21 +2528,21 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  Icon(Icons.error_outline, color: SdColors.danger, size: 48),
                   SizedBox(height: 16),
                   Text(
                     'خطأ في جلب البيانات',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.red,
+                      color: SdColors.danger,
                     ),
                   ),
                   SizedBox(height: 8),
                   Text(
                     snapshot.error.toString(),
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.red[700]),
+                    style: TextStyle(color: SdColors.dangerEdge),
                   ),
                 ],
               ),
@@ -2553,7 +2554,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.info_outline, color: Colors.grey, size: 48),
+                  Icon(Icons.info_outline, color: SdColors.muted, size: 48),
                   SizedBox(height: 16),
                   Text('لا توجد بيانات للمحفظة'),
                 ],
@@ -2592,7 +2593,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.orange[800],
+                  color: SdColors.warningEdge,
                 ),
               ),
               Spacer(),
@@ -2611,7 +2612,7 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
                 icon: Icon(Icons.copy, size: 16),
                 label: Text('نسخ'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: SdColors.warning,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -2625,9 +2626,9 @@ class _CaounterDetailsPageState extends State<CaounterDetailsPage> {
               width: double.infinity,
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: SdColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(color: SdColors.divider),
               ),
               child: SelectableText(
                 const JsonEncoder.withIndent('  ').convert(transaction),

@@ -8,6 +8,7 @@ import '../../services/accounting_pdf_export_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة ميزان المراجعة - Trial Balance
 class TrialBalancePage extends StatefulWidget {
@@ -163,73 +164,23 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
   @override
   Widget build(BuildContext context) {
     final ar = context.accR;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(ar),
-              _buildSummaryBar(ar),
-              _buildFilterBar(ar),
-              Expanded(
-                child: _isLoading
-                    ? const AccountingSkeleton(rows: 8, columns: 4)
-                    : _errorMessage != null
-                        ? AccountingTheme.errorView(_errorMessage!, _loadData)
-                        : _buildTable(ar),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolbar(AccountingResponsive ar) {
-    final isMob = ar.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_forward_rounded, size: isMob ? 20 : 24),
-            tooltip: 'رجوع',
-            style:
-                IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonBlueGradient,
-              borderRadius: BorderRadius.circular(isMob ? 6 : 8),
-            ),
-            child: Icon(Icons.balance_rounded,
-                color: Colors.white, size: isMob ? 16 : ar.iconM),
-          ),
-          SizedBox(width: isMob ? 6 : ar.spaceM),
-          Text('ميزان المراجعة',
-              style: GoogleFonts.cairo(
-                fontSize: isMob ? 14 : ar.headingMedium,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              )),
-          const Spacer(),
-          IconButton(
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'ميزان المراجعة',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.file_download_outlined,
+            label: 'تصدير Excel',
             onPressed: _isLoading
                 ? null
                 : () async {
                     try {
-                      final path = await AccountingExportService.exportTrialBalance(
-                          _filteredAccounts);
+                      final path =
+                          await AccountingExportService.exportTrialBalance(
+                              _filteredAccounts);
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('تم التصدير: $path')),
@@ -243,25 +194,34 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                       }
                     }
                   },
-            icon: Icon(Icons.file_download_outlined, size: isMob ? 18 : 22),
-            tooltip: 'تصدير Excel',
-            style:
-                IconButton.styleFrom(foregroundColor: AccountingTheme.neonGreen),
           ),
-          IconButton(
-            onPressed: _isLoading ? null : () async {
-              await AccountingPdfExportService.exportTrialBalance(_filteredAccounts);
-            },
-            icon: const Icon(Icons.picture_as_pdf),
-            tooltip: 'تصدير PDF',
-            style: IconButton.styleFrom(foregroundColor: AccountingTheme.textSecondary),
+          SdAppBarAction(
+            icon: Icons.picture_as_pdf,
+            label: 'تصدير PDF',
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    await AccountingPdfExportService.exportTrialBalance(
+                        _filteredAccounts);
+                  },
           ),
-          IconButton(
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
             onPressed: _loadData,
-            icon: Icon(Icons.refresh_rounded, size: isMob ? 18 : 22),
-            tooltip: 'تحديث',
-            style:
-                IconButton.styleFrom(foregroundColor: AccountingTheme.neonBlue),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          _buildSummaryBar(ar),
+          _buildFilterBar(ar),
+          Expanded(
+            child: _isLoading
+                ? const AccountingSkeleton(rows: 8, columns: 4)
+                : _errorMessage != null
+                    ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                    : _buildTable(ar),
           ),
         ],
       ),

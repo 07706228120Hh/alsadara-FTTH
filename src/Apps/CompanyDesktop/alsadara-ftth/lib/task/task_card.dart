@@ -18,6 +18,7 @@ import '../inventory/services/inventory_api_service.dart';
 import '../services/vps_auth_service.dart';
 import '../utils/responsive_helper.dart';
 import 'task_status_colors.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 
 /// TaskCard محسن مع عرض جميل لعنوان المهم�� وحل لجميع ����لأخطاء
 class TaskCard extends StatefulWidget {
@@ -112,26 +113,17 @@ class _TaskCardState extends State<TaskCard> {
       margin: EdgeInsets.symmetric(
           vertical: isSmall ? 3 : 5, horizontal: isSmall ? 4 : 12),
       decoration: BoxDecoration(
-        color: isCollectionTask ? const Color(0xFFFFF8E1) : Colors.white,
-        borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
+        color: isCollectionTask ? SdColors.warningTint : SdColors.surface,
+        borderRadius: BorderRadius.circular(isSmall ? 12 : 16),
         border: Border.all(
-          color: isCollectionTask ? const Color(0xFFFF8F00) : Colors.black87,
-          width: isCollectionTask ? 2.0 : 2.5,
+          color: isCollectionTask ? SdColors.warningTintEdge : SdColors.cardEdge,
+          width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isCollectionTask
-                ? const Color(0xFFFF8F00).withValues(alpha: 0.18)
-                : statusColor.withValues(alpha: 0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        boxShadow: SdDepth.raised(
+          edge: isCollectionTask ? SdColors.warningTintEdge : SdColors.cardEdge,
+          depth: SdDepth.small,
+          glow: statusColor.withValues(alpha: 0.12),
+        ),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
@@ -227,6 +219,7 @@ class _TaskCardState extends State<TaskCard> {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // أيقونة الأولوية في دائرة
           Container(
@@ -257,60 +250,22 @@ class _TaskCardState extends State<TaskCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Expanded(
-                    child: Text(
-                      widget.task.title.isNotEmpty
-                          ? widget.task.title
-                          : 'مهمة غير محددة',
-                      style: TextStyle(
-                        fontSize: isSmall ? 12 : 15,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A2E),
-                        letterSpacing: 0.3,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                // نوع المهمة — سطر مستقل يُقصّ بـ ellipsis
+                Text(
+                  widget.task.title.isNotEmpty
+                      ? widget.task.title
+                      : 'مهمة غير محددة',
+                  style: TextStyle(
+                    fontSize: isSmall ? 12 : 15,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1A1A2E),
+                    letterSpacing: 0.3,
                   ),
-                  if (_isCollectionTask() && widget.task.hasAmount) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF8F00),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${widget.task.amountFormatted} د.ع',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white),
-                      ),
-                    ),
-                  ],
-                  if (!_isMaintenanceTask() && widget.task.hasDeliveryFee) ...[
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00897B),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${_getFeeLabel()} ${widget.task.deliveryFeeFormatted} د.ع',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ]),
-                const SizedBox(height: 4),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                // القسم ورقم المهمة — يُقصّ بـ ellipsis فلا يتجاوز
                 Text(
                   '${widget.task.department} • #${widget.task.id}',
                   style: TextStyle(
@@ -318,21 +273,61 @@ class _TaskCardState extends State<TaskCard> {
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.w500,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                // الشارات (أجور التوصيل/التحصيل + SLA + الحالة) تلتفّ لسطر ثانٍ
+                // على الهاتف الضيّق بدل التجاوز الأفقي.
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (_isCollectionTask() && widget.task.hasAmount)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF8F00),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${widget.task.amountFormatted} د.ع',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
+                        ),
+                      ),
+                    if (!_isMaintenanceTask() && widget.task.hasDeliveryFee)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00897B),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_getFeeLabel()} ${widget.task.deliveryFeeFormatted} د.ع',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
+                        ),
+                      ),
+                    // مؤشر SLA
+                    if (widget.task.hasSla &&
+                        !widget.task.isCompleted &&
+                        !widget.task.isCancelled)
+                      _buildSlaIndicator(),
+                    // حالة المهمة
+                    _buildCompactStatusBadge(),
+                  ],
                 ),
               ],
             ),
           ),
-
-          // مؤشر SLA
-          if (widget.task.hasSla &&
-              !widget.task.isCompleted &&
-              !widget.task.isCancelled)
-            _buildSlaIndicator(),
-
-          const SizedBox(width: 6),
-
-          // حالة المهمة
-          _buildCompactStatusBadge(),
         ],
       ),
     );
@@ -560,12 +555,9 @@ class _TaskCardState extends State<TaskCard> {
         vertical: isSmall ? 3 : (compact ? 5 : 7),
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.black87,
-          width: 1.5,
-        ),
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        border: Border.all(color: SdColors.divider, width: 1),
       ),
       child: Row(
         children: [
@@ -585,8 +577,9 @@ class _TaskCardState extends State<TaskCard> {
                 Text(
                   label,
                   style: TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: compact ? 10 : 11,
-                    color: color.withValues(alpha: 0.7),
+                    color: SdColors.muted,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
                   ),
@@ -595,8 +588,9 @@ class _TaskCardState extends State<TaskCard> {
                 Text(
                   value.isNotEmpty ? value : '-',
                   style: TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: compact ? 10 : 12,
-                    color: const Color(0xFF2C3E50),
+                    color: SdColors.ink,
                     fontWeight: FontWeight.w700,
                   ),
                   maxLines: 1,
@@ -645,9 +639,9 @@ class _TaskCardState extends State<TaskCard> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.black87, width: 1.5),
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        border: Border.all(color: SdColors.divider, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -733,16 +727,16 @@ class _TaskCardState extends State<TaskCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black87, width: 1.5),
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        border: Border.all(color: SdColors.divider, width: 1),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.08),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(5),
             ),
             child: Icon(icon, size: 12, color: color),
@@ -754,17 +748,19 @@ class _TaskCardState extends State<TaskCard> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
+                  style: const TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: 11,
-                    color: Colors.grey.shade500,
+                    color: SdColors.muted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
                   value.isNotEmpty ? value : '-',
                   style: const TextStyle(
+                    fontFamily: SdText.family,
                     fontSize: 11,
-                    color: Color(0xFF1A1A2E),
+                    color: SdColors.ink,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,
@@ -1720,7 +1716,7 @@ class _TaskCardState extends State<TaskCard> {
       primaryButtons.add(_buildCompactActionButton(
         Icons.open_in_new_rounded,
         'تفاصيل',
-        const Color(0xFF1565C0),
+        SdColors.info,
         _openSubscriptionDetails,
       ));
     }
@@ -1728,7 +1724,7 @@ class _TaskCardState extends State<TaskCard> {
       primaryButtons.add(_buildCompactActionButton(
         Icons.message_rounded,
         'واتساب',
-        const Color(0xFF25D366),
+        SdColors.whatsapp,
         () => _launchWhatsApp(widget.task.phone),
       ));
     }
@@ -1736,7 +1732,7 @@ class _TaskCardState extends State<TaskCard> {
       primaryButtons.add(_buildCompactActionButton(
         Icons.map_rounded,
         'خريطة',
-        const Color(0xFF0097A7),
+        SdColors.accent,
         _openZonesMap,
       ));
     }
@@ -1816,22 +1812,23 @@ class _TaskCardState extends State<TaskCard> {
                   },
                   itemBuilder: (_) => menuItems,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.black87, width: 1.5),
+                      color: SdColors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(SdRadius.xs),
+                      border: Border.all(color: SdColors.divider, width: 1),
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.more_horiz,
-                            size: 18, color: Color(0xFF6B7280)),
+                        Icon(Icons.more_horiz, size: 18, color: SdColors.muted),
                         SizedBox(width: 4),
                         Text('المزيد',
                             style: TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF6B7280),
-                                fontWeight: FontWeight.w600)),
+                                fontFamily: SdText.family,
+                                fontSize: 11.5,
+                                color: SdColors.muted,
+                                fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -1846,15 +1843,15 @@ class _TaskCardState extends State<TaskCard> {
     final allButtons = [...primaryButtons];
     if (widget.currentUserRole == 'ليدر' || widget.currentUserRole == 'مدير') {
       allButtons.add(_buildCompactActionButton(Icons.group_rounded, 'وكيل',
-          const Color(0xFF8E44AD), _showAgentsDialog));
+          SdGroup.platform.tone.base, _showAgentsDialog));
     }
     if (widget.currentUserRole == 'مدير' || widget.currentUserRole == 'ليدر') {
       allButtons.add(_buildCompactActionButton(Icons.edit_rounded, 'تعديل',
-          const Color(0xFF3498DB), _showEditTaskDialog));
+          SdColors.primary, _showEditTaskDialog));
     }
     if (widget.currentUserRole == 'مدير') {
       allButtons.add(_buildCompactActionButton(Icons.delete_outline_rounded,
-          'حذف', const Color(0xFFE74C3C), _confirmDeleteTask));
+          'حذف', SdColors.danger, _confirmDeleteTask));
     }
     // زر تفعيل — يظهر فقط للمهام المكتملة غير المفعّلة (ليدر أو مدير)
     if (widget.task.isCompleted &&
@@ -1864,7 +1861,7 @@ class _TaskCardState extends State<TaskCard> {
       allButtons.add(_buildCompactActionButton(
         Icons.verified_rounded,
         'تفعيل',
-        const Color(0xFF27AE60),
+        SdColors.success,
         _markAsActivated,
       ));
     }
@@ -1878,19 +1875,17 @@ class _TaskCardState extends State<TaskCard> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 3),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: Colors.black87,
-            width: 1.5,
-          ),
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(SdRadius.xs),
+          border: Border.all(color: color.withValues(alpha: 0.32), width: 1),
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onPressed,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(SdRadius.xs),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(vertical: 9),
               child: isNarrow
                   ? Icon(icon, size: 18, color: color)
                   : Row(
@@ -1902,9 +1897,10 @@ class _TaskCardState extends State<TaskCard> {
                           child: Text(
                             label,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontFamily: SdText.family,
+                              fontSize: 11.5,
                               color: color,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),

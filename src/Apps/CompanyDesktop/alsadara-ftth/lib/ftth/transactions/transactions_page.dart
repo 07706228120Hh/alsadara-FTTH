@@ -18,6 +18,7 @@ import '../auth/auth_error_handler.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'creator_amounts_page.dart';
 import '../reports/profits_page.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 
 class TransactionsPage extends StatefulWidget {
   final String authToken;
@@ -1182,7 +1183,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
@@ -1208,24 +1209,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              backgroundColor: SdColors.surface,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(SdRadius.lg),
               ),
               title: Row(
-                children: [
+                children: const [
                   Icon(
                     Icons.filter_list,
-                    color: const Color(0xFF1A237E),
+                    color: SdColors.primary,
                     size: 24,
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
+                  SizedBox(width: 12),
+                  Text(
                     'تصفية المعاملات',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A237E),
-                    ),
+                    style: SdText.titleSm,
                   ),
                 ],
               ),
@@ -1242,23 +1240,24 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue[200]!),
+                          color: SdColors.infoTint,
+                          borderRadius: BorderRadius.circular(SdRadius.xs),
+                          border: Border.all(color: SdColors.infoTintEdge),
                         ),
                         child: Row(
-                          children: [
+                          children: const [
                             Icon(
                               Icons.info_outline,
-                              color: Colors.blue[700],
+                              color: SdColors.info,
                               size: 20,
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'استخدم خيارات التصفية أدناه لتخصيص نتائج البحث حسب احتياجاتك',
                                 style: TextStyle(
-                                  color: Colors.blue[700],
+                                  fontFamily: SdText.family,
+                                  color: SdColors.infoEdge,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1380,8 +1379,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
                               ),
                               subtitle: const Text(
                                 'عرض العمليات التي لم يتم تسجيل منفذها',
-                                style:
-                                    TextStyle(fontSize: 12, color: Colors.grey),
+                                style: TextStyle(
+                                    fontFamily: SdText.family,
+                                    fontSize: 12,
+                                    color: SdColors.muted),
                               ),
                               value: showTransactionsWithoutUser,
                               onChanged: (bool? value) {
@@ -1412,24 +1413,22 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 12, horizontal: 16),
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.blue[50]!,
-                                      Colors.blue[100]!
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.blue[200]!),
+                                  color: SdColors.infoTint,
+                                  borderRadius:
+                                      BorderRadius.circular(SdRadius.sm),
+                                  border:
+                                      Border.all(color: SdColors.infoTintEdge),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.date_range,
-                                        color: Colors.blue[700], size: 20),
+                                    const Icon(Icons.date_range,
+                                        color: SdColors.info, size: 20),
                                     const SizedBox(width: 8),
-                                    Text(
+                                    const Text(
                                       'الفترة المحددة: ',
                                       style: TextStyle(
-                                        color: Colors.blue[800],
+                                        fontFamily: SdText.family,
+                                        color: SdColors.infoEdge,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14,
                                       ),
@@ -1437,8 +1436,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                     Expanded(
                                       child: Text(
                                         '${fromDate != null ? _formatDisplayDate(fromDate!) : 'غير محدد'} - ${toDate != null ? _formatDisplayDate(toDate!) : 'غير محدد'}',
-                                        style: TextStyle(
-                                          color: Colors.blue[900],
+                                        style: const TextStyle(
+                                          fontFamily: SdText.family,
+                                          color: SdColors.infoEdge,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14,
                                         ),
@@ -1459,7 +1459,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 _buildQuickDateButton(
                                   icon: Icons.nightlight_round,
                                   label: 'من الأمس 9م',
-                                  color: Colors.indigo,
                                   isSelected: quickFilterType == 'yesterday',
                                   onPressed: () {
                                     // إنشاء التواريخ بالتوقيت المحلي العراقي
@@ -1485,7 +1484,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 _buildQuickDateButton(
                                   icon: Icons.today,
                                   label: 'اليوم',
-                                  color: Colors.blue,
                                   isSelected: quickFilterType == 'today',
                                   onPressed: () {
                                     // إنشاء تاريخ اليوم بالتوقيت المحلي العراقي
@@ -1504,7 +1502,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 _buildQuickDateButton(
                                   icon: Icons.history,
                                   label: 'الأمس',
-                                  color: Colors.orange,
                                   isSelected:
                                       quickFilterType == 'yesterday_only',
                                   onPressed: () {
@@ -1530,7 +1527,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 _buildQuickDateButton(
                                   icon: Icons.date_range,
                                   label: '7 أيام',
-                                  color: Colors.green,
                                   isSelected: quickFilterType == 'week',
                                   onPressed: () {
                                     // إنشاء نطاق 7 أيام بالتوقيت المحلي العراقي
@@ -1550,7 +1546,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 _buildQuickDateButton(
                                   icon: Icons.calendar_month,
                                   label: '30 يوم',
-                                  color: Colors.purple,
                                   isSelected: quickFilterType == 'month',
                                   onPressed: () {
                                     // إنشاء نطاق 30 يوم بالتوقيت المحلي العراقي
@@ -1570,7 +1565,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 _buildQuickDateButton(
                                   icon: Icons.calendar_view_month,
                                   label: '90 يوم',
-                                  color: Colors.teal,
                                   isSelected: quickFilterType == 'quarter',
                                   onPressed: () {
                                     // إنشاء نطاق 90 يوم بالتوقيت المحلي العراقي
@@ -1590,7 +1584,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 _buildQuickDateButton(
                                   icon: Icons.clear_all,
                                   label: 'كل الفترة',
-                                  color: Colors.grey,
                                   isSelected: quickFilterType == 'all',
                                   onPressed: () {
                                     setDialogState(() {
@@ -1608,36 +1601,24 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: ElevatedButton.icon(
-                                    icon: const Icon(Icons.event, size: 18),
-                                    label: const Text('تاريخ مخصص'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.brown[600],
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
+                                  child: SdButton(
+                                    label: 'تاريخ مخصص',
+                                    icon: Icons.event,
+                                    kind: SdButtonKind.accent,
+                                    expand: true,
+                                    height: 46,
                                     onPressed: () =>
                                         _selectCustomDateRange(setDialogState),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
-                                  child: ElevatedButton.icon(
-                                    icon: const Icon(Icons.refresh, size: 18),
-                                    label: const Text('إعادة تعيين'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red[600],
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
+                                  child: SdButton(
+                                    label: 'إعادة تعيين',
+                                    icon: Icons.refresh,
+                                    kind: SdButtonKind.danger,
+                                    expand: true,
+                                    height: 46,
                                     onPressed: () {
                                       setDialogState(() {
                                         fromDate = null;
@@ -1875,24 +1856,26 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Colors.blue[50],
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.blue[200]!),
+                                color: SdColors.infoTint,
+                                borderRadius: BorderRadius.circular(SdRadius.xs),
+                                border:
+                                    Border.all(color: SdColors.infoTintEdge),
                               ),
                               child: Row(
-                                children: [
+                                children: const [
                                   Icon(
                                     Icons.info_outline,
-                                    color: Colors.blue[600],
+                                    color: SdColors.info,
                                     size: 16,
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       'الإعداد الافتراضي: 500 معاملة لكل صفحة - يمكنك تغيير هذا الرقم حسب الحاجة',
                                       style: TextStyle(
+                                        fontFamily: SdText.family,
                                         fontSize: 12,
-                                        color: Colors.blue[700],
+                                        color: SdColors.infoEdge,
                                       ),
                                     ),
                                   ),
@@ -1909,28 +1892,27 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.green[50]!, Colors.green[100]!],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green[300]!),
+                            color: SdColors.successTint,
+                            borderRadius: BorderRadius.circular(SdRadius.xs),
+                            border: Border.all(color: SdColors.successTintEdge),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                children: [
+                                children: const [
                                   Icon(
                                     Icons.filter_alt,
-                                    color: Colors.green[700],
+                                    color: SdColors.success,
                                     size: 18,
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Text(
                                     'ملخص التصفية النشطة:',
                                     style: TextStyle(
+                                      fontFamily: SdText.family,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.green[700],
+                                      color: SdColors.successEdge,
                                     ),
                                   ),
                                 ],
@@ -1981,30 +1963,32 @@ class _TransactionsPageState extends State<TransactionsPage> {
               ),
               actions: [
                 // زر إعادة تعيين
-                TextButton(
+                SdButton(
+                  label: 'إعادة تعيين',
+                  kind: SdButtonKind.secondary,
+                  height: 44,
                   onPressed: () {
                     setDialogState(() {
                       _resetFilters();
                     });
                   },
-                  child: const Text('إعادة تعيين'),
                 ),
                 // زر إلغاء
-                TextButton(
+                SdButton(
+                  label: 'إلغاء',
+                  kind: SdButtonKind.danger,
+                  height: 44,
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('إلغاء'),
                 ),
                 // زر تطبيق
-                ElevatedButton(
+                SdButton(
+                  label: 'تطبيق',
+                  kind: SdButtonKind.primary,
+                  height: 44,
                   onPressed: () {
                     Navigator.of(context).pop();
                     _loadTransactions(isRefresh: true);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A237E),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('تطبيق'),
                 ),
               ],
             );
@@ -2024,11 +2008,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A237E),
-            ),
+            style: SdText.titleSm,
           ),
           const SizedBox(height: 8),
           content,
@@ -2040,12 +2020,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
   InputDecoration _getInputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: const TextStyle(
+          fontFamily: SdText.family, color: SdColors.faint),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        borderSide: const BorderSide(color: SdColors.divider),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFF1A237E)),
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        borderSide: const BorderSide(color: SdColors.primary),
       ),
     );
   }
@@ -2061,7 +2047,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF1A237E),
+              primary: SdColors.primary,
             ),
           ),
           child: child!,
@@ -2182,7 +2168,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('لا توجد مناطق متاحة'),
-                            backgroundColor: Colors.orange,
+                            backgroundColor: SdColors.warning,
                           ),
                         );
                         return;
@@ -2192,8 +2178,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
               icon: const Icon(Icons.map, size: 18),
               label: Text('اختيار المناطق: $count'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A237E),
+                backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
+                elevation: 0,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
@@ -2225,12 +2212,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
             runSpacing: 6,
             children: selectedZones.take(5).map((zone) {
               return Chip(
-                label: Text(zone, style: const TextStyle(fontSize: 11)),
+                label: Text(zone,
+                    style: const TextStyle(
+                        fontFamily: SdText.family, fontSize: 11.5)),
                 deleteIcon: const Icon(Icons.close, size: 14),
                 onDeleted: () => setDialogState(() {
                   selectedZones.remove(zone);
                 }),
-                backgroundColor: Colors.blue[50],
+                backgroundColor: SdColors.infoTint,
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               );
@@ -2241,7 +2230,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 '+${selectedZones.length - 5} منطقة أخرى',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
+                    color: SdColors.muted),
               ),
             ),
         ],
@@ -2305,27 +2297,25 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       height: 4,
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
+                        color: SdColors.divider,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                     // العنوان
                     Row(
                       children: [
-                        const Icon(Icons.map, color: Color(0xFF1A237E)),
+                        const Icon(Icons.map, color: SdColors.primary),
                         const SizedBox(width: 8),
-                        Text(
+                        const Text(
                           'اختيار المناطق',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.blue.shade800,
-                          ),
+                          style: SdText.titleSm,
                         ),
                         const Spacer(),
                         Text(
                           '${tempSelected.length} مختارة',
-                          style: TextStyle(color: Colors.grey.shade700),
+                          style: const TextStyle(
+                              fontFamily: SdText.family,
+                              color: SdColors.muted),
                         ),
                       ],
                     ),
@@ -2420,8 +2410,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(
                           'عرض أول $maxDisplay فقط - استخدم البحث لتصفية أكثر',
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade600),
+                          style: const TextStyle(
+                              fontFamily: SdText.family,
+                              fontSize: 11.5,
+                              color: SdColors.muted),
                         ),
                       ),
                     const SizedBox(height: 12),
@@ -2449,8 +2441,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             icon: const Icon(Icons.check),
                             label: const Text('حفظ'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1A237E),
+                              backgroundColor: SdColors.primary,
                               foregroundColor: Colors.white,
+                              elevation: 0,
                             ),
                           ),
                         ),
@@ -2470,16 +2463,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.green[200],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green[400]!),
+        color: SdColors.successTint,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        border: Border.all(color: SdColors.successTintEdge),
       ),
       child: Text(
         text,
-        style: TextStyle(
+        style: const TextStyle(
+          fontFamily: SdText.family,
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: Colors.green[800],
+          color: SdColors.successEdge,
         ),
       ),
     );
@@ -2523,21 +2517,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
-  // دالة لتحديد لون شارة نوع التغيير
-  List<Color> _getChangeTypeColors(String changeType) {
+  // دالة لتحديد النبرة الدلالية لشارة نوع التغيير (sd)
+  SdStatus _getChangeTypeStatus(String changeType) {
     switch (changeType) {
       case 'Scheduled':
-        return [Colors.deepOrange[400]!, Colors.orange[400]!];
+        return SdStatus.warning;
       case 'Immediate':
-        return [Colors.red[400]!, Colors.pink[400]!];
       case 'Instant':
-        return [Colors.red[400]!, Colors.pink[400]!];
+        return SdStatus.danger;
       case 'Manual':
-        return [Colors.blue[400]!, Colors.indigo[400]!];
+        return SdStatus.info;
       case 'Automatic':
-        return [Colors.green[400]!, Colors.teal[400]!];
+        return SdStatus.success;
       default:
-        return [Colors.grey[400]!, Colors.grey[500]!];
+        return SdStatus.neutral;
     }
   }
 
@@ -2559,31 +2552,41 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
-  // دالة لبناء زر التاريخ السريع
+  // دالة لبناء زر التاريخ السريع (نمط sd: المحدّد نيلي بارز)
   Widget _buildQuickDateButton({
     required IconData icon,
     required String label,
-    required MaterialColor color,
     required bool isSelected,
     required VoidCallback onPressed,
   }) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 16),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? color[800] : color[600],
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        elevation: isSelected ? 8 : 2,
-        shadowColor: color.withValues(alpha: 0.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: isSelected
-              ? BorderSide(color: color[900]!, width: 2)
-              : BorderSide.none,
-        ),
+    return SdRaised(
+      onTap: onPressed,
+      toggled: isSelected,
+      semanticLabel: label,
+      radius: SdRadius.xs,
+      depth: isSelected ? SdDepth.button : SdDepth.small,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: isSelected ? SdColors.primary : SdColors.surface,
+      edgeColor: isSelected ? SdColors.primaryEdge : SdColors.cardEdge,
+      glowColor: const Color(0x261A237E),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon,
+              size: 16,
+              color: isSelected ? Colors.white : SdColors.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: isSelected ? Colors.white : SdColors.ink,
+            ),
+          ),
+        ],
       ),
-      onPressed: onPressed,
     );
   }
 
@@ -2605,11 +2608,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Colors.blue[700]!,
+            colorScheme: const ColorScheme.light(
+              primary: SdColors.primary,
               onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
+              surface: SdColors.surface,
+              onSurface: SdColors.ink,
             ),
           ),
           child: child!,
@@ -2720,15 +2723,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
     }
   }
 
-  Color _getTransactionColor(Map<String, dynamic> transaction) {
+  // النبرة الدلالية للمعاملة حسب إشارة المبلغ (موجب/سالب/صفر)
+  SdStatus _getTransactionStatus(Map<String, dynamic> transaction) {
     final amount = transaction['transactionAmount']?['value'] ?? 0.0;
     if (amount > 0) {
-      return Colors.green;
+      return SdStatus.success;
     } else if (amount < 0) {
-      return Colors.red;
+      return SdStatus.danger;
     } else {
-      return Colors.blue;
+      return SdStatus.info;
     }
+  }
+
+  Color _getTransactionColor(Map<String, dynamic> transaction) {
+    return _getTransactionStatus(transaction).tone.base;
   }
 
   IconData _getTransactionIcon(String type) {
@@ -2776,7 +2784,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
     final isScheduled = transaction['changeType'] != null &&
         transaction['changeType']['displayValue'] == 'Scheduled';
 
-    final color = _getTransactionColor(transaction);
+    final status = _getTransactionStatus(transaction);
+    final color = status.tone.base;
     final icon = _getTransactionIcon(type);
 
     // تجميع المعلومات المهمة بدون تكرار - العميل أولاً (المنفذ أصبح في الأعلى)
@@ -2892,367 +2901,232 @@ class _TransactionsPageState extends State<TransactionsPage> {
       infoItems.add({'label': 'الجهاز', 'value': deviceUsername});
     }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: isScheduled ? 8 : 4, // ارتفاع أكبر للمجدول
-      shadowColor: isScheduled
-          ? Colors.red[300]!.withValues(alpha: 0.5) // ظلال حمراء للمجدول
-          : null, // ظلال عادية للباقي
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isScheduled
-              ? Colors.red[400]! // حدود حمراء للمجدول
-              : Colors.black, // حدود سوداء للباقي
-          width: isScheduled ? 2.0 : 1.5, // عرض أكبر للحدود المجدولة
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showTransactionDetails(transaction),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isScheduled
-                  ? [Colors.red[50]!, Colors.red[100]!] // خلفية حمراء للمجدول
-                  : [Colors.white, Colors.grey[50]!], // خلفية عادية للباقي
+    // شارات الصف العلوي: تلتفّ على الهاتف بدل تجاوز العرض
+    final changeTypeValue =
+        transaction['changeType']?['displayValue']?.toString() ?? '';
+    final topBadges = <Widget>[
+      if (createdBy.isNotEmpty)
+        GestureDetector(
+          onTap: () => _copyToClipboard(createdBy, 'اسم المستخدم'),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [SdColors.success, SdColors.successEdge],
+              ),
+              borderRadius: BorderRadius.circular(SdRadius.xs),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // الصف العلوي - معلومات أساسية
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: color.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Icon(
-                        icon,
-                        color: color,
-                        size: 26,
-                      ),
+                const Icon(Icons.person, size: 14, color: Colors.white),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    createdBy,
+                    style: const TextStyle(
+                      fontFamily: SdText.family,
+                      fontSize: 13.5,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // عرض كل معلومة في بطاقة منفصلة صغيرة بدل صندوق كبير
-                          Row(
-                            children: [
-                              if (createdBy.isNotEmpty) ...[
-                                GestureDetector(
-                                  onTap: () => _copyToClipboard(
-                                      createdBy, 'اسم المستخدم'),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 10),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.green[600]!,
-                                          Colors.green[700]!,
-                                        ],
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.person,
-                                          size: 14,
-                                          color: Colors.white,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Flexible(
-                                          child: Text(
-                                            createdBy,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        const Icon(
-                                          Icons.copy,
-                                          size: 12,
-                                          color: Colors.white70,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-
-                              // بطاقة نوع المعاملة
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 10),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.blue[600]!,
-                                      Colors.blue[700]!,
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      icon,
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Flexible(
-                                      child: Text(
-                                        _translateTransactionType(type),
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-
-                              // شارة المعاملة المجدولة أو نوع التغيير
-                              if (transaction['changeType'] != null) ...[
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: _getChangeTypeColors(
-                                          transaction['changeType']
-                                                  ['displayValue'] ??
-                                              ''),
-                                    ),
-                                    borderRadius: BorderRadius.circular(6),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _getChangeTypeColors(
-                                                transaction['changeType']
-                                                        ['displayValue'] ??
-                                                    '')
-                                            .first
-                                            .withValues(alpha: 0.3),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        _getChangeTypeIcon(
-                                            transaction['changeType']
-                                                    ['displayValue'] ??
-                                                ''),
-                                        size: 12,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        _translateChangeType(
-                                            transaction['changeType']
-                                                    ['displayValue'] ??
-                                                ''),
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-
-                              // بطاقة الوقت والتاريخ
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[700],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  () {
-                                    final formatted = _formatDate(occuredAt);
-                                    final parts = formatted.split(' ');
-                                    final datePart =
-                                        parts.isNotEmpty ? parts[0] : '';
-                                    final timePart =
-                                        parts.length > 1 ? parts[1] : '';
-                                    return '$timePart  $datePart';
-                                  }(),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // صندوق المبلغ — اضبط القيود ليطابق ارتفاع البطاقات الأخرى ويزيد العرض
-                              Container(
-                                constraints: const BoxConstraints(
-                                  minWidth: 120,
-                                  minHeight: 44,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: color.withValues(alpha: 0.25),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '${amount >= 0 ? '+' : ''}${_formatCurrency(amount)}',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: color,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      currency,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: color,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // صندوق المبلغ المتبقي - نقل من الأسفل إلى نفس الصف
-                              Container(
-                                constraints: const BoxConstraints(
-                                  minWidth: 120,
-                                  minHeight: 44,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 10),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.blue[50]!,
-                                      Colors.blue[100]!,
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.blue[300]!,
-                                    width: 1,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.blue.withValues(alpha: 0.1),
-                                      blurRadius: 3,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'الرصيد المتبقي: ',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.blue[700],
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${_formatCurrency(balance)} $currency',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue[800],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-
-                if (infoItems.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    height: 2,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.grey[300]!,
-                          Colors.transparent
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // عرض المعلومات في شبكة مرنة مع تحسين البروز
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
-                    children:
-                        infoItems.map((item) => _buildInfoItem(item)).toList(),
-                  ),
-                ],
-
-                // أزيلت المساحة الفارغة والصف غير الضروري
+                const SizedBox(width: 4),
+                const Icon(Icons.copy, size: 12, color: Colors.white70),
               ],
             ),
           ),
+        ),
+      // بطاقة نوع المعاملة
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [SdColors.primaryLight, SdColors.primary],
+          ),
+          borderRadius: BorderRadius.circular(SdRadius.xs),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: Colors.white),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                _translateTransactionType(type),
+                style: const TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 13.5,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+      // شارة المعاملة المجدولة أو نوع التغيير
+      if (transaction['changeType'] != null)
+        SdStatusChip(
+          _translateChangeType(changeTypeValue),
+          status: _getChangeTypeStatus(changeTypeValue),
+          icon: _getChangeTypeIcon(changeTypeValue),
+        ),
+      // بطاقة الوقت والتاريخ
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: SdColors.ink,
+          borderRadius: BorderRadius.circular(SdRadius.xs),
+        ),
+        child: Text(
+          () {
+            final formatted = _formatDate(occuredAt);
+            final parts = formatted.split(' ');
+            final datePart = parts.isNotEmpty ? parts[0] : '';
+            final timePart = parts.length > 1 ? parts[1] : '';
+            return '$timePart  $datePart';
+          }(),
+          style: const TextStyle(
+            fontFamily: SdText.family,
+            fontSize: 12.5,
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      // صندوق المبلغ — بنبرة الحالة (موجب/سالب)
+      Container(
+        constraints: const BoxConstraints(minWidth: 120, minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: status.tone.tint,
+          borderRadius: BorderRadius.circular(SdRadius.xs),
+          border: Border.all(color: status.tone.tintEdge, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              '${amount >= 0 ? '+' : ''}${_formatCurrency(amount)}',
+              style: TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: status.tone.text,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              currency,
+              style: TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 12,
+                color: status.tone.text,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+      // صندوق المبلغ المتبقي
+      Container(
+        constraints: const BoxConstraints(minWidth: 120, minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: SdColors.infoTint,
+          borderRadius: BorderRadius.circular(SdRadius.xs),
+          border: Border.all(color: SdColors.infoTintEdge, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'الرصيد المتبقي: ',
+              style: const TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 11.5,
+                color: SdColors.info,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              '${_formatCurrency(balance)} $currency',
+              style: const TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 11.5,
+                fontWeight: FontWeight.bold,
+                color: SdColors.infoEdge,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: SdRaised(
+        onTap: () => _showTransactionDetails(transaction),
+        radius: SdRadius.lg,
+        depth: isScheduled ? SdDepth.hero : SdDepth.card,
+        edgeColor: isScheduled ? SdColors.warningTintEdge : SdColors.cardEdge,
+        glowColor: isScheduled
+            ? const Color(0x40EF6C00)
+            : const Color(0x591A237E),
+        color: isScheduled ? SdColors.warningTint : SdColors.surface,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // الصف العلوي - معلومات أساسية
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: status.tone.tint,
+                    borderRadius: BorderRadius.circular(SdRadius.sm),
+                    border: Border.all(color: status.tone.tintEdge, width: 1),
+                  ),
+                  child: Icon(icon, color: status.tone.base, size: 26),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: topBadges,
+                  ),
+                ),
+              ],
+            ),
+            if (infoItems.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                height: 1.5,
+                color: SdColors.divider,
+              ),
+              const SizedBox(height: 12),
+              // عرض المعلومات في شبكة مرنة
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children:
+                    infoItems.map((item) => _buildInfoItem(item)).toList(),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -3266,7 +3140,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         SnackBar(
           content: Text('تم نسخ $itemName: $text'),
           duration: const Duration(seconds: 2),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -3292,32 +3166,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
 
     final isCopyable = copyableFields.contains(label);
 
+    final bg = isCopyable ? SdColors.infoTint : SdColors.surfaceAlt;
+    final edge = isCopyable ? SdColors.infoTintEdge : SdColors.divider;
+    final valueColor = isCopyable ? SdColors.infoEdge : SdColors.ink;
+
     return GestureDetector(
       onTap: isCopyable ? () => _copyToClipboard(value, label) : null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              isCopyable ? Colors.blue[50]! : Colors.grey[100]!,
-              isCopyable ? Colors.blue[100]! : Colors.grey[50]!,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isCopyable ? Colors.blue[300]! : Colors.grey[400]!,
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (isCopyable ? Colors.blue : Colors.grey)
-                  .withValues(alpha: 0.1),
-              blurRadius: 2,
-              offset: const Offset(0, 1),
-            ),
-          ],
+          color: bg,
+          borderRadius: BorderRadius.circular(SdRadius.xs),
+          border: Border.all(color: edge, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -3326,44 +3186,44 @@ class _TransactionsPageState extends State<TransactionsPage> {
               width: 4,
               height: 16,
               decoration: BoxDecoration(
-                color: isCopyable ? Colors.blue[600] : Colors.blue[600],
+                color: SdColors.primary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(width: 8),
             Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
+                fontFamily: SdText.family,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[700],
+                color: SdColors.muted,
               ),
             ),
             const Text(
               ': ',
               style: TextStyle(
+                fontFamily: SdText.family,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
+                color: SdColors.muted,
               ),
             ),
             Flexible(
               child: Text(
                 value,
                 style: TextStyle(
+                  fontFamily: SdText.family,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: isCopyable ? Colors.blue[800]! : Colors.black87,
+                  color: valueColor,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             if (isCopyable) ...[
               const SizedBox(width: 4),
-              Icon(
-                Icons.copy,
-                size: 14,
-                color: Colors.blue[600],
-              ),
+              const Icon(Icons.copy, size: 14, color: SdColors.info),
             ],
           ],
         ),
@@ -3376,8 +3236,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: SdColors.surface,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(SdRadius.lg),
           ),
           title: Row(
             children: [
@@ -3387,14 +3248,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 size: 24,
               ),
               const SizedBox(width: 12),
-              Expanded(
+              const Expanded(
                 child: Text(
                   'تفاصيل المعاملة',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A237E),
-                  ),
+                  style: SdText.titleSm,
                 ),
               ),
             ],
@@ -3514,7 +3371,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
             ),
           ),
           actions: [
-            TextButton(
+            SdButton(
+              label: 'نسخ التفاصيل',
+              icon: Icons.copy,
+              kind: SdButtonKind.secondary,
+              height: 44,
               onPressed: () async {
                 final detailsText = _buildTransactionDetailsText(transaction);
                 await Clipboard.setData(ClipboardData(text: detailsText));
@@ -3527,21 +3388,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   );
                 }
               },
-              child: const Text('نسخ التفاصيل'),
             ),
-            TextButton(
+            SdButton(
+              label: 'إغلاق',
+              kind: SdButtonKind.primary,
+              height: 44,
               onPressed: () => Navigator.of(context).pop(),
-              style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              ),
-              child: const Text(
-                'إغلاق',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ),
           ],
         );
@@ -3560,21 +3412,23 @@ class _TransactionsPageState extends State<TransactionsPage> {
             width: labelWidth,
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 14,
+              style: const TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: SdColors.muted,
               ),
             ),
           ),
-          const Text(': '),
+          const Text(': ', style: TextStyle(color: SdColors.muted)),
           Expanded(
             child: Text(
               value,
               style: const TextStyle(
-                fontSize: 14,
+                fontFamily: SdText.family,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF2C3E50),
+                color: SdColors.ink,
               ),
             ),
           ),
@@ -3922,20 +3776,19 @@ class _TransactionsPageState extends State<TransactionsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(
-          color: Colors.black,
-          width: 2,
+        color: SdColors.surface,
+        border: const Border(
+          top: BorderSide(color: SdColors.cardEdge, width: 1.5),
         ),
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
+          topLeft: Radius.circular(SdRadius.sm),
+          topRight: Radius.circular(SdRadius.sm),
         ),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Color(0x1A1A237E),
             blurRadius: 8,
-            offset: const Offset(0, -2),
+            offset: Offset(0, -2),
           ),
         ],
       ),
@@ -3963,43 +3816,47 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                 padding: const EdgeInsets.symmetric(
                                     vertical: 4, horizontal: 6),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: SdColors.surfaceAlt,
+                                  borderRadius:
+                                      BorderRadius.circular(SdRadius.xs),
                                   border: Border.all(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    width: 1,
-                                  ),
+                                      color: SdColors.divider, width: 1),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.receipt_long,
-                                      color: Colors.black,
+                                      color: SdColors.primary,
                                       size: 14,
                                     ),
                                     const SizedBox(width: 4),
-                                    Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'إجمالي المعاملات',
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w600,
+                                    Flexible(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text(
+                                            'إجمالي المعاملات',
+                                            style: TextStyle(
+                                              fontFamily: SdText.family,
+                                              color: SdColors.muted,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                        ),
-                                        const SizedBox(height: 1),
-                                        Text(
-                                          _formatCurrency(totalCount),
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            _formatCurrency(totalCount),
+                                            style: const TextStyle(
+                                              fontFamily: SdText.family,
+                                              color: SdColors.ink,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -4047,16 +3904,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       Text(
                         'الصفحة $currentPage من $totalPages',
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontFamily: SdText.family,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                          color: SdColors.ink,
                         ),
                       ),
-                      Text(
-                        'معروض: ${transactions.length} | حجم الصفحة: $pageSize',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: Colors.black.withValues(alpha: 0.7),
+                      Flexible(
+                        child: Text(
+                          'معروض: ${transactions.length} | حجم الصفحة: $pageSize',
+                          style: const TextStyle(
+                            fontFamily: SdText.family,
+                            fontSize: 11.5,
+                            color: SdColors.muted,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -4071,14 +3933,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         icon: Icons.first_page,
                         label: 'الأولى',
                         onPressed: currentPage > 1 ? () => _goToPage(1) : null,
-                        color: Colors.grey[200]!,
+                        color: SdColors.primaryTint,
                       ),
                       // زر الصفحة السابقة
                       _buildNavigationButton(
                         icon: Icons.arrow_back_ios,
                         label: 'السابق',
                         onPressed: currentPage > 1 ? _previousPage : null,
-                        color: Colors.orange[200]!,
+                        color: SdColors.warningTint,
                       ),
                       // أرقام الصفحات المجاورة
                       Expanded(
@@ -4096,21 +3958,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 3),
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
+                                  gradient: const LinearGradient(
                                     colors: [
-                                      Colors.blue[400]!,
-                                      Colors.blue[300]!
+                                      SdColors.primaryLight,
+                                      SdColors.primary
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.3),
-                                    width: 1,
-                                  ),
+                                  borderRadius:
+                                      BorderRadius.circular(SdRadius.xs),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -4118,8 +3977,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                     Text(
                                       showServicesBar ? 'إخفاء' : 'إظهار',
                                       style: const TextStyle(
+                                        fontFamily: SdText.family,
                                         color: Colors.white,
-                                        fontSize: 8,
+                                        fontSize: 11.5,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -4146,7 +4006,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         icon: Icons.arrow_forward_ios,
                         label: 'التالي',
                         onPressed: currentPage < totalPages ? _nextPage : null,
-                        color: Colors.green[200]!,
+                        color: SdColors.successTint,
                       ),
                       // زر الصفحة الأخيرة
                       _buildNavigationButton(
@@ -4155,7 +4015,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                         onPressed: currentPage < totalPages
                             ? () => _goToPage(totalPages)
                             : null,
-                        color: Colors.grey[200]!,
+                        color: SdColors.primaryTint,
                       ),
                     ],
                   ),
@@ -4178,15 +4038,16 @@ class _TransactionsPageState extends State<TransactionsPage> {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: color.withValues(alpha: onPressed != null ? 0.9 : 0.3),
-        foregroundColor: const Color(0xFF1A237E),
-        disabledBackgroundColor: Colors.grey.withValues(alpha: 0.2),
-        disabledForegroundColor: Colors.grey.withValues(alpha: 0.5),
+        backgroundColor: color,
+        foregroundColor: SdColors.primary,
+        disabledBackgroundColor: SdColors.ground,
+        disabledForegroundColor: SdColors.faint,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(SdRadius.xs),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        minimumSize: const Size(50, 28),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: const Size(50, 30),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -4195,7 +4056,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
           const SizedBox(width: 2),
           Text(
             label,
-            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -4218,19 +4082,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
             onPressed: i != currentPage ? () => _goToPage(i) : null,
             style: ElevatedButton.styleFrom(
               backgroundColor:
-                  i == currentPage ? Colors.blue[600] : Colors.grey[300],
+                  i == currentPage ? SdColors.primary : SdColors.primaryTint,
               foregroundColor:
-                  i == currentPage ? Colors.white : const Color(0xFF1A237E),
+                  i == currentPage ? Colors.white : SdColors.primary,
+              elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(SdRadius.xs),
               ),
               padding: const EdgeInsets.all(4),
-              minimumSize: const Size(24, 24),
+              minimumSize: const Size(28, 28),
             ),
             child: Text(
               '$i',
               style: TextStyle(
-                fontSize: 10,
+                fontFamily: SdText.family,
+                fontSize: 11.5,
                 fontWeight:
                     i == currentPage ? FontWeight.bold : FontWeight.normal,
               ),
@@ -4250,12 +4116,13 @@ class _TransactionsPageState extends State<TransactionsPage> {
         context: context,
         barrierDismissible: false,
         builder: (context) => const AlertDialog(
+          backgroundColor: SdColors.surface,
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Color(0xFF1A237E)),
+              CircularProgressIndicator(color: SdColors.primary),
               SizedBox(height: 16),
-              Text('جاري تصدير البيانات...'),
+              Text('جاري تصدير البيانات...', style: SdText.body),
             ],
           ),
         ),
@@ -4403,7 +4270,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               ),
             ],
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -4423,7 +4290,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('فشل في تصدير البيانات'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -4435,140 +4302,48 @@ class _TransactionsPageState extends State<TransactionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Text(
-              'التحويلات',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 20),
-            // زر حساب المبالغ حسب المنشأة في الوسط
-            Expanded(
-              child: Center(
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton.icon(
-                    onPressed: isCalculatingCreatorAmounts
-                        ? null
-                        : _calculateCreatorAmounts,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF1A237E),
-                      disabledBackgroundColor: Colors.grey[300],
-                      disabledForegroundColor: Colors.grey[600],
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                    ),
-                    icon: isCalculatingCreatorAmounts
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  const Color(0xFF1A237E)),
-                            ),
-                          )
-                        : const Icon(
-                            Icons.analytics,
-                            size: 20,
-                            color: Color(0xFF1A237E),
-                          ),
-                    label: Text(
-                      isCalculatingCreatorAmounts
-                          ? 'جاري الحساب...'
-                          : 'حساب المبالغ الكلي ',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A237E),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF1A237E),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: 'التحويلات',
         actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.filter_list,
-                  color: Colors.white,
-                  size: _hasActiveFilters() ? 26 : 24,
-                ),
-                onPressed: _showFilterDialog,
-                tooltip: _hasActiveFilters()
-                    ? 'تصفية نشطة - انقر للتعديل'
-                    : 'تصفية المعاملات',
+          // حساب المبالغ الكلي (أثناء الحساب يظهر مؤشّر تحميل)
+          if (isCalculatingCreatorAmounts)
+            const Padding(
+              padding: EdgeInsets.all(14.0),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
               ),
-              if (_hasActiveFilters()) ...[
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                      color: Colors.orange,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '${_getActiveFiltersCount()}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ],
-            ],
+            )
+          else
+            SdAppBarAction(
+              icon: Icons.analytics,
+              label: 'حساب المبالغ الكلي',
+              onPressed: _calculateCreatorAmounts,
+            ),
+          // تصفية المعاملات (شارة بعدد الفلاتر النشطة)
+          SdAppBarAction(
+            icon: Icons.filter_list,
+            label: 'تصفية المعاملات',
+            badge: _hasActiveFilters() ? _getActiveFiltersCount() : null,
+            onPressed: _showFilterDialog,
           ),
-          IconButton(
-            icon: const Icon(Icons.analytics_outlined, color: Colors.white),
+          SdAppBarAction(
+            icon: Icons.analytics_outlined,
+            label: 'حساب الارباح',
             onPressed: _navigateToProfitsPage,
-            tooltip: 'حساب الارباح',
           ),
-          IconButton(
-            icon: const Icon(Icons.file_download, color: Colors.white),
+          SdAppBarAction(
+            icon: Icons.file_download,
+            label: 'تصدير إلى Excel',
             onPressed: _exportToExcel,
-            tooltip: 'تصدير إلى Excel',
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
             onPressed: () => _loadTransactions(isRefresh: true),
-            tooltip: 'تحديث',
           ),
         ],
       ),
@@ -4583,17 +4358,19 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
+                    color: SdColors.surface,
+                    borderRadius: BorderRadius.circular(SdRadius.sm),
+                    border: Border.all(color: SdColors.divider),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedSearchField,
-                      icon:
-                          Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
-                      style:
-                          const TextStyle(color: Colors.black87, fontSize: 14),
+                      icon: const Icon(Icons.arrow_drop_down,
+                          color: SdColors.faint),
+                      style: const TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.ink,
+                          fontSize: 14),
                       items: searchFieldOptions.map((option) {
                         return DropdownMenuItem<String>(
                           value: option['value'],
@@ -4617,16 +4394,24 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     controller: _searchController,
                     onChanged: _filterTransactions,
                     textAlign: TextAlign.right,
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 14,
+                        color: SdColors.ink),
                     decoration: InputDecoration(
                       hintText: selectedSearchField == 'all'
                           ? 'بحث عن عميل، جهاز، منشئ، خدمة...'
                           : 'بحث في ${searchFieldOptions.firstWhere((o) => o['value'] == selectedSearchField)['label']}...',
-                      hintStyle:
-                          TextStyle(color: Colors.grey[500], fontSize: 14),
-                      prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                      hintStyle: const TextStyle(
+                          fontFamily: SdText.family,
+                          color: SdColors.faint,
+                          fontSize: 14),
+                      prefixIcon:
+                          const Icon(Icons.search, color: SdColors.faint),
                       suffixIcon: searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: Icon(Icons.clear, color: Colors.grey[600]),
+                              icon: const Icon(Icons.clear,
+                                  color: SdColors.faint),
                               onPressed: () {
                                 _searchController.clear();
                                 _filterTransactions('');
@@ -4634,21 +4419,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             )
                           : null,
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: SdColors.surface,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(SdRadius.sm),
+                        borderSide: const BorderSide(color: SdColors.divider),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(SdRadius.sm),
+                        borderSide: const BorderSide(color: SdColors.divider),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(SdRadius.sm),
                         borderSide: const BorderSide(
-                            color: Color(0xFF1A237E), width: 2),
+                            color: SdColors.primary, width: 2),
                       ),
                     ),
                   ),
@@ -4662,11 +4447,15 @@ class _TransactionsPageState extends State<TransactionsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                  const Icon(Icons.info_outline,
+                      size: 16, color: SdColors.faint),
                   const SizedBox(width: 4),
                   Text(
                     'تم العثور على ${filteredTransactions.length} نتيجة',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 12,
+                        color: SdColors.muted),
                   ),
                 ],
               ),
@@ -4684,79 +4473,30 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CircularProgressIndicator(
-                          color: Color(0xFF1A237E),
+                          color: SdColors.primary,
                         ),
                         SizedBox(height: 16),
                         Text(
                           'جاري تحميل التحويلات...',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF2C3E50),
-                          ),
+                          style: SdText.body,
                         ),
                       ],
                     ),
                   )
                 : transactions.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.receipt_long_outlined,
-                              size: 80,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'لا توجد معاملات متاحة',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'لم يتم العثور على أي معاملات مالية',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                    ? const Center(
+                        child: SdEmptyState(
+                          icon: Icons.receipt_long_outlined,
+                          title: 'لا توجد معاملات متاحة',
+                          message: 'لم يتم العثور على أي معاملات مالية',
                         ),
                       )
                     : filteredTransactions.isEmpty && searchQuery.isNotEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.search_off,
-                                  size: 80,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'لا توجد نتائج للبحث',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'جرب كلمات بحث مختلفة',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[500],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                        ? const Center(
+                            child: SdEmptyState(
+                              icon: Icons.search_off,
+                              title: 'لا توجد نتائج للبحث',
+                              message: 'جرب كلمات بحث مختلفة',
                             ),
                           )
                         : RefreshIndicator(
@@ -4785,576 +4525,234 @@ class _TransactionsPageState extends State<TransactionsPage> {
   }
 
   Widget _buildSummaryCards() {
-    // عرض خمس بطاقات في صف واحد: الموجب، السالب، بدون اسم منشئ، المجدولة، وإظهار الكل
+    // عرض خمس بطاقات: الموجب، السالب، بدون اسم منشئ، المجدولة، وإظهار الكل
     final currency = 'IQD';
     final bool showingAll = !showPositiveOnly &&
         !showNegativeOnly &&
         !showWithoutCreatorOnly &&
         !showScheduledOnly;
 
-    return Row(
-      children: [
-        // البطاقة الأولى - الموجب (قابلة للضغط)
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                // إعادة تعيين جميع الفلاتر
-                showPositiveOnly = !showPositiveOnly;
-                if (showPositiveOnly) {
-                  showNegativeOnly = false;
-                  showWithoutCreatorOnly = false;
-                  showScheduledOnly = false;
-                }
-              });
-              // إعادة تحميل البيانات مع الفلتر الجديد
-              _loadTransactions(isRefresh: true);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: showPositiveOnly ? Colors.green[100] : Colors.green[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: showPositiveOnly
-                      ? Colors.green[400]!
-                      : Colors.green[200]!,
-                  width: showPositiveOnly ? 2 : 1,
-                ),
-                boxShadow: showPositiveOnly
-                    ? [
-                        BoxShadow(
-                          color: Colors.green.withValues(alpha: 0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.arrow_circle_up,
-                        color: showPositiveOnly
-                            ? Colors.green[800]
-                            : Colors.green[700],
-                        size: 18,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'إجمالي الموجب',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: showPositiveOnly
-                                ? Colors.green[900]
-                                : Colors.green[800],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      if (showPositiveOnly)
-                        Icon(
-                          Icons.check_circle,
-                          color: Colors.green[800],
-                          size: 14,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${_formatCurrency(positiveSum)} $currency',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          showPositiveOnly ? Colors.green[800] : Colors.green,
-                    ),
-                  ),
-                  Text(
-                    '$positiveCount عملية',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: showPositiveOnly
-                          ? Colors.green[700]
-                          : Colors.green[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  isLoadingAllTotals
-                      ? Row(
-                          children: const [
-                            SizedBox(
-                                width: 12,
-                                height: 12,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2)),
-                            SizedBox(width: 4),
-                            Expanded(
-                                child: Text('جاري الحساب...',
-                                    style: TextStyle(fontSize: 9))),
-                          ],
-                        )
-                      : Text(
-                          'الكل: ${_formatCurrency(positiveSumAll)} ($positiveCountAll عملية)',
-                          style:
-                              TextStyle(fontSize: 9, color: Colors.green[700]),
-                        ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
+    final cards = <Widget>[
+      _summaryStatCard(
+        status: SdStatus.success,
+        icon: Icons.arrow_circle_up,
+        title: 'إجمالي الموجب',
+        value: '${_formatCurrency(positiveSum)} $currency',
+        count: '$positiveCount عملية',
+        allText:
+            'الكل: ${_formatCurrency(positiveSumAll)} ($positiveCountAll عملية)',
+        selected: showPositiveOnly,
+        onTap: () {
+          setState(() {
+            showPositiveOnly = !showPositiveOnly;
+            if (showPositiveOnly) {
+              showNegativeOnly = false;
+              showWithoutCreatorOnly = false;
+              showScheduledOnly = false;
+            }
+          });
+          _loadTransactions(isRefresh: true);
+        },
+      ),
+      _summaryStatCard(
+        status: SdStatus.danger,
+        icon: Icons.arrow_circle_down,
+        title: 'إجمالي السالب',
+        value: '${_formatCurrency(negativeSum.abs())} $currency',
+        count: '$negativeCount عملية',
+        allText:
+            'الكل: ${_formatCurrency(negativeSumAll.abs())} ($negativeCountAll عملية)',
+        selected: showNegativeOnly,
+        onTap: () {
+          setState(() {
+            showNegativeOnly = !showNegativeOnly;
+            if (showNegativeOnly) {
+              showPositiveOnly = false;
+              showWithoutCreatorOnly = false;
+              showScheduledOnly = false;
+            }
+          });
+          _loadTransactions(isRefresh: true);
+        },
+      ),
+      _summaryStatCard(
+        status: SdStatus.info,
+        icon: Icons.person_off,
+        title: 'بدون منشئ',
+        value: '${_formatCurrency(negativeSumWithoutCreator.abs())} $currency',
+        count: '$withoutCreatorCount عملية',
+        allText:
+            'الكل: ${_formatCurrency(negativeSumWithoutCreatorAll.abs())} ($withoutCreatorCountAll عملية)',
+        selected: showWithoutCreatorOnly,
+        onTap: () {
+          setState(() {
+            showWithoutCreatorOnly = !showWithoutCreatorOnly;
+            if (showWithoutCreatorOnly) {
+              showPositiveOnly = false;
+              showNegativeOnly = false;
+              showScheduledOnly = false;
+            }
+          });
+          _loadTransactions(isRefresh: true);
+        },
+      ),
+      _summaryStatCard(
+        status: SdStatus.warning,
+        icon: Icons.schedule,
+        title: 'مجدولة',
+        value: '${_formatCurrency(scheduledSum.abs())} $currency',
+        count: '$scheduledCount عملية',
+        allText:
+            'الكل: ${_formatCurrency(scheduledSumAll.abs())} ($scheduledCountAll عملية)',
+        selected: showScheduledOnly,
+        onTap: () {
+          setState(() {
+            showScheduledOnly = !showScheduledOnly;
+            if (showScheduledOnly) {
+              showPositiveOnly = false;
+              showNegativeOnly = false;
+              showWithoutCreatorOnly = false;
+            }
+          });
+          _loadTransactions(isRefresh: true);
+        },
+      ),
+      _summaryStatCard(
+        status: SdStatus.neutral,
+        icon: Icons.visibility,
+        title: 'إظهار الكل',
+        value: '${_formatCurrency(totalCount)} معاملة',
+        count: 'جميع المعاملات',
+        allText: 'اضغط لإلغاء التصفية',
+        selected: showingAll,
+        showSpinner: false,
+        onTap: () {
+          setState(() {
+            showPositiveOnly = false;
+            showNegativeOnly = false;
+            showWithoutCreatorOnly = false;
+            showScheduledOnly = false;
+          });
+          _loadTransactions(isRefresh: true);
+        },
+      ),
+    ];
 
-        // البطاقة الثانية - السالب (قابلة للضغط)
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                // إعادة تعيين جميع الفلاتر
-                showNegativeOnly = !showNegativeOnly;
-                if (showNegativeOnly) {
-                  showPositiveOnly = false;
-                  showWithoutCreatorOnly = false;
-                  showScheduledOnly = false;
-                }
-              });
-              // إعادة تحميل البيانات مع الفلتر الجديد
-              _loadTransactions(isRefresh: true);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: showNegativeOnly ? Colors.red[100] : Colors.red[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: showNegativeOnly ? Colors.red[400]! : Colors.red[200]!,
-                  width: showNegativeOnly ? 2 : 1,
-                ),
-                boxShadow: showNegativeOnly
-                    ? [
-                        BoxShadow(
-                          color: Colors.red.withValues(alpha: 0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.arrow_circle_down,
-                        color: showNegativeOnly
-                            ? Colors.red[800]
-                            : Colors.red[700],
-                        size: 18,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'إجمالي السالب',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: showNegativeOnly
-                                ? Colors.red[900]
-                                : Colors.red[800],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      if (showNegativeOnly)
-                        Icon(
-                          Icons.check_circle,
-                          color: Colors.red[800],
-                          size: 14,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${_formatCurrency(negativeSum.abs())} $currency',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: showNegativeOnly ? Colors.red[800] : Colors.red,
-                    ),
-                  ),
-                  Text(
-                    '$negativeCount عملية',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color:
-                          showNegativeOnly ? Colors.red[700] : Colors.red[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  isLoadingAllTotals
-                      ? Row(
-                          children: const [
-                            SizedBox(
-                                width: 12,
-                                height: 12,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2)),
-                            SizedBox(width: 4),
-                            Expanded(
-                                child: Text('جاري الحساب...',
-                                    style: TextStyle(fontSize: 9))),
-                          ],
-                        )
-                      : Text(
-                          'الكل: ${_formatCurrency(negativeSumAll.abs())} ($negativeCountAll عملية)',
-                          style: TextStyle(fontSize: 9, color: Colors.red[700]),
-                        ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
+    // الهاتف/الآيباد: تمرير أفقي ببطاقات بعرض ثابت (لا تصغير أرقام)؛
+    // سطح المكتب: صف متساوٍ.
+    if (context.sd.isDesktop) {
+      return Row(
+        children: [
+          for (var i = 0; i < cards.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(child: cards[i]),
+          ],
+        ],
+      );
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(
+        children: [
+          for (var i = 0; i < cards.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            SizedBox(width: 190, child: cards[i]),
+          ],
+        ],
+      ),
+    );
+  }
 
-        // البطاقة الثالثة - السالب بدون اسم منشئ (قابلة للضغط)
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                // إعادة تعيين جميع الفلاتر
-                showWithoutCreatorOnly = !showWithoutCreatorOnly;
-                if (showWithoutCreatorOnly) {
-                  showPositiveOnly = false;
-                  showNegativeOnly = false;
-                  showScheduledOnly = false;
-                }
-              });
-              // إعادة تحميل البيانات مع الفلتر الجديد
-              _loadTransactions(isRefresh: true);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color:
-                    showWithoutCreatorOnly ? Colors.blue[100] : Colors.blue[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: showWithoutCreatorOnly
-                      ? Colors.blue[400]!
-                      : Colors.blue[200]!,
-                  width: showWithoutCreatorOnly ? 2 : 1,
+  // بطاقة ملخّص بنبرة حالة، مجسّمة ونقر للتصفية.
+  Widget _summaryStatCard({
+    required SdStatus status,
+    required IconData icon,
+    required String title,
+    required String value,
+    required String count,
+    required String allText,
+    required bool selected,
+    required VoidCallback onTap,
+    bool showSpinner = true,
+  }) {
+    final t = status.tone;
+    return SdRaised(
+      onTap: onTap,
+      toggled: selected,
+      radius: SdRadius.sm,
+      depth: selected ? SdDepth.button : SdDepth.small,
+      color: selected ? t.tint : SdColors.surface,
+      edgeColor: selected ? t.tintEdge : SdColors.cardEdge,
+      glowColor: t.tintEdge.withValues(alpha: .45),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: t.base, size: 18),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontWeight: FontWeight.bold,
+                    color: t.text,
+                    fontSize: 12.5,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                boxShadow: showWithoutCreatorOnly
-                    ? [
-                        BoxShadow(
-                          color: Colors.blue.withValues(alpha: 0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
-                    : null,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.person_off,
-                        color: showWithoutCreatorOnly
-                            ? Colors.blue[800]
-                            : Colors.blue[700],
-                        size: 18,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'بدون منشئ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: showWithoutCreatorOnly
-                                ? Colors.blue[900]
-                                : Colors.blue[800],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      if (showWithoutCreatorOnly)
-                        Icon(
-                          Icons.check_circle,
-                          color: Colors.blue[800],
-                          size: 14,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${_formatCurrency(negativeSumWithoutCreator.abs())} $currency',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: showWithoutCreatorOnly
-                          ? Colors.blue[800]
-                          : Colors.blue[700],
-                    ),
-                  ),
-                  Text(
-                    '$withoutCreatorCount عملية',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: showWithoutCreatorOnly
-                          ? Colors.blue[700]
-                          : Colors.blue[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  isLoadingAllTotals
-                      ? Row(
-                          children: const [
-                            SizedBox(
-                                width: 12,
-                                height: 12,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2)),
-                            SizedBox(width: 4),
-                            Expanded(
-                                child: Text('جاري الحساب...',
-                                    style: TextStyle(fontSize: 9))),
-                          ],
-                        )
-                      : Text(
-                          'الكل: ${_formatCurrency(negativeSumWithoutCreatorAll.abs())} ($withoutCreatorCountAll عملية)',
-                          style:
-                              TextStyle(fontSize: 9, color: Colors.blue[700]),
-                        ),
-                ],
-              ),
+              if (selected)
+                Icon(Icons.check_circle, color: t.base, size: 14),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: t.text,
             ),
           ),
-        ),
-        const SizedBox(width: 6),
-
-        // البطاقة الرابعة - العمليات المجدولة (قابلة للضغط)
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                // إعادة تعيين جميع الفلاتر
-                showScheduledOnly = !showScheduledOnly;
-                if (showScheduledOnly) {
-                  showPositiveOnly = false;
-                  showNegativeOnly = false;
-                  showWithoutCreatorOnly = false;
-                }
-              });
-              // إعادة تحميل البيانات مع الفلتر الجديد
-              _loadTransactions(isRefresh: true);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color:
-                    showScheduledOnly ? Colors.orange[100] : Colors.orange[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: showScheduledOnly
-                      ? Colors.orange[400]!
-                      : Colors.orange[200]!,
-                  width: showScheduledOnly ? 2 : 1,
-                ),
-                boxShadow: showScheduledOnly
-                    ? [
-                        BoxShadow(
-                          color: Colors.orange.withValues(alpha: 0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.schedule,
-                        color: showScheduledOnly
-                            ? Colors.orange[800]
-                            : Colors.orange[700],
-                        size: 18,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'مجدولة',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: showScheduledOnly
-                                ? Colors.orange[900]
-                                : Colors.orange[800],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      if (showScheduledOnly)
-                        Icon(
-                          Icons.check_circle,
-                          color: Colors.orange[800],
-                          size: 14,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${_formatCurrency(scheduledSum.abs())} $currency',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: showScheduledOnly
-                          ? Colors.orange[800]
-                          : Colors.orange[700],
-                    ),
-                  ),
-                  Text(
-                    '$scheduledCount عملية',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: showScheduledOnly
-                          ? Colors.orange[700]
-                          : Colors.orange[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  isLoadingAllTotals
-                      ? Row(
-                          children: const [
-                            SizedBox(
-                                width: 12,
-                                height: 12,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2)),
-                            SizedBox(width: 4),
-                            Expanded(
-                                child: Text('جاري الحساب...',
-                                    style: TextStyle(fontSize: 9))),
-                          ],
-                        )
-                      : Text(
-                          'الكل: ${_formatCurrency(scheduledSumAll.abs())} ($scheduledCountAll عملية)',
-                          style:
-                              TextStyle(fontSize: 9, color: Colors.orange[700]),
-                        ),
-                ],
-              ),
+          Text(
+            count,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 11.5,
+              color: t.base,
             ),
           ),
-        ),
-        const SizedBox(width: 6),
-
-        // البطاقة الخامسة - إظهار الكل (قابلة للضغط)
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                // إعادة تعيين جميع الفلاتر لإظهار الكل
-                showPositiveOnly = false;
-                showNegativeOnly = false;
-                showWithoutCreatorOnly = false;
-                showScheduledOnly = false;
-              });
-              // إعادة تحميل البيانات مع الفلتر الجديد
-              _loadTransactions(isRefresh: true);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: showingAll ? Colors.grey[100] : Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: showingAll ? Colors.grey[400]! : Colors.grey[200]!,
-                  width: showingAll ? 2 : 1,
+          const SizedBox(height: 4),
+          (showSpinner && isLoadingAllTotals)
+              ? Row(
+                  children: const [
+                    SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                    SizedBox(width: 4),
+                    Expanded(
+                        child: Text('جاري الحساب...',
+                            style: TextStyle(
+                                fontFamily: SdText.family, fontSize: 11.5))),
+                  ],
+                )
+              : Text(
+                  allText,
+                  style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 11.5,
+                    color: SdColors.muted,
+                  ),
                 ),
-                boxShadow: showingAll
-                    ? [
-                        BoxShadow(
-                          color: Colors.grey.withValues(alpha: 0.3),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.visibility,
-                        color: showingAll ? Colors.grey[800] : Colors.grey[700],
-                        size: 18,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'إظهار الكل',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: showingAll
-                                ? Colors.grey[900]
-                                : Colors.grey[800],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      if (showingAll)
-                        Icon(
-                          Icons.check_circle,
-                          color: Colors.grey[800],
-                          size: 14,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${_formatCurrency(totalCount)} معاملة',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: showingAll ? Colors.grey[800] : Colors.grey[700],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'جميع المعاملات',
-                    style: TextStyle(fontSize: 9, color: Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'اضغط لإلغاء التصفية',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -5470,12 +4868,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: Colors.black.withValues(alpha: 0.3),
-            width: 1,
-          ),
+          color: SdColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(SdRadius.xs),
+          border: Border.all(color: SdColors.divider, width: 1),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -5483,24 +4878,26 @@ class _TransactionsPageState extends State<TransactionsPage> {
             Text(
               serviceName.replaceAll('FIBER ', ''),
               style: const TextStyle(
-                color: Colors.black,
-                fontSize: 10,
+                fontFamily: SdText.family,
+                color: SdColors.ink,
+                fontSize: 11.5,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 2),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
+                color: SdColors.primaryTint,
+                borderRadius: BorderRadius.circular(SdRadius.xs),
               ),
               child: Text(
                 '$count',
                 style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 9,
+                  fontFamily: SdText.family,
+                  color: SdColors.primary,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.bold,
                 ),
               ),

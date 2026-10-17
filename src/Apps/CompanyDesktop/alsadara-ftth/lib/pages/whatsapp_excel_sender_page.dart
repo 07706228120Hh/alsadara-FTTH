@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/whatsapp_bulk_sender_service.dart';
 import '../services/whatsapp_business_service.dart';
 
@@ -74,14 +75,14 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم إنشاء القالب — عبّئه ثم ارفعه'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -141,14 +142,14 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم استيراد ${rows.length} مستلم'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في قراءة الملف: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ في قراءة الملف: $e'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -173,7 +174,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.success),
             child: const Text('إرسال', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -234,7 +235,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
         icon: Icon(
           success ? Icons.check_circle : Icons.error,
           size: 64,
-          color: success ? Colors.green : Colors.red,
+          color: success ? SdColors.success : SdColors.danger,
         ),
         title: Text(success ? 'تم الإرسال' : 'فشل الإرسال'),
         content: Text(message, textAlign: TextAlign.center),
@@ -242,7 +243,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx),
             style: ElevatedButton.styleFrom(
-              backgroundColor: success ? Colors.green : Colors.red,
+              backgroundColor: success ? SdColors.success : SdColors.danger,
               foregroundColor: Colors.white,
             ),
             child: const Text('حسناً'),
@@ -264,22 +265,20 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
       return content;
     }
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF1B5E20),
-          foregroundColor: Colors.white,
-          title: const Text('إرسال جماعي من Excel'),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'إرسال جماعي من Excel',
           actions: [
-            IconButton(
-              icon: const Icon(Icons.download),
-              tooltip: 'تحميل قالب Excel فارغ',
+            SdAppBarAction(
+              icon: Icons.download,
+              label: 'تحميل قالب Excel فارغ',
               onPressed: _downloadTemplate,
             ),
-            IconButton(
-              icon: const Icon(Icons.upload_file),
-              tooltip: 'رفع ملف Excel',
+            SdAppBarAction(
+              icon: Icons.upload_file,
+              label: 'رفع ملف Excel',
               onPressed: _uploadFile,
             ),
           ],
@@ -290,39 +289,23 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
+    return SdEmptyState(
+      title: 'ارفع ملف Excel للبدء',
+      icon: Icons.table_chart_outlined,
+      action: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.table_chart_outlined, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text('ارفع ملف Excel للبدء', style: TextStyle(fontSize: 18, color: Colors.grey.shade500)),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton.icon(
-                onPressed: _downloadTemplate,
-                icon: const Icon(Icons.download),
-                label: const Text('تحميل القالب'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                ),
-              ),
-              const SizedBox(width: 16),
-              ElevatedButton.icon(
-                onPressed: _uploadFile,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('رفع ملف Excel'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1B5E20),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                ),
-              ),
-            ],
+          SdButton(
+            label: 'تحميل القالب',
+            icon: Icons.download,
+            kind: SdButtonKind.secondary,
+            onPressed: _downloadTemplate,
+          ),
+          const SizedBox(width: 16),
+          SdButton(
+            label: 'رفع ملف Excel',
+            icon: Icons.upload_file,
+            onPressed: _uploadFile,
           ),
         ],
       ),
@@ -335,11 +318,11 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
         // شريط التحكم
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.grey.shade100,
+          color: SdColors.surfaceAlt,
           child: Row(
             children: [
               // اختيار القالب
-              const Text('القالب: ', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('القالب: ', style: SdText.label),
               const SizedBox(width: 8),
               DropdownButton<String>(
                 value: _selectedTemplate,
@@ -361,7 +344,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
                       hintText: 'مثال: باقة TURBO بسعر 30,000 فقط!',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                       filled: true,
-                      fillColor: Colors.orange.shade50,
+                      fillColor: SdColors.warningTint,
                     ),
                   ),
                 ),
@@ -386,9 +369,12 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
               const SizedBox(width: 8),
               // عداد
               Chip(
-                backgroundColor: Colors.green.shade50,
+                backgroundColor: SdColors.successTint,
                 label: Text('${_selectedRows.length} / ${_rows.length} محدد',
-                    style: TextStyle(color: Colors.green.shade800)),
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontWeight: FontWeight.w800,
+                        color: SdColors.successEdge)),
               ),
               const SizedBox(width: 12),
               // زر إرسال
@@ -399,7 +385,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
                     : const Icon(Icons.send),
                 label: Text(_isSending ? 'جاري الإرسال...' : 'إرسال (${_selectedRows.length})'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
+                  backgroundColor: SdColors.success,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
@@ -415,7 +401,7 @@ class _WhatsAppExcelSenderPageState extends State<WhatsAppExcelSenderPage> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(Colors.green.shade50),
+                headingRowColor: WidgetStateProperty.all(SdColors.successTint),
                 columns: const [
                   DataColumn(label: Text('')),
                   DataColumn(label: Text('#')),

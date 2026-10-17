@@ -28,14 +28,16 @@ class SdTheme {
       onError: Colors.white,
       surface: SdColors.surface,
       onSurface: SdColors.ink,
-      outline: SdColors.edge,
+      outline: SdColors.outline,
       outlineVariant: SdColors.divider,
     );
 
     final input = OutlineInputBorder(
       borderRadius: SdRadius.all(SdRadius.md),
-      borderSide: const BorderSide(color: SdColors.edge),
+      borderSide: SdOutline.side,
     );
+    final shape = RoundedRectangleBorder(
+        borderRadius: SdRadius.all(SdRadius.md), side: SdOutline.side);
 
     return ThemeData(
       useMaterial3: true,
@@ -72,7 +74,8 @@ class SdTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: SdRadius.all(SdRadius.lg)),
+        shape: RoundedRectangleBorder(
+            borderRadius: SdRadius.all(SdRadius.lg), side: SdOutline.side),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -82,7 +85,7 @@ class SdTheme {
           minimumSize: const Size(SdSpace.touch, SdSpace.touch),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           textStyle: SdText.label,
-          shape: RoundedRectangleBorder(borderRadius: SdRadius.all(SdRadius.md)),
+          shape: shape,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -92,17 +95,17 @@ class SdTheme {
           minimumSize: const Size(SdSpace.touch, SdSpace.touch),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           textStyle: SdText.label,
-          shape: RoundedRectangleBorder(borderRadius: SdRadius.all(SdRadius.md)),
+          shape: shape,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: SdColors.primary,
           minimumSize: const Size(SdSpace.touch, SdSpace.touch),
-          side: const BorderSide(color: SdColors.primaryTintEdge),
+          side: SdOutline.side,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           textStyle: SdText.label,
-          shape: RoundedRectangleBorder(borderRadius: SdRadius.all(SdRadius.md)),
+          shape: shape,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -121,18 +124,45 @@ class SdTheme {
         hintStyle: SdText.bodySm.copyWith(color: SdColors.faint),
         border: input,
         enabledBorder: input,
-        focusedBorder: input.copyWith(
-          borderSide: const BorderSide(color: SdColors.primary, width: 1.8),
-        ),
+        focusedBorder: input.copyWith(borderSide: SdOutline.focus),
+        disabledBorder: input.copyWith(borderSide: SdOutline.disabled),
         errorBorder: input.copyWith(
-          borderSide: const BorderSide(color: SdColors.danger),
+          borderSide: const BorderSide(color: SdColors.danger, width: SdOutline.width),
         ),
+        focusedErrorBorder: input.copyWith(
+          borderSide: const BorderSide(color: SdColors.danger, width: SdOutline.focusWidth),
+        ),
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: SdColors.surfaceAlt,
+          border: input,
+          enabledBorder: input,
+          focusedBorder: input.copyWith(borderSide: SdOutline.focus),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          side: const WidgetStatePropertyAll(SdOutline.side),
+        ),
+      ),
+      toggleButtonsTheme: ToggleButtonsThemeData(
+        borderColor: SdColors.outline,
+        selectedBorderColor: SdColors.outline,
+        borderWidth: SdOutline.width,
+        borderRadius: SdRadius.all(SdRadius.sm),
+      ),
+      checkboxTheme: const CheckboxThemeData(side: SdOutline.side),
+      switchTheme: const SwitchThemeData(
+        trackOutlineColor: WidgetStatePropertyAll(SdColors.outline),
+        trackOutlineWidth: WidgetStatePropertyAll(SdOutline.width),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: SdColors.surface,
         selectedColor: SdColors.primary,
         labelStyle: SdText.label,
-        side: const BorderSide(color: SdColors.edge),
+        side: SdOutline.side,
         shape: RoundedRectangleBorder(borderRadius: SdRadius.all(SdRadius.pill)),
       ),
       dialogTheme: DialogThemeData(

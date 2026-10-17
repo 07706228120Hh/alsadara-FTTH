@@ -6,7 +6,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/api/api_client.dart';
 import '../../services/api/api_config.dart';
 import '../../multi_tenant.dart';
-import '../../theme/energy_dashboard_theme.dart';
+import '../../frontend/frontend.dart';
 
 class EditCompanyPage extends StatefulWidget {
   final Tenant tenant;
@@ -78,7 +78,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: EnergyDashboardTheme.primaryColor,
+              primary: SdColors.primary,
             ),
           ),
           child: child!,
@@ -134,7 +134,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
                 Text('تم تحديث بيانات الشركة بنجاح'),
               ],
             ),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: SdColors.success,
             behavior: SnackBarBehavior.floating,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -152,7 +152,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
                     child: Text(response.message ?? 'فشل تحديث بيانات الشركة')),
               ],
             ),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
             behavior: SnackBarBehavior.floating,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -172,7 +172,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
                 Expanded(child: Text('حدث خطأ')),
               ],
             ),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
             behavior: SnackBarBehavior.floating,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -186,13 +186,10 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy/MM/dd', 'ar');
 
-    return Scaffold(
-      backgroundColor: EnergyDashboardTheme.backgroundColor,
-      appBar: AppBar(
-        title: const Text('تعديل الشركة'),
-        backgroundColor: EnergyDashboardTheme.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
+    return SdPage(
+      maxWidth: SdSpace.formMax,
+      appBar: SdAppBar(
+        title: 'تعديل الشركة',
         actions: [
           if (_isLoading)
             const Center(
@@ -209,31 +206,24 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
               ),
             )
           else
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: TextButton.icon(
-                onPressed: _save,
-                icon: const Icon(Icons.save_rounded, color: Colors.white),
-                label: const Text('حفظ',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
+            SdAppBarAction(
+              icon: Icons.save_rounded,
+              label: 'حفظ',
+              onPressed: _save,
             ),
         ],
       ),
       body: Form(
         key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // قسم بيانات الشركة
-              _buildModernCard(
-                title: 'بيانات الشركة',
-                icon: Icons.business_rounded,
-                color: Colors.blue,
-                children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // قسم بيانات الشركة
+            _buildModernCard(
+              title: 'بيانات الشركة',
+              icon: Icons.business_rounded,
+              tone: SdGroup.admin.tone,
+              children: [
                   _buildTextField(
                     controller: _nameController,
                     label: 'اسم الشركة',
@@ -298,7 +288,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
               _buildModernCard(
                 title: 'بيانات الاشتراك',
                 icon: Icons.card_membership_rounded,
-                color: Colors.green,
+                tone: SdStatus.success.tone,
                 children: [
                   // تاريخ انتهاء الاشتراك
                   _buildDateField(
@@ -356,27 +346,20 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
             ],
           ),
         ),
-      ),
     );
   }
 
   Widget _buildModernCard({
     required String title,
     required IconData icon,
-    required Color color,
+    required SdTone tone,
     required List<Widget> children,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.lg),
+        boxShadow: SdDepth.raised(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,30 +368,24 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color.withOpacity(0.1), color.withOpacity(0.15)],
-              ),
+              color: tone.tint,
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+                  const BorderRadius.vertical(top: Radius.circular(SdRadius.lg)),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
+                    color: tone.base.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: color, size: 22),
+                  child: Icon(icon, color: tone.base, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+                  style: SdText.titleSm.copyWith(color: tone.text),
                 ),
               ],
             ),
@@ -439,23 +416,20 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
       decoration: InputDecoration(
         labelText: required ? '$label *' : label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: EnergyDashboardTheme.primaryColor),
+        prefixIcon: Icon(icon, color: SdColors.primary),
         filled: true,
-        fillColor: readOnly
-            ? Colors.grey.shade100
-            : EnergyDashboardTheme.backgroundColor,
+        fillColor: readOnly ? SdColors.surfaceAlt : SdColors.ground,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: EnergyDashboardTheme.borderColor),
+          borderSide: const BorderSide(color: SdColors.edge),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: EnergyDashboardTheme.borderColor),
+          borderSide: const BorderSide(color: SdColors.edge),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-              color: EnergyDashboardTheme.primaryColor, width: 2),
+          borderSide: const BorderSide(color: SdColors.primary, width: 2),
         ),
       ),
       validator: required
@@ -480,39 +454,25 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: EnergyDashboardTheme.backgroundColor,
+          color: SdColors.ground,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: EnergyDashboardTheme.borderColor),
+          border: Border.all(color: SdColors.edge),
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_month_rounded,
-                color: EnergyDashboardTheme.primaryColor),
+            const Icon(Icons.calendar_month_rounded, color: SdColors.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: EnergyDashboardTheme.textSecondary,
-                    ),
-                  ),
+                  Text(label, style: SdText.caption),
                   const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  Text(value, style: SdText.label),
                 ],
               ),
             ),
-            Icon(Icons.arrow_drop_down,
-                color: EnergyDashboardTheme.textSecondary),
+            const Icon(Icons.arrow_drop_down, color: SdColors.muted),
           ],
         ),
       ),
@@ -528,17 +488,17 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.backgroundColor,
+        color: SdColors.ground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.edge),
       ),
       child: DropdownButtonFormField<String>(
         value: value,
         decoration: InputDecoration(
           labelText: label,
           border: InputBorder.none,
-          prefixIcon: Icon(Icons.workspace_premium_rounded,
-              color: EnergyDashboardTheme.primaryColor),
+          prefixIcon: const Icon(Icons.workspace_premium_rounded,
+              color: SdColors.primary),
         ),
         items: items,
         onChanged: onChanged,
@@ -547,34 +507,27 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
   }
 
   Widget _buildStatusSwitch() {
+    final tone = _isActive ? SdStatus.success.tone : SdStatus.warning.tone;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _isActive
-            ? Colors.green.withOpacity(0.1)
-            : Colors.orange.withOpacity(0.1),
+        color: tone.tint,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _isActive
-              ? Colors.green.withOpacity(0.3)
-              : Colors.orange.withOpacity(0.3),
-        ),
+        border: Border.all(color: tone.tintEdge),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: _isActive
-                  ? Colors.green.withOpacity(0.2)
-                  : Colors.orange.withOpacity(0.2),
+              color: tone.base.withValues(alpha: 0.18),
               shape: BoxShape.circle,
             ),
             child: Icon(
               _isActive
                   ? Icons.check_circle_rounded
                   : Icons.pause_circle_rounded,
-              color: _isActive ? Colors.green : Colors.orange,
+              color: tone.base,
             ),
           ),
           const SizedBox(width: 16),
@@ -584,19 +537,13 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
               children: [
                 Text(
                   _isActive ? 'الشركة نشطة' : 'الشركة معلقة',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: _isActive ? Colors.green : Colors.orange,
-                  ),
+                  style: SdText.label.copyWith(color: tone.text),
                 ),
                 Text(
                   _isActive
                       ? 'الشركة فعالة ويمكن للمستخدمين تسجيل الدخول'
                       : 'الشركة معلقة ولا يمكن للمستخدمين تسجيل الدخول',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: EnergyDashboardTheme.textSecondary,
-                  ),
+                  style: SdText.caption,
                 ),
               ],
             ),
@@ -604,7 +551,7 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
           Switch(
             value: _isActive,
             onChanged: (value) => setState(() => _isActive = value),
-            activeColor: Colors.green,
+            activeColor: SdColors.success,
           ),
         ],
       ),
@@ -612,73 +559,12 @@ class _EditCompanyPageState extends State<EditCompanyPage> {
   }
 
   Widget _buildSaveButton() {
-    return Container(
-      width: double.infinity,
+    return SdButton(
+      label: _isLoading ? 'جاري الحفظ...' : 'حفظ التغييرات',
+      icon: _isLoading ? null : Icons.save_rounded,
+      expand: true,
       height: 56,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: _isLoading
-              ? [Colors.grey, Colors.grey.shade600]
-              : [EnergyDashboardTheme.primaryColor, const Color(0xFF3949AB)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: _isLoading
-            ? null
-            : [
-                BoxShadow(
-                  color: EnergyDashboardTheme.primaryColor.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _isLoading ? null : _save,
-          borderRadius: BorderRadius.circular(16),
-          child: Center(
-            child: _isLoading
-                ? const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'جاري الحفظ...',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  )
-                : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.save_rounded, color: Colors.white, size: 24),
-                      SizedBox(width: 12),
-                      Text(
-                        'حفظ التغييرات',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ),
+      onPressed: _isLoading ? null : _save,
     );
   }
 }

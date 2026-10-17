@@ -7,8 +7,8 @@ library;
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/auth_service.dart';
-import '../../utils/smart_text_color.dart';
 import '../../services/zone_statistics_api_service.dart';
 import '../auth/auth_error_handler.dart';
 
@@ -364,7 +364,7 @@ class _ZonesPageState extends State<ZonesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('لا يمكن تحديد معرف الزون'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
       return;
@@ -376,7 +376,7 @@ class _ZonesPageState extends State<ZonesPage> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.location_city, color: Colors.blue),
+              Icon(Icons.location_city, color: SdColors.primary),
               SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -410,11 +410,11 @@ class _ZonesPageState extends State<ZonesPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        Icon(Icons.error_outline, size: 48, color: SdColors.danger),
                         SizedBox(height: 16),
                         Text(
                           'فشل في تحميل تفاصيل الزون',
-                          style: TextStyle(color: Colors.red),
+                          style: TextStyle(color: SdColors.danger),
                         ),
                         if (snapshot.hasError)
                           Padding(
@@ -422,7 +422,7 @@ class _ZonesPageState extends State<ZonesPage> {
                             child: Text(
                               'الخطأ: ${snapshot.error}',
                               style:
-                                  TextStyle(fontSize: 12, color: Colors.grey),
+                                  TextStyle(fontSize: 12, color: SdColors.muted),
                             ),
                           ),
                       ],
@@ -442,9 +442,9 @@ class _ZonesPageState extends State<ZonesPage> {
                       Container(
                         padding: EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: SdColors.primaryTint,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue.shade200),
+                          border: Border.all(color: SdColors.primaryTintEdge),
                         ),
                         child: Column(
                           children: [
@@ -453,7 +453,7 @@ class _ZonesPageState extends State<ZonesPage> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
+                                color: SdColors.primary,
                               ),
                             ),
                             SizedBox(height: 12),
@@ -464,17 +464,17 @@ class _ZonesPageState extends State<ZonesPage> {
                                     'FDTs',
                                     '${details['totalFdts']}',
                                     Icons.device_hub,
-                                    Colors.green),
+                                    SdColors.success),
                                 _buildStatCard(
                                     'FATs',
                                     '${details['totalFats']}',
                                     Icons.router,
-                                    Colors.orange),
+                                    SdColors.warning),
                                 _buildStatCard(
                                     'ONT Vendors',
                                     '${details['totalOntVendors']}',
                                     Icons.business,
-                                    Colors.purple),
+                                    SdColors.platformBase),
                               ],
                             ),
                           ],
@@ -490,7 +490,7 @@ class _ZonesPageState extends State<ZonesPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700,
+                            color: SdColors.success,
                           ),
                         ),
                         SizedBox(height: 8),
@@ -505,7 +505,7 @@ class _ZonesPageState extends State<ZonesPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.purple.shade700,
+                            color: SdColors.platformBase,
                           ),
                         ),
                         SizedBox(height: 8),
@@ -516,9 +516,9 @@ class _ZonesPageState extends State<ZonesPage> {
                               .map((vendor) => Chip(
                                     label: Text(
                                         vendor['displayValue'] ?? 'غير معروف'),
-                                    backgroundColor: Colors.purple.shade100,
+                                    backgroundColor: SdColors.platformTint,
                                     labelStyle: TextStyle(
-                                        color: Colors.purple.shade800),
+                                        color: SdColors.platformBase),
                                   ))
                               .toList(),
                         ),
@@ -563,7 +563,7 @@ class _ZonesPageState extends State<ZonesPage> {
             return AlertDialog(
               title: Row(
                 children: const [
-                  Icon(Icons.search, color: Colors.blue),
+                  Icon(Icons.search, color: SdColors.primary),
                   SizedBox(width: 8),
                   Text('بحث عن منطقة'),
                 ],
@@ -602,7 +602,7 @@ class _ZonesPageState extends State<ZonesPage> {
                                 final zone = filtered[index];
                                 return ListTile(
                                   leading: const Icon(Icons.location_city,
-                                      color: Colors.blue),
+                                      color: SdColors.primary),
                                   title: Text(zone),
                                   onTap: () {
                                     Navigator.of(context).pop();
@@ -653,7 +653,7 @@ class _ZonesPageState extends State<ZonesPage> {
             return AlertDialog(
               title: Row(
                 children: [
-                  Icon(Icons.cloud_upload, color: Colors.blue),
+                  Icon(Icons.cloud_upload, color: SdColors.primary),
                   SizedBox(width: 8),
                   Text('تصدير إلى السيرفر'),
                 ],
@@ -665,9 +665,9 @@ class _ZonesPageState extends State<ZonesPage> {
                     value: _dialogTotal > 0 && _dialogProcessed >= 0
                         ? _dialogProcessed / _dialogTotal
                         : null,
-                    backgroundColor: Colors.grey[200],
+                    backgroundColor: SdColors.divider,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                        _dialogProcessed < 0 ? Colors.orange : Colors.blue),
+                        _dialogProcessed < 0 ? SdColors.warning : SdColors.primary),
                   ),
                   SizedBox(height: 12),
                   Text(
@@ -675,7 +675,7 @@ class _ZonesPageState extends State<ZonesPage> {
                         ? 'السيرفر محظور مؤقتاً... جاري الانتظار 30 ثانية'
                         : 'جاري جلب FAT... $_dialogProcessed/$_dialogTotal',
                     style: TextStyle(
-                      color: _dialogProcessed < 0 ? Colors.orange[800] : null,
+                      color: _dialogProcessed < 0 ? SdColors.warningText : null,
                     ),
                   ),
                 ],
@@ -686,7 +686,7 @@ class _ZonesPageState extends State<ZonesPage> {
                     _exportCancelled = true;
                     Navigator.of(ctx).pop();
                   },
-                  child: Text('إلغاء', style: TextStyle(color: Colors.red)),
+                  child: Text('إلغاء', style: TextStyle(color: SdColors.danger)),
                 ),
               ],
             );
@@ -767,7 +767,7 @@ class _ZonesPageState extends State<ZonesPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('تم إلغاء التصدير (تم جلب ${syncData.length}/${zones.length})'),
-              backgroundColor: Colors.orange[700],
+              backgroundColor: SdColors.warning,
             ),
           );
         }
@@ -792,7 +792,7 @@ class _ZonesPageState extends State<ZonesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ: $error'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       } else {
@@ -800,7 +800,7 @@ class _ZonesPageState extends State<ZonesPage> {
           SnackBar(
             content: Text(
                 'تم التصدير: أُضيف $added، حُدّث $updated، لم يتغير $unchanged'),
-            backgroundColor: Colors.green[700],
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -811,7 +811,7 @@ class _ZonesPageState extends State<ZonesPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في التصدير: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -869,7 +869,7 @@ class _ZonesPageState extends State<ZonesPage> {
       margin: EdgeInsets.only(bottom: 8),
       elevation: 2,
       child: ExpansionTile(
-        leading: Icon(Icons.device_hub, color: Colors.green),
+        leading: Icon(Icons.device_hub, color: SdColors.success),
         title: Text(
           fdt['displayValue'] ?? 'FDT غير معروف',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -886,7 +886,7 @@ class _ZonesPageState extends State<ZonesPage> {
                     'FATs (${fats.length}):',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.orange.shade700,
+                      color: SdColors.warningText,
                     ),
                   ),
                   SizedBox(height: 8),
@@ -899,9 +899,9 @@ class _ZonesPageState extends State<ZonesPage> {
                                 fat['displayValue'] ?? 'غير معروف',
                                 style: TextStyle(fontSize: 12),
                               ),
-                              backgroundColor: Colors.orange.shade100,
+                              backgroundColor: SdColors.warningTint,
                               labelStyle:
-                                  TextStyle(color: Colors.orange.shade800),
+                                  TextStyle(color: SdColors.warningText),
                             ))
                         .toList(),
                   ),
@@ -913,7 +913,7 @@ class _ZonesPageState extends State<ZonesPage> {
               padding: EdgeInsets.all(16),
               child: Text(
                 'لا توجد FATs',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: SdColors.muted),
               ),
             ),
           ],
@@ -925,306 +925,235 @@ class _ZonesPageState extends State<ZonesPage> {
   @override
   Widget build(BuildContext context) {
     final isPhone = MediaQuery.of(context).size.width < 500;
+    final isWarnMessage =
+        message.contains('افتراضية') || message.contains('رفض');
 
-    // تحديد ألوان التدرج للـ AppBar
-    final gradientColors = [Colors.blueAccent, Colors.blue[600]!];
-
-    // تحديد لون النص والأيقونات بطريقة ذكية
-    final smartTextColor =
-        SmartTextColor.getAppBarTextColorWithGradient(context, gradientColors);
-    final smartIconColor = smartTextColor;
-
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 50,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: gradientColors,
+    return SdTheme.scope(
+      child: Scaffold(
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'الزونات',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.search,
+              label: 'بحث عن منطقة',
+              onPressed: zones.isEmpty ? null : _openZoneSearchDialog,
             ),
-          ),
-        ),
-        title: Text(
-          'الزونات',
-          style: SmartTextColor.getSmartTextStyle(
-            context: context,
-            fontSize: isPhone ? 16 : 20,
-            fontWeight: FontWeight.bold,
-            gradientColors: gradientColors,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: smartIconColor, size: 28),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search, color: smartIconColor, size: 28),
-            tooltip: 'بحث عن منطقة',
-            onPressed: zones.isEmpty ? null : _openZoneSearchDialog,
-          ),
-          if (_isExporting)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(smartIconColor),
+            if (_isExporting)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
                 ),
+              )
+            else
+              SdAppBarAction(
+                icon: Icons.cloud_upload,
+                label: 'تصدير إلى السيرفر (VPS)',
+                onPressed: zones.isEmpty ? null : _exportToVps,
               ),
-            )
-          else
-            IconButton(
-              icon: Icon(Icons.cloud_upload, color: smartIconColor, size: 28),
-              tooltip: 'تصدير إلى السيرفر (VPS)',
-              onPressed: zones.isEmpty ? null : _exportToVps,
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'إعادة تحميل الصفحة',
+              onPressed: () async {
+                setState(() => isLoading = true);
+                await fetchZones();
+              },
             ),
-          IconButton(
-            icon: Icon(Icons.refresh, color: smartIconColor, size: 28),
-            tooltip: 'إعادة تحميل الصفحة',
-            onPressed: () async {
-              setState(() => isLoading = true);
-              await fetchZones();
-            },
-          ),
-        ],
-      ),
-      body: isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.blueAccent),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'جاري تحميل المناطق...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
+          ],
+        ),
+        body: isLoading
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(SdColors.primary),
                     ),
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                // عرض رسالة الحالة
-                if (message.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    margin: EdgeInsets.all(16),
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: message.contains('افتراضية') ||
-                              message.contains('رفض')
-                          ? Colors.orange[50]
-                          : Colors.red[50],
-                      border: Border.all(
-                        color: message.contains('افتراضية') ||
-                                message.contains('رفض')
-                            ? Colors.orange
-                            : Colors.red,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          message.contains('افتراضية') ||
-                                  message.contains('رفض')
-                              ? Icons.warning
-                              : Icons.error,
-                          color: message.contains('افتراضية') ||
-                                  message.contains('رفض')
-                              ? Colors.orange
-                              : Colors.red,
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            message,
-                            style: TextStyle(
-                              color: message.contains('افتراضية') ||
-                                      message.contains('رفض')
-                                  ? Colors.orange[800]
-                                  : Colors.red[800],
-                              fontSize: 14,
-                            ),
+                    SizedBox(height: 16),
+                    Text('جاري تحميل المناطق...', style: SdText.bodySm),
+                  ],
+                ),
+              )
+            : SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    // عرض رسالة الحالة
+                    if (message.isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isWarnMessage
+                              ? SdColors.warningTint
+                              : SdColors.dangerTint,
+                          border: Border.all(
+                            color: isWarnMessage
+                                ? SdColors.warning
+                                : SdColors.danger,
                           ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
-                    ),
-                  ),
-
-                // عرض إحصائيات
-                if (zones.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue[200]!),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.location_on, color: Colors.blue),
-                        SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            SizedBox(height: 2),
-                            Text(
-                              'المعروض في التطبيق: $totalZones',
-                              style: TextStyle(
-                                fontSize: isPhone ? 16 : 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[800],
+                            Icon(
+                              isWarnMessage ? Icons.warning : Icons.error,
+                              color: isWarnMessage
+                                  ? SdColors.warning
+                                  : SdColors.danger,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                message,
+                                style: TextStyle(
+                                  color: isWarnMessage
+                                      ? SdColors.warningText
+                                      : const Color(0xFFB71C1C),
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
 
-                // قائمة المناطق
-                Expanded(
-                  child: zones.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.location_off,
-                                size: 64,
-                                color: Colors.grey[400],
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'لا توجد مناطق للعرض',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.grey[600],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'اضغط على زر التحديث للمحاولة مرة أخرى',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[500],
-                                ),
-                              ),
-                              SizedBox(height: 24),
-                              ElevatedButton.icon(
-                                onPressed: () async {
-                                  setState(() => isLoading = true);
-                                  await fetchZones();
-                                },
-                                icon: Icon(Icons.refresh),
-                                label: Text('إعادة المحاولة'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blueAccent,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 12,
+                    // عرض إحصائيات
+                    if (zones.isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: SdColors.infoTint,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: SdColors.infoTintEdge),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_on, color: SdColors.info),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 2),
+                                Text(
+                                  'المعروض في التطبيق: $totalZones',
+                                  style: TextStyle(
+                                    fontSize: isPhone ? 16 : 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: SdColors.infoEdge,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: zones.length,
-                          itemBuilder: (context, index) {
-                            return Card(
-                              margin: EdgeInsets.only(bottom: 8),
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.white,
-                                      Colors.blue[50]!,
-                                    ],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                ),
-                                child: ListTile(
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 8,
-                                  ),
-                                  leading: Container(
-                                    padding: EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blueAccent,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.location_city,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  title: Text(
-                                    zones[index],
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey[800],
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    'المنطقة رقم ${index + 1} - اضغط لعرض التفاصيل',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.info_outline,
-                                        color: Colors.blue,
-                                        size: 18,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Icon(
-                                        Icons.arrow_forward_ios,
-                                        color: Colors.blueAccent,
-                                        size: 16,
-                                      ),
-                                    ],
-                                  ),
-                                  onTap: () {
-                                    // عرض تفاصيل الزون
-                                    showZoneDetails(zones[index]);
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // قائمة المناطق
+                    Expanded(
+                      child: zones.isEmpty
+                          ? Center(
+                              child: SdEmptyState(
+                                icon: Icons.location_off,
+                                title: 'لا توجد مناطق للعرض',
+                                message:
+                                    'اضغط على زر التحديث للمحاولة مرة أخرى',
+                                action: SdButton(
+                                  label: 'إعادة المحاولة',
+                                  icon: Icons.refresh,
+                                  onPressed: () async {
+                                    setState(() => isLoading = true);
+                                    await fetchZones();
                                   },
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                            )
+                          : ListView.builder(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: zones.length,
+                              itemBuilder: (context, index) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: SdRaised(
+                                    onTap: () => showZoneDetails(zones[index]),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: SdColors.primary,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(
+                                            Icons.location_city,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                zones[index],
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: SdColors.ink,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'المنطقة رقم ${index + 1} - اضغط لعرض التفاصيل',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: SdColors.muted,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.info_outline,
+                                          color: SdColors.info,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.arrow_forward_ios,
+                                          color: SdColors.primary,
+                                          size: 16,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+      ),
     );
   }
 }
@@ -1313,7 +1242,7 @@ class PartnersPage extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: SdColors.info,
         iconTheme: const IconThemeData(color: Colors.white, size: 20),
       ),
       body: Center(
@@ -1339,7 +1268,7 @@ class FinancialTransactionsPage extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: SdColors.info,
         iconTheme: const IconThemeData(color: Colors.white, size: 20),
       ),
       body: Center(
@@ -1383,7 +1312,7 @@ class ZoneNotificationsPage extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: SdColors.info,
         iconTheme: const IconThemeData(color: Colors.white, size: 20),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -1395,7 +1324,7 @@ class ZoneNotificationsPage extends StatelessWidget {
             return Center(
               child: SelectableText(
                 '${snapshot.error}',
-                style: TextStyle(color: Colors.red, fontSize: 16),
+                style: TextStyle(color: SdColors.danger, fontSize: 16),
               ),
             );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -1429,7 +1358,7 @@ class ZoneNotificationsPage extends StatelessWidget {
                         Text(notification['description'] ?? 'لا يوجد وصف'),
                     trailing: Text(
                       notification['createdAt'] ?? '',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: SdColors.muted),
                     ),
                   ),
                 );

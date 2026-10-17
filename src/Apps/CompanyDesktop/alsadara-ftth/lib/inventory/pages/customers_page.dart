@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import 'customer_form_page.dart';
 import 'customer_details_page.dart';
@@ -114,20 +115,23 @@ class _CustomersPageState extends State<CustomersPage> {
     final name = _v(m, 'name');
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: Text('هل تريد حذف العميل "$name"؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('حذف'),
-          ),
-        ],
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد الحذف'),
+          content: Text('هل تريد حذف العميل "$name"؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('حذف'),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed != true) return;
@@ -145,37 +149,38 @@ class _CustomersPageState extends State<CustomersPage> {
   // --------------- type chip ---------------
 
   Widget _typeChip(String type) {
-    Color bg;
-    Color fg;
-    String label;
+    late final String label;
+    late final SdTone tone;
     switch (type) {
       case 'Cash':
-        bg = Colors.green.shade50;
-        fg = Colors.green.shade800;
         label = 'نقدي';
+        tone = SdStatus.success.tone;
         break;
       case 'Credit':
-        bg = Colors.orange.shade50;
-        fg = Colors.orange.shade800;
         label = 'آجل';
+        tone = SdStatus.warning.tone;
         break;
       case 'VIP':
-        bg = Colors.purple.shade50;
-        fg = Colors.purple.shade800;
         label = 'VIP';
+        tone = SdGroup.platform.tone;
         break;
       default:
-        bg = Colors.grey.shade100;
-        fg = Colors.grey.shade700;
         label = type.isEmpty ? '-' : type;
+        tone = SdGroup.neutral.tone;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
       ),
-      child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
+      child: Text(label,
+          style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: tone.text)),
     );
   }
 
@@ -183,143 +188,138 @@ class _CustomersPageState extends State<CustomersPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F6FA),
-          foregroundColor: const Color(0xFF1A1A2E),
-          iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
-          titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700),
-          elevation: 0,
-          title: const Text('العملاء'),
-          actions: [
-            TextButton.icon(
-              onPressed: _navigateToAdd,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('عميل جديد +'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'تحديث',
-              onPressed: _loadData,
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            _buildSearchBar(),
-            const Divider(height: 1),
-            Expanded(child: _buildBody()),
-          ],
-        ),
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'العملاء',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.add_rounded,
+            label: 'عميل جديد',
+            onPressed: _navigateToAdd,
+          ),
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loadData,
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            flex: 3,
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'بحث بالاسم أو الكود أو الهاتف...',
-                prefixIcon: const Icon(Icons.search),
-                border: const OutlineInputBorder(),
-                isDense: true,
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _loadData();
-                        },
-                      )
-                    : null,
-              ),
-              onSubmitted: (_) => _loadData(),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 1,
-            child: DropdownButtonFormField<String>(
-              value: _selectedType,
-              decoration: const InputDecoration(
-                labelText: 'النوع',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              items: _typeFilters
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                  .toList(),
-              onChanged: (v) {
-                _selectedType = v ?? 'الكل';
-                _loadData();
-              },
-            ),
-          ),
+          _buildSearchBar(),
+          const SizedBox(height: SdSpace.sm),
+          Expanded(child: _buildBody()),
         ],
       ),
     );
   }
 
+  Widget _buildSearchBar() {
+    final searchField = TextField(
+      controller: _searchCtrl,
+      style: SdText.body,
+      decoration: InputDecoration(
+        hintText: 'بحث بالاسم أو الكود أو الهاتف...',
+        hintStyle: SdText.bodySm,
+        prefixIcon: const Icon(Icons.search, color: SdColors.faint),
+        filled: true,
+        fillColor: SdColors.surface,
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+        suffixIcon: _searchCtrl.text.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear, size: 18, color: SdColors.faint),
+                onPressed: () {
+                  _searchCtrl.clear();
+                  _loadData();
+                },
+              )
+            : null,
+      ),
+      onSubmitted: (_) => _loadData(),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        searchField,
+        const SizedBox(height: SdSpace.sm),
+        SdFilterChips<String>(
+          options: [for (final t in _typeFilters) SdFilterOption(t, t)],
+          selected: _selectedType,
+          onSelected: (v) {
+            _selectedType = v;
+            _loadData();
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     if (_error != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _loadData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل العملاء',
+          message: _error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh_rounded,
+            kind: SdButtonKind.secondary,
+            onPressed: _loadData,
+          ),
         ),
       );
     }
     if (_customers.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
-            const Text('لا يوجد عملاء', style: TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _navigateToAdd,
-              icon: const Icon(Icons.add),
-              label: const Text('إضافة عميل'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'لا يوجد عملاء',
+          icon: Icons.people_outline_rounded,
+          action: SdButton(
+            label: 'إضافة عميل',
+            icon: Icons.add_rounded,
+            onPressed: _navigateToAdd,
+          ),
         ),
       );
     }
 
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: _customers.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _buildCard(_customers[i]),
+      );
+    }
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.black, width: 2),
+          color: SdColors.surface,
+          borderRadius: BorderRadius.circular(SdRadius.lg),
+          boxShadow: SdDepth.raised(),
         ),
         clipBehavior: Clip.antiAlias,
         child: Table(
-          border: const TableBorder(
-            horizontalInside: BorderSide(color: Colors.black, width: 1),
-            verticalInside: BorderSide(color: Colors.black, width: 1),
-          ),
           columnWidths: const {
             0: FlexColumnWidth(1.2), // الكود
             1: FlexColumnWidth(2.5), // الاسم
@@ -330,21 +330,23 @@ class _CustomersPageState extends State<CustomersPage> {
             6: FlexColumnWidth(1.2), // إجراءات
           },
           children: [
-            // ── Header ──
             TableRow(
-              decoration: const BoxDecoration(color: Color(0xFFECEFF5)),
+              decoration: const BoxDecoration(color: SdColors.primary),
               children: ['الكود', 'الاسم', 'الهاتف', 'النوع', 'سقف الائتمان', 'الرصيد', 'إجراءات']
                   .map((h) => Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         child: Center(
-                          child: Text(h, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade800)),
+                          child: Text(h,
+                              style: const TextStyle(
+                                  fontFamily: SdText.family,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white)),
                         ),
                       ))
                   .toList(),
             ),
-            // ── Rows ──
-            for (int i = 0; i < _customers.length; i++)
-              _buildRow(_customers[i], i),
+            for (int i = 0; i < _customers.length; i++) _buildRow(_customers[i], i),
           ],
         ),
       ),
@@ -363,7 +365,7 @@ class _CustomersPageState extends State<CustomersPage> {
 
     return TableRow(
       decoration: BoxDecoration(
-        color: index.isEven ? Colors.white : const Color(0xFFF8F9FC),
+        color: index.isEven ? SdColors.surface : SdColors.surfaceAlt,
       ),
       children: [
         _tappableCell(id, child: _cellText(code.isEmpty ? '-' : code)),
@@ -380,9 +382,10 @@ class _CustomersPageState extends State<CustomersPage> {
             child: Text(
               balanceNum == 0 ? '0' : fmtN(balanceNum),
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: balanceNum > 0 ? Colors.red.shade700 : Colors.green.shade700,
+                fontFamily: SdText.family,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: balanceNum > 0 ? SdColors.danger : SdColors.success,
               ),
               textAlign: TextAlign.center,
             ),
@@ -395,12 +398,12 @@ class _CustomersPageState extends State<CustomersPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
+                  icon: const Icon(Icons.edit, size: 20, color: SdColors.primary),
                   tooltip: 'تعديل',
                   onPressed: () => _navigateToEdit(id),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                  icon: const Icon(Icons.delete, size: 20, color: SdColors.danger),
                   tooltip: 'حذف',
                   onPressed: () => _confirmDelete(m),
                 ),
@@ -409,6 +412,76 @@ class _CustomersPageState extends State<CustomersPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCard(Map<String, dynamic> m) {
+    final code = _v(m, 'customerCode');
+    final name = _v(m, 'name');
+    final phone = _v(m, 'phone');
+    final type = _v(m, 'customerType');
+    final creditLimit = _raw(m, 'creditLimit');
+    final balance = _raw(m, 'balance');
+    final balanceNum = balance is num ? balance : (num.tryParse('$balance') ?? 0);
+    final id = _v(m, 'id');
+
+    return GestureDetector(
+      onTap: () => _navigateToDetails(id),
+      child: SdCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(name, style: SdText.label, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                const SizedBox(width: 8),
+                _typeChip(type),
+              ],
+            ),
+            if (code.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text('الكود: $code', style: SdText.caption),
+            ],
+            const SizedBox(height: 4),
+            if (phone.isNotEmpty) SdInfoRow(label: 'الهاتف', value: phone, ltrValue: true),
+            SdInfoRow(label: 'سقف الائتمان', value: creditLimit != null ? fmtN(creditLimit) : '-'),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Text('الرصيد', style: SdText.bodySm),
+                  const Spacer(),
+                  Text(
+                    balanceNum == 0 ? '0' : fmtN(balanceNum),
+                    style: TextStyle(
+                      fontFamily: SdText.family,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: balanceNum > 0 ? SdColors.danger : SdColors.success,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(color: SdColors.divider, height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _navigateToEdit(id),
+                  icon: const Icon(Icons.edit, size: 18, color: SdColors.primary),
+                  label: const Text('تعديل', style: TextStyle(color: SdColors.primary)),
+                ),
+                TextButton.icon(
+                  onPressed: () => _confirmDelete(m),
+                  icon: const Icon(Icons.delete, size: 18, color: SdColors.danger),
+                  label: const Text('حذف', style: TextStyle(color: SdColors.danger)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -428,9 +501,10 @@ class _CustomersPageState extends State<CustomersPage> {
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 12,
-          fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
-          color: const Color(0xFF1A1A2E),
+          fontFamily: SdText.family,
+          fontSize: 12.5,
+          fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+          color: SdColors.ink,
         ),
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,

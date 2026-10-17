@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
-import '../../theme/accounting_theme.dart';
-import '../../theme/accounting_responsive.dart';
 
 /// صفحة تقارير الموارد البشرية
 class HrReportsPage extends StatefulWidget {
@@ -26,7 +24,6 @@ class _HrReportsPageState extends State<HrReportsPage>
 
   bool _attLoading = true;
   List<dynamic> _attData = [];
-  Map<String, dynamic> _attSummary = {};
 
   bool _salLoading = true;
   List<dynamic> _salData = [];
@@ -34,7 +31,6 @@ class _HrReportsPageState extends State<HrReportsPage>
 
   bool _leaveLoading = true;
   List<dynamic> _leaveData = [];
-  Map<String, dynamic> _leaveSummary = {};
 
   final _months = [
     'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
@@ -99,9 +95,6 @@ class _HrReportsPageState extends State<HrReportsPage>
       );
       if (r['success'] == true) {
         _attData = (r['data'] is List) ? r['data'] : [];
-        _attSummary = (r['summary'] is Map)
-            ? Map<String, dynamic>.from(r['summary'] as Map)
-            : {};
       }
     } catch (_) {}
     setState(() => _attLoading = false);
@@ -135,9 +128,6 @@ class _HrReportsPageState extends State<HrReportsPage>
       );
       if (r['success'] == true) {
         _leaveData = (r['data'] is List) ? r['data'] : [];
-        _leaveSummary = (r['summary'] is Map)
-            ? Map<String, dynamic>.from(r['summary'] as Map)
-            : {};
       }
     } catch (_) {}
     setState(() => _leaveLoading = false);
@@ -147,17 +137,35 @@ class _HrReportsPageState extends State<HrReportsPage>
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = context.accR.isMobile;
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'تقارير الموارد البشرية',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _reloadCurrent,
+            ),
+          ],
+          bottom: SdTabBar(
+            controller: _tabController,
+            isScrollable: context.sd.isPhone,
+            height: 72,
+            tabs: const [
+              Tab(text: 'لوحة عامة', icon: Icon(Icons.dashboard, size: 18)),
+              Tab(text: 'الحضور', icon: Icon(Icons.schedule, size: 18)),
+              Tab(text: 'الرواتب', icon: Icon(Icons.payments, size: 18)),
+              Tab(text: 'الإجازات', icon: Icon(Icons.beach_access, size: 18)),
+            ],
+          ),
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildToolbar(isMobile),
               _buildMonthSelector(),
-              _buildTabs(),
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
@@ -176,66 +184,15 @@ class _HrReportsPageState extends State<HrReportsPage>
     );
   }
 
-  Widget _buildToolbar(bool isMobile) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 8 : context.accR.spaceXL,
-          vertical: isMobile ? 6 : context.accR.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            iconSize: isMobile ? 20 : 24,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          if (!isMobile) SizedBox(width: context.accR.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMobile ? 4 : context.accR.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonPinkGradient,
-              borderRadius: BorderRadius.circular(isMobile ? 6 : 8),
-            ),
-            child: Icon(Icons.assessment_rounded,
-                color: Colors.white, size: isMobile ? 16 : context.accR.iconM),
-          ),
-          SizedBox(width: isMobile ? 6 : context.accR.spaceM),
-          Expanded(
-            child: Text('تقارير الموارد البشرية',
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
-                    fontSize: isMobile ? 14 : context.accR.headingMedium,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary)),
-          ),
-          IconButton(
-            onPressed: _reloadCurrent,
-            icon: Icon(Icons.refresh, size: isMobile ? 18 : context.accR.iconM),
-            tooltip: 'تحديث',
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMonthSelector() {
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: context.accR.paddingH, vertical: context.accR.spaceM),
-      color: AccountingTheme.bgCard,
+          horizontal: context.sd.gutter, vertical: SdSpace.sm),
+      color: SdColors.surface,
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_right,
-                color: AccountingTheme.textSecondary),
+            icon: const Icon(Icons.chevron_right, color: SdColors.muted),
             onPressed: () {
               setState(() {
                 if (_selectedMonth == 12) {
@@ -251,16 +208,12 @@ class _HrReportsPageState extends State<HrReportsPage>
           Expanded(
             child: Text(
               '${_months[_selectedMonth - 1]} $_selectedYear',
-              style: TextStyle(
-                  color: AccountingTheme.textPrimary,
-                  fontSize: context.accR.headingSmall,
-                  fontWeight: FontWeight.bold),
+              style: SdText.titleSm,
               textAlign: TextAlign.center,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_left,
-                color: AccountingTheme.textSecondary),
+            icon: const Icon(Icons.chevron_left, color: SdColors.muted),
             onPressed: () {
               setState(() {
                 if (_selectedMonth == 1) {
@@ -273,27 +226,6 @@ class _HrReportsPageState extends State<HrReportsPage>
               _reloadCurrent();
             },
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabs() {
-    return Container(
-      color: AccountingTheme.bgCard,
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: context.accR.isMobile,
-        indicatorColor: AccountingTheme.neonGreen,
-        labelColor: AccountingTheme.neonGreen,
-        unselectedLabelColor: AccountingTheme.textMuted,
-        labelStyle: TextStyle(
-            fontWeight: FontWeight.bold, fontSize: context.accR.small),
-        tabs: const [
-          Tab(text: 'لوحة عامة', icon: Icon(Icons.dashboard, size: 18)),
-          Tab(text: 'الحضور', icon: Icon(Icons.schedule, size: 18)),
-          Tab(text: 'الرواتب', icon: Icon(Icons.payments, size: 18)),
-          Tab(text: 'الإجازات', icon: Icon(Icons.beach_access, size: 18)),
         ],
       ),
     );
@@ -324,7 +256,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         : [];
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(context.accR.paddingH),
+      padding: EdgeInsets.all(context.sd.gutter),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -335,11 +267,11 @@ class _HrReportsPageState extends State<HrReportsPage>
             runSpacing: 10,
             children: [
               _statCard('حاضر', '${today['PresentCount'] ?? 0}',
-                  Icons.check_circle, AccountingTheme.success),
+                  Icons.check_circle, SdStatus.success.tone),
               _statCard('متأخر', '${today['LateCount'] ?? 0}', Icons.timer,
-                  const Color(0xFFF39C12)),
+                  SdStatus.warning.tone),
               _statCard('غائب', '${today['AbsentCount'] ?? 0}',
-                  Icons.cancel, AccountingTheme.danger),
+                  Icons.cancel, SdStatus.danger.tone),
             ],
           ),
           const SizedBox(height: 20),
@@ -350,16 +282,16 @@ class _HrReportsPageState extends State<HrReportsPage>
             runSpacing: 10,
             children: [
               _statCard('حضور', '${monthly['TotalPresent'] ?? 0}',
-                  Icons.check, AccountingTheme.success),
+                  Icons.check, SdStatus.success.tone),
               _statCard('تأخير', '${monthly['TotalLate'] ?? 0}',
-                  Icons.timer, const Color(0xFFF39C12)),
+                  Icons.timer, SdStatus.warning.tone),
               _statCard('غياب', '${monthly['TotalAbsent'] ?? 0}',
-                  Icons.close, AccountingTheme.danger),
+                  Icons.close, SdStatus.danger.tone),
               _statCard(
                   'نسبة الحضور',
                   '${((monthly['AttendanceRate'] ?? 0) as num).toStringAsFixed(1)}%',
                   Icons.percent,
-                  AccountingTheme.info),
+                  SdStatus.info.tone),
             ],
           ),
           const SizedBox(height: 20),
@@ -370,15 +302,15 @@ class _HrReportsPageState extends State<HrReportsPage>
             runSpacing: 10,
             children: [
               _statCard('إجمالي صافي', _fmt(salaries['TotalNet']),
-                  Icons.payments, const Color(0xFF2196F3)),
+                  Icons.payments, SdStatus.info.tone),
               _statCard('الخصومات', _fmt(salaries['TotalDeductions']),
-                  Icons.remove_circle, AccountingTheme.danger),
+                  Icons.remove_circle, SdStatus.danger.tone),
               _statCard('المكافآت', _fmt(salaries['TotalBonuses']),
-                  Icons.card_giftcard, AccountingTheme.success),
+                  Icons.card_giftcard, SdStatus.success.tone),
               _statCard('مصروفة', '${salaries['PaidCount'] ?? 0}',
-                  Icons.done_all, AccountingTheme.success),
+                  Icons.done_all, SdStatus.success.tone),
               _statCard('معلقة', '${salaries['PendingCount'] ?? 0}',
-                  Icons.pending, const Color(0xFFF39C12)),
+                  Icons.pending, SdStatus.warning.tone),
             ],
           ),
           const SizedBox(height: 20),
@@ -388,7 +320,7 @@ class _HrReportsPageState extends State<HrReportsPage>
             ...topLate.take(5).map((e) => _rankTile(
                   e['EmployeeName'] ?? '',
                   '${e['TotalLateMinutes'] ?? 0} دقيقة',
-                  AccountingTheme.danger,
+                  SdStatus.danger.tone,
                 )),
             const SizedBox(height: 16),
           ],
@@ -398,7 +330,7 @@ class _HrReportsPageState extends State<HrReportsPage>
             ...topOvertime.take(5).map((e) => _rankTile(
                   e['EmployeeName'] ?? '',
                   '${e['TotalOvertimeMinutes'] ?? 0} دقيقة',
-                  AccountingTheme.success,
+                  SdStatus.success.tone,
                 )),
           ],
         ],
@@ -409,64 +341,56 @@ class _HrReportsPageState extends State<HrReportsPage>
   Widget _sectionTitle(String t) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(t,
-          style: TextStyle(
-              color: AccountingTheme.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: context.accR.headingSmall)),
+      child: Text(t, style: SdText.titleSm),
     );
   }
 
-  Widget _statCard(String label, String value, IconData icon, Color color) {
+  Widget _statCard(String label, String value, IconData icon, SdTone tone) {
     return Container(
-      width: context.accR.isMobile ? 100 : 150,
+      width: context.sd.isPhone ? 100 : 150,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        borderRadius: BorderRadius.circular(context.accR.cardRadius),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
+        border: Border(top: BorderSide(color: tone.base, width: 3)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 22),
+          Icon(icon, color: tone.base, size: 22),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.accR.body)),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15)),
           const SizedBox(height: 2),
           Text(label,
-              style: TextStyle(
-                  color: AccountingTheme.textMuted,
-                  fontSize: context.accR.caption),
-              textAlign: TextAlign.center),
+              style: SdText.caption, textAlign: TextAlign.center),
         ],
       ),
     );
   }
 
-  Widget _rankTile(String name, String detail, Color color) {
+  Widget _rankTile(String name, String detail, SdTone tone) {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        borderRadius: BorderRadius.circular(8),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Text(name,
-                style: TextStyle(
-                    color: AccountingTheme.textPrimary,
-                    fontSize: context.accR.body)),
-          ),
+          Expanded(child: Text(name, style: SdText.body)),
           Text(detail,
               style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.accR.small)),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12.5)),
         ],
       ),
     );
@@ -480,6 +404,33 @@ class _HrReportsPageState extends State<HrReportsPage>
     if (_attLoading) return _loader();
     if (_attData.isEmpty) return _emptyState('لا توجد سجلات حضور');
 
+    // الهاتف: صفوف كبطاقات عمودية (بدل التمرير الأفقي) — نفس القيم تماماً
+    if (context.sd.isPhone) {
+      return ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: _attData.length,
+        itemBuilder: (context, i) {
+          final e = _attData[i];
+          return _recordCard(
+            title: '${e['EmployeeName'] ?? ''}',
+            rows: [
+              _mRow('حضور', '${e['PresentDays'] ?? 0}',
+                  color: SdColors.success),
+              _mRow('تأخير', '${e['LateDays'] ?? 0}',
+                  color: SdColors.warningText),
+              _mRow('غياب', '${e['AbsentDays'] ?? 0}', color: SdColors.danger),
+              _mRow('نصف يوم', '${e['HalfDays'] ?? 0}'),
+              _mRow('مغادرة مبكرة', '${e['EarlyDepartureDays'] ?? 0}'),
+              _mRow('دقائق تأخير', '${e['TotalLateMinutes'] ?? 0}',
+                  color: SdColors.danger),
+              _mRow('دقائق إضافية', '${e['TotalOvertimeMinutes'] ?? 0}',
+                  color: SdColors.success),
+            ],
+          );
+        },
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(8),
       child: SingleChildScrollView(
@@ -487,23 +438,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         child: ConstrainedBox(
           constraints: BoxConstraints(
               minWidth: MediaQuery.of(context).size.width - 16),
-          child: DataTable(
-            headingRowColor:
-                WidgetStateProperty.all(const Color(0xFF1E293B)),
-            dataRowColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.hovered)) {
-                return const Color(0xFF1E293B).withValues(alpha: 0.5);
-              }
-              return AccountingTheme.bgCard;
-            }),
-            border: TableBorder.all(
-                color: AccountingTheme.borderColor.withValues(alpha: 0.3),
-                width: 0.5),
-            columnSpacing: 12,
-            horizontalMargin: 10,
-            headingRowHeight: 40,
-            dataRowMinHeight: 36,
-            dataRowMaxHeight: 40,
+          child: _styledTable(
             columns: [
               _col('الموظف'),
               _col('حضور', numeric: true),
@@ -518,17 +453,14 @@ class _HrReportsPageState extends State<HrReportsPage>
               return DataRow(cells: [
                 _cell(e['EmployeeName'] ?? '', bold: true),
                 _cell('${e['PresentDays'] ?? 0}',
-                    color: AccountingTheme.success),
-                _cell('${e['LateDays'] ?? 0}',
-                    color: const Color(0xFFF39C12)),
-                _cell('${e['AbsentDays'] ?? 0}',
-                    color: AccountingTheme.danger),
+                    color: SdColors.success),
+                _cell('${e['LateDays'] ?? 0}', color: SdColors.warningText),
+                _cell('${e['AbsentDays'] ?? 0}', color: SdColors.danger),
                 _cell('${e['HalfDays'] ?? 0}'),
                 _cell('${e['EarlyDepartureDays'] ?? 0}'),
-                _cell('${e['TotalLateMinutes'] ?? 0}',
-                    color: AccountingTheme.danger),
+                _cell('${e['TotalLateMinutes'] ?? 0}', color: SdColors.danger),
                 _cell('${e['TotalOvertimeMinutes'] ?? 0}',
-                    color: AccountingTheme.success),
+                    color: SdColors.success),
               ]);
             }).toList(),
           ),
@@ -550,53 +482,38 @@ class _HrReportsPageState extends State<HrReportsPage>
         // ملخص
         Container(
           padding: EdgeInsets.symmetric(
-              horizontal: context.accR.paddingH,
-              vertical: context.accR.spaceS),
+              horizontal: context.sd.gutter, vertical: SdSpace.sm),
           child: Row(
             children: [
               Expanded(
                   child: _chipSummary('الأساسي',
-                      _fmt(_salSummary['TotalBaseSalary']), const Color(0xFF2196F3))),
+                      _fmt(_salSummary['TotalBaseSalary']), SdStatus.info.tone)),
               const SizedBox(width: 6),
               Expanded(
                   child: _chipSummary('الصافي',
-                      _fmt(_salSummary['TotalNetSalary']), AccountingTheme.neonGreen)),
+                      _fmt(_salSummary['TotalNetSalary']), SdStatus.success.tone)),
               const SizedBox(width: 6),
               Expanded(
                   child: _chipSummary('الخصومات',
-                      _fmt(_salSummary['TotalDeductions']), AccountingTheme.danger)),
+                      _fmt(_salSummary['TotalDeductions']), SdStatus.danger.tone)),
               const SizedBox(width: 6),
               Expanded(
                   child: _chipSummary('الإضافي',
-                      _fmt(_salSummary['TotalOvertimeBonus']), AccountingTheme.success)),
+                      _fmt(_salSummary['TotalOvertimeBonus']), SdStatus.success.tone)),
             ],
           ),
         ),
         Expanded(
-          child: SingleChildScrollView(
+          child: context.sd.isPhone
+              ? _buildSalaryCardsMobile()
+              : SingleChildScrollView(
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                     minWidth: MediaQuery.of(context).size.width - 16),
-                child: DataTable(
-                  headingRowColor:
-                      WidgetStateProperty.all(const Color(0xFF1E293B)),
-                  dataRowColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.hovered)) {
-                      return const Color(0xFF1E293B).withValues(alpha: 0.5);
-                    }
-                    return AccountingTheme.bgCard;
-                  }),
-                  border: TableBorder.all(
-                      color: AccountingTheme.borderColor.withValues(alpha: 0.3),
-                      width: 0.5),
-                  columnSpacing: 12,
-                  horizontalMargin: 10,
-                  headingRowHeight: 40,
-                  dataRowMinHeight: 36,
-                  dataRowMaxHeight: 40,
+                child: _styledTable(
                   columns: [
                     _col('الموظف'),
                     _col('الأساسي', numeric: true),
@@ -610,9 +527,7 @@ class _HrReportsPageState extends State<HrReportsPage>
                   ],
                   rows: _salData.map((e) {
                     final status = e['Status'] ?? 'Pending';
-                    final statusColor =
-                        AccountingTheme.salaryStatusColors[status] ??
-                            AccountingTheme.textMuted;
+                    final statusTone = _salaryStatusTone(status.toString());
                     final statusAr = {
                       'Pending': 'معلق',
                       'Paid': 'مدفوع',
@@ -623,27 +538,24 @@ class _HrReportsPageState extends State<HrReportsPage>
                       _cell(e['EmployeeName'] ?? '', bold: true),
                       _cell(_fmt(e['BaseSalary'])),
                       _cell(_fmt(e['Allowances'])),
-                      _cell(_fmt(e['Deductions']),
-                          color: AccountingTheme.danger),
-                      _cell(_fmt(e['LateDeduction']),
-                          color: AccountingTheme.danger),
-                      _cell(_fmt(e['AbsentDeduction']),
-                          color: AccountingTheme.danger),
-                      _cell(_fmt(e['OvertimeBonus']),
-                          color: AccountingTheme.success),
+                      _cell(_fmt(e['Deductions']), color: SdColors.danger),
+                      _cell(_fmt(e['LateDeduction']), color: SdColors.danger),
+                      _cell(_fmt(e['AbsentDeduction']), color: SdColors.danger),
+                      _cell(_fmt(e['OvertimeBonus']), color: SdColors.success),
                       _cell(_fmt(e['NetSalary']), bold: true),
                       DataCell(Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
+                          color: statusTone.tint,
+                          borderRadius: BorderRadius.circular(SdRadius.xs),
                         ),
                         child: Text(statusAr[status] ?? status,
                             style: TextStyle(
-                                color: statusColor,
-                                fontSize: context.accR.caption,
-                                fontWeight: FontWeight.bold)),
+                                fontFamily: SdText.family,
+                                color: statusTone.text,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800)),
                       )),
                     ]);
                   }).toList(),
@@ -664,6 +576,30 @@ class _HrReportsPageState extends State<HrReportsPage>
     if (_leaveLoading) return _loader();
     if (_leaveData.isEmpty) return _emptyState('لا توجد بيانات إجازات');
 
+    // الهاتف: صفوف كبطاقات عمودية (بدل التمرير الأفقي) — نفس القيم تماماً
+    if (context.sd.isPhone) {
+      return ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: _leaveData.length,
+        itemBuilder: (context, i) {
+          final e = _leaveData[i];
+          return _recordCard(
+            title: '${e['EmployeeName'] ?? ''}',
+            rows: [
+              _mRow('إجمالي الطلبات', '${e['TotalRequests'] ?? 0}'),
+              _mRow('مقبولة', '${e['Approved'] ?? 0}',
+                  color: SdColors.success),
+              _mRow('مرفوضة', '${e['Rejected'] ?? 0}', color: SdColors.danger),
+              _mRow('معلقة', '${e['Pending'] ?? 0}',
+                  color: SdColors.warningText),
+              _mRow('أيام مقبولة', '${e['TotalDaysApproved'] ?? 0}',
+                  color: SdColors.info),
+            ],
+          );
+        },
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(8),
       child: SingleChildScrollView(
@@ -671,23 +607,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         child: ConstrainedBox(
           constraints: BoxConstraints(
               minWidth: MediaQuery.of(context).size.width - 16),
-          child: DataTable(
-            headingRowColor:
-                WidgetStateProperty.all(const Color(0xFF1E293B)),
-            dataRowColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.hovered)) {
-                return const Color(0xFF1E293B).withValues(alpha: 0.5);
-              }
-              return AccountingTheme.bgCard;
-            }),
-            border: TableBorder.all(
-                color: AccountingTheme.borderColor.withValues(alpha: 0.3),
-                width: 0.5),
-            columnSpacing: 12,
-            horizontalMargin: 10,
-            headingRowHeight: 40,
-            dataRowMinHeight: 36,
-            dataRowMaxHeight: 40,
+          child: _styledTable(
             columns: [
               _col('الموظف'),
               _col('إجمالي الطلبات', numeric: true),
@@ -700,14 +620,10 @@ class _HrReportsPageState extends State<HrReportsPage>
               return DataRow(cells: [
                 _cell(e['EmployeeName'] ?? '', bold: true),
                 _cell('${e['TotalRequests'] ?? 0}'),
-                _cell('${e['Approved'] ?? 0}',
-                    color: AccountingTheme.success),
-                _cell('${e['Rejected'] ?? 0}',
-                    color: AccountingTheme.danger),
-                _cell('${e['Pending'] ?? 0}',
-                    color: const Color(0xFFF39C12)),
-                _cell('${e['TotalDaysApproved'] ?? 0}',
-                    color: AccountingTheme.info),
+                _cell('${e['Approved'] ?? 0}', color: SdColors.success),
+                _cell('${e['Rejected'] ?? 0}', color: SdColors.danger),
+                _cell('${e['Pending'] ?? 0}', color: SdColors.warningText),
+                _cell('${e['TotalDaysApproved'] ?? 0}', color: SdColors.info),
               ]);
             }).toList(),
           ),
@@ -720,62 +636,211 @@ class _HrReportsPageState extends State<HrReportsPage>
   // Helpers
   // ═════════════════════════════
 
+  // ═════════════════════════════
+  // عرض الهاتف: بطاقات بدل الجداول العريضة
+  // (نفس القيم/الصيغ تماماً — إعادة تقديم بصري فقط)
+  // ═════════════════════════════
+
+  /// بطاقة سجل واحد: عنوان (اسم الموظف) + صفوف تسمية/قيمة.
+  Widget _recordCard({required String title, required List<Widget> rows}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: SdCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: SdText.titleSm),
+            const Divider(height: 14, color: SdColors.divider),
+            ...rows,
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// صف تسمية/قيمة داخل بطاقة الهاتف (يدعم لوناً اختيارياً).
+  Widget _mRow(String label, String value, {Color? color, bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: SdText.bodySm)),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontFamily: SdText.family,
+              color: color ?? SdColors.ink,
+              fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+              fontSize: bold ? 15 : 13.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// قائمة بطاقات الرواتب على الهاتف — نفس القيم/الصيغ المستخدمة في الجدول.
+  Widget _buildSalaryCardsMobile() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: _salData.length,
+      itemBuilder: (context, i) {
+        final e = _salData[i];
+        final status = (e['Status'] ?? 'Pending').toString();
+        final statusTone = _salaryStatusTone(status);
+        const statusAr = {
+          'Pending': 'معلق',
+          'Paid': 'مدفوع',
+          'PartiallyPaid': 'جزئي',
+          'Cancelled': 'ملغي',
+        };
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: SdCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('${e['EmployeeName'] ?? ''}',
+                          style: SdText.titleSm),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: statusTone.tint,
+                        borderRadius: BorderRadius.circular(SdRadius.xs),
+                      ),
+                      child: Text(
+                        statusAr[status] ?? status,
+                        style: TextStyle(
+                          fontFamily: SdText.family,
+                          color: statusTone.text,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 14, color: SdColors.divider),
+                _mRow('الأساسي', _fmt(e['BaseSalary'])),
+                _mRow('البدلات', _fmt(e['Allowances'])),
+                _mRow('الخصومات', _fmt(e['Deductions']),
+                    color: SdColors.danger),
+                _mRow('خصم تأخير', _fmt(e['LateDeduction']),
+                    color: SdColors.danger),
+                _mRow('خصم غياب', _fmt(e['AbsentDeduction']),
+                    color: SdColors.danger),
+                _mRow('مكافأة إضافي', _fmt(e['OvertimeBonus']),
+                    color: SdColors.success),
+                const Divider(height: 14, color: SdColors.divider),
+                _mRow('الصافي', _fmt(e['NetSalary']), bold: true),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  SdTone _salaryStatusTone(String status) {
+    switch (status) {
+      case 'Paid':
+        return SdStatus.success.tone;
+      case 'PartiallyPaid':
+        return SdStatus.info.tone;
+      case 'Cancelled':
+        return SdStatus.danger.tone;
+      case 'Pending':
+        return SdStatus.warning.tone;
+      default:
+        return SdGroup.neutral.tone;
+    }
+  }
+
+  DataTable _styledTable(
+      {required List<DataColumn> columns, required List<DataRow> rows}) {
+    return DataTable(
+      headingRowColor: WidgetStateProperty.all(SdColors.primary),
+      dataRowColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.hovered)) {
+          return SdColors.surfaceAlt;
+        }
+        return SdColors.surface;
+      }),
+      border: TableBorder.all(color: SdColors.divider, width: 0.5),
+      columnSpacing: 12,
+      horizontalMargin: 10,
+      headingRowHeight: 40,
+      dataRowMinHeight: 36,
+      dataRowMaxHeight: 40,
+      columns: columns,
+      rows: rows,
+    );
+  }
+
   DataColumn _col(String label, {bool numeric = false}) {
     return DataColumn(
       numeric: numeric,
       label: Text(label,
-          style: TextStyle(
+          style: const TextStyle(
+              fontFamily: SdText.family,
               color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: context.accR.small)),
+              fontWeight: FontWeight.w800,
+              fontSize: 12.5)),
     );
   }
 
-  DataCell _cell(String text,
-      {Color? color, bool bold = false}) {
+  DataCell _cell(String text, {Color? color, bool bold = false}) {
     return DataCell(Text(text,
         style: TextStyle(
-            color: color ?? AccountingTheme.textSecondary,
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            fontSize: context.accR.small)));
+            fontFamily: SdText.family,
+            color: color ?? SdColors.ink,
+            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+            fontSize: 12.5)));
   }
 
-  Widget _chipSummary(String label, String value, Color color) {
+  Widget _chipSummary(String label, String value, SdTone tone) {
     return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: context.accR.spaceL, vertical: context.accR.spaceS),
+      padding: const EdgeInsets.symmetric(
+          horizontal: SdSpace.md, vertical: SdSpace.sm),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
       ),
       child: Column(
         children: [
           Text(label,
               style: TextStyle(
-                  color: color.withValues(alpha: 0.8),
-                  fontSize: context.accR.small)),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5)),
           const SizedBox(height: 2),
           Text(value,
               style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.accR.body)),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14)),
         ],
       ),
     );
   }
 
   Widget _loader() {
-    return const Center(
-        child:
-            CircularProgressIndicator(color: AccountingTheme.neonGreen));
+    return const Center(child: CircularProgressIndicator());
   }
 
   Widget _emptyState(String msg) {
     return Center(
-      child: Text(msg,
-          style: const TextStyle(color: AccountingTheme.textMuted)),
+      child: SdEmptyState(title: msg, icon: Icons.assessment_rounded),
     );
   }
 

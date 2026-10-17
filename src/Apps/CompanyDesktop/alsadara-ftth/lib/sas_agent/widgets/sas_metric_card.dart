@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
-import 'sas_metrics.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 
 /// بطاقة عدّاد **فاخرة (premium)** لوحدة «وكيل الساس» — عرض فقط، بلا منطق أعمال.
 ///
@@ -125,9 +123,9 @@ class _SasMetricCardState extends State<SasMetricCard> {
     if (!tappable) return interactive;
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20.r),
+      borderRadius: BorderRadius.circular(SdRadius.lg),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(SdRadius.lg),
         onTap: widget.onTap,
         child: interactive,
       ),
@@ -158,7 +156,7 @@ class _SasMetricCardState extends State<SasMetricCard> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
-      padding: EdgeInsets.symmetric(horizontal: 13.w, vertical: 11.h),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
         // تدرّج ناعم مرتبط بلون المقياس.
         gradient: LinearGradient(
@@ -171,7 +169,7 @@ class _SasMetricCardState extends State<SasMetricCard> {
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
-        borderRadius: BorderRadius.circular(20.r),
+        borderRadius: BorderRadius.circular(SdRadius.lg),
         // حدّ متدرّج رفيع (لمسة زجاجية).
         border: Border.all(
           color: color.withValues(alpha: _hover ? 0.42 : 0.26),
@@ -190,7 +188,7 @@ class _SasMetricCardState extends State<SasMetricCard> {
     return Row(
       children: [
         _iconBadge(color),
-        SizedBox(width: 11.w),
+        const SizedBox(width: 11),
         Expanded(
           child: FittedBox(
             fit: BoxFit.scaleDown,
@@ -200,7 +198,7 @@ class _SasMetricCardState extends State<SasMetricCard> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _number(color, numberText),
-                SizedBox(height: 2.h),
+                const SizedBox(height: 2),
                 _labelText(),
               ],
             ),
@@ -208,7 +206,7 @@ class _SasMetricCardState extends State<SasMetricCard> {
         ),
         if (tappable)
           Icon(Icons.chevron_left_rounded,
-              size: 18.sp, color: color.withValues(alpha: 0.55)),
+              size: 18, color: color.withValues(alpha: 0.55)),
       ],
     );
   }
@@ -225,16 +223,16 @@ class _SasMetricCardState extends State<SasMetricCard> {
             const Spacer(),
             if (tappable)
               Icon(Icons.chevron_left_rounded,
-                  size: 18.sp, color: color.withValues(alpha: 0.55)),
+                  size: 18, color: color.withValues(alpha: 0.55)),
           ],
         ),
-        SizedBox(height: 10.h),
+        const SizedBox(height: 10),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
           child: _number(color, numberText),
         ),
-        SizedBox(height: 2.h),
+        const SizedBox(height: 2),
         _labelText(),
       ],
     );
@@ -243,25 +241,19 @@ class _SasMetricCardState extends State<SasMetricCard> {
   /// شارة أيقونة متدرّجة بتوهّج خفيف.
   Widget _iconBadge(Color color) {
     return Container(
-      width: 38.w,
-      height: 38.w,
+      width: 38,
+      height: 38,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color, color.withValues(alpha: 0.72)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12.r),
+        color: color,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.38),
-            blurRadius: 9,
-            spreadRadius: -2,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Icon(widget.icon, color: Colors.white, size: 20.sp),
+      child: Icon(widget.icon, color: Colors.white, size: 20),
     );
   }
 
@@ -270,8 +262,9 @@ class _SasMetricCardState extends State<SasMetricCard> {
     return Text(
       text,
       maxLines: 1,
-      style: GoogleFonts.cairo(
-        fontSize: 21.sp,
+      style: TextStyle(
+        fontFamily: SdText.family,
+        fontSize: 21,
         fontWeight: FontWeight.w900,
         color: color,
         height: 1.05,
@@ -286,9 +279,10 @@ class _SasMetricCardState extends State<SasMetricCard> {
       widget.label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.cairo(
-        fontSize: 11.sp,
-        color: AppTheme.primaryColor.withValues(alpha: 0.62),
+      style: const TextStyle(
+        fontFamily: SdText.family,
+        fontSize: 11.5,
+        color: SdColors.muted,
         fontWeight: FontWeight.w700,
       ),
     );

@@ -7,6 +7,7 @@ import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة إدخال قيد مركب - Compound Journal Entry
 class CompoundJournalEntryPage extends StatefulWidget {
@@ -194,219 +195,112 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildPageToolbar(),
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
-                    : _buildBody(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPageToolbar() {
-    final ar = context.accR;
-    final isMob = ar.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceM, vertical: isMob ? 6 : ar.spaceXS),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(Icons.arrow_forward_rounded, size: isMob ? 20 : 24),
-            tooltip: 'رجوع',
-            padding: isMob ? EdgeInsets.all(4) : null,
-            constraints: isMob
-                ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                : null,
-            style: IconButton.styleFrom(foregroundColor: Colors.black),
-          ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonPurpleGradient,
-              borderRadius: BorderRadius.circular(isMob ? 6 : 8),
-            ),
-            child: Icon(Icons.post_add_rounded,
-                color: Colors.white, size: isMob ? 16 : ar.iconM),
-          ),
-          SizedBox(width: isMob ? 6 : ar.spaceM),
-          Text('قيد مركب',
-              style: GoogleFonts.cairo(
-                  fontSize: isMob ? 14 : ar.headingMedium,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black)),
-          if (_allEntries.isNotEmpty && isMob) ...[
-            SizedBox(width: isMob ? 8 : 16),
-            Container(
-              decoration: BoxDecoration(
-                color: AccountingTheme.bgCardHover,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AccountingTheme.borderColor),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // ← الأقدم (index أكبر)
-                  IconButton(
-                    onPressed: _currentEntryIndex < _allEntries.length - 1
-                        ? () => _loadEntry(_currentEntryIndex == -1 ? 0 : _currentEntryIndex + 1)
-                        : null,
-                    icon: const Icon(Icons.chevron_right, size: 20),
-                    tooltip: 'الأقدم',
-                    padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  ),
-                  // رقم القيد الحالي
-                  InkWell(
-                    onTap: _viewingEntryId != null ? _newEntry : null,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      child: Text(
-                        _currentEntryIndex >= 0
-                            ? '${_allEntries[_currentEntryIndex]['EntryNumber'] ?? '${_currentEntryIndex + 1}'}'
-                            : 'جديد',
-                        style: GoogleFonts.cairo(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: _currentEntryIndex >= 0 ? AccountingTheme.neonBlue : AccountingTheme.neonGreen,
+    final isMob = context.accR.isMobile;
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'قيد مركب',
+        actions: [
+          // ── التنقّل بين القيود (الهاتف فقط) ──
+          if (_allEntries.isNotEmpty && isMob)
+            Center(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AccountingTheme.bgCardHover,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AccountingTheme.borderColor),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ← الأقدم (index أكبر)
+                    IconButton(
+                      onPressed: _currentEntryIndex < _allEntries.length - 1
+                          ? () => _loadEntry(
+                              _currentEntryIndex == -1 ? 0 : _currentEntryIndex + 1)
+                          : null,
+                      icon: const Icon(Icons.chevron_right,
+                          size: 20, color: AccountingTheme.textSecondary),
+                      tooltip: 'الأقدم',
+                      padding: const EdgeInsets.all(4),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ),
+                    // رقم القيد الحالي
+                    InkWell(
+                      onTap: _viewingEntryId != null ? _newEntry : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        child: Text(
+                          _currentEntryIndex >= 0
+                              ? '${_allEntries[_currentEntryIndex]['EntryNumber'] ?? '${_currentEntryIndex + 1}'}'
+                              : 'جديد',
+                          style: GoogleFonts.cairo(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: _currentEntryIndex >= 0
+                                ? AccountingTheme.neonBlue
+                                : AccountingTheme.neonGreen,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  // → الأحدث (index أصغر)
-                  IconButton(
-                    onPressed: _currentEntryIndex > 0
-                        ? () => _loadEntry(_currentEntryIndex - 1)
-                        : _currentEntryIndex == 0
-                            ? _newEntry
-                            : null,
-                    icon: const Icon(Icons.chevron_left, size: 20),
-                    tooltip: 'الأحدث',
-                    padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  ),
-                ],
+                    // → الأحدث (index أصغر)
+                    IconButton(
+                      onPressed: _currentEntryIndex > 0
+                          ? () => _loadEntry(_currentEntryIndex - 1)
+                          : _currentEntryIndex == 0
+                              ? _newEntry
+                              : null,
+                      icon: const Icon(Icons.chevron_left,
+                          size: 20, color: AccountingTheme.textSecondary),
+                      tooltip: 'الأحدث',
+                      padding: const EdgeInsets.all(4),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ),
+                  ],
+                ),
               ),
             ),
-            // زر قيد جديد
-            if (_isReadOnly) ...[
-              SizedBox(width: 6),
-              IconButton(
-                onPressed: _newEntry,
-                icon: const Icon(Icons.add_circle_outline, size: 22),
-                tooltip: 'قيد جديد',
-                style: IconButton.styleFrom(foregroundColor: AccountingTheme.neonGreen),
-                padding: const EdgeInsets.all(4),
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
-            ],
-          ],
-          const Spacer(),
-          if (isMob) ...[
-            // أيقونات القوالب على الهاتف
-            IconButton(
-              onPressed: _loadTemplate,
-              icon: Icon(Icons.file_open, size: 20),
-              tooltip: 'تحميل قالب',
-              padding: EdgeInsets.all(4),
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              style: IconButton.styleFrom(
-                  foregroundColor: AccountingTheme.neonBlue),
+          if (_allEntries.isNotEmpty && isMob && _isReadOnly)
+            SdAppBarAction(
+              icon: Icons.add_circle_outline,
+              label: 'قيد جديد',
+              onPressed: _newEntry,
             ),
-            SizedBox(width: 4),
-            IconButton(
-              onPressed: _saveAsTemplate,
-              icon: Icon(Icons.save_alt, size: 20),
-              tooltip: 'حفظ كقالب',
-              padding: EdgeInsets.all(4),
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              style: IconButton.styleFrom(
-                  foregroundColor: AccountingTheme.neonOrange),
-            ),
-            SizedBox(width: 4),
-            // أيقونات الحفظ على الهاتف
-            IconButton(
-              onPressed:
-                  _isBalanced && !_isSaving ? () => _save(post: false) : null,
-              icon: Icon(Icons.save_outlined, size: 20),
-              tooltip: 'حفظ مسودة',
-              padding: EdgeInsets.all(4),
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              style: IconButton.styleFrom(
-                  foregroundColor: AccountingTheme.neonGreen),
-            ),
-            SizedBox(width: 4),
-            IconButton(
-              onPressed:
-                  _isBalanced && !_isSaving ? () => _save(post: true) : null,
-              icon: Icon(Icons.check_circle,
-                  size: 20,
-                  color: _isBalanced
-                      ? AccountingTheme.neonGreen
-                      : AccountingTheme.textMuted),
-              tooltip: 'حفظ وترحيل',
-              padding: EdgeInsets.all(4),
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            ),
-          ] else ...[
-            IconButton(
-              onPressed: _loadTemplate,
-              icon: Icon(Icons.file_open, size: ar.iconM),
-              tooltip: 'تحميل قالب',
-              style: IconButton.styleFrom(
-                  foregroundColor: AccountingTheme.neonBlue),
-            ),
-            IconButton(
-              onPressed: _saveAsTemplate,
-              icon: Icon(Icons.save_alt, size: ar.iconM),
-              tooltip: 'حفظ كقالب',
-              style: IconButton.styleFrom(
-                  foregroundColor: AccountingTheme.neonOrange),
-            ),
-            SizedBox(width: ar.spaceS),
-            TextButton.icon(
-              onPressed:
-                  _isBalanced && !_isSaving ? () => _save(post: false) : null,
-              icon: Icon(Icons.save_outlined, size: ar.iconM),
-              label: const Text('حفظ مسودة'),
-              style: TextButton.styleFrom(
-                  foregroundColor: AccountingTheme.neonGreen),
-            ),
-            SizedBox(width: ar.spaceS),
-            ElevatedButton.icon(
-              onPressed:
-                  _isBalanced && !_isSaving ? () => _save(post: true) : null,
-              icon: Icon(Icons.check_circle, size: ar.iconM),
-              label: const Text('حفظ وترحيل'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isBalanced
-                    ? AccountingTheme.neonGreen
-                    : AccountingTheme.textMuted,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
+          SdAppBarAction(
+            icon: Icons.file_open,
+            label: 'تحميل قالب',
+            onPressed: _loadTemplate,
+          ),
+          SdAppBarAction(
+            icon: Icons.save_alt,
+            label: 'حفظ كقالب',
+            onPressed: _saveAsTemplate,
+          ),
+          SdAppBarAction(
+            icon: Icons.save_outlined,
+            label: 'حفظ مسودة',
+            onPressed:
+                _isBalanced && !_isSaving ? () => _save(post: false) : null,
+          ),
+          SdAppBarAction(
+            icon: Icons.check_circle,
+            label: 'حفظ وترحيل',
+            onPressed:
+                _isBalanced && !_isSaving ? () => _save(post: true) : null,
+          ),
         ],
       ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                  color: AccountingTheme.neonGreen))
+          : _buildBody(),
     );
   }
 

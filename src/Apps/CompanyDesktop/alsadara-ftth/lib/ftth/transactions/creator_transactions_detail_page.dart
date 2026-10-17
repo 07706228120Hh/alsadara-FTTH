@@ -13,6 +13,7 @@ import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'dart:convert';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/auth_service.dart';
 import '../transactions/transactions_page.dart';
 import '../auth/auth_error_handler.dart';
@@ -219,7 +220,7 @@ class _CreatorTransactionsDetailPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل في جلب معلومات العميل'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -384,7 +385,7 @@ class _CreatorTransactionsDetailPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل في جلب معلومات العميل'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -661,17 +662,17 @@ class _CreatorTransactionsDetailPageState
   List<Color> _getChangeTypeColors(String changeType) {
     switch (changeType) {
       case 'Scheduled':
-        return [Colors.deepOrange[400]!, Colors.orange[400]!];
+        return [SdColors.warning, SdColors.warning];
       case 'Immediate':
-        return [Colors.red[400]!, Colors.pink[400]!];
+        return [SdColors.danger, SdColors.platformLight];
       case 'Instant':
-        return [Colors.red[400]!, Colors.pink[400]!];
+        return [SdColors.danger, SdColors.platformLight];
       case 'Manual':
-        return [Colors.blue[400]!, Colors.indigo[400]!];
+        return [SdColors.info, SdColors.primaryLight];
       case 'Automatic':
-        return [Colors.green[400]!, Colors.teal[400]!];
+        return [SdColors.success, SdColors.accentLight];
       default:
-        return [Colors.grey[400]!, Colors.grey[500]!];
+        return [SdColors.faint, SdColors.muted];
     }
   }
 
@@ -696,11 +697,11 @@ class _CreatorTransactionsDetailPageState
   Color _getTransactionColor(Map<String, dynamic> transaction) {
     final amount = transaction['transactionAmount']?['value'] ?? 0.0;
     if (amount > 0) {
-      return Colors.green;
+      return SdColors.success;
     } else if (amount < 0) {
-      return Colors.red;
+      return SdColors.danger;
     } else {
-      return Colors.blue;
+      return SdColors.info;
     }
   }
 
@@ -894,7 +895,7 @@ class _CreatorTransactionsDetailPageState
               ),
             ],
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -914,7 +915,7 @@ class _CreatorTransactionsDetailPageState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('فشل في تصدير البيانات'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -967,7 +968,7 @@ class _CreatorTransactionsDetailPageState
         const SnackBar(
           content: Text('تم نسخ تفاصيل جميع المعاملات إلى الحافظة'),
           duration: Duration(seconds: 2),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1053,48 +1054,48 @@ class _CreatorTransactionsDetailPageState
         title: 'تعبئة رصيد',
         subtitle: '$walletTopupCount معاملة',
         amount: _formatCurrency(walletTopupAmount),
-        titleColor: Colors.teal[700]!,
-        subtitleColor: Colors.teal[600]!,
-        amountColor: Colors.teal[800]!,
-        gradientColors: [Colors.teal[50]!, Colors.teal[100]!],
-        borderColor: Colors.teal[300]!,
-        shadowColor: Colors.teal.withValues(alpha: 0.1),
+        titleColor: SdColors.accentEdge,
+        subtitleColor: SdColors.accent,
+        amountColor: SdColors.accentEdge,
+        gradientColors: [SdColors.accentTint, SdColors.accentTint],
+        borderColor: SdColors.accentTintEdge,
+        shadowColor: SdColors.accent.withValues(alpha: 0.1),
       ),
       // المربع الثاني - عمليات الشراء
       _buildStatBox(
         title: 'عمليات الشراء',
         subtitle: '$purchaseCount معاملة',
         amount: _formatCurrency(purchaseAmount),
-        titleColor: Colors.orange[700]!,
-        subtitleColor: Colors.orange[600]!,
-        amountColor: Colors.orange[800]!,
-        gradientColors: [Colors.orange[50]!, Colors.orange[100]!],
-        borderColor: Colors.orange[300]!,
-        shadowColor: Colors.orange.withValues(alpha: 0.1),
+        titleColor: SdColors.warningEdge,
+        subtitleColor: SdColors.warning,
+        amountColor: SdColors.warningEdge,
+        gradientColors: [SdColors.warningTint, SdColors.warningTint],
+        borderColor: SdColors.warningTintEdge,
+        shadowColor: SdColors.warning.withValues(alpha: 0.1),
       ),
       // المربع الثالث - التجديد والتغيير
       _buildStatBox(
         title: 'تجديد وتغيير',
         subtitle: '$renewChangeScheduleCount معاملة',
         amount: _formatCurrency(renewChangeScheduleAmount),
-        titleColor: Colors.purple[700]!,
-        subtitleColor: Colors.purple[600]!,
-        amountColor: Colors.purple[800]!,
-        gradientColors: [Colors.purple[50]!, Colors.purple[100]!],
-        borderColor: Colors.purple[300]!,
-        shadowColor: Colors.purple.withValues(alpha: 0.1),
+        titleColor: SdColors.platformEdge,
+        subtitleColor: SdColors.platformBase,
+        amountColor: SdColors.platformEdge,
+        gradientColors: [SdColors.platformTint, SdColors.platformTint],
+        borderColor: SdColors.platformTintEdge,
+        shadowColor: SdColors.platformBase.withValues(alpha: 0.1),
       ),
       // المربع الرابع - المبالغ السالبة
       _buildStatBox(
         title: 'المبالغ الكلي',
         subtitle: '${filteredTransactions.where((t) => (double.tryParse(t['amount']?.toString() ?? '0') ?? 0.0) < 0).length} معاملة',
         amount: _formatCurrency(negativeAmount),
-        titleColor: Colors.red[700]!,
-        subtitleColor: Colors.red[600]!,
-        amountColor: Colors.red[800]!,
-        gradientColors: [Colors.red[50]!, Colors.red[100]!],
-        borderColor: Colors.red[300]!,
-        shadowColor: Colors.red.withValues(alpha: 0.1),
+        titleColor: SdColors.dangerEdge,
+        subtitleColor: SdColors.danger,
+        amountColor: SdColors.dangerEdge,
+        gradientColors: [SdColors.dangerTint, SdColors.dangerTint],
+        borderColor: SdColors.dangerTintEdge,
+        shadowColor: SdColors.danger.withValues(alpha: 0.1),
       ),
     ];
 
@@ -1244,7 +1245,7 @@ class _CreatorTransactionsDetailPageState
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
+            color: SdColors.muted.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1253,13 +1254,13 @@ class _CreatorTransactionsDetailPageState
       child: TextField(
         decoration: InputDecoration(
           hintText: 'البحث في المعاملات...',
-          prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+          prefixIcon: Icon(Icons.search, color: SdColors.faint),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: Colors.grey[100],
+          fillColor: SdColors.surfaceAlt,
         ),
         onChanged: (value) {
           setState(() {
@@ -1296,13 +1297,13 @@ class _CreatorTransactionsDetailPageState
       margin: EdgeInsets.symmetric(horizontal: _isPhone ? 8 : 16, vertical: _isPhone ? 4 : 8),
       elevation: isScheduled ? 8 : 4, // ارتفاع أكبر للمجدول
       shadowColor: isScheduled
-          ? Colors.red[300]!.withValues(alpha: 0.5) // ظلال حمراء للمجدول
+          ? SdColors.dangerTintEdge.withValues(alpha: 0.5) // ظلال حمراء للمجدول
           : null, // ظلال عادية للباقي
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
           color: isScheduled
-              ? Colors.red[400]! // حدود حمراء للمجدول
+              ? SdColors.danger // حدود حمراء للمجدول
               : Colors.black, // حدود سوداء للباقي
           width: isScheduled ? 2.0 : 1.5, // عرض أكبر للحدود المجدولة
         ),
@@ -1317,8 +1318,8 @@ class _CreatorTransactionsDetailPageState
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: isScheduled
-                  ? [Colors.red[50]!, Colors.red[100]!] // خلفية حمراء للمجدول
-                  : [Colors.white, Colors.grey[50]!], // خلفية عادية للباقي
+                  ? [SdColors.dangerTint, SdColors.dangerTint] // خلفية حمراء للمجدول
+                  : [Colors.white, SdColors.surfaceAlt], // خلفية عادية للباقي
             ),
           ),
           child: Padding(
@@ -1356,8 +1357,8 @@ class _CreatorTransactionsDetailPageState
                                     fontSize: _fs(16),
                                     fontWeight: FontWeight.bold,
                                     color: isScheduled
-                                        ? Colors.red[800] // أحمر داكن للمجدول
-                                        : Colors.grey[800], // رمادي داكن للباقي
+                                        ? SdColors.dangerEdge // أحمر داكن للمجدول
+                                        : SdColors.ink, // رمادي داكن للباقي
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1423,8 +1424,8 @@ class _CreatorTransactionsDetailPageState
                             style: TextStyle(
                               fontSize: 13,
                               color: isScheduled
-                                  ? Colors.red[600] // أحمر متوسط للمجدول
-                                  : Colors.grey[600], // رمادي للباقي
+                                  ? SdColors.danger // أحمر متوسط للمجدول
+                                  : SdColors.muted, // رمادي للباقي
                             ),
                           ),
                         ],
@@ -1468,8 +1469,8 @@ class _CreatorTransactionsDetailPageState
                       gradient: LinearGradient(
                         colors: isScheduled
                             ? [
-                                Colors.red[100]!,
-                                Colors.red[200]!
+                                SdColors.dangerTint,
+                                SdColors.dangerTintEdge
                               ] // خلفية حمراء أقوى للمجدول
                             : _getChangeTypeColors(
                                     transaction['changeType']['displayValue'])
@@ -1481,7 +1482,7 @@ class _CreatorTransactionsDetailPageState
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: isScheduled
-                            ? Colors.red[400]! // حدود حمراء للمجدول
+                            ? SdColors.danger // حدود حمراء للمجدول
                             : _getChangeTypeColors(transaction['changeType']
                                     ['displayValue'])[0]
                                 .withValues(alpha: 0.3),
@@ -1490,7 +1491,7 @@ class _CreatorTransactionsDetailPageState
                       boxShadow: isScheduled
                           ? [
                               BoxShadow(
-                                color: Colors.red[300]!.withValues(alpha: 0.4),
+                                color: SdColors.dangerTintEdge.withValues(alpha: 0.4),
                                 blurRadius: 6,
                                 offset: const Offset(0, 3),
                               ),
@@ -1504,7 +1505,7 @@ class _CreatorTransactionsDetailPageState
                           // إضافة أيقونة تحذيرية للمجدول
                           Icon(
                             Icons.warning,
-                            color: Colors.red[700],
+                            color: SdColors.dangerEdge,
                             size: 22,
                           ),
                           const SizedBox(width: 6),
@@ -1513,7 +1514,7 @@ class _CreatorTransactionsDetailPageState
                           _getChangeTypeIcon(
                               transaction['changeType']['displayValue']),
                           color: isScheduled
-                              ? Colors.red[700] // أحمر داكن للمجدول
+                              ? SdColors.dangerEdge // أحمر داكن للمجدول
                               : _getChangeTypeColors(
                                   transaction['changeType']['displayValue'])[0],
                           size: 20,
@@ -1525,7 +1526,7 @@ class _CreatorTransactionsDetailPageState
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: isScheduled
-                                ? Colors.red[800] // أحمر أغمق للمجدول
+                                ? SdColors.dangerEdge // أحمر أغمق للمجدول
                                 : _getChangeTypeColors(transaction['changeType']
                                     ['displayValue'])[0],
                           ),
@@ -1579,14 +1580,14 @@ class _CreatorTransactionsDetailPageState
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: SdColors.infoTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue[200]!),
+                    border: Border.all(color: SdColors.infoTintEdge),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.account_balance_wallet,
-                          color: Colors.blue[600], size: 20),
+                          color: SdColors.info, size: 20),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
@@ -1594,7 +1595,7 @@ class _CreatorTransactionsDetailPageState
                           style: TextStyle(
                             fontSize: _fs(14),
                             fontWeight: FontWeight.w600,
-                            color: Colors.blue[700],
+                            color: SdColors.infoEdge,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1615,13 +1616,13 @@ class _CreatorTransactionsDetailPageState
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
+          Icon(icon, size: 16, color: SdColors.muted),
           const SizedBox(width: 8),
           Text(
             '$label: ',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[600],
+              color: SdColors.muted,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1647,13 +1648,13 @@ class _CreatorTransactionsDetailPageState
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Icon(Icons.badge, size: 16, color: Colors.grey[600]),
+          Icon(Icons.badge, size: 16, color: SdColors.muted),
           const SizedBox(width: 8),
           Text(
             'معرف العميل: ',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[600],
+              color: SdColors.muted,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1666,7 +1667,7 @@ class _CreatorTransactionsDetailPageState
                     SnackBar(
                       content: Text('تم نسخ معرف العميل: $customerId'),
                       duration: const Duration(seconds: 2),
-                      backgroundColor: Colors.blue,
+                      backgroundColor: SdColors.info,
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -1675,9 +1676,9 @@ class _CreatorTransactionsDetailPageState
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.blue[100],
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.blue[300]!, width: 0.5),
+                  border: Border.all(color: SdColors.infoTintEdge, width: 0.5),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1688,7 +1689,7 @@ class _CreatorTransactionsDetailPageState
                         style: TextStyle(
                           fontSize: _fs(13),
                           fontWeight: FontWeight.w600,
-                          color: Colors.blue[800],
+                          color: SdColors.infoEdge,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1697,7 +1698,7 @@ class _CreatorTransactionsDetailPageState
                     Icon(
                       Icons.copy,
                       size: 12,
-                      color: Colors.blue[600],
+                      color: SdColors.info,
                     ),
                   ],
                 ),
@@ -1718,9 +1719,9 @@ class _CreatorTransactionsDetailPageState
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.amber[50],
+        color: SdColors.warningTint,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.amber[200]!, width: 1),
+        border: Border.all(color: SdColors.warningTintEdge, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1730,7 +1731,7 @@ class _CreatorTransactionsDetailPageState
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               // أيقونة صغيرة
-              Icon(Icons.person, size: 14, color: Colors.amber[600]),
+              Icon(Icons.person, size: 14, color: SdColors.warning),
               const SizedBox(width: 6),
 
               // اسم المستخدم مع نص توضيحي
@@ -1740,7 +1741,7 @@ class _CreatorTransactionsDetailPageState
                   style: TextStyle(
                     fontSize: _fs(12),
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
+                    color: SdColors.muted,
                   ),
                 ),
                 Text(
@@ -1748,7 +1749,7 @@ class _CreatorTransactionsDetailPageState
                   style: TextStyle(
                     fontSize: _fs(12),
                     fontWeight: FontWeight.bold,
-                    color: Colors.amber[800],
+                    color: SdColors.warningEdge,
                   ),
                 ),
               ],
@@ -1761,7 +1762,7 @@ class _CreatorTransactionsDetailPageState
                   ' • ',
                   style: TextStyle(
                     fontSize: _fs(12),
-                    color: Colors.grey[500],
+                    color: SdColors.muted,
                   ),
                 ),
               ],
@@ -1774,7 +1775,7 @@ class _CreatorTransactionsDetailPageState
                   style: TextStyle(
                     fontSize: _fs(12),
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
+                    color: SdColors.muted,
                   ),
                 ),
                 Text(
@@ -1782,7 +1783,7 @@ class _CreatorTransactionsDetailPageState
                   style: TextStyle(
                     fontSize: _fs(12),
                     fontWeight: FontWeight.bold,
-                    color: Colors.amber[700],
+                    color: SdColors.warningEdge,
                   ),
                 ),
               ],
@@ -1797,7 +1798,7 @@ class _CreatorTransactionsDetailPageState
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 // أيقونة التاريخ
-                Icon(Icons.access_time, size: 12, color: Colors.amber[600]),
+                Icon(Icons.access_time, size: 12, color: SdColors.warning),
                 const SizedBox(width: 4),
 
                 // تاريخ العملية
@@ -1807,7 +1808,7 @@ class _CreatorTransactionsDetailPageState
                     style: TextStyle(
                       fontSize: _fs(11),
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey[600],
+                      color: SdColors.muted,
                     ),
                   ),
                   Text(
@@ -1815,7 +1816,7 @@ class _CreatorTransactionsDetailPageState
                     style: TextStyle(
                       fontSize: _fs(11),
                       fontWeight: FontWeight.bold,
-                      color: Colors.amber[700],
+                      color: SdColors.warningEdge,
                     ),
                   ),
                 ],
@@ -1827,7 +1828,7 @@ class _CreatorTransactionsDetailPageState
                     ' • ',
                     style: TextStyle(
                       fontSize: _fs(11),
-                      color: Colors.grey[500],
+                      color: SdColors.muted,
                     ),
                   ),
                 ],
@@ -1840,8 +1841,8 @@ class _CreatorTransactionsDetailPageState
                         : Icons.error,
                     size: 12,
                     color: actorInfo['isSuccessful'] == true
-                        ? Colors.green[600]
-                        : Colors.red[600],
+                        ? SdColors.success
+                        : SdColors.danger,
                   ),
                   const SizedBox(width: 2),
                   Text(
@@ -1849,7 +1850,7 @@ class _CreatorTransactionsDetailPageState
                     style: TextStyle(
                       fontSize: _fs(11),
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey[600],
+                      color: SdColors.muted,
                     ),
                   ),
                   Text(
@@ -1858,8 +1859,8 @@ class _CreatorTransactionsDetailPageState
                       fontSize: _fs(11),
                       fontWeight: FontWeight.bold,
                       color: actorInfo['isSuccessful'] == true
-                          ? Colors.green[700]
-                          : Colors.red[700],
+                          ? SdColors.successEdge
+                          : SdColors.dangerEdge,
                     ),
                   ),
                 ],
@@ -1884,16 +1885,16 @@ class _CreatorTransactionsDetailPageState
         margin: const EdgeInsets.only(bottom: 4),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.green[50],
+          color: SdColors.successTint,
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.green[200]!, width: 1),
+          border: Border.all(color: SdColors.successTintEdge, width: 1),
         ),
         child: Row(
           mainAxisSize:
               MainAxisSize.min, // إضافة هذا لجعل البطاقة على حجم المحتوى
           children: [
             // أيقونة صغيرة
-            Icon(Icons.account_circle, size: 14, color: Colors.green[600]),
+            Icon(Icons.account_circle, size: 14, color: SdColors.success),
             const SizedBox(width: 6),
 
             // اسم العميل مع نص توضيحي
@@ -1902,7 +1903,7 @@ class _CreatorTransactionsDetailPageState
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[600],
+                color: SdColors.muted,
               ),
             ),
             // استخدام Flexible بدلاً من Expanded لأننا نريد حجم المحتوى
@@ -1912,7 +1913,7 @@ class _CreatorTransactionsDetailPageState
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green[800],
+                  color: SdColors.successEdge,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -2154,7 +2155,7 @@ class _CreatorTransactionsDetailPageState
               style: TextStyle(
                 fontSize: _fs(14),
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: SdColors.ink,
               ),
             ),
           ),
@@ -2352,7 +2353,7 @@ class _CreatorTransactionsDetailPageState
                         Icon(
                           Icons.search_off,
                           size: 80,
-                          color: Colors.grey[400],
+                          color: SdColors.faint,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -2362,7 +2363,7 @@ class _CreatorTransactionsDetailPageState
                           style: TextStyle(
                             fontSize: _fs(18),
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey[600],
+                            color: SdColors.muted,
                           ),
                         ),
                       ],

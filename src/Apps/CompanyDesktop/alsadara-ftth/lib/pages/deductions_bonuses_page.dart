@@ -5,7 +5,7 @@ library;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import '../utils/responsive_helper.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -64,44 +64,41 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final r = context.responsive;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('الخصومات والمكافآت',
-              style: TextStyle(fontSize: r.appBarTitleSize)),
-          backgroundColor: Colors.teal[700],
-          foregroundColor: Colors.white,
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loadData,
-              tooltip: 'تحديث',
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _showAddDialog(context),
-          backgroundColor: Colors.teal[700],
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.add),
-          label: const Text('إضافة'),
-        ),
-        body: Column(
-          children: [
-            _buildFilters(),
-            if (_summary != null) _buildSummaryCards(),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _adjustments.isEmpty
-                      ? _buildEmptyState()
-                      : _buildList(),
-            ),
-          ],
-        ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: 'الخصومات والمكافآت',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
+            onPressed: _loadData,
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddDialog(context),
+        backgroundColor: SdColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('إضافة',
+            style: TextStyle(
+                fontFamily: SdText.family, fontWeight: FontWeight.w800)),
+      ),
+      body: Column(
+        children: [
+          _buildFilters(),
+          if (_summary != null) _buildSummaryCards(),
+          Expanded(
+            child: _loading
+                ? const Center(
+                    child: CircularProgressIndicator(color: SdColors.primary))
+                : _adjustments.isEmpty
+                    ? _buildEmptyState()
+                    : _buildList(),
+          ),
+        ],
       ),
     );
   }
@@ -109,13 +106,13 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
   Widget _buildFilters() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: SdColors.cardEdge,
             blurRadius: 4,
-            offset: const Offset(0, 2),
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -210,46 +207,42 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          _summaryCard('خصومات', totalDeductions, Colors.red,
+          _summaryCard('خصومات', totalDeductions, SdStatus.danger.tone,
               Icons.remove_circle_outline),
           const SizedBox(width: 8),
           _summaryCard(
-              'مكافآت', totalBonuses, Colors.green, Icons.card_giftcard),
+              'مكافآت', totalBonuses, SdStatus.success.tone, Icons.card_giftcard),
           const SizedBox(width: 8),
-          _summaryCard('بدلات', totalAllowances, Colors.blue,
+          _summaryCard('بدلات', totalAllowances, SdStatus.info.tone,
               Icons.account_balance_wallet),
           const SizedBox(width: 8),
-          _summaryCard('إجمالي', count.toDouble(), Colors.teal, Icons.list_alt,
+          _summaryCard('إجمالي', count.toDouble(), SdGroup.field.tone,
+              Icons.list_alt,
               isCurrency: false),
         ],
       ),
     );
   }
 
-  Widget _summaryCard(String title, double value, Color color, IconData icon,
+  Widget _summaryCard(String title, double value, SdTone tone, IconData icon,
       {bool isCurrency = true}) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
+          color: tone.tint,
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          border: Border.all(color: tone.tintEdge),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 22),
+            Icon(icon, color: tone.base, size: 22),
             const SizedBox(height: 4),
             Text(
               isCurrency ? _formatCurrency(value) : value.toInt().toString(),
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: color,
-              ),
+              style: SdText.titleSm.copyWith(fontSize: 15, color: tone.text),
             ),
-            Text(title,
-                style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+            Text(title, style: SdText.caption.copyWith(fontSize: 11.5)),
           ],
         ),
       ),
@@ -257,23 +250,10 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
-            'لا توجد خصومات أو مكافآت لهذا الشهر',
-            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'اضغط على + لإضافة خصم أو مكافأة جديدة',
-            style: TextStyle(fontSize: 13, color: Colors.grey[400]),
-          ),
-        ],
-      ),
+    return const SdEmptyState(
+      icon: Icons.receipt_long_outlined,
+      title: 'لا توجد خصومات أو مكافآت لهذا الشهر',
+      message: 'اضغط على + لإضافة خصم أو مكافأة جديدة',
     );
   }
 
@@ -297,50 +277,56 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
     final isRecurring = adj['IsRecurring'] ?? false;
     final amount = (adj['Amount'] ?? 0).toDouble();
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 1,
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        boxShadow: SdDepth.raised(),
+      ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: typeColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+            color: typeColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(SdRadius.sm),
           ),
           child: Icon(typeIcon, color: typeColor, size: 24),
         ),
         title: Row(
           children: [
-            Text(
-              adj['UserName'] ?? '',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            Flexible(
+              child: Text(
+                adj['UserName'] ?? '',
+                overflow: TextOverflow.ellipsis,
+                style: SdText.label.copyWith(fontSize: 14),
+              ),
             ),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: typeColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: typeColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(SdRadius.sm),
               ),
               child: Text(typeName,
-                  style: TextStyle(color: typeColor, fontSize: 11)),
+                  style: SdText.caption.copyWith(color: typeColor)),
             ),
             if (isRecurring) ...[
               const SizedBox(width: 4),
-              Tooltip(
+              const Tooltip(
                 message: 'متكرر شهرياً',
-                child: Icon(Icons.repeat, size: 16, color: Colors.blue[400]),
+                child: Icon(Icons.repeat, size: 16, color: SdColors.info),
               ),
             ],
             if (isApplied) ...[
               const SizedBox(width: 4),
-              Tooltip(
+              const Tooltip(
                 message: 'تم التطبيق على الراتب',
                 child: Icon(Icons.check_circle,
-                    size: 16, color: Colors.green[400]),
+                    size: 16, color: SdColors.success),
               ),
             ],
           ],
@@ -352,13 +338,13 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(adj['Description'] ?? '',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    style: SdText.bodySm.copyWith(fontSize: 12.5)),
               ),
             if ((adj['Category'] ?? '').toString().isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text('الفئة: ${adj['Category']}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                    style: SdText.caption.copyWith(fontSize: 11.5)),
               ),
           ],
         ),
@@ -368,11 +354,10 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
           children: [
             Text(
               '${typeValue == 0 ? "-" : "+"}${_formatCurrency(amount)}',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 15, color: typeColor),
+              style: SdText.titleSm.copyWith(fontSize: 15, color: typeColor),
             ),
             Text('${adj['Month']}/${adj['Year']}',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                style: SdText.caption.copyWith(fontSize: 11.5)),
           ],
         ),
         onTap: isApplied ? null : () => _showEditDialog(context, adj),
@@ -413,7 +398,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
           return AlertDialog(
             title: Row(
               children: [
-                Icon(Icons.add_circle, color: Colors.teal[700]),
+                Icon(Icons.add_circle, color: SdColors.primary),
                 const SizedBox(width: 8),
                 const Text('إضافة خصم / مكافأة'),
               ],
@@ -512,7 +497,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
                             style: TextStyle(fontSize: 11)),
                         value: isRecurring,
                         onChanged: (v) => setDialogState(() => isRecurring = v),
-                        activeColor: Colors.teal,
+                        activeColor: SdColors.primary,
                         contentPadding: EdgeInsets.zero,
                       ),
                     ],
@@ -562,7 +547,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
                 icon: const Icon(Icons.save),
                 label: const Text('حفظ'),
                 style:
-                    FilledButton.styleFrom(backgroundColor: Colors.teal[700]),
+                    FilledButton.styleFrom(backgroundColor: SdColors.primary),
               ),
             ],
           );
@@ -591,7 +576,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
           return AlertDialog(
             title: Row(
               children: [
-                Icon(Icons.edit, color: Colors.teal[700]),
+                Icon(Icons.edit, color: SdColors.primary),
                 const SizedBox(width: 8),
                 const Text('تعديل'),
               ],
@@ -653,7 +638,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
                         title: const Text('متكرر شهرياً'),
                         value: isRecurring,
                         onChanged: (v) => setDialogState(() => isRecurring = v),
-                        activeColor: Colors.teal,
+                        activeColor: SdColors.primary,
                         contentPadding: EdgeInsets.zero,
                       ),
                     ],
@@ -698,7 +683,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
                 icon: const Icon(Icons.save),
                 label: const Text('حفظ'),
                 style:
-                    FilledButton.styleFrom(backgroundColor: Colors.teal[700]),
+                    FilledButton.styleFrom(backgroundColor: SdColors.primary),
               ),
             ],
           );
@@ -740,7 +725,7 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
                 }
               }
             },
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('حذف'),
           ),
         ],
@@ -787,13 +772,13 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
   Color _getTypeColor(int type) {
     switch (type) {
       case 0:
-        return Colors.red;
+        return SdColors.danger;
       case 1:
-        return Colors.green;
+        return SdColors.success;
       case 2:
-        return Colors.blue;
+        return SdColors.info;
       default:
-        return Colors.grey;
+        return SdColors.muted;
     }
   }
 

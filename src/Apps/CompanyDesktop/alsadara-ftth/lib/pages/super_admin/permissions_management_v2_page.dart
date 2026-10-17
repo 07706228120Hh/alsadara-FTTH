@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
 import '../../theme/energy_dashboard_theme.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة إدارة صلاحيات V2 للشركة أو الموظف
 class PermissionsManagementV2Page extends StatefulWidget {
@@ -295,7 +296,7 @@ class _PermissionsManagementV2PageState
                   Text('تم حفظ الصلاحيات V2 بنجاح'),
                 ],
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
           Navigator.pop(context, true);
@@ -303,7 +304,7 @@ class _PermissionsManagementV2PageState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(response.message ?? 'فشل في حفظ الصلاحيات'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -313,7 +314,7 @@ class _PermissionsManagementV2PageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -438,89 +439,27 @@ class _PermissionsManagementV2PageState
         ? 'صلاحيات ${widget.employeeName ?? "الموظف"}'
         : 'صلاحيات شركة ${widget.companyName}';
 
-    return Scaffold(
-      backgroundColor: EnergyDashboardTheme.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: EnergyDashboardTheme.surfaceColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded,
-              color: EnergyDashboardTheme.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF9C27B0).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.security_rounded,
-                  color: Color(0xFF9C27B0), size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: EnergyDashboardTheme.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    'نظام الصلاحيات المفصل V2',
-                    style: TextStyle(
-                      color: EnergyDashboardTheme.textMuted,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return SdTheme.scope(
+      child: Scaffold(
+      backgroundColor: SdColors.ground,
+      appBar: SdAppBar(
+        title: title,
+        subtitle: 'نظام الصلاحيات المفصل V2',
         actions: [
-          IconButton(
+          SdAppBarAction(
+            icon: Icons.checklist_rounded,
+            label: 'إجراءات جماعية',
             onPressed: () => _showBulkActionDialog(),
-            icon: const Icon(Icons.checklist_rounded),
-            tooltip: 'إجراءات جماعية',
-            color: EnergyDashboardTheme.textMuted,
           ),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: ElevatedButton.icon(
-              onPressed: _isSaving ? null : _savePermissions,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.save_rounded, size: 18),
-              label: const Text('حفظ'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-            ),
+          SdAppBarAction(
+            icon: Icons.save_rounded,
+            label: 'حفظ',
+            onPressed: _isSaving ? null : _savePermissions,
           ),
         ],
-        bottom: TabBar(
+        bottom: SdTabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF9C27B0),
-          unselectedLabelColor: EnergyDashboardTheme.textMuted,
-          indicatorColor: const Color(0xFF9C27B0),
-          indicatorWeight: 3,
+          height: 72,
           tabs: const [
             Tab(
               icon: Icon(Icons.home_work_rounded, size: 20),
@@ -552,6 +491,7 @@ class _PermissionsManagementV2PageState
                     ),
                   ],
                 ),
+    ),
     );
   }
 

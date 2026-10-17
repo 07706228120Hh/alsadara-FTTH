@@ -15,6 +15,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:xml/xml.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../frontend/tokens/sd_colors.dart';
+
 // ══════════════════════════════════════════════════════════════
 // Models
 // ══════════════════════════════════════════════════════════════
@@ -227,11 +229,11 @@ class KmlZonesMapPage extends StatefulWidget {
 }
 
 class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
-  // ── Theme (نفس ستايل track_users_map_page) ──────────────────
-  static const _bg = Color(0xFF0F172A);
-  static const _surface = Color(0xFF1E293B);
-  static const _accent = Color(0xFF38BDF8);
-  static const _card = Color(0xFF1E293B);
+  // ── Theme (موحَّد إلى نظام تصميم الصدارة الفاتح — sd) ──────────
+  static const _bg = SdColors.ground;
+  static const _surface = SdColors.surface;
+  static const _accent = SdColors.accent;
+  static const _card = SdColors.surface;
 
   // ── In-memory cache (survives page navigation) ──────────────
   static List<FatPoint>? _cachedPoints;
@@ -1043,12 +1045,12 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           const SizedBox(height: 20),
           Text(
             'جاري تحميل بيانات الزونات...',
-            style: GoogleFonts.cairo(color: Colors.white70, fontSize: 16),
+            style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
             'يُعالج الملف في الخلفية',
-            style: GoogleFonts.cairo(color: Colors.white38, fontSize: 12),
+            style: GoogleFonts.cairo(color: SdColors.faint, fontSize: 12),
           ),
         ],
       ),
@@ -1065,12 +1067,12 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           Text(
             'فشل تحميل الخريطة',
             style: GoogleFonts.cairo(
-                color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                color: SdColors.ink, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             _error ?? '',
-            style: GoogleFonts.cairo(color: Colors.white54, fontSize: 12),
+            style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 12),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
@@ -1202,7 +1204,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           height: 44,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white12),
+            border: Border.all(color: SdColors.divider),
           ),
           child: Icon(icon, color: _accent, size: 20),
         ),
@@ -1250,7 +1252,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           Text(
             label,
             style: GoogleFonts.cairo(
-              color: Colors.white,
+              color: SdColors.ink,
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
@@ -1260,7 +1262,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           GestureDetector(
             onTap: onRemove,
             child: const Icon(Icons.close_rounded,
-                color: Colors.white54, size: 14),
+                color: SdColors.muted, size: 14),
           ),
         ],
       ),
@@ -1329,7 +1331,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(16),
         decoration: const BoxDecoration(
-          color: Color(0xFF1E293B),
+          color: SdColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
         child: Column(
@@ -1342,7 +1344,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: SdColors.faint,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1350,7 +1352,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             Text(
               'الطبقات',
               style: GoogleFonts.cairo(
-                color: Colors.white54,
+                color: SdColors.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -1380,7 +1382,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             Text(
               'الإحصائيات',
               style: GoogleFonts.cairo(
-                color: Colors.white54,
+                color: SdColors.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -1521,9 +1523,9 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
   Widget _buildDirectionsPanel() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.96),
+        color: SdColors.surface.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: SdColors.divider),
         boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 12)],
       ),
       child: Column(
@@ -1532,7 +1534,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.white12)),
+              border: Border(bottom: BorderSide(color: SdColors.divider)),
             ),
             child: Row(
               children: [
@@ -1542,7 +1544,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                 Text(
                   'الاتجاهات (${_routeSteps.length} خطوة)',
                   style: GoogleFonts.cairo(
-                      color: Colors.white,
+                      color: SdColors.ink,
                       fontWeight: FontWeight.bold,
                       fontSize: 12),
                 ),
@@ -1555,7 +1557,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               padding: const EdgeInsets.symmetric(vertical: 4),
               itemCount: _routeSteps.length,
               separatorBuilder: (_, __) =>
-                  const Divider(color: Colors.white12, height: 1),
+                  const Divider(color: SdColors.divider, height: 1),
               itemBuilder: (_, i) {
                 final step = _routeSteps[i];
                 final isLast = i == _routeSteps.length - 1;
@@ -1589,13 +1591,13 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                             Text(
                               step.instruction,
                               style: GoogleFonts.cairo(
-                                  color: Colors.white, fontSize: 12),
+                                  color: SdColors.ink, fontSize: 12),
                             ),
                             if (step.distanceMeters > 0 && !isLast)
                               Text(
                                 _formatDist(step.distanceMeters),
                                 style: GoogleFonts.cairo(
-                                    color: Colors.white38, fontSize: 10),
+                                    color: SdColors.faint, fontSize: 10),
                               ),
                           ],
                         ),
@@ -1621,9 +1623,9 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           decoration: BoxDecoration(
             color: _surface.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white12),
+            border: Border.all(color: SdColors.divider),
           ),
-          child: Icon(icon, color: Colors.white70, size: 18),
+          child: Icon(icon, color: SdColors.ink, size: 18),
         ),
       ),
     );
@@ -1652,7 +1654,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
     return Text(
       label,
       style: GoogleFonts.cairo(
-          color: Colors.white54, fontSize: 11, fontWeight: FontWeight.bold),
+          color: SdColors.muted, fontSize: 11, fontWeight: FontWeight.bold),
     );
   }
 
@@ -1664,17 +1666,17 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.white10,
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: SdColors.divider),
       ),
       child: DropdownButton<String>(
         value: value,
         isExpanded: true,
-        dropdownColor: const Color(0xFF1E293B),
-        style: GoogleFonts.cairo(color: Colors.white, fontSize: 12),
+        dropdownColor: SdColors.surface,
+        style: GoogleFonts.cairo(color: SdColors.ink, fontSize: 12),
         underline: const SizedBox.shrink(),
-        icon: const Icon(Icons.arrow_drop_down, color: Colors.white38, size: 18),
+        icon: const Icon(Icons.arrow_drop_down, color: SdColors.faint, size: 18),
         items: items.map((z) => DropdownMenuItem(value: z, child: Text(z))).toList(),
         onChanged: onChanged,
       ),
@@ -1705,16 +1707,16 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           controller: ctrl,
           focusNode: focusNode,
           textDirection: TextDirection.ltr,
-          style: GoogleFonts.cairo(color: Colors.white, fontSize: 12),
+          style: GoogleFonts.cairo(color: SdColors.ink, fontSize: 12),
           textAlign: TextAlign.left,
           decoration: InputDecoration(
             hintText: isActive ? selected : hint,
             hintStyle: GoogleFonts.cairo(
-              color: isActive ? Colors.white70 : Colors.white38,
+              color: isActive ? SdColors.muted : SdColors.faint,
               fontSize: 11,
             ),
             prefixIcon: const Icon(Icons.search_rounded,
-                color: Colors.white38, size: 16),
+                color: SdColors.faint, size: 16),
             suffixIcon: isActive
                 ? GestureDetector(
                     onTap: () {
@@ -1722,24 +1724,24 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                       onCleared();
                     },
                     child: const Icon(Icons.close_rounded,
-                        color: Colors.white38, size: 15),
+                        color: SdColors.faint, size: 15),
                   )
                 : null,
             filled: true,
             fillColor: isActive
                 ? _accent.withValues(alpha: 0.12)
-                : Colors.white10,
+                : SdColors.surfaceAlt,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                  color: isActive ? _accent : Colors.white12),
+                  color: isActive ? _accent : SdColors.divider),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(
-                  color: isActive ? _accent : Colors.white12),
+                  color: isActive ? _accent : SdColors.divider),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -1757,9 +1759,9 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               width: 220,
               constraints: const BoxConstraints(maxHeight: 200),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: SdColors.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: SdColors.divider),
                 boxShadow: const [
                   BoxShadow(color: Colors.black45, blurRadius: 8)
                 ],
@@ -1778,7 +1780,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                       decoration: BoxDecoration(
                         border: i > 0
                             ? const Border(
-                                top: BorderSide(color: Colors.white12))
+                                top: BorderSide(color: SdColors.divider))
                             : null,
                       ),
                       child: Text(
@@ -1788,8 +1790,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                             : TextDirection.ltr,
                         style: GoogleFonts.cairo(
                           color: opt == 'الكل'
-                              ? Colors.white38
-                              : Colors.white,
+                              ? SdColors.faint
+                              : SdColors.ink,
                           fontSize: 12,
                         ),
                         textAlign: opt == 'الكل'
@@ -1818,13 +1820,13 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Icon(icon, color: value ? color : Colors.white24, size: 15),
+          Icon(icon, color: value ? color : SdColors.faint, size: 15),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               label,
               style: GoogleFonts.cairo(
-                color: value ? Colors.white : Colors.white38,
+                color: value ? SdColors.ink : SdColors.faint,
                 fontSize: 12,
               ),
             ),
@@ -1835,8 +1837,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               value: value,
               onChanged: onChanged,
               activeColor: color,
-              inactiveTrackColor: Colors.white12,
-              inactiveThumbColor: Colors.white24,
+              inactiveTrackColor: SdColors.divider,
+              inactiveThumbColor: SdColors.faint,
             ),
           ),
         ],
@@ -1852,7 +1854,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.cairo(color: Colors.white54, fontSize: 11),
+              style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 11),
             ),
           ),
           Container(
@@ -2039,7 +2041,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
       decoration: BoxDecoration(
         color: _surface.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2073,7 +2075,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: GoogleFonts.cairo(color: Colors.white70, fontSize: 11),
+          style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 11),
         ),
       ],
     );
@@ -2095,7 +2097,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: GoogleFonts.cairo(color: Colors.white70, fontSize: 11),
+          style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 11),
         ),
       ],
     );
@@ -2138,7 +2140,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                     Text(
                       p.name,
                       style: GoogleFonts.cairo(
-                        color: Colors.white,
+                        color: SdColors.ink,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
@@ -2146,7 +2148,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                     Text(
                       p.zone,
                       style: GoogleFonts.cairo(
-                          color: Colors.white54, fontSize: 12),
+                          color: SdColors.muted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -2172,12 +2174,12 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => setState(() => _selectedPoint = null),
-                child: const Icon(Icons.close, color: Colors.white38, size: 18),
+                child: const Icon(Icons.close, color: SdColors.faint, size: 18),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(color: Colors.white12, height: 1),
+          const Divider(color: SdColors.divider, height: 1),
           const SizedBox(height: 12),
           Wrap(
             spacing: 20,
@@ -2258,7 +2260,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                 child: Text(
                   r.zoneId.isNotEmpty ? r.zoneId : 'منطقة FDT',
                   style: GoogleFonts.cairo(
-                    color: Colors.white,
+                    color: SdColors.ink,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -2285,12 +2287,12 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => setState(() => _selectedRegion = null),
-                child: const Icon(Icons.close, color: Colors.white38, size: 18),
+                child: const Icon(Icons.close, color: SdColors.faint, size: 18),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(color: Colors.white12, height: 1),
+          const Divider(color: SdColors.divider, height: 1),
           const SizedBox(height: 12),
           Wrap(
             spacing: 20,
@@ -2316,13 +2318,13 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
       children: [
         Text(
           label,
-          style: GoogleFonts.cairo(color: Colors.white38, fontSize: 10),
+          style: GoogleFonts.cairo(color: SdColors.faint, fontSize: 10),
         ),
         const SizedBox(height: 2),
         Text(
           value,
           style: GoogleFonts.cairo(
-            color: Colors.white,
+            color: SdColors.ink,
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
@@ -2380,7 +2382,7 @@ class _SearchSheetState extends State<_SearchSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 10,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -2392,7 +2394,7 @@ class _SearchSheetState extends State<_SearchSheet> {
             height: 4,
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
-              color: Colors.white24,
+              color: SdColors.faint,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -2448,7 +2450,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                   },
                   child: Text(
                     'مسح',
-                    style: GoogleFonts.cairo(color: Colors.white54),
+                    style: GoogleFonts.cairo(color: SdColors.muted),
                   ),
                 ),
               ],
@@ -2481,18 +2483,18 @@ class _SearchSheetState extends State<_SearchSheet> {
           controller: ctrl,
           focusNode: focusNode,
           textDirection: TextDirection.ltr,
-          style: GoogleFonts.cairo(color: Colors.white, fontSize: 13),
+          style: GoogleFonts.cairo(color: SdColors.ink, fontSize: 13),
           textAlign: TextAlign.left,
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: GoogleFonts.cairo(color: Colors.white38, fontSize: 12),
+            labelStyle: GoogleFonts.cairo(color: SdColors.faint, fontSize: 12),
             hintText: isActive ? selected : hint,
             hintStyle: GoogleFonts.cairo(
-              color: isActive ? Colors.white70 : Colors.white38,
+              color: isActive ? SdColors.muted : SdColors.faint,
               fontSize: 12,
             ),
             prefixIcon:
-                const Icon(Icons.search_rounded, color: Colors.white38, size: 18),
+                const Icon(Icons.search_rounded, color: SdColors.faint, size: 18),
             suffixIcon: isActive
                 ? GestureDetector(
                     onTap: () {
@@ -2500,23 +2502,23 @@ class _SearchSheetState extends State<_SearchSheet> {
                       onCleared();
                     },
                     child: const Icon(Icons.close_rounded,
-                        color: Colors.white38, size: 16),
+                        color: SdColors.faint, size: 16),
                   )
                 : null,
             filled: true,
             fillColor:
-                isActive ? const Color(0xFF0EA5E9).withValues(alpha: 0.12) : Colors.white10,
+                isActive ? const Color(0xFF0EA5E9).withValues(alpha: 0.12) : SdColors.surfaceAlt,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                  color: isActive ? const Color(0xFF0EA5E9) : Colors.white12),
+                  color: isActive ? const Color(0xFF0EA5E9) : SdColors.divider),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                  color: isActive ? const Color(0xFF0EA5E9) : Colors.white12),
+                  color: isActive ? const Color(0xFF0EA5E9) : SdColors.divider),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -2534,9 +2536,9 @@ class _SearchSheetState extends State<_SearchSheet> {
               width: MediaQuery.of(ctx).size.width - 32,
               constraints: const BoxConstraints(maxHeight: 180),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: SdColors.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: SdColors.divider),
                 boxShadow: const [
                   BoxShadow(color: Colors.black45, blurRadius: 8)
                 ],
@@ -2555,7 +2557,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                       decoration: BoxDecoration(
                         border: i > 0
                             ? const Border(
-                                top: BorderSide(color: Colors.white12))
+                                top: BorderSide(color: SdColors.divider))
                             : null,
                       ),
                       child: Text(
@@ -2563,7 +2565,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                         textDirection:
                             opt == 'الكل' ? TextDirection.rtl : TextDirection.ltr,
                         style: GoogleFonts.cairo(
-                          color: opt == 'الكل' ? Colors.white38 : Colors.white,
+                          color: opt == 'الكل' ? SdColors.faint : SdColors.ink,
                           fontSize: 12,
                         ),
                         textAlign:

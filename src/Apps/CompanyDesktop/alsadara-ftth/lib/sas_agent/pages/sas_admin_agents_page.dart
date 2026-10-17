@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_theme.dart';
+import '../../frontend/frontend.dart';
 import '../models/sas_admin_agent.dart';
 import '../models/sas_report.dart' show SasVerdict, SasVerdictX;
 import '../services/sas_agent_api_service.dart';
@@ -93,75 +92,21 @@ class _SasAdminAgentsPageState extends State<SasAdminAgentsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          elevation: 0,
-          toolbarHeight: 60,
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          iconTheme: const IconThemeData(color: Colors.white),
-          actionsIconTheme: const IconThemeData(color: Colors.white),
-          flexibleSpace: const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: AppTheme.blueGradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: 'إدارة الوكلاء',
+        subtitle: 'البلنك الموحّد — المُصرَّح مقابل الفعلي',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh_rounded,
+            label: 'تحديث',
+            onPressed: _loading ? null : _load,
           ),
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(10),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.30)),
-                ),
-                child: const Icon(Icons.groups_2_rounded,
-                    size: 19, color: Colors.white),
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('إدارة الوكلاء',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
-                            fontWeight: FontWeight.w800, fontSize: 17)),
-                    Text('البلنك الموحّد — المُصرَّح مقابل الفعلي',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.75))),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              tooltip: 'تحديث',
-              onPressed: _loading ? null : _load,
-              icon: const Icon(Icons.refresh_rounded),
-            ),
-            const SizedBox(width: 6),
-          ],
-        ),
-        body: _body(),
+        ],
       ),
+      body: _body(),
     );
   }
 
@@ -181,7 +126,7 @@ class _SasAdminAgentsPageState extends State<SasAdminAgentsPage> {
     }
 
     return RefreshIndicator(
-      color: AppTheme.primaryColor,
+      color: SdColors.primary,
       onRefresh: _load,
       child: _agents.isEmpty
           ? ListView(
@@ -239,7 +184,7 @@ class _SasAdminAgentsPageState extends State<SasAdminAgentsPage> {
               child: SasStatCard(
                 label: 'إجمالي الوكلاء',
                 value: '$_totalAgents',
-                color: AppTheme.primaryColor,
+                color: SdColors.primary,
                 icon: Icons.groups_2_rounded,
               ),
             ),
@@ -248,7 +193,7 @@ class _SasAdminAgentsPageState extends State<SasAdminAgentsPage> {
               child: SasStatCard(
                 label: 'إجمالي التصريح',
                 value: '$_totalDeclared',
-                color: AppTheme.infoColor,
+                color: SdColors.info,
                 icon: Icons.assignment_turned_in_rounded,
               ),
             ),
@@ -257,7 +202,7 @@ class _SasAdminAgentsPageState extends State<SasAdminAgentsPage> {
               child: SasStatCard(
                 label: 'إجمالي الفعلي',
                 value: '$_totalActual',
-                color: AppTheme.successColor,
+                color: SdColors.success,
                 icon: Icons.fact_check_rounded,
               ),
             ),
@@ -267,8 +212,8 @@ class _SasAdminAgentsPageState extends State<SasAdminAgentsPage> {
                 label: 'مطابق / مشبوه',
                 value: '$_matchedCount / $_suspiciousCount',
                 color: _suspiciousCount > 0
-                    ? AppTheme.warningColor
-                    : AppTheme.successColor,
+                    ? SdColors.warning
+                    : SdColors.success,
                 icon: Icons.rule_rounded,
               ),
             ),
@@ -286,11 +231,11 @@ class _SasAdminAgentsPageState extends State<SasAdminAgentsPage> {
 Color _verdictColor(SasVerdict v) {
   switch (v) {
     case SasVerdict.matched:
-      return AppTheme.successColor;
+      return SdColors.success;
     case SasVerdict.companySuspicious:
-      return AppTheme.warningColor;
+      return SdColors.warning;
     case SasVerdict.agentSuspicious:
-      return AppTheme.errorColor;
+      return SdColors.danger;
     case SasVerdict.noReport:
       return Colors.grey;
   }
@@ -329,7 +274,7 @@ class _AgentCard extends StatelessWidget {
     final diff = agent.totals.diff;
     final diffColor = diff == 0
         ? Colors.grey.shade600
-        : (diff > 0 ? AppTheme.warningColor : AppTheme.errorColor);
+        : (diff > 0 ? SdColors.warning : SdColors.danger);
 
     return Container(
       decoration: SasUi.card(),
@@ -344,17 +289,17 @@ class _AgentCard extends StatelessWidget {
             width: 42.w,
             height: 42.w,
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.10),
+              color: SdColors.primary.withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.person_rounded,
-                color: AppTheme.primaryColor, size: 22.sp),
+                color: SdColors.primary, size: 22.sp),
           ),
           title: Text(
             agent.displayName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.cairo(
+            style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w800,
                 color: const Color(0xFF1A1A2E)),
@@ -366,7 +311,7 @@ class _AgentCard extends StatelessWidget {
               '${agent.totals.accounts} حساب',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.cairo(
+              style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.5.sp, color: Colors.grey[600]),
             ),
           ),
@@ -376,14 +321,14 @@ class _AgentCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text('تصريح ${agent.totals.declared} · فعلي ${agent.totals.actual}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 10.5.sp,
                       fontWeight: FontWeight.w700,
                       color: Colors.grey[700])),
               SizedBox(height: 2.h),
               Text(
                 diff == 0 ? 'فارق 0' : 'فارق ${diff > 0 ? '+' : ''}$diff',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 10.5.sp,
                     fontWeight: FontWeight.w800,
                     color: diffColor),
@@ -395,7 +340,7 @@ class _AgentCard extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 10.h),
                 child: Text('لا حسابات ساس لهذا الوكيل.',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.sp, color: Colors.grey[600])),
               )
             else
@@ -433,14 +378,14 @@ class _AccountRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.hub_rounded, size: 16.sp, color: AppTheme.primaryColor),
+              Icon(Icons.hub_rounded, size: 16.sp, color: SdColors.primary),
               SizedBox(width: 6.w),
               Expanded(
                 child: Text(
                   account.displayLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.5.sp,
                       fontWeight: FontWeight.w800,
                       color: const Color(0xFF1A1A2E)),
@@ -464,7 +409,7 @@ class _AccountRow extends StatelessWidget {
           if (!account.isActive) ...[
             SizedBox(height: 6.h),
             Text('الحساب غير مفعّل',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 10.5.sp,
                     fontWeight: FontWeight.w700,
                     color: Colors.grey[600])),
@@ -473,8 +418,8 @@ class _AccountRow extends StatelessWidget {
             SizedBox(height: 10.h),
             Row(
               children: [
-                _mini('تصريح', '${recon.declaredTotal}', AppTheme.infoColor),
-                _mini('فعلي', '${recon.actualTotal}', AppTheme.successColor),
+                _mini('تصريح', '${recon.declaredTotal}', SdColors.info),
+                _mini('فعلي', '${recon.actualTotal}', SdColors.success),
                 _mini(
                   'فارق',
                   recon.diff == 0
@@ -492,7 +437,7 @@ class _AccountRow extends StatelessWidget {
                       size: 13.sp, color: Colors.grey[500]),
                   SizedBox(width: 4.w),
                   Text('آخر مزامنة: ${_fmtDate(recon.lastSync!)}',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 10.5.sp, color: Colors.grey[600])),
                 ],
               ),
@@ -500,7 +445,7 @@ class _AccountRow extends StatelessWidget {
           ] else ...[
             SizedBox(height: 8.h),
             Text('خدمة الساس غير متاحة حالياً لهذا الحساب — أعد المحاولة لاحقاً.',
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 10.5.sp, color: Colors.grey[600], height: 1.4)),
           ],
         ],
@@ -513,11 +458,11 @@ class _AccountRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 10.5.sp, color: Colors.grey[600])),
             SizedBox(height: 1.h),
             Text(value,
-                style: GoogleFonts.cairo(
+                style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w900,
                     color: color)),

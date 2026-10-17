@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 
 class VoucherFormPage extends StatefulWidget {
@@ -146,7 +147,29 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
+      ),
+    );
+  }
+
+  InputDecoration _dec(String? label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: SdText.bodySm,
+      filled: true,
+      fillColor: SdColors.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.cardEdge),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.cardEdge),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
       ),
     );
   }
@@ -155,223 +178,216 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
   Widget build(BuildContext context) {
     final title = _voucherType == 'Receipt' ? 'سند قبض' : 'سند صرف';
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F6FA),
-          foregroundColor: const Color(0xFF1A1A2E),
-          iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)),
-          titleTextStyle: const TextStyle(
-              color: Color(0xFF1A1A2E),
-              fontSize: 18,
-              fontWeight: FontWeight.w700),
-          elevation: 0,
-          title: Text(title),
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _buildForm(),
-      ),
+    return SdPage(
+      scrollable: false,
+      maxWidth: SdSpace.formMax,
+      appBar: SdAppBar(title: title),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
+          : _buildForm(),
     );
   }
 
   Widget _buildForm() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Voucher type selector (only if not pre-set)
-            if (widget.voucherType == null) ...[
-              const Text('نوع السند',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('سند قبض'),
-                      value: 'Receipt',
-                      groupValue: _voucherType,
-                      onChanged: (v) {
-                        setState(() {
-                          _voucherType = v!;
-                          _selectedEntityId = null;
-                          _selectedEntityName = null;
-                        });
-                      },
-                    ),
+    return Form(
+      key: _formKey,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          SdCard(
+            title: 'بيانات السند',
+            icon: Icons.receipt_long_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // نوع السند (فقط إذا لم يكن محدّداً مسبقاً)
+                if (widget.voucherType == null) ...[
+                  const Text('نوع السند', style: SdText.label),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: const Text('سند قبض', style: SdText.body),
+                          value: 'Receipt',
+                          activeColor: SdColors.primary,
+                          contentPadding: EdgeInsets.zero,
+                          groupValue: _voucherType,
+                          onChanged: (v) {
+                            setState(() {
+                              _voucherType = v!;
+                              _selectedEntityId = null;
+                              _selectedEntityName = null;
+                            });
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: const Text('سند صرف', style: SdText.body),
+                          value: 'Payment',
+                          activeColor: SdColors.primary,
+                          contentPadding: EdgeInsets.zero,
+                          groupValue: _voucherType,
+                          onChanged: (v) {
+                            setState(() {
+                              _voucherType = v!;
+                              _selectedEntityId = null;
+                              _selectedEntityName = null;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('سند صرف'),
-                      value: 'Payment',
-                      groupValue: _voucherType,
-                      onChanged: (v) {
-                        setState(() {
-                          _voucherType = v!;
-                          _selectedEntityId = null;
-                          _selectedEntityName = null;
-                        });
-                      },
-                    ),
-                  ),
+                  const SizedBox(height: 16),
                 ],
-              ),
-              const SizedBox(height: 16),
-            ],
 
-            // Entity dropdown
-            DropdownButtonFormField<String>(
-              value: _selectedEntityId,
-              decoration: InputDecoration(
-                labelText: _entityLabel,
-                border: const OutlineInputBorder(),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-              items: _entityList.map((e) {
-                final id = (e['Id'] ?? e['id'] ?? '').toString();
-                final name = (e['Name'] ?? e['name'] ?? '-').toString();
-                return DropdownMenuItem(value: id, child: Text(name));
-              }).toList(),
-              onChanged: widget.entityId != null
-                  ? null
-                  : (v) {
-                      setState(() {
-                        _selectedEntityId = v;
-                        final entity = _entityList.firstWhere(
-                          (e) =>
-                              (e['Id'] ?? e['id']).toString() == v,
-                          orElse: () => {},
-                        );
-                        _selectedEntityName =
-                            (entity['Name'] ?? entity['name'] ?? '')
-                                .toString();
-                      });
-                    },
-              validator: (v) =>
-                  v == null || v.isEmpty ? 'مطلوب' : null,
-            ),
-            const SizedBox(height: 16),
+                // الجهة
+                DropdownButtonFormField<String>(
+                  value: _selectedEntityId,
+                  isExpanded: true,
+                  style: SdText.label,
+                  decoration: _dec(_entityLabel),
+                  items: _entityList.map((e) {
+                    final id = (e['Id'] ?? e['id'] ?? '').toString();
+                    final name = (e['Name'] ?? e['name'] ?? '-').toString();
+                    return DropdownMenuItem(
+                        value: id, child: Text(name, overflow: TextOverflow.ellipsis));
+                  }).toList(),
+                  onChanged: widget.entityId != null
+                      ? null
+                      : (v) {
+                          setState(() {
+                            _selectedEntityId = v;
+                            final entity = _entityList.firstWhere(
+                              (e) => (e['Id'] ?? e['id']).toString() == v,
+                              orElse: () => {},
+                            );
+                            _selectedEntityName =
+                                (entity['Name'] ?? entity['name'] ?? '').toString();
+                          });
+                        },
+                  validator: (v) => v == null || v.isEmpty ? 'مطلوب' : null,
+                ),
+                const SizedBox(height: 16),
 
-            // Amount
-            TextFormField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'المبلغ',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'مطلوب';
-                if ((double.tryParse(v) ?? 0) <= 0) return 'أدخل مبلغ صحيح';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+                // المبلغ
+                TextFormField(
+                  controller: _amountController,
+                  keyboardType: TextInputType.number,
+                  style: SdText.label,
+                  decoration: _dec('المبلغ'),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'مطلوب';
+                    if ((double.tryParse(v) ?? 0) <= 0) return 'أدخل مبلغ صحيح';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
 
-            // Payment method
-            DropdownButtonFormField<int>(
-              value: _paymentMethod,
-              decoration: const InputDecoration(
-                labelText: 'طريقة الدفع',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-              items: _paymentMethods.entries
-                  .map((e) =>
-                      DropdownMenuItem(value: e.key, child: Text(e.value)))
-                  .toList(),
-              onChanged: (v) => setState(() => _paymentMethod = v ?? 0),
-            ),
-            const SizedBox(height: 16),
+                // طريقة الدفع
+                DropdownButtonFormField<int>(
+                  value: _paymentMethod,
+                  style: SdText.label,
+                  decoration: _dec('طريقة الدفع'),
+                  items: _paymentMethods.entries
+                      .map((e) =>
+                          DropdownMenuItem(value: e.key, child: Text(e.value)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _paymentMethod = v ?? 0),
+                ),
+                const SizedBox(height: 16),
 
-            // Cash box
-            DropdownButtonFormField<String>(
-              value: _selectedCashBoxId,
-              decoration: const InputDecoration(
-                labelText: 'الصندوق',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-              items: _cashBoxes.map((e) {
-                final id = (e['Id'] ?? e['id'] ?? '').toString();
-                final name = (e['Name'] ?? e['name'] ?? '-').toString();
-                return DropdownMenuItem(value: id, child: Text(name));
-              }).toList(),
-              onChanged: (v) => setState(() => _selectedCashBoxId = v),
-              validator: (v) =>
-                  v == null || v.isEmpty ? 'مطلوب' : null,
-            ),
-            const SizedBox(height: 16),
+                // الصندوق
+                DropdownButtonFormField<String>(
+                  value: _selectedCashBoxId,
+                  isExpanded: true,
+                  style: SdText.label,
+                  decoration: _dec('الصندوق'),
+                  items: _cashBoxes.map((e) {
+                    final id = (e['Id'] ?? e['id'] ?? '').toString();
+                    final name = (e['Name'] ?? e['name'] ?? '-').toString();
+                    return DropdownMenuItem(
+                        value: id, child: Text(name, overflow: TextOverflow.ellipsis));
+                  }).toList(),
+                  onChanged: (v) => setState(() => _selectedCashBoxId = v),
+                  validator: (v) => v == null || v.isEmpty ? 'مطلوب' : null,
+                ),
+                const SizedBox(height: 16),
 
-            // Invoice (optional)
-            DropdownButtonFormField<String>(
-              value: _selectedInvoiceId,
-              decoration: const InputDecoration(
-                labelText: 'ربط بفاتورة (اختياري)',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('بدون')),
-                ..._invoices.map((e) {
-                  final id = (e['Id'] ?? e['id'] ?? '').toString();
-                  final num =
-                      (e['InvoiceNumber'] ?? e['invoiceNumber'] ?? '-')
-                          .toString();
-                  final name =
-                      (e['EntityName'] ?? e['entityName'] ?? '').toString();
-                  return DropdownMenuItem(
-                      value: id, child: Text('$num - $name'));
-                }),
+                // ربط بفاتورة (اختياري)
+                DropdownButtonFormField<String>(
+                  value: _selectedInvoiceId,
+                  isExpanded: true,
+                  style: SdText.label,
+                  decoration: _dec('ربط بفاتورة (اختياري)'),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('بدون')),
+                    ..._invoices.map((e) {
+                      final id = (e['Id'] ?? e['id'] ?? '').toString();
+                      final num =
+                          (e['InvoiceNumber'] ?? e['invoiceNumber'] ?? '-').toString();
+                      final name =
+                          (e['EntityName'] ?? e['entityName'] ?? '').toString();
+                      return DropdownMenuItem(
+                          value: id,
+                          child: Text('$num - $name', overflow: TextOverflow.ellipsis));
+                    }),
+                  ],
+                  onChanged: widget.invoiceId != null
+                      ? null
+                      : (v) => setState(() => _selectedInvoiceId = v),
+                ),
+                const SizedBox(height: 16),
+
+                // ملاحظات
+                TextFormField(
+                  controller: _notesController,
+                  maxLines: 3,
+                  style: SdText.label,
+                  decoration: _dec('ملاحظات'),
+                ),
               ],
-              onChanged: widget.invoiceId != null
-                  ? null
-                  : (v) => setState(() => _selectedInvoiceId = v),
             ),
-            const SizedBox(height: 16),
-
-            // Notes
-            TextFormField(
-              controller: _notesController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'ملاحظات',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Save button
-            SizedBox(
-              height: 48,
-              child: FilledButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('حفظ السند', style: TextStyle(fontSize: 16)),
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: SdSpace.xl),
+          _buildSaveButton(),
+          const SizedBox(height: SdSpace.md),
+        ],
       ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    if (_saving) {
+      return Opacity(
+        opacity: .7,
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(SdRadius.md),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [SdColors.primaryMid, SdColors.primary],
+            ),
+            boxShadow: const [BoxShadow(color: SdColors.primaryEdge, offset: Offset(0, 6))],
+          ),
+          child: const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+          ),
+        ),
+      );
+    }
+    return SdButton(
+      label: 'حفظ السند',
+      icon: Icons.save_rounded,
+      expand: true,
+      onPressed: _save,
     );
   }
 }

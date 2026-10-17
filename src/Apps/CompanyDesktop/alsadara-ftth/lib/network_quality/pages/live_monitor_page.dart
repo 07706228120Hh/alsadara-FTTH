@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../frontend/frontend.dart';
 import '../services/latency_service.dart';
 import '../widgets/depth_3d.dart';
 
@@ -127,72 +128,47 @@ class _LiveMonitorPageState extends State<LiveMonitorPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Nq3d.ground,
-        appBar: nq3dAppBar('المراقبة الحيّة'),
-        body: LayoutBuilder(
-          builder: (ctx, c) {
-            final w = c.maxWidth;
-            final isPhone = w < 600;
-            final maxContentWidth = isPhone ? w : (w >= 1024 ? 720.0 : 600.0);
-            return Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxContentWidth),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _startButton(),
-                      const SizedBox(height: 14),
-                      _chartCard(isPhone),
-                      const SizedBox(height: 14),
-                      _statsGrid(isPhone),
-                    ],
-                  ),
+    return SdPage(
+      padding: EdgeInsets.zero,
+      scrollable: false,
+      maxWidth: double.infinity,
+      appBar: const SdAppBar(title: 'المراقبة الحيّة'),
+      body: LayoutBuilder(
+        builder: (ctx, c) {
+          final w = c.maxWidth;
+          final isPhone = w < 600;
+          final maxContentWidth = isPhone ? w : (w >= 1024 ? 720.0 : 600.0);
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _startButton(),
+                    const SizedBox(height: 14),
+                    _chartCard(isPhone),
+                    const SizedBox(height: 14),
+                    _statsGrid(isPhone),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _startButton() {
-    return Raised3D(
-      onTap: _toggle,
-      radius: 16,
-      depth: 6,
-      padding: EdgeInsets.zero,
-      edgeColor: _running ? const Color(0xFF9B1C1C) : Nq3d.indigoDark,
-      glowColor: const Color(0x990F1660),
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: _running
-            ? const [Color(0xFFE53935), Color(0xFFB71C1C)]
-            : const [Color(0xFF283593), Nq3d.indigo],
-      ),
-      semanticLabel: _running ? 'إيقاف المراقبة' : 'بدء المراقبة',
-      child: SizedBox(
-        height: 54,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(_running ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                color: Colors.white),
-            const SizedBox(width: 8),
-            Text(_running ? 'إيقاف المراقبة' : 'بدء المراقبة',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16)),
-          ],
-        ),
-      ),
+    return SdButton(
+      label: _running ? 'إيقاف المراقبة' : 'بدء المراقبة',
+      icon: _running ? Icons.stop_rounded : Icons.play_arrow_rounded,
+      kind: _running ? SdButtonKind.danger : SdButtonKind.primary,
+      expand: true,
+      height: 54,
+      onPressed: _toggle,
     );
   }
 
@@ -226,9 +202,7 @@ class _LiveMonitorPageState extends State<LiveMonitorPage> {
                 width: 9,
                 height: 9,
                 decoration: BoxDecoration(
-                    color: _running
-                        ? const Color(0xFF2E7D32)
-                        : Nq3d.faint,
+                    color: _running ? SdColors.success : SdColors.faint,
                     shape: BoxShape.circle),
               ),
               const SizedBox(width: 8),
@@ -236,16 +210,16 @@ class _LiveMonitorPageState extends State<LiveMonitorPage> {
                   style: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w800,
-                      color: Nq3d.ink)),
+                      color: SdColors.ink)),
             ],
           ),
           const SizedBox(height: 10),
           SizedBox(
             height: isPhone ? 150 : 190,
             child: spots.isEmpty
-                ? Center(
+                ? const Center(
                     child: Text('اضغط «بدء المراقبة» لعرض الرسم الحيّ',
-                        style: TextStyle(fontSize: 12, color: Nq3d.muted)),
+                        style: TextStyle(fontSize: 12, color: SdColors.muted)),
                   )
                 : LineChart(
                     LineChartData(
@@ -278,7 +252,7 @@ class _LiveMonitorPageState extends State<LiveMonitorPage> {
                             getTitlesWidget: (v, meta) => Text(
                                 v.toStringAsFixed(0),
                                 style: const TextStyle(
-                                    fontSize: 9, color: Nq3d.faint)),
+                                    fontSize: 9, color: SdColors.faint)),
                           ),
                         ),
                       ),
@@ -287,12 +261,12 @@ class _LiveMonitorPageState extends State<LiveMonitorPage> {
                           spots: spots,
                           isCurved: true,
                           preventCurveOverShooting: true,
-                          color: Nq3d.indigo,
+                          color: SdColors.primary,
                           barWidth: 2.4,
                           dotData: const FlDotData(show: false),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: Nq3d.indigo.withValues(alpha: 0.12),
+                            color: SdColors.primary.withValues(alpha: 0.12),
                           ),
                         ),
                       ],
@@ -309,7 +283,7 @@ class _LiveMonitorPageState extends State<LiveMonitorPage> {
       (
         label: 'الحالي',
         value: _fmt(_current),
-        color: Nq3d.indigo,
+        color: SdColors.primary,
         icon: Icons.bolt_rounded
       ),
       (
@@ -376,7 +350,8 @@ class _LiveMonitorPageState extends State<LiveMonitorPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(it.label,
-                    style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600)),
+                    style: const TextStyle(
+                        fontSize: 11.5, color: SdColors.muted)),
                 const SizedBox(height: 1),
                 Text(it.value,
                     textDirection: TextDirection.ltr,

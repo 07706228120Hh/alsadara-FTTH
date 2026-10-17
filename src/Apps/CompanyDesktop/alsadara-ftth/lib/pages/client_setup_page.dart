@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/config_manager.dart';
 
 /// شاشة الإعداد الأولي للعميل
@@ -122,43 +123,26 @@ class _ClientSetupPageState extends State<ClientSetupPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1976D2),
-              Color(0xFF64B5F6),
-              Colors.white,
-            ],
-            stops: [0.0, 0.3, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: _buildContent(),
-          ),
-        ),
+    return SdPage(
+      maxWidth: SdSpace.formMax,
+      appBar: const SdAppBar(title: 'إعداد التطبيق'),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: _buildContent(),
       ),
     );
   }
 
   Widget _buildContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          _buildHeader(),
-          const SizedBox(height: 40),
-          _buildSetupForm(),
-          const SizedBox(height: 40),
-          _buildActionButtons(),
-        ],
-      ),
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        _buildHeader(),
+        const SizedBox(height: 28),
+        _buildSetupForm(),
+        const SizedBox(height: 28),
+        _buildActionButtons(),
+      ],
     );
   }
 
@@ -167,40 +151,27 @@ class _ClientSetupPageState extends State<ClientSetupPage>
       children: [
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: SdColors.surface,
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 20,
-                offset: Offset(0, 10),
-              ),
-            ],
+            boxShadow: SdDepth.raised(depth: SdDepth.hero),
           ),
           child: const Icon(
             Icons.settings_applications,
             size: 60,
-            color: Color(0xFF1976D2),
+            color: SdColors.primary,
           ),
         ),
         const SizedBox(height: 20),
         const Text(
           'مرحباً بك في تطبيق الصدارة',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: SdText.display,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 10),
-        Text(
+        const Text(
           'يرجى إدخال إعدادات شركتك لبدء الاستخدام',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.white.withValues(alpha: 0.9),
-          ),
+          style: SdText.bodySm,
           textAlign: TextAlign.center,
         ),
       ],
@@ -208,19 +179,8 @@ class _ClientSetupPageState extends State<ClientSetupPage>
   }
 
   Widget _buildSetupForm() {
-    return Container(
+    return SdCard(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 20,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
       child: Form(
         key: _formKey,
         child: Column(
@@ -303,11 +263,7 @@ class _ClientSetupPageState extends State<ClientSetupPage>
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF1976D2),
-      ),
+      style: SdText.titleSm.copyWith(color: SdColors.primary),
     );
   }
 
@@ -326,18 +282,18 @@ class _ClientSetupPageState extends State<ClientSetupPage>
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: const Color(0xFF1976D2)),
+        prefixIcon: Icon(icon, color: SdColors.primary),
         suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
+          borderSide: const BorderSide(color: SdColors.divider),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
+          borderSide: const BorderSide(color: SdColors.primary, width: 2),
         ),
         filled: true,
-        fillColor: Colors.grey[50],
+        fillColor: SdColors.surfaceAlt,
       ),
       validator: isRequired
           ? (value) {
@@ -353,41 +309,11 @@ class _ClientSetupPageState extends State<ClientSetupPage>
   Widget _buildActionButtons() {
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _completeSetup,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1976D2),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 8,
-            ),
-            child: _isLoading
-                ? const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Text('جاري الإعداد...'),
-                    ],
-                  )
-                : const Text(
-                    'إتمام الإعداد',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-          ),
+        SdButton(
+          label: _isLoading ? 'جاري الإعداد...' : 'إتمام الإعداد',
+          icon: _isLoading ? null : Icons.check_rounded,
+          expand: true,
+          onPressed: _isLoading ? null : _completeSetup,
         ),
         const SizedBox(height: 16),
         TextButton(
@@ -395,9 +321,9 @@ class _ClientSetupPageState extends State<ClientSetupPage>
             // إظهار معلومات المساعدة
             _showHelpDialog();
           },
-          child: const Text(
+          child: Text(
             'هل تحتاج مساعدة؟',
-            style: TextStyle(color: Colors.white),
+            style: SdText.label.copyWith(color: SdColors.primary),
           ),
         ),
       ],

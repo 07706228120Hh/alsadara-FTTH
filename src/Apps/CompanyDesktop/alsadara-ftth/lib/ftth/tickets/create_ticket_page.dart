@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'package:iconsax_plus/iconsax_plus.dart';
+import '../../frontend/frontend.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
 
@@ -24,7 +25,9 @@ class CreateTicketPage extends StatefulWidget {
 
 class _CreateTicketPageState extends State<CreateTicketPage> {
   static const String _baseUrl = 'https://admin.ftth.iq/api';
-  static const _dark = Color(0xFF2C3E50);
+
+  /// لون المجموعة (التبليغات = التواصل).
+  SdTone get _tone => SdGroup.comms.tone;
 
   final _formKey = GlobalKey<FormState>();
   final _summaryController = TextEditingController();
@@ -233,13 +236,13 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
         final fileId = data['id']?.toString() ?? '';
         if (fileId.isNotEmpty) {
           setState(() => _attachments.add(_AttachmentInfo(id: fileId, name: file.name, size: file.size)));
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم رفع "${file.name}"'), backgroundColor: Colors.green));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم رفع "${file.name}"'), backgroundColor: SdColors.success));
         }
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل رفع الملف: ${streamResp.statusCode}'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل رفع الملف: ${streamResp.statusCode}'), backgroundColor: SdColors.danger));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger));
     } finally {
       if (mounted) setState(() => _uploadingFile = false);
     }
@@ -249,11 +252,11 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
   Future<void> _submitTicket() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اختر نوع المشكلة'), backgroundColor: Colors.orange));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اختر نوع المشكلة'), backgroundColor: SdColors.warning));
       return;
     }
     if (_tabIndex == 1 && _selectedCustomer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اختر مشترك أولاً'), backgroundColor: Colors.orange));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('اختر مشترك أولاً'), backgroundColor: SdColors.warning));
       return;
     }
 
@@ -321,10 +324,10 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
 
         if (mounted) _showSuccessDialog(displayId, infoText);
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل: ${resp.statusCode}'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل: ${resp.statusCode}'), backgroundColor: SdColors.danger));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -337,45 +340,47 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
       builder: (_) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 28),
-            const SizedBox(width: 10),
-            const Expanded(child: Text('تم إنشاء التذكرة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
+          backgroundColor: SdColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SdRadius.md)),
+          title: Row(children: const [
+            Icon(Icons.check_circle, color: SdColors.success, size: 28),
+            SizedBox(width: 10),
+            Expanded(child: Text('تم إنشاء التذكرة', style: SdText.titleSm)),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF1565C0).withValues(alpha: 0.2)),
+                color: SdColors.infoTint,
+                borderRadius: BorderRadius.circular(SdRadius.sm),
+                border: Border.all(color: SdColors.infoTintEdge),
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('معرف التذكرة', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                Text('معرف التذكرة', style: SdText.caption),
                 const SizedBox(height: 4),
-                SelectableText(displayId, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1565C0))),
+                SelectableText(displayId, style: SdText.title.copyWith(color: SdColors.info)),
               ]),
             ),
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey[200]!)),
-              child: SelectableText(infoText, style: const TextStyle(fontSize: 13, color: Color(0xFF333333), height: 1.6)),
+              decoration: BoxDecoration(color: SdColors.surfaceAlt, borderRadius: BorderRadius.circular(SdRadius.xs), border: Border.all(color: SdColors.divider)),
+              child: SelectableText(infoText, style: SdText.body),
             ),
             const SizedBox(height: 8),
-            Text('تم نسخ المعلومات تلقائياً', style: TextStyle(fontSize: 12, color: Colors.green[600])),
+            Text('تم نسخ المعلومات تلقائياً', style: SdText.caption.copyWith(color: SdColors.success)),
           ]),
           actions: [
             TextButton.icon(
               icon: const Icon(Icons.copy, size: 18),
               label: const Text('نسخ'),
+              style: TextButton.styleFrom(foregroundColor: SdColors.primary),
               onPressed: () => Clipboard.setData(ClipboardData(text: infoText)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1565C0), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SdRadius.xs))),
               onPressed: () { Navigator.pop(context); Navigator.pop(context, true); },
               child: const Text('تم'),
             ),
@@ -415,178 +420,128 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
   // ─── BUILD ───
   @override
   Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    final pad = w > 700 ? w * 0.15 : 16.0;
+    return SdPage(
+      maxWidth: SdSpace.formMax,
+      appBar: const SdAppBar(title: 'التبليغ عن مشكلة'),
+      body: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ─── التبويبات ───
+            _buildTabs(),
+            const SizedBox(height: SdSpace.sm),
 
-    return Theme(
-      data: ThemeData(
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: _dark), bodyMedium: TextStyle(color: _dark),
-          bodySmall: TextStyle(color: _dark), titleMedium: TextStyle(color: _dark),
-          labelLarge: TextStyle(color: _dark),
-        ),
-        listTileTheme: const ListTileThemeData(textColor: Color(0xFF333333), iconColor: Color(0xFF555555)),
-      ),
-      child: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: const Color(0xFFF5F7FA),
-          appBar: AppBar(
-            title: const Text('التبليغ عن مشكلة', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            centerTitle: true,
-            flexibleSpace: Container(decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF1565C0), Color(0xFF42A5F5)]))),
-            foregroundColor: Colors.white, iconTheme: const IconThemeData(color: Colors.white), elevation: 0,
-          ),
-          body: Form(
-            key: _formKey,
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: pad, vertical: 12),
-              children: [
-                // ─── التبويبات ───
-                _buildTabs(),
-                const SizedBox(height: 10),
+            // ─── بحث المشترك (تاب مشاكل المشتركين) ───
+            if (_tabIndex == 1) ...[
+              _label('اختر مشترك', IconsaxPlusBold.profile_2user),
+              const SizedBox(height: 4),
+              _buildCustomerSearch(),
+              const SizedBox(height: SdSpace.xs),
 
-                // ─── بحث المشترك (تاب مشاكل المشتركين) ───
-                if (_tabIndex == 1) ...[
-                  _label('اختر مشترك', IconsaxPlusBold.profile_2user),
-                  const SizedBox(height: 4),
-                  _buildCustomerSearch(),
-                  const SizedBox(height: 8),
-
-                  // اشتراكات المشترك
-                  if (_selectedCustomer != null) ...[
-                    _label('الاشتراك / بطاقة تعريف', IconsaxPlusBold.receipt_2),
-                    const SizedBox(height: 4),
-                    _buildSubscriptionSelector(),
-                    const SizedBox(height: 8),
-                  ],
-                ],
-
-                // ─── نوع المشكلة ───
-                _label('نوع المشكلة', IconsaxPlusBold.category),
+              // اشتراكات المشترك
+              if (_selectedCustomer != null) ...[
+                _label('الاشتراك / بطاقة تعريف', IconsaxPlusBold.receipt_2),
                 const SizedBox(height: 4),
-                _buildCategoryDropdown(),
-                const SizedBox(height: 8),
-
-                // ─── ملخص المشكلة ───
-                _label('ملخص المشكلة', IconsaxPlusBold.text),
-                const SizedBox(height: 4),
-                _field(_summaryController, 'اكتب ملخص المشكلة...', 1, (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null),
-                const SizedBox(height: 8),
-
-                // ─── وصف المشكلة ───
-                _label('وصف مشكلتك', IconsaxPlusBold.document_text),
-                const SizedBox(height: 4),
-                _field(_detailsController, 'اكتب وصف تفصيلي...', 3, (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null),
-                const SizedBox(height: 8),
-
-                // ─── المنطقة (فقط في مشاكلي) ───
-                if (_tabIndex == 0) ...[
-                  _label('المنطقة (اختياري)', IconsaxPlusBold.location),
-                  const SizedBox(height: 4),
-                  _buildZoneSearch(),
-                  const SizedBox(height: 8),
-                ],
-
-                // ─── المرفقات ───
-                _label('المرفقات (اختياري)', IconsaxPlusBold.attach_circle),
-                const SizedBox(height: 4),
-                _buildAttachments(),
-                const SizedBox(height: 14),
-
-                // ─── إرسال ───
-                _buildSubmitBtn(),
-                const SizedBox(height: 10),
+                _buildSubscriptionSelector(),
+                const SizedBox(height: SdSpace.xs),
               ],
-            ),
-          ),
+            ],
+
+            // ─── نوع المشكلة ───
+            _label('نوع المشكلة', IconsaxPlusBold.category),
+            const SizedBox(height: 4),
+            _buildCategoryDropdown(),
+            const SizedBox(height: SdSpace.xs),
+
+            // ─── ملخص المشكلة ───
+            _label('ملخص المشكلة', IconsaxPlusBold.text),
+            const SizedBox(height: 4),
+            _field(_summaryController, 'اكتب ملخص المشكلة...', 1, (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null),
+            const SizedBox(height: SdSpace.xs),
+
+            // ─── وصف المشكلة ───
+            _label('وصف مشكلتك', IconsaxPlusBold.document_text),
+            const SizedBox(height: 4),
+            _field(_detailsController, 'اكتب وصف تفصيلي...', 3, (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null),
+            const SizedBox(height: SdSpace.xs),
+
+            // ─── المنطقة (فقط في مشاكلي) ───
+            if (_tabIndex == 0) ...[
+              _label('المنطقة (اختياري)', IconsaxPlusBold.location),
+              const SizedBox(height: 4),
+              _buildZoneSearch(),
+              const SizedBox(height: SdSpace.xs),
+            ],
+
+            // ─── المرفقات ───
+            _label('المرفقات (اختياري)', IconsaxPlusBold.attach_circle),
+            const SizedBox(height: 4),
+            _buildAttachments(),
+            const SizedBox(height: SdSpace.md),
+
+            // ─── إرسال ───
+            _buildSubmitBtn(),
+            const SizedBox(height: SdSpace.sm),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildTabs() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          _tab('مشاكلي', 0),
-          _tab('مشاكل المشتركين', 1),
-        ],
-      ),
-    );
-  }
-
-  Widget _tab(String title, int idx) {
-    final sel = _tabIndex == idx;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() {
-          _tabIndex = idx;
-          if (idx == 0) {
-            _selectedCustomer = null;
-            _selectedSubscription = null;
-            _customers = [];
-            _subscriptions = [];
-            _customerSearchController.clear();
-          }
-        }),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: sel ? const Color(0xFF1565C0) : Colors.transparent,
-            borderRadius: BorderRadius.circular(idx == 0 ? 12 : 0).copyWith(
-              topLeft: Radius.circular(idx == 0 ? 11 : 0),
-              bottomLeft: Radius.circular(idx == 0 ? 11 : 0),
-              topRight: Radius.circular(idx == 1 ? 11 : 0),
-              bottomRight: Radius.circular(idx == 1 ? 11 : 0),
-            ),
-          ),
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: sel ? Colors.white : const Color(0xFF555555),
-              fontWeight: sel ? FontWeight.bold : FontWeight.w500,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ),
+    return SdFilterChips<int>(
+      options: const [
+        SdFilterOption(0, 'مشاكلي'),
+        SdFilterOption(1, 'مشاكل المشتركين'),
+      ],
+      selected: _tabIndex,
+      onSelected: (idx) => setState(() {
+        _tabIndex = idx;
+        if (idx == 0) {
+          _selectedCustomer = null;
+          _selectedSubscription = null;
+          _customers = [];
+          _subscriptions = [];
+          _customerSearchController.clear();
+        }
+      }),
     );
   }
 
   Widget _label(String t, IconData ic) {
-    return Row(children: [
-      Icon(ic, size: 18, color: const Color(0xFF1565C0)),
-      const SizedBox(width: 8),
-      Text(t, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _dark)),
-    ]);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(children: [
+        Icon(ic, size: 18, color: _tone.base),
+        const SizedBox(width: 8),
+        Text(t, style: SdText.label),
+      ]),
+    );
   }
 
   Widget _field(TextEditingController c, String hint, int lines, String? Function(String?)? v) {
     return TextFormField(
       controller: c, maxLines: lines, validator: v,
-      style: const TextStyle(color: _dark, fontSize: 14),
+      style: SdText.body,
       decoration: _inputDec(hint),
     );
   }
 
   InputDecoration _inputDec(String hint, {Widget? prefix, Widget? suffix}) {
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: BorderSide(color: c, width: w),
+        );
     return InputDecoration(
-      hintText: hint, hintStyle: TextStyle(color: Colors.grey[400]),
-      filled: true, fillColor: Colors.white,
+      hintText: hint, hintStyle: SdText.body.copyWith(color: SdColors.faint),
+      filled: true, fillColor: SdColors.surface,
       prefixIcon: prefix, suffixIcon: suffix,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1565C0), width: 2)),
-      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      border: border(SdColors.divider),
+      enabledBorder: border(SdColors.divider),
+      focusedBorder: border(_tone.base, 2),
+      errorBorder: border(SdColors.danger),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     );
   }
 
@@ -595,14 +550,14 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
     return Column(children: [
       TextFormField(
         controller: _customerSearchController,
-        style: const TextStyle(color: _dark, fontSize: 14),
+        style: SdText.body,
         decoration: _inputDec(
           'ابحث باسم المشترك...',
-          prefix: Icon(IconsaxPlusBold.search_normal_1, color: Colors.grey[400], size: 20),
+          prefix: const Icon(IconsaxPlusBold.search_normal_1, color: SdColors.faint, size: 20),
           suffix: _loadingCustomers
               ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
               : _selectedCustomer != null
-                  ? IconButton(icon: const Icon(Icons.close, size: 20, color: Colors.grey), onPressed: () {
+                  ? IconButton(icon: const Icon(Icons.close, size: 20, color: SdColors.faint), onPressed: () {
                       setState(() { _selectedCustomer = null; _selectedSubscription = null; _subscriptions = []; _selectedZoneId = null; _customerSearchController.clear(); _customers = []; });
                     })
                   : null,
@@ -611,20 +566,20 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
       ),
       // المشترك المختار
       if (_selectedCustomer != null) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: SdSpace.xs),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFF1565C0).withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF1565C0).withValues(alpha: 0.25)),
+            color: _tone.tint,
+            borderRadius: BorderRadius.circular(SdRadius.sm),
+            border: Border.all(color: _tone.tintEdge),
           ),
           child: Row(children: [
-            const Icon(IconsaxPlusBold.profile_circle, size: 20, color: Color(0xFF1565C0)),
+            Icon(IconsaxPlusBold.profile_circle, size: 20, color: _tone.base),
             const SizedBox(width: 10),
-            Expanded(child: Text(_selectedCustomer!['displayValue']?.toString() ?? '', style: const TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.w600, fontSize: 14))),
+            Expanded(child: Text(_selectedCustomer!['displayValue']?.toString() ?? '', style: SdText.label.copyWith(color: _tone.text))),
             InkWell(onTap: () => setState(() { _selectedCustomer = null; _selectedSubscription = null; _subscriptions = []; _selectedZoneId = null; }),
-              child: const Icon(Icons.close, size: 18, color: Colors.grey)),
+              child: const Icon(Icons.close, size: 18, color: SdColors.faint)),
           ]),
         ),
       ],
@@ -634,20 +589,20 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
         Container(
           constraints: const BoxConstraints(maxHeight: 220),
           decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 3))],
+            color: SdColors.surface, borderRadius: BorderRadius.circular(SdRadius.sm),
+            border: Border.all(color: SdColors.divider),
+            boxShadow: SdDepth.raised(),
           ),
           child: ListView.separated(
             shrinkWrap: true,
             itemCount: _customers.length > 15 ? 15 : _customers.length,
-            separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[200]),
+            separatorBuilder: (_, __) => const Divider(height: 1, color: SdColors.divider),
             itemBuilder: (_, i) {
               final c = _customers[i];
               return ListTile(
                 dense: true,
-                leading: Icon(IconsaxPlusBold.profile_circle, size: 18, color: Colors.grey[500]),
-                title: Text(c['displayValue']?.toString() ?? '', style: const TextStyle(fontSize: 13, color: Color(0xFF333333))),
+                leading: const Icon(IconsaxPlusBold.profile_circle, size: 18, color: SdColors.faint),
+                title: Text(c['displayValue']?.toString() ?? '', style: SdText.bodySm.copyWith(color: SdColors.ink)),
                 onTap: () {
                   setState(() { _selectedCustomer = c; _customers = []; _customerSearchController.text = c['displayValue']?.toString() ?? ''; });
                   _fetchSubscriptions(c['id'].toString());
@@ -663,9 +618,9 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
   // ─── اختيار الاشتراك ───
   Widget _buildSubscriptionSelector() {
     if (_loadingSubscriptions) return const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()));
-    if (_subscriptions.isEmpty) return Text('لا توجد اشتراكات', style: TextStyle(color: Colors.grey[500], fontSize: 13));
+    if (_subscriptions.isEmpty) return Text('لا توجد اشتراكات', style: SdText.bodySm);
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[300]!)),
+      decoration: BoxDecoration(color: SdColors.surface, borderRadius: BorderRadius.circular(SdRadius.sm), border: Border.all(color: SdColors.divider)),
       child: Column(
         children: _subscriptions.map((sub) {
           final selfDv = (sub['self'] as Map?)?['displayValue']?.toString() ?? '';
@@ -681,16 +636,16 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: isSel ? const Color(0xFF1565C0).withValues(alpha: 0.06) : null,
-                border: _subscriptions.last != sub ? Border(bottom: BorderSide(color: Colors.grey[200]!)) : null,
+                color: isSel ? _tone.tint : null,
+                border: _subscriptions.last != sub ? const Border(bottom: BorderSide(color: SdColors.divider)) : null,
               ),
               child: Row(children: [
                 Icon(isSel ? Icons.radio_button_checked : Icons.radio_button_off,
-                    color: isSel ? const Color(0xFF1565C0) : Colors.grey[400], size: 20),
+                    color: isSel ? _tone.base : SdColors.faint, size: 20),
                 const SizedBox(width: 10),
-                Icon(IconsaxPlusBold.receipt_2, size: 18, color: isSel ? const Color(0xFF1565C0) : Colors.grey[500]),
+                Icon(IconsaxPlusBold.receipt_2, size: 18, color: isSel ? _tone.base : SdColors.faint),
                 const SizedBox(width: 10),
-                Expanded(child: Text(label, style: TextStyle(fontSize: 13, color: isSel ? const Color(0xFF1565C0) : const Color(0xFF333333), fontWeight: isSel ? FontWeight.w600 : FontWeight.w400))),
+                Expanded(child: Text(label, style: SdText.bodySm.copyWith(color: isSel ? _tone.text : SdColors.ink, fontWeight: isSel ? FontWeight.w700 : FontWeight.w600))),
               ]),
             ),
           );
@@ -703,18 +658,18 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
   Widget _buildCategoryDropdown() {
     if (_loadingCategories) return const Center(child: CircularProgressIndicator());
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[300]!)),
+      decoration: BoxDecoration(color: SdColors.surface, borderRadius: BorderRadius.circular(SdRadius.sm), border: Border.all(color: SdColors.divider)),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           isExpanded: true,
           value: _selectedCategoryId,
-          dropdownColor: Colors.white,
-          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF555555)),
-          style: const TextStyle(color: _dark, fontSize: 14),
+          dropdownColor: SdColors.surface,
+          icon: const Icon(Icons.arrow_drop_down, color: SdColors.muted),
+          style: SdText.body,
           items: _categories.map((c) {
             final id = c['id']?.toString() ?? '';
-            return DropdownMenuItem(value: id, child: Text(_catName(c), style: const TextStyle(color: _dark, fontSize: 14)));
+            return DropdownMenuItem(value: id, child: Text(_catName(c), style: SdText.body));
           }).toList(),
           onChanged: (v) => setState(() => _selectedCategoryId = v),
         ),
@@ -727,12 +682,12 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
     return Column(children: [
       TextFormField(
         controller: _zoneSearchController,
-        style: const TextStyle(color: _dark, fontSize: 14),
+        style: SdText.body,
         decoration: _inputDec(
           'ابحث عن المنطقة (مثال: 704)...',
-          prefix: Icon(IconsaxPlusBold.search_normal_1, color: Colors.grey[400], size: 20),
+          prefix: const Icon(IconsaxPlusBold.search_normal_1, color: SdColors.faint, size: 20),
           suffix: _selectedZoneId != null
-              ? IconButton(icon: const Icon(Icons.close, size: 20, color: Colors.grey), onPressed: () {
+              ? IconButton(icon: const Icon(Icons.close, size: 20, color: SdColors.faint), onPressed: () {
                   _zoneSearchController.clear();
                   setState(() { _selectedZoneId = null; _zones = []; _zonesLoaded = false; });
                 })
@@ -743,15 +698,15 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
         },
       ),
       if (_selectedZoneId != null) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: SdSpace.xs),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(color: const Color(0xFF1565C0).withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFF1565C0).withValues(alpha: 0.25))),
+          decoration: BoxDecoration(color: _tone.tint, borderRadius: BorderRadius.circular(SdRadius.sm), border: Border.all(color: _tone.tintEdge)),
           child: Row(children: [
-            const Icon(IconsaxPlusBold.location, size: 16, color: Color(0xFF1565C0)),
+            Icon(IconsaxPlusBold.location, size: 16, color: _tone.base),
             const SizedBox(width: 8),
-            Expanded(child: Text(_selectedZoneId!, style: const TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.w600))),
-            InkWell(onTap: () => setState(() => _selectedZoneId = null), child: const Icon(Icons.close, size: 18, color: Colors.grey)),
+            Expanded(child: Text(_selectedZoneId!, style: SdText.label.copyWith(color: _tone.text))),
+            InkWell(onTap: () => setState(() => _selectedZoneId = null), child: const Icon(Icons.close, size: 18, color: SdColors.faint)),
           ]),
         ),
       ],
@@ -760,14 +715,14 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
         Container(
           constraints: const BoxConstraints(maxHeight: 180),
           decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
+            color: SdColors.surface, borderRadius: BorderRadius.circular(SdRadius.sm),
+            border: Border.all(color: SdColors.divider),
+            boxShadow: SdDepth.raised(),
           ),
           child: ListView.separated(
             shrinkWrap: true,
             itemCount: _zones.length > 20 ? 20 : _zones.length,
-            separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[200]),
+            separatorBuilder: (_, __) => const Divider(height: 1, color: SdColors.divider),
             itemBuilder: (_, i) {
               final z = _zones[i];
               final s = z['self'];
@@ -775,8 +730,8 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
               final zid = (s is Map) ? (s['id']?.toString() ?? '') : (z['id']?.toString() ?? '');
               return ListTile(
                 dense: true,
-                leading: Icon(IconsaxPlusBold.location, size: 18, color: Colors.grey[500]),
-                title: Text(dv, style: const TextStyle(fontSize: 14, color: Color(0xFF333333))),
+                leading: const Icon(IconsaxPlusBold.location, size: 18, color: SdColors.faint),
+                title: Text(dv, style: SdText.body),
                 onTap: () => setState(() { _selectedZoneId = zid; _zoneSearchController.text = dv; _zones = []; _zonesLoaded = false; }),
               );
             },
@@ -788,35 +743,30 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
 
   // ─── المرفقات ───
   Widget _buildAttachments() {
-    return Column(children: [
-      OutlinedButton.icon(
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SdButton(
+        label: _uploadingFile ? 'جاري الرفع...' : 'رفع ملف',
+        icon: IconsaxPlusBold.document_upload,
+        kind: SdButtonKind.secondary,
         onPressed: _uploadingFile ? null : _pickAndUploadFile,
-        icon: _uploadingFile
-            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Icon(IconsaxPlusBold.document_upload, size: 20),
-        label: Text(_uploadingFile ? 'جاري الرفع...' : 'رفع ملف'),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          side: BorderSide(color: Colors.grey[300]!, width: 1.5), foregroundColor: const Color(0xFF1565C0),
-        ),
       ),
       if (_attachments.isNotEmpty) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: SdSpace.sm),
         ..._attachments.asMap().entries.map((e) {
           final a = e.value;
+          final s = SdStatus.success.tone;
           return Container(
             margin: const EdgeInsets.only(bottom: 6),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.green.withValues(alpha: 0.2))),
+            decoration: BoxDecoration(color: s.tint, borderRadius: BorderRadius.circular(SdRadius.sm), border: Border.all(color: s.tintEdge)),
             child: Row(children: [
-              const Icon(IconsaxPlusBold.document, size: 18, color: Colors.green),
+              Icon(IconsaxPlusBold.document, size: 18, color: s.base),
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(a.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: _dark)),
-                Text(_formatFileSize(a.size), style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                Text(a.name, style: SdText.bodySm.copyWith(color: SdColors.ink, fontWeight: FontWeight.w700)),
+                Text(_formatFileSize(a.size), style: SdText.caption),
               ])),
-              InkWell(onTap: () => setState(() => _attachments.removeAt(e.key)), child: const Icon(Icons.close, size: 18, color: Colors.red)),
+              InkWell(onTap: () => setState(() => _attachments.removeAt(e.key)), child: const Icon(Icons.close, size: 18, color: SdColors.danger)),
             ]),
           );
         }),
@@ -825,20 +775,11 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
   }
 
   Widget _buildSubmitBtn() {
-    return SizedBox(
-      height: 52,
-      child: ElevatedButton.icon(
-        onPressed: _submitting ? null : _submitTicket,
-        icon: _submitting
-            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-            : const Icon(IconsaxPlusBold.send_1, size: 22),
-        label: Text(_submitting ? 'جاري الإرسال...' : 'إرسال التذكرة', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1565C0), foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          elevation: 2, shadowColor: const Color(0xFF1565C0).withValues(alpha: 0.3),
-        ),
-      ),
+    return SdButton(
+      label: _submitting ? 'جاري الإرسال...' : 'إرسال التذكرة',
+      icon: IconsaxPlusBold.send_1,
+      expand: true,
+      onPressed: _submitting ? null : _submitTicket,
     );
   }
 }

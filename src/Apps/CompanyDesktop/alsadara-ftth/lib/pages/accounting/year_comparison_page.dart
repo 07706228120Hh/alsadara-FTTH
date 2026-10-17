@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة المقارنة السنوية - مقارنة الإيرادات والمصروفات بين سنتين
 class YearComparisonPage extends StatefulWidget {
@@ -40,11 +41,12 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
     'ديسمبر',
   ];
 
-  static const _clrYear1 = Color(0xFF27AE60); // أخضر - السنة الأولى
-  static const _clrYear2 = Color(0xFF2980B9); // أزرق - السنة الثانية
-  static const _clrExpenses = Color(0xFFE74C3C); // أحمر - للمصروفات
-  static const _clrPositive = Color(0xFF27AE60);
-  static const _clrNegative = Color(0xFFE74C3C);
+  // ألوان دلالية موحّدة من نظام التصميم
+  static const _clrYear1 = SdColors.success; // أخضر - السنة الأولى
+  static const _clrYear2 = SdColors.info; // أزرق - السنة الثانية
+  static const _clrExpenses = SdColors.danger; // أحمر - للمصروفات
+  static const _clrPositive = SdColors.success;
+  static const _clrNegative = SdColors.danger;
 
   @override
   void initState() {
@@ -222,18 +224,40 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'المقارنة السنوية',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _isLoading ? null : _loadData,
+            ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildToolbar(),
+              _buildFilterBar(),
               Expanded(
                 child: _isLoading
                     ? const Center(
                         child: CircularProgressIndicator(
                             color: AccountingTheme.neonGreen))
                     : _errorMessage != null
-                        ? AccountingTheme.errorView(_errorMessage!, _loadData)
+                        ? Center(
+                            child: SdEmptyState(
+                              title: _errorMessage!,
+                              icon: Icons.error_outline,
+                              status: SdStatus.danger,
+                              action: SdButton(
+                                label: 'إعادة المحاولة',
+                                icon: Icons.refresh,
+                                onPressed: _loadData,
+                              ),
+                            ),
+                          )
                         : _buildContent(),
               ),
             ],
@@ -244,75 +268,25 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // شريط الأدوات
+  // شريط اختيار السنتين
   // ═══════════════════════════════════════════════════════════════
 
-  Widget _buildToolbar() {
+  Widget _buildFilterBar() {
     final ar = context.accR;
     final isMob = ar.isMobile;
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.symmetric(
-        horizontal: isMob ? 8 : ar.spaceXL,
-        vertical: isMob ? 6 : ar.spaceL,
+        horizontal: isMob ? 10 : ar.spaceXL,
+        vertical: 10,
       ),
       decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: Icon(Icons.arrow_forward_rounded,
-                    size: isMob ? 20 : 24),
-                tooltip: 'رجوع',
-                style: IconButton.styleFrom(
-                    foregroundColor: AccountingTheme.textSecondary),
-              ),
-              SizedBox(width: isMob ? 4 : ar.spaceS),
-              Container(
-                padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF8E44AD), Color(0xFF7D3C98)],
-                  ),
-                  borderRadius: BorderRadius.circular(isMob ? 6 : 8),
-                ),
-                child: Icon(Icons.calendar_view_month_rounded,
-                    color: Colors.white, size: isMob ? 16 : ar.iconM),
-              ),
-              SizedBox(width: isMob ? 6 : ar.spaceM),
-              Expanded(
-                child: Text(
-                  'المقارنة السنوية',
-                  style: GoogleFonts.cairo(
-                    fontSize: isMob ? 14 : ar.headingMedium,
-                    fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (!isMob) ...[
-                _buildYearDropdowns(ar, isMob),
-                SizedBox(width: ar.spaceM),
-              ],
-              IconButton(
-                onPressed: _loadData,
-                icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
-                tooltip: 'تحديث',
-                style: IconButton.styleFrom(
-                    foregroundColor: AccountingTheme.textSecondary),
-              ),
-            ],
-          ),
-          if (isMob) ...[
-            const SizedBox(height: 6),
-            _buildYearDropdowns(ar, isMob),
-          ],
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: _buildYearDropdowns(ar, isMob),
       ),
     );
   }
@@ -416,21 +390,10 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
 
   Widget _buildContent() {
     if (_comparisonData.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.bar_chart_rounded,
-                size: 64, color: AccountingTheme.textMuted.withOpacity(0.4)),
-            const SizedBox(height: 16),
-            Text(
-              'لا توجد بيانات للفترة المحددة',
-              style: GoogleFonts.cairo(
-                fontSize: 14,
-                color: AccountingTheme.textMuted,
-              ),
-            ),
-          ],
+      return const Center(
+        child: SdEmptyState(
+          title: 'لا توجد بيانات للفترة المحددة',
+          icon: Icons.bar_chart_rounded,
         ),
       );
     }

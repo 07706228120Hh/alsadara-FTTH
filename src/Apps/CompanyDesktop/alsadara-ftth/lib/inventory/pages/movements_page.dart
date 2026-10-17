@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -117,6 +118,24 @@ class _MovementsPageState extends State<MovementsPage> {
     _loadData();
   }
 
+  InputDecoration _dec(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: SdText.bodySm,
+        isDense: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+      );
+
   Future<void> _pickDate({required bool isFrom}) async {
     final initial = isFrom
         ? (_dateFrom ?? DateTime.now())
@@ -152,262 +171,287 @@ class _MovementsPageState extends State<MovementsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
-          title: const Text('حركات المخزون'),
-          actions: [
-            IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: 'تحديث',
-                onPressed: _loadData),
-          ],
-        ),
-        body: Column(
-          children: [
-            _buildFilters(),
-            const Divider(height: 1),
-            Expanded(child: _buildBody()),
-            if (!_loading && _error == null && _movements.isNotEmpty)
-              _buildPagination(),
-          ],
-        ),
+    final showPagination = !_loading && _error == null && _movements.isNotEmpty;
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'حركات المخزون',
+        actions: [
+          SdAppBarAction(icon: Icons.refresh_rounded, label: 'تحديث', onPressed: _loadData),
+        ],
       ),
-    );
-  }
-
-  Widget _buildFilters() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            width: 220,
-            child: DropdownButtonFormField<String?>(
-              value: _selectedItemId,
-              decoration: const InputDecoration(
-                  labelText: 'المادة',
-                  border: OutlineInputBorder(),
-                  isDense: true),
-              isExpanded: true,
-              items: [
-                const DropdownMenuItem(value: null, child: Text('الكل')),
-                ..._allItems.map((item) => DropdownMenuItem(
-                    value: item.id, child: Text(item.name))),
-              ],
-              onChanged: (v) {
-                _selectedItemId = v;
-                _page = 1;
-                _loadData();
-              },
-            ),
-          ),
-          SizedBox(
-            width: 200,
-            child: DropdownButtonFormField<String?>(
-              value: _selectedWarehouseId,
-              decoration: const InputDecoration(
-                  labelText: 'المستودع',
-                  border: OutlineInputBorder(),
-                  isDense: true),
-              isExpanded: true,
-              items: [
-                const DropdownMenuItem(value: null, child: Text('الكل')),
-                ..._warehouses.map((w) =>
-                    DropdownMenuItem(value: w.id, child: Text(w.name))),
-              ],
-              onChanged: (v) {
-                _selectedWarehouseId = v;
-                _page = 1;
-                _loadData();
-              },
-            ),
-          ),
-          SizedBox(
-            width: 180,
-            child: DropdownButtonFormField<String?>(
-              value: _selectedType,
-              decoration: const InputDecoration(
-                  labelText: 'نوع الحركة',
-                  border: OutlineInputBorder(),
-                  isDense: true),
-              isExpanded: true,
-              items: [
-                const DropdownMenuItem(value: null, child: Text('الكل')),
-                ..._movementTypeMap.entries.map((e) =>
-                    DropdownMenuItem(value: e.key, child: Text(e.value))),
-              ],
-              onChanged: (v) {
-                _selectedType = v;
-                _page = 1;
-                _loadData();
-              },
-            ),
-          ),
-          // Date From
-          InkWell(
-            onTap: () => _pickDate(isFrom: true),
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                  labelText: 'من تاريخ',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 10, vertical: 10)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.calendar_today, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    _dateFrom != null ? _formatDate(_dateFrom!) : '---',
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  if (_dateFrom != null) ...[
-                    const SizedBox(width: 4),
-                    InkWell(
-                      onTap: () {
-                        setState(() => _dateFrom = null);
-                        _page = 1;
-                        _loadData();
-                      },
-                      child: const Icon(Icons.close, size: 14),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          // Date To
-          InkWell(
-            onTap: () => _pickDate(isFrom: false),
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                  labelText: 'إلى تاريخ',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 10, vertical: 10)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.calendar_today, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    _dateTo != null ? _formatDate(_dateTo!) : '---',
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  if (_dateTo != null) ...[
-                    const SizedBox(width: 4),
-                    InkWell(
-                      onTap: () {
-                        setState(() => _dateTo = null);
-                        _page = 1;
-                        _loadData();
-                      },
-                      child: const Icon(Icons.close, size: 14),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          TextButton.icon(
-            onPressed: _resetFilters,
-            icon: const Icon(Icons.filter_alt_off, size: 18),
-            label: const Text('إزالة الفلاتر'),
-          ),
+          _buildFilters(),
+          const SizedBox(height: SdSpace.sm),
+          Expanded(child: _buildBody()),
+          if (showPagination) _buildPagination(),
         ],
       ),
     );
   }
 
+  Widget _buildFilters() {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        SizedBox(
+          width: 220,
+          child: DropdownButtonFormField<String?>(
+            value: _selectedItemId,
+            decoration: _dec('المادة'),
+            isExpanded: true,
+            items: [
+              const DropdownMenuItem(value: null, child: Text('الكل')),
+              ..._allItems.map((item) => DropdownMenuItem(
+                  value: item.id, child: Text(item.name))),
+            ],
+            onChanged: (v) {
+              _selectedItemId = v;
+              _page = 1;
+              _loadData();
+            },
+          ),
+        ),
+        SizedBox(
+          width: 200,
+          child: DropdownButtonFormField<String?>(
+            value: _selectedWarehouseId,
+            decoration: _dec('المستودع'),
+            isExpanded: true,
+            items: [
+              const DropdownMenuItem(value: null, child: Text('الكل')),
+              ..._warehouses.map((w) =>
+                  DropdownMenuItem(value: w.id, child: Text(w.name))),
+            ],
+            onChanged: (v) {
+              _selectedWarehouseId = v;
+              _page = 1;
+              _loadData();
+            },
+          ),
+        ),
+        SizedBox(
+          width: 180,
+          child: DropdownButtonFormField<String?>(
+            value: _selectedType,
+            decoration: _dec('نوع الحركة'),
+            isExpanded: true,
+            items: [
+              const DropdownMenuItem(value: null, child: Text('الكل')),
+              ..._movementTypeMap.entries.map((e) =>
+                  DropdownMenuItem(value: e.key, child: Text(e.value))),
+            ],
+            onChanged: (v) {
+              _selectedType = v;
+              _page = 1;
+              _loadData();
+            },
+          ),
+        ),
+        // Date From
+        InkWell(
+          onTap: () => _pickDate(isFrom: true),
+          child: InputDecorator(
+            decoration: _dec('من تاريخ'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.calendar_today, size: 16, color: SdColors.faint),
+                const SizedBox(width: 6),
+                Text(
+                  _dateFrom != null ? _formatDate(_dateFrom!) : '---',
+                  style: SdText.bodySm,
+                ),
+                if (_dateFrom != null) ...[
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: () {
+                      setState(() => _dateFrom = null);
+                      _page = 1;
+                      _loadData();
+                    },
+                    child: const Icon(Icons.close, size: 14, color: SdColors.faint),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        // Date To
+        InkWell(
+          onTap: () => _pickDate(isFrom: false),
+          child: InputDecorator(
+            decoration: _dec('إلى تاريخ'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.calendar_today, size: 16, color: SdColors.faint),
+                const SizedBox(width: 6),
+                Text(
+                  _dateTo != null ? _formatDate(_dateTo!) : '---',
+                  style: SdText.bodySm,
+                ),
+                if (_dateTo != null) ...[
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: () {
+                      setState(() => _dateTo = null);
+                      _page = 1;
+                      _loadData();
+                    },
+                    child: const Icon(Icons.close, size: 14, color: SdColors.faint),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        TextButton.icon(
+          onPressed: _resetFilters,
+          icon: const Icon(Icons.filter_alt_off, size: 18, color: SdColors.primary),
+          label: const Text('إزالة الفلاتر', style: TextStyle(color: SdColors.primary)),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     if (_error != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-                onPressed: _loadData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('إعادة المحاولة')),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل الحركات',
+          message: _error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(label: 'إعادة المحاولة', icon: Icons.refresh_rounded, kind: SdButtonKind.secondary, onPressed: _loadData),
         ),
       );
     }
     if (_movements.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.swap_horiz, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
-            const Text('لا توجد حركات',
-                style: TextStyle(fontSize: 16, color: Colors.grey)),
-          ],
-        ),
+      return const Center(
+        child: SdEmptyState(title: 'لا توجد حركات', icon: Icons.swap_horiz),
+      );
+    }
+
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: _movements.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _buildCard(_movements[i]),
       );
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-          columns: const [
-            DataColumn(label: Text('التاريخ')),
-            DataColumn(label: Text('المادة')),
-            DataColumn(label: Text('المستودع')),
-            DataColumn(label: Text('نوع الحركة')),
-            DataColumn(label: Text('الكمية'), numeric: true),
-            DataColumn(label: Text('قبل'), numeric: true),
-            DataColumn(label: Text('بعد'), numeric: true),
-            DataColumn(label: Text('المرجع')),
-            DataColumn(label: Text('المستخدم')),
-          ],
-          rows: _movements.map((mv) {
-            final isIn = _inTypes.contains(mv.movementType);
-            final qtyText = isIn ? '+${mv.quantity}' : '-${mv.quantity}';
-            final qtyColor = isIn ? Colors.green.shade700 : Colors.red.shade700;
-
-            return DataRow(cells: [
-              DataCell(Text(_formatDateTime(mv.createdAt),
-                  style: const TextStyle(fontSize: 12))),
-              DataCell(Text(mv.itemName ?? '-')),
-              DataCell(Text(mv.warehouseName ?? '-')),
-              DataCell(Text(
-                  _movementTypeMap[mv.movementType] ?? mv.movementType)),
-              DataCell(Text(qtyText,
-                  style: TextStyle(
-                      color: qtyColor, fontWeight: FontWeight.bold))),
-              DataCell(Text('${mv.stockBefore}')),
-              DataCell(Text('${mv.stockAfter}')),
-              DataCell(Text(mv.referenceNumber ?? '-')),
-              DataCell(Text(mv.createdByName ?? '-')),
-            ]);
-          }).toList(),
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: DataTable(
+            headingRowColor: WidgetStateProperty.all(SdColors.primary),
+            headingTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white),
+            dataTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w500, color: SdColors.ink),
+            columns: const [
+              DataColumn(label: Text('التاريخ')),
+              DataColumn(label: Text('المادة')),
+              DataColumn(label: Text('المستودع')),
+              DataColumn(label: Text('نوع الحركة')),
+              DataColumn(label: Text('الكمية'), numeric: true),
+              DataColumn(label: Text('قبل'), numeric: true),
+              DataColumn(label: Text('بعد'), numeric: true),
+              DataColumn(label: Text('المرجع')),
+              DataColumn(label: Text('المستخدم')),
+            ],
+            rows: [
+              for (int i = 0; i < _movements.length; i++) _buildDataRow(_movements[i], i),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  DataRow _buildDataRow(StockMovement mv, int index) {
+    final isIn = _inTypes.contains(mv.movementType);
+    final qtyText = isIn ? '+${mv.quantity}' : '-${mv.quantity}';
+    final qtyColor = isIn ? SdColors.success : SdColors.danger;
+
+    return DataRow(
+      color: WidgetStateProperty.all(index.isEven ? SdColors.surface : SdColors.surfaceAlt),
+      cells: [
+        DataCell(Text(_formatDateTime(mv.createdAt), style: const TextStyle(fontFamily: SdText.family, fontSize: 12))),
+        DataCell(Text(mv.itemName ?? '-')),
+        DataCell(Text(mv.warehouseName ?? '-')),
+        DataCell(Text(_movementTypeMap[mv.movementType] ?? mv.movementType)),
+        DataCell(Text(qtyText,
+            style: TextStyle(fontFamily: SdText.family, color: qtyColor, fontWeight: FontWeight.w800))),
+        DataCell(Text('${mv.stockBefore}')),
+        DataCell(Text('${mv.stockAfter}')),
+        DataCell(Text(mv.referenceNumber ?? '-')),
+        DataCell(Text(mv.createdByName ?? '-')),
+      ],
+    );
+  }
+
+  Widget _buildCard(StockMovement mv) {
+    final isIn = _inTypes.contains(mv.movementType);
+    final qtyText = isIn ? '+${mv.quantity}' : '-${mv.quantity}';
+    final qtyColor = isIn ? SdColors.success : SdColors.danger;
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(mv.itemName ?? '-', style: SdText.label, maxLines: 2, overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 8),
+              SdStatusChip(_movementTypeMap[mv.movementType] ?? mv.movementType,
+                  status: isIn ? SdStatus.success : SdStatus.danger),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Text('الكمية', style: SdText.bodySm),
+                const Spacer(),
+                Text(qtyText,
+                    style: TextStyle(fontFamily: SdText.family, fontSize: 14, fontWeight: FontWeight.w800, color: qtyColor)),
+              ],
+            ),
+          ),
+          SdInfoRow(label: 'المستودع', value: mv.warehouseName ?? '-'),
+          SdInfoRow(label: 'قبل', value: '${mv.stockBefore}'),
+          SdInfoRow(label: 'بعد', value: '${mv.stockAfter}'),
+          SdInfoRow(label: 'المرجع', value: mv.referenceNumber ?? '-'),
+          SdInfoRow(label: 'المستخدم', value: mv.createdByName ?? '-'),
+          SdInfoRow(label: 'التاريخ', value: _formatDateTime(mv.createdAt)),
+        ],
       ),
     );
   }
 
   Widget _buildPagination() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.only(top: SdSpace.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_right),
+            icon: const Icon(Icons.chevron_right, color: SdColors.primary),
             onPressed: _page > 1
                 ? () {
                     _page--;
@@ -415,9 +459,9 @@ class _MovementsPageState extends State<MovementsPage> {
                   }
                 : null,
           ),
-          Text('صفحة $_page من $_totalPages'),
+          Text('صفحة $_page من $_totalPages', style: SdText.label),
           IconButton(
-            icon: const Icon(Icons.chevron_left),
+            icon: const Icon(Icons.chevron_left, color: SdColors.primary),
             onPressed: _page < _totalPages
                 ? () {
                     _page++;
@@ -426,8 +470,7 @@ class _MovementsPageState extends State<MovementsPage> {
                 : null,
           ),
           const SizedBox(width: 16),
-          Text('الإجمالي: $_total',
-              style: const TextStyle(color: Colors.grey)),
+          Text('الإجمالي: $_total', style: SdText.bodySm),
         ],
       ),
     );

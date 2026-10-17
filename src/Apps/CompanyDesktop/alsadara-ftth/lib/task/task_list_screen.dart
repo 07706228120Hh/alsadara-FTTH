@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import 'home_page_tasks.dart';
 import 'add_task_api_dialog.dart';
 import '../models/task.dart';
@@ -212,7 +213,7 @@ class _TaskListScreenState extends State<TaskListScreen>
       setState(() { _isLoading = false; _isRefreshing = false; });
       if (showLoadingIndicator) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء جلب المهام'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('حدث خطأ أثناء جلب المهام'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -340,10 +341,10 @@ class _TaskListScreenState extends State<TaskListScreen>
             _fetchTasks(showLoadingIndicator: false);
 
             scaffoldMessenger.showSnackBar(
-              SnackBar(
+              const SnackBar(
                 content: Text('تم إضافة المهمة بنجاح'),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 3),
+                backgroundColor: SdColors.success,
+                duration: Duration(seconds: 3),
               ),
             );
           },
@@ -376,7 +377,7 @@ class _TaskListScreenState extends State<TaskListScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم تحديث رسائل الصيانة بنجاح'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           duration: Duration(seconds: 3),
         ),
       );

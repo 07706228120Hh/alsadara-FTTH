@@ -7,8 +7,8 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../services/auth_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة عمليات المحفظة — عرض شامل لجميع معاملات المحفظة من خادم FTTH
 class WalletTransactionsPage extends StatefulWidget {
@@ -414,11 +414,32 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'عمليات المحفظة',
+          subtitle: '${_filteredTransactions.length} عملية',
+          actions: [
+            SdAppBarAction(
+              icon: _showFilters ? Icons.filter_list_off : Icons.filter_list,
+              label: _showFilters ? 'إخفاء الفلاتر' : 'إظهار الفلاتر',
+              onPressed: () => setState(() => _showFilters = !_showFilters),
+            ),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _isLoading ? null : _loadData,
+            ),
+            SdAppBarAction(
+              icon: Icons.download_rounded,
+              label: 'تصدير Excel',
+              onPressed: _filteredTransactions.isEmpty ? null : _exportToExcel,
+            ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildToolbar(),
               if (_showFilters) _buildFilters(),
               _buildSummaryCards(),
               Expanded(
@@ -426,95 +447,31 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                     ? const Center(child: CircularProgressIndicator())
                     : _errorMessage != null
                         ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                                const SizedBox(height: 12),
-                                Text(_errorMessage!, style: GoogleFonts.cairo(color: Colors.red.shade700)),
-                                const SizedBox(height: 12),
-                                ElevatedButton.icon(
-                                  onPressed: _loadData,
-                                  icon: const Icon(Icons.refresh),
-                                  label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
-                                ),
-                              ],
+                            child: SdEmptyState(
+                              title: _errorMessage!,
+                              icon: Icons.error_outline,
+                              status: SdStatus.danger,
+                              action: SdButton(
+                                label: 'إعادة المحاولة',
+                                icon: Icons.refresh,
+                                onPressed: _loadData,
+                              ),
                             ),
                           )
                         : !_ftthAuthenticated
                             ? _buildAuthPrompt()
                             : _filteredTransactions.isEmpty
-                                ? Center(
-                                    child: Text('لا توجد عمليات محفظة في هذه الفترة',
-                                        style: GoogleFonts.cairo(color: Colors.grey.shade600, fontSize: 15)),
+                                ? const Center(
+                                    child: SdEmptyState(
+                                      title: 'لا توجد عمليات محفظة في هذه الفترة',
+                                      icon: Icons.account_balance_wallet_outlined,
+                                    ),
                                   )
                                 : _buildTable(),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  // ════════════════════════════════════════════════════════════════
-  //  TOOLBAR
-  // ════════════════════════════════════════════════════════════════
-
-  Widget _buildToolbar() {
-    final r = context.accR;
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: r.spaceM, vertical: r.spaceS),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A237E),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8)],
-      ),
-      child: Row(
-        children: [
-          // رجوع
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
-            tooltip: 'رجوع',
-          ),
-          Icon(Icons.account_balance_wallet_rounded, color: Colors.amber.shade300, size: 22),
-          SizedBox(width: r.spaceS),
-          Text('عمليات المحفظة',
-              style: GoogleFonts.cairo(
-                  color: Colors.white, fontSize: r.headingSmall, fontWeight: FontWeight.w700)),
-          const Spacer(),
-          // عدد النتائج
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text('${_filteredTransactions.length} عملية',
-                style: GoogleFonts.cairo(color: Colors.white70, fontSize: r.small)),
-          ),
-          SizedBox(width: r.spaceS),
-          // فلاتر
-          IconButton(
-            onPressed: () => setState(() => _showFilters = !_showFilters),
-            icon: Icon(_showFilters ? Icons.filter_list_off : Icons.filter_list,
-                color: Colors.white, size: 20),
-            tooltip: _showFilters ? 'إخفاء الفلاتر' : 'إظهار الفلاتر',
-          ),
-          // تحديث
-          IconButton(
-            onPressed: _isLoading ? null : _loadData,
-            icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
-            tooltip: 'تحديث',
-          ),
-          // تصدير
-          IconButton(
-            onPressed: _filteredTransactions.isEmpty ? null : _exportToExcel,
-            icon: Icon(Icons.download_rounded,
-                color: _filteredTransactions.isEmpty ? Colors.white38 : Colors.greenAccent, size: 20),
-            tooltip: 'تصدير Excel',
-          ),
-        ],
       ),
     );
   }
@@ -1135,20 +1092,16 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
 
   Widget _buildAuthPrompt() {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.lock_outline, size: 56, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text('يرجى تسجيل الدخول من صفحة حسابات التفعيلات أولاً',
-              style: GoogleFonts.cairo(color: Colors.grey.shade600, fontSize: 15)),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
-            label: Text('رجوع', style: GoogleFonts.cairo()),
-          ),
-        ],
+      child: SdEmptyState(
+        title: 'يرجى تسجيل الدخول من صفحة حسابات التفعيلات أولاً',
+        icon: Icons.lock_outline,
+        status: SdStatus.warning,
+        action: SdButton(
+          label: 'رجوع',
+          icon: Icons.arrow_back,
+          kind: SdButtonKind.secondary,
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
     );
   }

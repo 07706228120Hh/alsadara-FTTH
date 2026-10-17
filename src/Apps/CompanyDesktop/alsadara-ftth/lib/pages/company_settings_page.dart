@@ -22,6 +22,7 @@ import 'reminder_reports_page.dart';
 import 'whatsapp_excel_sender_page.dart';
 import 'dart:convert';
 import 'printer_settings_page.dart';
+import '../frontend/frontend.dart';
 import 'settings_page.dart';
 import 'settings_text_scale_page.dart';
 import '../widgets/map_location_picker.dart';
@@ -180,11 +181,11 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     }
   }
 
-  // ── ألوان الثيم الفاتح (XONEPROO Style) ──
-  static const _bgPage = Color(0xFFF5F6FA);
-  static const _bgCard = Colors.white;
-  static const _bgToolbar = Color(0xFF2C3E50);
-  static const _accent = Color(0xFF3498DB);
+  // ── ألوان الثيم الفاتح (موحّدة على نظام sd) ──
+  static const _bgPage = SdColors.ground;
+  static const _bgCard = SdColors.surface;
+  static const _bgToolbar = SdColors.primary;
+  static const _accent = SdColors.accent;
   static const _textDark = Color(0xFF333333);
   static const _textGray = Color(0xFF999999);
   static const _textSubtle = Color(0xFF666666);
@@ -194,8 +195,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
   @override
   Widget build(BuildContext context) {
     try {
-      return Directionality(
-        textDirection: TextDirection.rtl,
+      return SdTheme.scope(
         child: Scaffold(
           backgroundColor: _bgPage,
           appBar: _buildAppBar(),

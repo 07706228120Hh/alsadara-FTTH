@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
+import '../../frontend/frontend.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
 import '../../services/auth_service.dart';
@@ -353,44 +354,35 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
 
     final filtered = _filteredOperators;
 
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('ربط المشغلين ($_totalCount مشغل)',
-              style: GoogleFonts.cairo(
-                  fontSize: context.accR.headingSmall,
-                  fontWeight: FontWeight.w700)),
-          backgroundColor: Colors.teal.shade700,
-          foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loadData,
-              tooltip: 'تحديث',
-            ),
-          ],
-        ),
-        body: _isLoading
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'ربط المشغلين ($_totalCount مشغل)',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
+            onPressed: _loadData,
+          ),
+        ],
+      ),
+      body: Directionality(
+        textDirection: TextDirection.ltr,
+        child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
                 ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.error_outline,
-                            size: context.accR.iconXL,
-                            color: Colors.red.shade400),
-                        SizedBox(height: context.accR.spaceS),
-                        Text(_error!,
-                            style: TextStyle(color: Colors.red.shade700)),
-                        SizedBox(height: context.accR.spaceM),
-                        ElevatedButton.icon(
-                          onPressed: _loadData,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('إعادة المحاولة'),
-                        ),
-                      ],
+                    child: SdEmptyState(
+                      title: _error!,
+                      icon: Icons.error_outline,
+                      status: SdStatus.danger,
+                      action: SdButton(
+                        label: 'إعادة المحاولة',
+                        icon: Icons.refresh,
+                        onPressed: _loadData,
+                      ),
                     ),
                   )
                 : Column(
@@ -406,17 +398,17 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                                   SizedBox(
                                     width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
                                     child: _summaryCard('إجمالي المشغلين', '$_totalCount',
-                                        Icons.people, Colors.teal),
+                                        Icons.people, SdGroup.field.tone),
                                   ),
                                   SizedBox(
                                     width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
                                     child: _summaryCard('مربوطون', '$linkedCount', Icons.link,
-                                        Colors.green),
+                                        SdStatus.success.tone),
                                   ),
                                   SizedBox(
                                     width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
                                     child: _summaryCard('غير مربوطين', '$unlinkedCount',
-                                        Icons.link_off, Colors.orange),
+                                        Icons.link_off, SdStatus.warning.tone),
                                   ),
                                   SizedBox(
                                     width: (MediaQuery.of(context).size.width - context.accR.spaceM * 2 - context.accR.spaceS) / 2,
@@ -424,26 +416,26 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                                         'إجمالي الأرصدة',
                                         _currencyFormat.format(totalBalance),
                                         Icons.monetization_on,
-                                        totalBalance >= 0 ? Colors.blue : Colors.red),
+                                        totalBalance >= 0 ? SdStatus.info.tone : SdStatus.danger.tone),
                                   ),
                                 ],
                               )
                             : Row(
                                 children: [
                                   _summaryCard('إجمالي المشغلين', '$_totalCount',
-                                      Icons.people, Colors.teal),
+                                      Icons.people, SdGroup.field.tone),
                                   SizedBox(width: context.accR.spaceS),
                                   _summaryCard('مربوطون', '$linkedCount', Icons.link,
-                                      Colors.green),
+                                      SdStatus.success.tone),
                                   SizedBox(width: context.accR.spaceS),
                                   _summaryCard('غير مربوطين', '$unlinkedCount',
-                                      Icons.link_off, Colors.orange),
+                                      Icons.link_off, SdStatus.warning.tone),
                                   SizedBox(width: context.accR.spaceS),
                                   _summaryCard(
                                       'إجمالي الأرصدة',
                                       _currencyFormat.format(totalBalance),
                                       Icons.monetization_on,
-                                      totalBalance >= 0 ? Colors.blue : Colors.red),
+                                      totalBalance >= 0 ? SdStatus.info.tone : SdStatus.danger.tone),
                                 ],
                               ),
                       ),
@@ -491,10 +483,10 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
             style: TextStyle(
                 fontSize: context.accR.small,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.white : Colors.teal.shade800)),
+                color: isSelected ? Colors.white : SdColors.primary)),
         selected: isSelected,
-        selectedColor: Colors.teal.shade600,
-        backgroundColor: Colors.teal.shade50,
+        selectedColor: SdColors.primary,
+        backgroundColor: SdColors.primaryTint,
         onSelected: (_) => setState(() => _filterRole = label),
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.compact,
@@ -502,35 +494,38 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
     );
   }
 
-  Widget _summaryCard(String label, String value, IconData icon, Color color) {
+  Widget _summaryCard(String label, String value, IconData icon, SdTone tone) {
     final card = Container(
       padding: EdgeInsets.symmetric(
           horizontal: context.accR.spaceM, vertical: context.accR.spaceM),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: tone.tint,
         borderRadius: BorderRadius.circular(context.accR.cardRadius),
-        border: Border.all(color: color.withOpacity(0.3)),
+        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: context.accR.iconM),
+          Icon(icon, color: tone.base, size: context.accR.iconM),
           SizedBox(width: context.accR.spaceM),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: TextStyle(
-                        fontSize: context.accR.small,
-                        color: Colors.grey.shade600)),
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: SdColors.muted)),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(value,
                       style: TextStyle(
+                          fontFamily: SdText.family,
                           fontSize: context.accR.body,
-                          fontWeight: FontWeight.bold,
-                          color: color)),
+                          fontWeight: FontWeight.w900,
+                          color: tone.edge)),
                 ),
               ],
             ),
@@ -546,12 +541,14 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
   }
 
   Widget _buildTable(List<Map<String, dynamic>> list) {
-    if (list.isEmpty) return const Center(child: Text('لا توجد بيانات'));
+    if (list.isEmpty) {
+      return const Center(child: SdEmptyState(title: 'لا توجد بيانات'));
+    }
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: SdColors.divider),
+        borderRadius: BorderRadius.circular(SdRadius.xs),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -563,7 +560,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
             headingRowHeight: 42,
             dataRowMinHeight: 38,
             dataRowMaxHeight: 54,
-            headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
+            headingRowColor: WidgetStateProperty.all(SdColors.primaryTint),
             columns: [
               DataColumn(
                   label: Expanded(
@@ -667,7 +664,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
 
               return DataRow(
                 color: WidgetStateProperty.resolveWith((states) {
-                  if (hasLink) return Colors.green.shade50;
+                  if (hasLink) return SdColors.successTint;
                   return null;
                 }),
                 cells: [
@@ -708,10 +705,10 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                         fontSize: context.accR.small,
                         fontWeight: FontWeight.w600,
                         color: balance > 0
-                            ? Colors.green.shade700
+                            ? SdColors.success
                             : balance < 0
-                                ? Colors.red.shade700
-                                : Colors.grey.shade400),
+                                ? SdColors.danger
+                                : SdColors.faint),
                   ))),
                   // الموظف المربوط
                   DataCell(Center(
@@ -720,30 +717,14 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                     style: TextStyle(
                       fontSize: context.accR.small,
                       fontWeight: hasLink ? FontWeight.w700 : FontWeight.w400,
-                      color: hasLink ? Colors.teal.shade700 : Colors.grey,
+                      color: hasLink ? SdColors.accent : SdColors.faint,
                     ),
                   ))),
                   // حالة الربط
                   DataCell(Center(
-                      child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: hasLink
-                          ? Colors.green.shade100
-                          : Colors.orange.shade100,
-                      borderRadius:
-                          BorderRadius.circular(context.accR.cardRadius),
-                    ),
-                    child: Text(
-                      hasLink ? 'مربوط' : 'غير مربوط',
-                      style: TextStyle(
-                        fontSize: context.accR.caption,
-                        fontWeight: FontWeight.w700,
-                        color: hasLink
-                            ? Colors.green.shade800
-                            : Colors.orange.shade800,
-                      ),
-                    ),
+                      child: SdStatusChip(
+                    hasLink ? 'مربوط' : 'غير مربوط',
+                    status: hasLink ? SdStatus.success : SdStatus.warning,
                   ))),
                   // إجراء
                   DataCell(Center(

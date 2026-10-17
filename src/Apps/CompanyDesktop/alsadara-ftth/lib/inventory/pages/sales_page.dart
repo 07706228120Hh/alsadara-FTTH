@@ -1,5 +1,6 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 import 'sale_form_page.dart';
@@ -80,45 +81,22 @@ class _SalesPageState extends State<SalesPage> {
     }
   }
 
-  Widget _statusChip(String status) {
-    Color bg;
-    Color fg;
-    String label;
+  SdStatus _statusTone(String status) {
     switch (status) {
-      case 'Draft':
-        bg = Colors.grey.shade200;
-        fg = Colors.grey.shade800;
-        label = 'مسودة';
-        break;
       case 'Confirmed':
-        bg = Colors.green.shade100;
-        fg = Colors.green.shade800;
-        label = 'مؤكد';
-        break;
+        return SdStatus.success;
       case 'Delivered':
-        bg = Colors.blue.shade100;
-        fg = Colors.blue.shade800;
-        label = 'تم التسليم';
-        break;
+        return SdStatus.info;
       case 'Cancelled':
-        bg = Colors.red.shade100;
-        fg = Colors.red.shade800;
-        label = 'ملغي';
-        break;
+        return SdStatus.danger;
       default:
-        bg = Colors.grey.shade200;
-        fg = Colors.grey.shade800;
-        label = status;
+        return SdStatus.neutral;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
-    );
+  }
+
+  Widget _statusChip(String status) {
+    final label = _statusMap[status] ?? status;
+    return SdStatusChip(label, status: _statusTone(status));
   }
 
   List<Widget> _buildActions(SalesOrder order) {
@@ -126,7 +104,7 @@ class _SalesPageState extends State<SalesPage> {
 
     // تعديل — فقط للمسودة
     if (order.status == 'Draft') {
-      actions.add(_actionBtn(Icons.edit_outlined, 'تعديل', Colors.blue.shade800, () {
+      actions.add(_actionBtn(Icons.edit_outlined, 'تعديل', SdColors.primary, () {
         Navigator.push(context, MaterialPageRoute(
           builder: (_) => SaleFormPage(companyId: widget.companyId),
         )).then((_) => _loadData());
@@ -135,13 +113,13 @@ class _SalesPageState extends State<SalesPage> {
 
     // تأكيد — فقط للمسودة
     if (order.status == 'Draft') {
-      actions.add(_actionBtn(Icons.check_circle_outline, 'تأكيد', Colors.green.shade800,
+      actions.add(_actionBtn(Icons.check_circle_outline, 'تأكيد', SdColors.success,
           () => _confirmOrder(order)));
     }
 
     // إلغاء — للمسودة والمؤكد
     if (order.status == 'Draft' || order.status == 'Confirmed') {
-      actions.add(_actionBtn(Icons.cancel_outlined, 'إلغاء', Colors.red.shade800,
+      actions.add(_actionBtn(Icons.cancel_outlined, 'إلغاء', SdColors.danger,
           () => _cancelOrder(order)));
     }
 
@@ -192,17 +170,21 @@ class _SalesPageState extends State<SalesPage> {
   Future<bool> _confirmDialog(String title, String message) async {
     return await showDialog<bool>(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(title),
-            content: Text(message),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('إلغاء')),
-              FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('تأكيد')),
-            ],
+          builder: (ctx) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: Text(title),
+              content: Text(message),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('إلغاء')),
+                FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('تأكيد')),
+              ],
+            ),
           ),
         ) ??
         false;
@@ -213,7 +195,7 @@ class _SalesPageState extends State<SalesPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -241,127 +223,134 @@ class _SalesPageState extends State<SalesPage> {
   String _formatDate(DateTime d) =>
       '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
 
+  InputDecoration _dec(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: SdText.bodySm,
+        filled: true,
+        fillColor: SdColors.surface,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
-          title: const Text('المبيعات'),
-          actions: [
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SaleFormPage(companyId: widget.companyId),
-                  ),
-                ).then((_) => _loadData());
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('بيع جديد'),
-            ),
-            const SizedBox(width: 12),
-          ],
-        ),
-        body: Column(
-          children: [
-            _buildFilters(),
-            const Divider(height: 1),
-            Expanded(child: _buildBody()),
-          ],
-        ),
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'المبيعات',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.add_rounded,
+            label: 'بيع جديد',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SaleFormPage(companyId: widget.companyId),
+                ),
+              ).then((_) => _loadData());
+            },
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildFilters() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            width: 160,
-            child: DropdownButtonFormField<String?>(
-              value: _statusFilter,
-              decoration: const InputDecoration(
-                labelText: 'الحالة',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                isDense: true,
-              ),
-              items: _statusMap.entries
-                  .map((e) =>
-                      DropdownMenuItem(value: e.key, child: Text(e.value)))
-                  .toList(),
-              onChanged: (v) {
-                setState(() => _statusFilter = v);
-                _page = 1;
-                _loadData();
-              },
-            ),
-          ),
-          ActionChip(
-            avatar: const Icon(Icons.date_range, size: 18),
-            label: Text(
-                _dateFrom != null ? 'من: ${_formatDate(_dateFrom!)}' : 'من تاريخ'),
-            onPressed: () => _pickDate(true),
-          ),
-          ActionChip(
-            avatar: const Icon(Icons.date_range, size: 18),
-            label: Text(
-                _dateTo != null ? 'إلى: ${_formatDate(_dateTo!)}' : 'إلى تاريخ'),
-            onPressed: () => _pickDate(false),
-          ),
-          if (_dateFrom != null || _dateTo != null || _statusFilter != null)
-            ActionChip(
-              avatar: const Icon(Icons.clear, size: 18),
-              label: const Text('مسح الفلاتر'),
-              onPressed: () {
-                setState(() {
-                  _statusFilter = null;
-                  _dateFrom = null;
-                  _dateTo = null;
-                });
-                _page = 1;
-                _loadData();
-              },
-            ),
+          _buildFilters(),
+          const SizedBox(height: SdSpace.xs),
+          Expanded(child: _buildBody()),
         ],
       ),
     );
   }
 
+  Widget _buildFilters() {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        SizedBox(
+          width: 160,
+          child: DropdownButtonFormField<String?>(
+            value: _statusFilter,
+            style: SdText.label,
+            decoration: _dec('الحالة'),
+            items: _statusMap.entries
+                .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                .toList(),
+            onChanged: (v) {
+              setState(() => _statusFilter = v);
+              _page = 1;
+              _loadData();
+            },
+          ),
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.date_range, size: 18, color: SdColors.primary),
+          label: Text(
+              _dateFrom != null ? 'من: ${_formatDate(_dateFrom!)}' : 'من تاريخ'),
+          onPressed: () => _pickDate(true),
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.date_range, size: 18, color: SdColors.primary),
+          label: Text(
+              _dateTo != null ? 'إلى: ${_formatDate(_dateTo!)}' : 'إلى تاريخ'),
+          onPressed: () => _pickDate(false),
+        ),
+        if (_dateFrom != null || _dateTo != null || _statusFilter != null)
+          ActionChip(
+            avatar: const Icon(Icons.clear, size: 18),
+            label: const Text('مسح الفلاتر'),
+            onPressed: () {
+              setState(() {
+                _statusFilter = null;
+                _dateFrom = null;
+                _dateTo = null;
+              });
+              _page = 1;
+              _loadData();
+            },
+          ),
+      ],
+    );
+  }
+
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (_error != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-            const SizedBox(height: 12),
-            Text(_error!, style: TextStyle(color: Colors.red.shade700)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _loadData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل المبيعات',
+          message: _error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh_rounded,
+            kind: SdButtonKind.secondary,
+            onPressed: _loadData,
+          ),
         ),
       );
     }
     if (_orders.isEmpty) {
       return const Center(
-        child:
-            Text('لا توجد عمليات بيع', style: TextStyle(fontSize: 16, color: Colors.grey)),
+        child: SdEmptyState(title: 'لا توجد عمليات بيع', icon: Icons.point_of_sale_outlined),
       );
     }
 
@@ -369,69 +358,181 @@ class _SalesPageState extends State<SalesPage> {
 
     return Column(
       children: [
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SingleChildScrollView(
-              child: DataTable(
-                headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-                columnSpacing: 20,
-                columns: const [
-                  DataColumn(label: Text('رقم العملية')),
-                  DataColumn(label: Text('العميل')),
-                  DataColumn(label: Text('المستودع')),
-                  DataColumn(label: Text('التاريخ')),
-                  DataColumn(label: Text('المبلغ')),
-                  DataColumn(label: Text('طريقة الدفع')),
-                  DataColumn(label: Text('الحالة')),
-                  DataColumn(label: Text('إجراءات')),
+        Expanded(child: _buildListOrTable()),
+        if (totalPages > 1) _buildPager(totalPages),
+      ],
+    );
+  }
+
+  Widget _buildListOrTable() {
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: _orders.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _buildCard(_orders[i]),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Table(
+            defaultColumnWidth: const IntrinsicColumnWidth(),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [
+              const TableRow(
+                decoration: BoxDecoration(color: SdColors.primary),
+                children: [
+                  _HeaderCell('رقم العملية'),
+                  _HeaderCell('العميل'),
+                  _HeaderCell('المستودع'),
+                  _HeaderCell('التاريخ'),
+                  _HeaderCell('المبلغ'),
+                  _HeaderCell('طريقة الدفع'),
+                  _HeaderCell('الحالة'),
+                  _HeaderCell('إجراءات'),
                 ],
-                rows: _orders.map((o) {
-                  return DataRow(cells: [
-                    DataCell(Text(o.orderNumber)),
-                    DataCell(Text(o.customerName ?? '-')),
-                    DataCell(Text(o.warehouseName ?? '-')),
-                    DataCell(Text(_formatDate(o.orderDate))),
-                    DataCell(Text(fmtN(o.netAmount))),
-                    DataCell(Text(
-                        _paymentLabels[o.paymentMethod] ?? o.paymentMethod ?? '-')),
-                    DataCell(_statusChip(o.status)),
-                    DataCell(Row(children: _buildActions(o))),
-                  ]);
-                }).toList(),
               ),
-            ),
+              for (var i = 0; i < _orders.length; i++) _dataRow(i, _orders[i]),
+            ],
           ),
         ),
-        if (totalPages > 1)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: _page > 1
-                      ? () {
-                          setState(() => _page--);
-                          _loadData();
-                        }
-                      : null,
-                ),
-                Text('صفحة $_page من $totalPages'),
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: _page < totalPages
-                      ? () {
-                          setState(() => _page++);
-                          _loadData();
-                        }
-                      : null,
-                ),
-              ],
-            ),
-          ),
+      ),
+    );
+  }
+
+  TableRow _dataRow(int i, SalesOrder o) {
+    return TableRow(
+      decoration: BoxDecoration(
+        color: i.isEven ? SdColors.surface : SdColors.surfaceAlt,
+      ),
+      children: [
+        _DataCell(o.orderNumber),
+        _DataCell(o.customerName ?? '-'),
+        _DataCell(o.warehouseName ?? '-'),
+        _DataCell(_formatDate(o.orderDate)),
+        _DataCell(fmtN(o.netAmount)),
+        _DataCell(_paymentLabels[o.paymentMethod] ?? o.paymentMethod ?? '-'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Center(child: _statusChip(o.status)),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(4),
+          child: Row(mainAxisSize: MainAxisSize.min, children: _buildActions(o)),
+        ),
       ],
+    );
+  }
+
+  Widget _buildCard(SalesOrder o) {
+    final actions = _buildActions(o);
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('#${o.orderNumber}',
+                    style: SdText.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
+              _statusChip(o.status),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SdInfoRow(label: 'العميل', value: o.customerName ?? '-'),
+          SdInfoRow(label: 'المستودع', value: o.warehouseName ?? '-'),
+          SdInfoRow(label: 'التاريخ', value: _formatDate(o.orderDate)),
+          SdInfoRow(label: 'المبلغ', value: fmtN(o.netAmount)),
+          SdInfoRow(label: 'طريقة الدفع', value: _paymentLabels[o.paymentMethod] ?? o.paymentMethod ?? '-'),
+          if (actions.isNotEmpty) ...[
+            const Divider(color: SdColors.divider, height: 16),
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPager(int totalPages) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_right, color: SdColors.primary),
+            onPressed: _page > 1
+                ? () {
+                    setState(() => _page--);
+                    _loadData();
+                  }
+                : null,
+          ),
+          Text('صفحة $_page من $totalPages', style: SdText.label),
+          IconButton(
+            icon: const Icon(Icons.chevron_left, color: SdColors.primary),
+            onPressed: _page < totalPages
+                ? () {
+                    setState(() => _page++);
+                    _loadData();
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderCell extends StatelessWidget {
+  final String text;
+  const _HeaderCell(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontWeight: FontWeight.w800,
+            fontSize: 12.5,
+            color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _DataCell extends StatelessWidget {
+  final String text;
+  const _DataCell(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+            fontFamily: SdText.family,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+            color: SdColors.ink),
+      ),
     );
   }
 }

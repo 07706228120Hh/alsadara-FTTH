@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 import 'dispensing_form_page.dart';
@@ -116,69 +117,51 @@ class _DispensingPageState extends State<DispensingPage>
     }
   }
 
+  InputDecoration _dec(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: SdText.bodySm,
+        filled: true,
+        fillColor: SdColors.surface,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+      );
+
   Widget _typeChip(String type) {
     final isDispensing = type == 'Dispensing';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDispensing ? Colors.orange.shade100 : Colors.green.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        isDispensing ? 'صرف' : 'إرجاع',
-        style: TextStyle(
-          color: isDispensing ? Colors.orange.shade800 : Colors.green.shade800,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
+    return SdStatusChip(isDispensing ? 'صرف' : 'إرجاع',
+        status: isDispensing ? SdStatus.warning : SdStatus.success);
+  }
+
+  SdStatus _statusTone(String status) {
+    switch (status) {
+      case 'Approved':
+        return SdStatus.success;
+      case 'PartiallyReturned':
+        return SdStatus.warning;
+      case 'FullyReturned':
+        return SdStatus.info;
+      case 'Cancelled':
+        return SdStatus.danger;
+      default:
+        return SdStatus.neutral;
+    }
   }
 
   Widget _statusChip(String status) {
-    Color bg;
-    Color fg;
-    String label;
-    switch (status) {
-      case 'Pending':
-        bg = Colors.grey.shade200;
-        fg = Colors.grey.shade800;
-        label = 'بانتظار';
-        break;
-      case 'Approved':
-        bg = Colors.green.shade100;
-        fg = Colors.green.shade800;
-        label = 'موافق';
-        break;
-      case 'PartiallyReturned':
-        bg = Colors.orange.shade100;
-        fg = Colors.orange.shade800;
-        label = 'إرجاع جزئي';
-        break;
-      case 'FullyReturned':
-        bg = Colors.blue.shade100;
-        fg = Colors.blue.shade800;
-        label = 'إرجاع كامل';
-        break;
-      case 'Cancelled':
-        bg = Colors.red.shade100;
-        fg = Colors.red.shade800;
-        label = 'ملغي';
-        break;
-      default:
-        bg = Colors.grey.shade200;
-        fg = Colors.grey.shade800;
-        label = status;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
-    );
+    final label = _statusMap[status] ?? status;
+    return SdStatusChip(label, status: _statusTone(status));
   }
 
   List<Widget> _buildActions(TechnicianDispensingModel d) {
@@ -186,17 +169,17 @@ class _DispensingPageState extends State<DispensingPage>
 
     // تعديل — متاح دائماً ما لم يكن مُلغى أو مُرجع بالكامل
     if (d.status != 'Cancelled' && d.status != 'FullyReturned') {
-      actions.add(_actionBtn(Icons.edit_outlined, 'تعديل', Colors.blue.shade800, () => _edit(d)));
+      actions.add(_actionBtn(Icons.edit_outlined, 'تعديل', SdColors.primary, () => _edit(d)));
     }
 
     // إرجاع مواد — متاح فقط إذا كان مصروف أو مرجع جزئي
     if (d.status == 'Approved' || d.status == 'PartiallyReturned') {
-      actions.add(_actionBtn(Icons.assignment_return_outlined, 'إرجاع مواد', Colors.orange.shade800, () => _returnItems(d)));
+      actions.add(_actionBtn(Icons.assignment_return_outlined, 'إرجاع مواد', SdColors.warning, () => _returnItems(d)));
     }
 
     // حذف — متاح دائماً ما لم يكن محذوف مسبقاً
     if (d.status != 'Cancelled') {
-      actions.add(_actionBtn(Icons.delete_outline, 'حذف', Colors.red.shade800, () => _delete(d)));
+      actions.add(_actionBtn(Icons.delete_outline, 'حذف', SdColors.danger, () => _delete(d)));
     }
 
     return actions;
@@ -225,7 +208,7 @@ class _DispensingPageState extends State<DispensingPage>
           content: Text('هل تريد حذف سند الصرف "${d.voucherNumber}"؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
           ],
         ),
       ),
@@ -233,10 +216,10 @@ class _DispensingPageState extends State<DispensingPage>
     if (confirmed != true) return;
     try {
       await _api.deleteDispensing(d.id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحذف'), backgroundColor: Colors.green));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحذف'), backgroundColor: SdColors.success));
       _loadData();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
   }
 
@@ -255,6 +238,7 @@ class _DispensingPageState extends State<DispensingPage>
     );
   }
 
+  // ignore: unused_element
   Future<void> _approve(TechnicianDispensingModel d) async {
     final ok = await _confirmDialog(
         'موافقة', 'هل أنت متأكد من الموافقة على سند الصرف ${d.voucherNumber}؟');
@@ -268,6 +252,7 @@ class _DispensingPageState extends State<DispensingPage>
     }
   }
 
+  // ignore: unused_element
   Future<void> _cancel(TechnicianDispensingModel d) async {
     final ok = await _confirmDialog(
         'إلغاء', 'هل أنت متأكد من إلغاء سند الصرف ${d.voucherNumber}؟');
@@ -314,17 +299,21 @@ class _DispensingPageState extends State<DispensingPage>
   Future<bool> _confirmDialog(String title, String message) async {
     return await showDialog<bool>(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(title),
-            content: Text(message),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('إلغاء')),
-              FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('تأكيد')),
-            ],
+          builder: (ctx) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: Text(title),
+              content: Text(message),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('إلغاء')),
+                FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('تأكيد')),
+              ],
+            ),
           ),
         ) ??
         false;
@@ -335,7 +324,7 @@ class _DispensingPageState extends State<DispensingPage>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -364,42 +353,62 @@ class _DispensingPageState extends State<DispensingPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFFF5F6FA), foregroundColor: const Color(0xFF1A1A2E), iconTheme: const IconThemeData(color: Color(0xFF1A1A2E)), titleTextStyle: const TextStyle(color: Color(0xFF1A1A2E), fontSize: 18, fontWeight: FontWeight.w700), elevation: 0,
-          title: const Text('صرف الفنيين'),
-          actions: [
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        DispensingFormPage(companyId: widget.companyId),
-                  ),
-                ).then((_) => _loadData());
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('صرف جديد'),
-            ),
-            const SizedBox(width: 12),
-          ],
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'سندات الصرف'),
-              Tab(text: 'عُهد الفنيين'),
-            ],
+    return SdPage(
+      scrollable: false,
+      appBar: SdAppBar(
+        title: 'صرف الفنيين',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.add_rounded,
+            label: 'صرف جديد',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DispensingFormPage(companyId: widget.companyId),
+                ),
+              ).then((_) => _loadData());
+            },
           ),
-        ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildDispensingTab(),
-            _buildHoldingsTab(),
-          ],
-        ),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTabBar(),
+          const SizedBox(height: SdSpace.sm),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildDispensingTab(),
+                _buildHoldingsTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        labelColor: SdColors.primary,
+        unselectedLabelColor: SdColors.muted,
+        indicatorColor: SdColors.primary,
+        labelStyle: SdText.label,
+        unselectedLabelStyle: SdText.label.copyWith(fontWeight: FontWeight.w600),
+        tabs: const [
+          Tab(text: 'سندات الصرف'),
+          Tab(text: 'عُهد الفنيين'),
+        ],
       ),
     );
   }
@@ -408,194 +417,208 @@ class _DispensingPageState extends State<DispensingPage>
     return Column(
       children: [
         _buildFilters(),
-        const Divider(height: 1),
+        const SizedBox(height: SdSpace.xs),
         Expanded(child: _buildDispensingBody()),
       ],
     );
   }
 
   Widget _buildFilters() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(
-            width: 200,
-            child: TextFormField(
-              decoration: const InputDecoration(
-                labelText: 'الفني',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                isDense: true,
-              ),
-              onChanged: (v) {
-                _technicianFilter = v;
-              },
-              onFieldSubmitted: (_) => _loadData(),
-            ),
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        SizedBox(
+          width: 200,
+          child: TextFormField(
+            decoration: _dec('الفني'),
+            onChanged: (v) {
+              _technicianFilter = v;
+            },
+            onFieldSubmitted: (_) => _loadData(),
           ),
-          SizedBox(
-            width: 160,
-            child: DropdownButtonFormField<String?>(
-              value: _statusFilter,
-              decoration: const InputDecoration(
-                labelText: 'الحالة',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                isDense: true,
-              ),
-              items: _statusMap.entries
-                  .map((e) =>
-                      DropdownMenuItem(value: e.key, child: Text(e.value)))
-                  .toList(),
-              onChanged: (v) {
-                setState(() => _statusFilter = v);
-                _loadData();
-              },
-            ),
+        ),
+        SizedBox(
+          width: 160,
+          child: DropdownButtonFormField<String?>(
+            value: _statusFilter,
+            decoration: _dec('الحالة'),
+            items: _statusMap.entries
+                .map((e) =>
+                    DropdownMenuItem(value: e.key, child: Text(e.value)))
+                .toList(),
+            onChanged: (v) {
+              setState(() => _statusFilter = v);
+              _loadData();
+            },
           ),
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.date_range, size: 18, color: SdColors.primary),
+          label: Text(
+              _dateFrom != null ? 'من: ${_formatDate(_dateFrom!)}' : 'من تاريخ'),
+          onPressed: () => _pickDate(true),
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.date_range, size: 18, color: SdColors.primary),
+          label: Text(
+              _dateTo != null ? 'إلى: ${_formatDate(_dateTo!)}' : 'إلى تاريخ'),
+          onPressed: () => _pickDate(false),
+        ),
+        if (_dateFrom != null ||
+            _dateTo != null ||
+            _statusFilter != null ||
+            _technicianFilter.isNotEmpty)
           ActionChip(
-            avatar: const Icon(Icons.date_range, size: 18),
-            label: Text(
-                _dateFrom != null ? 'من: ${_formatDate(_dateFrom!)}' : 'من تاريخ'),
-            onPressed: () => _pickDate(true),
+            avatar: const Icon(Icons.clear, size: 18),
+            label: const Text('مسح الفلاتر'),
+            onPressed: () {
+              setState(() {
+                _statusFilter = null;
+                _technicianFilter = '';
+                _dateFrom = null;
+                _dateTo = null;
+              });
+              _loadData();
+            },
           ),
-          ActionChip(
-            avatar: const Icon(Icons.date_range, size: 18),
-            label: Text(
-                _dateTo != null ? 'إلى: ${_formatDate(_dateTo!)}' : 'إلى تاريخ'),
-            onPressed: () => _pickDate(false),
-          ),
-          if (_dateFrom != null ||
-              _dateTo != null ||
-              _statusFilter != null ||
-              _technicianFilter.isNotEmpty)
-            ActionChip(
-              avatar: const Icon(Icons.clear, size: 18),
-              label: const Text('مسح الفلاتر'),
-              onPressed: () {
-                setState(() {
-                  _statusFilter = null;
-                  _technicianFilter = '';
-                  _dateFrom = null;
-                  _dateTo = null;
-                });
-                _loadData();
-              },
-            ),
-        ],
-      ),
+      ],
     );
   }
 
   Widget _buildDispensingBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (_error != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-            const SizedBox(height: 12),
-            Text(_error!, style: TextStyle(color: Colors.red.shade700)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _loadData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل السندات',
+          message: _error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(label: 'إعادة المحاولة', icon: Icons.refresh_rounded, kind: SdButtonKind.secondary, onPressed: _loadData),
         ),
       );
     }
     if (_dispensings.isEmpty) {
       return const Center(
-        child: Text('لا توجد سندات صرف',
-            style: TextStyle(fontSize: 16, color: Colors.grey)),
+        child: SdEmptyState(title: 'لا توجد سندات صرف', icon: Icons.inbox_rounded),
+      );
+    }
+
+    if (context.sd.isPhone) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        itemCount: _dispensings.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _buildDispensingCard(_dispensings[i]),
       );
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
-          columnSpacing: 20,
-          columns: const [
-            DataColumn(label: Text('رقم السند')),
-            DataColumn(label: Text('الفني')),
-            DataColumn(label: Text('المستودع')),
-            DataColumn(label: Text('التاريخ')),
-            DataColumn(label: Text('النوع')),
-            DataColumn(label: Text('الحالة')),
-            DataColumn(label: Text('إجراءات')),
-          ],
-          rows: _dispensings.map((d) {
-            return DataRow(cells: [
-              DataCell(Text(d.voucherNumber)),
-              DataCell(Text(d.technicianName ?? d.technicianId)),
-              DataCell(Text(d.warehouseName ?? '-')),
-              DataCell(Text(_formatDate(d.dispensingDate))),
-              DataCell(_typeChip(d.type)),
-              DataCell(_statusChip(d.status)),
-              DataCell(Row(children: _buildActions(d))),
-            ]);
-          }).toList(),
+        child: Container(
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: DataTable(
+            headingRowColor: WidgetStateProperty.all(SdColors.primary),
+            headingTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white),
+            dataTextStyle: const TextStyle(
+                fontFamily: SdText.family, fontSize: 12.5, fontWeight: FontWeight.w500, color: SdColors.ink),
+            columnSpacing: 20,
+            columns: const [
+              DataColumn(label: Text('رقم السند')),
+              DataColumn(label: Text('الفني')),
+              DataColumn(label: Text('المستودع')),
+              DataColumn(label: Text('التاريخ')),
+              DataColumn(label: Text('النوع')),
+              DataColumn(label: Text('الحالة')),
+              DataColumn(label: Text('إجراءات')),
+            ],
+            rows: [
+              for (int i = 0; i < _dispensings.length; i++) _buildDataRow(_dispensings[i], i),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  DataRow _buildDataRow(TechnicianDispensingModel d, int index) {
+    return DataRow(
+      color: WidgetStateProperty.all(index.isEven ? SdColors.surface : SdColors.surfaceAlt),
+      cells: [
+        DataCell(Text(d.voucherNumber)),
+        DataCell(Text(d.technicianName ?? d.technicianId)),
+        DataCell(Text(d.warehouseName ?? '-')),
+        DataCell(Text(_formatDate(d.dispensingDate))),
+        DataCell(_typeChip(d.type)),
+        DataCell(_statusChip(d.status)),
+        DataCell(Row(children: _buildActions(d))),
+      ],
+    );
+  }
+
+  Widget _buildDispensingCard(TechnicianDispensingModel d) {
+    return SdCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('#${d.voucherNumber}', style: SdText.label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 8),
+              _typeChip(d.type),
+              const SizedBox(width: 6),
+              _statusChip(d.status),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SdInfoRow(label: 'الفني', value: d.technicianName ?? d.technicianId),
+          SdInfoRow(label: 'المستودع', value: d.warehouseName ?? '-'),
+          SdInfoRow(label: 'التاريخ', value: _formatDate(d.dispensingDate)),
+          const Divider(color: SdColors.divider, height: 16),
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: _buildActions(d)),
+        ],
       ),
     );
   }
 
   Widget _buildHoldingsTab() {
     if (_holdingsLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: SdColors.primary));
     }
     if (_holdingsError != null) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-            const SizedBox(height: 12),
-            Text(_holdingsError!,
-                style: TextStyle(color: Colors.red.shade700)),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _loadHoldings,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'تعذّر تحميل العُهد',
+          message: _holdingsError,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(label: 'إعادة المحاولة', icon: Icons.refresh_rounded, kind: SdButtonKind.secondary, onPressed: _loadHoldings),
         ),
       );
     }
     if (_holdingsData.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('لا توجد عُهد حالية',
-                style: TextStyle(fontSize: 16, color: Colors.grey)),
-            const SizedBox(height: 12),
-            FilledButton.tonalIcon(
-              onPressed: _loadHoldings,
-              icon: const Icon(Icons.refresh),
-              label: const Text('تحديث'),
-            ),
-          ],
+        child: SdEmptyState(
+          title: 'لا توجد عُهد حالية',
+          icon: Icons.inventory_2_outlined,
+          action: SdButton(label: 'تحديث', icon: Icons.refresh_rounded, kind: SdButtonKind.secondary, onPressed: _loadHoldings),
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
       itemCount: _holdingsData.length,
       itemBuilder: (context, index) {
         final techData = _holdingsData[index];
@@ -612,96 +635,107 @@ class _DispensingPageState extends State<DispensingPage>
           totalRemaining += (qty - ret);
         }
 
-        return Card(
+        final hasRemaining = totalRemaining > 0;
+        final tone = hasRemaining ? SdStatus.warning.tone : SdStatus.success.tone;
+
+        return Container(
           margin: const EdgeInsets.only(bottom: 12),
-          child: ExpansionTile(
-            leading: CircleAvatar(
-              backgroundColor: totalRemaining > 0 ? Colors.orange.shade100 : Colors.green.shade100,
-              child: Icon(Icons.person, color: totalRemaining > 0 ? Colors.orange.shade700 : Colors.green.shade700),
-            ),
-            title: Text(techName,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${items.length} مادة  —  المتبقي بحوزته: $totalRemaining',
-                style: TextStyle(color: totalRemaining > 0 ? Colors.orange.shade800 : Colors.green.shade800)),
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Table(
-                  border: TableBorder.all(color: Colors.grey.shade300),
-                  columnWidths: const {
-                    0: FlexColumnWidth(3),
-                    1: FlexColumnWidth(1),
-                    2: FlexColumnWidth(1),
-                    3: FlexColumnWidth(1),
-                  },
-                  children: [
-                    TableRow(
-                      decoration:
-                          BoxDecoration(color: Colors.grey.shade100),
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Text('المادة',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Text('المصروف',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Text('المستخدم/المُرجع',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Text('المتبقي',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange)),
-                        ),
-                      ],
-                    ),
-                    ...items.map((item) {
-                      final m = item as Map<String, dynamic>;
-                      final qty = (m['Quantity'] ?? m['quantity'] ?? 0) as int;
-                      final ret = (m['ReturnedQuantity'] ?? m['returnedQuantity'] ?? 0) as int;
-                      final remaining = qty - ret;
-                      return TableRow(
-                        decoration: remaining > 0 ? BoxDecoration(color: Colors.orange.shade50) : null,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text((m['ItemName'] ?? m['itemName']) as String? ?? '-'),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text('$qty'),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text('$ret'),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text(
-                              '$remaining',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: remaining > 0 ? Colors.deepOrange : Colors.green.shade700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
+          decoration: BoxDecoration(
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.lg),
+            boxShadow: SdDepth.raised(),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              leading: CircleAvatar(
+                backgroundColor: tone.tint,
+                child: Icon(Icons.person, color: tone.base),
               ),
-            ],
+              title: Text(techName, style: SdText.label),
+              subtitle: Text('${items.length} مادة  —  المتبقي بحوزته: $totalRemaining',
+                  style: SdText.bodySm.copyWith(color: tone.text)),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Table(
+                    border: TableBorder.all(color: SdColors.divider),
+                    columnWidths: const {
+                      0: FlexColumnWidth(3),
+                      1: FlexColumnWidth(1),
+                      2: FlexColumnWidth(1),
+                      3: FlexColumnWidth(1),
+                    },
+                    children: [
+                      const TableRow(
+                        decoration: BoxDecoration(color: SdColors.primary),
+                        children: [
+                          _HoldingHeaderCell('المادة'),
+                          _HoldingHeaderCell('المصروف'),
+                          _HoldingHeaderCell('المستخدم/المُرجع'),
+                          _HoldingHeaderCell('المتبقي'),
+                        ],
+                      ),
+                      for (int i = 0; i < items.length; i++)
+                        _buildHoldingRow(items[i] as Map<String, dynamic>, i),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  TableRow _buildHoldingRow(Map<String, dynamic> m, int index) {
+    final qty = (m['Quantity'] ?? m['quantity'] ?? 0) as int;
+    final ret = (m['ReturnedQuantity'] ?? m['returnedQuantity'] ?? 0) as int;
+    final remaining = qty - ret;
+    return TableRow(
+      decoration: BoxDecoration(
+        color: remaining > 0
+            ? SdColors.warningTint
+            : (index.isEven ? SdColors.surface : SdColors.surfaceAlt),
+      ),
+      children: [
+        _holdingCell((m['ItemName'] ?? m['itemName']) as String? ?? '-'),
+        _holdingCell('$qty'),
+        _holdingCell('$ret'),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            '$remaining',
+            style: TextStyle(
+              fontFamily: SdText.family,
+              fontWeight: FontWeight.w800,
+              color: remaining > 0 ? SdColors.warningText : SdColors.success,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _holdingCell(String text) => Padding(
+        padding: const EdgeInsets.all(8),
+        child: Text(text, style: const TextStyle(fontFamily: SdText.family, fontSize: 12.5, color: SdColors.ink)),
+      );
+}
+
+class _HoldingHeaderCell extends StatelessWidget {
+  const _HoldingHeaderCell(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Text(text,
+          style: const TextStyle(
+              fontFamily: SdText.family, fontWeight: FontWeight.w800, fontSize: 12.5, color: Colors.white)),
     );
   }
 }

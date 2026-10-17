@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../utils/responsive_helper.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
@@ -89,18 +90,16 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(_citizen?.fullName ?? 'تفاصيل المواطن'),
-          backgroundColor: Colors.teal,
-          foregroundColor: Colors.white,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: _citizen?.fullName ?? 'تفاصيل المواطن',
           actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
               onPressed: _loadData,
-              tooltip: 'تحديث',
             ),
             PopupMenuButton<String>(
               onSelected: _onMenuAction,
@@ -130,11 +129,9 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
               ],
             ),
           ],
-          bottom: TabBar(
+          bottom: SdTabBar(
             controller: _tabController,
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
+            height: 72,
             tabs: const [
               Tab(icon: Icon(Icons.person), text: 'المعلومات'),
               Tab(icon: Icon(Icons.list_alt), text: 'الطلبات'),
@@ -143,17 +140,28 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
             ],
           ),
         ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Colors.teal))
-            : TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildInfoTab(),
-                  _buildRequestsTab(),
-                  _buildSubscriptionsTab(),
-                  _buildPaymentsTab(),
-                ],
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: SdColors.accent))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildInfoTab(),
+                          _buildRequestsTab(),
+                          _buildSubscriptionsTab(),
+                          _buildPaymentsTab(),
+                        ],
+                      ),
               ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -191,8 +199,9 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    _citizen?.isBanned == true ? Colors.green : Colors.red,
+                backgroundColor: _citizen?.isBanned == true
+                    ? SdColors.success
+                    : SdColors.danger,
               ),
               child: Text(_citizen?.isBanned == true ? 'إلغاء الحظر' : 'حظر'),
             ),
@@ -218,17 +227,16 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
       child: Column(
         children: [
           // بطاقة المعلومات الأساسية
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(isMobile ? 12 : 20),
-              child: Column(
+          SdCard(
+            padding: EdgeInsets.all(isMobile ? 12 : 20),
+            child: Column(
                 children: [
                   // الصورة والاسم
                   Row(
                     children: [
                       CircleAvatar(
                         radius: isMobile ? 28 : 40,
-                        backgroundColor: Colors.teal.shade100,
+                        backgroundColor: SdColors.accentTint,
                         backgroundImage: _citizen!.profileImageUrl != null
                             ? NetworkImage(_citizen!.profileImageUrl!)
                             : null,
@@ -237,10 +245,10 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                                 _citizen!.fullName.isNotEmpty
                                     ? _citizen!.fullName[0].toUpperCase()
                                     : '?',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.teal.shade700,
+                                  color: SdColors.accent,
                                 ),
                               )
                             : null,
@@ -268,19 +276,19 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.red.shade100,
+                                      color: SdColors.dangerTint,
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: const Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(Icons.block,
-                                            size: 16, color: Colors.red),
+                                            size: 16, color: SdColors.danger),
                                         SizedBox(width: 4),
                                         Text(
                                           'محظور',
                                           style: TextStyle(
-                                            color: Colors.red,
+                                            color: SdColors.danger,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -328,25 +336,24 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                         label: 'الطلبات',
                         value: '${_citizen!.totalRequests}',
                         icon: Icons.list_alt,
-                        color: Colors.blue,
+                        color: SdColors.info,
                       ),
                       _buildStatItem(
                         label: 'المدفوعات',
                         value: '${_citizen!.totalPaid.toStringAsFixed(0)} د.ع',
                         icon: Icons.payments,
-                        color: Colors.green,
+                        color: SdColors.success,
                       ),
                       _buildStatItem(
                         label: 'نقاط الولاء',
                         value: '${_citizen!.loyaltyPoints}',
                         icon: Icons.stars,
-                        color: Colors.amber,
+                        color: SdColors.warning,
                       ),
                     ],
                   ),
                 ],
               ),
-            ),
           ),
 
           const SizedBox(height: 16),
@@ -355,15 +362,13 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
           if (_citizen!.fullAddress != null ||
               _citizen!.city != null ||
               _citizen!.district != null)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+            SdCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.location_on, color: Colors.teal),
+                        Icon(Icons.location_on, color: SdColors.accent),
                         SizedBox(width: 8),
                         Text(
                           'العنوان',
@@ -397,21 +402,18 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                       ),
                   ],
                 ),
-              ),
             ),
 
           const SizedBox(height: 16),
 
           // معلومات إضافية
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+          SdCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.teal),
+                      Icon(Icons.info_outline, color: SdColors.accent),
                       SizedBox(width: 8),
                       Text(
                         'معلومات إضافية',
@@ -442,7 +444,6 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                   ),
                 ],
               ),
-            ),
           ),
         ],
       ),
@@ -452,13 +453,9 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
   Widget _buildRequestsTab() {
     if (_requests.isEmpty) {
       return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.list_alt_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('لا توجد طلبات', style: TextStyle(color: Colors.grey)),
-          ],
+        child: SdEmptyState(
+          title: 'لا توجد طلبات',
+          icon: Icons.list_alt_outlined,
         ),
       );
     }
@@ -468,9 +465,11 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
       itemCount: _requests.length,
       itemBuilder: (context, index) {
         final request = _requests[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: SdCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
             leading: Container(
               width: 48,
               height: 48,
@@ -497,7 +496,7 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                   _formatDate(request.requestedAt),
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: SdColors.muted,
                   ),
                 ),
               ],
@@ -507,6 +506,7 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
               // TODO: فتح تفاصيل الطلب
             },
           ),
+          ),
         );
       },
     );
@@ -515,13 +515,9 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
   Widget _buildSubscriptionsTab() {
     if (_subscriptions.isEmpty) {
       return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.card_membership_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('لا توجد اشتراكات', style: TextStyle(color: Colors.grey)),
-          ],
+        child: SdEmptyState(
+          title: 'لا توجد اشتراكات',
+          icon: Icons.card_membership_outlined,
         ),
       );
     }
@@ -532,14 +528,16 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
       itemBuilder: (context, index) {
         final sub = _subscriptions[index];
         final color = sub.isExpired
-            ? Colors.red
+            ? SdColors.danger
             : sub.isExpiringSoon
-                ? Colors.orange
-                : Colors.green;
+                ? SdColors.warning
+                : SdColors.success;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: SdCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
             leading: Container(
               width: 48,
               height: 48,
@@ -585,6 +583,7 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                   )
                 : null,
           ),
+          ),
         );
       },
     );
@@ -593,13 +592,9 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
   Widget _buildPaymentsTab() {
     if (_payments.isEmpty) {
       return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.payments_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('لا توجد مدفوعات', style: TextStyle(color: Colors.grey)),
-          ],
+        child: SdEmptyState(
+          title: 'لا توجد مدفوعات',
+          icon: Icons.payments_outlined,
         ),
       );
     }
@@ -610,14 +605,16 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
       itemBuilder: (context, index) {
         final payment = _payments[index];
         final color = payment.status == 'success'
-            ? Colors.green
+            ? SdColors.success
             : payment.status == 'pending'
-                ? Colors.orange
-                : Colors.red;
+                ? SdColors.warning
+                : SdColors.danger;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: SdCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
             leading: Container(
               width: 48,
               height: 48,
@@ -649,7 +646,7 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
                   _formatDate(payment.createdAt),
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: SdColors.muted,
                   ),
                 ),
               ],
@@ -673,6 +670,7 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
               ),
             ),
           ),
+          ),
         );
       },
     );
@@ -687,17 +685,17 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
   }) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.grey),
+        Icon(icon, size: 16, color: SdColors.faint),
         const SizedBox(width: 8),
         Expanded(
           child: Row(
             children: [
               Text(value),
               if (verified)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
+                const Padding(
+                  padding: EdgeInsets.only(right: 4),
                   child: Icon(Icons.verified,
-                      size: 16, color: Colors.green.shade600),
+                      size: 16, color: SdColors.success),
                 ),
             ],
           ),
@@ -734,7 +732,7 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey.shade600,
+            color: SdColors.muted,
           ),
         ),
       ],
@@ -751,7 +749,7 @@ class _CitizenDetailsPageState extends State<CitizenDetailsPage>
             width: 120,
             child: Text(
               '$label:',
-              style: TextStyle(color: Colors.grey.shade600),
+              style: const TextStyle(color: SdColors.muted),
             ),
           ),
           Expanded(

@@ -6,7 +6,7 @@ library;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import '../utils/responsive_helper.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -72,10 +72,10 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
   ];
 
   static const List<Map<String, dynamic>> _statusTypes = [
-    {'value': 0, 'label': 'بانتظار الموافقة', 'color': Colors.orange},
-    {'value': 1, 'label': 'موافق عليها', 'color': Colors.green},
-    {'value': 2, 'label': 'مرفوضة', 'color': Colors.red},
-    {'value': 3, 'label': 'ملغاة', 'color': Colors.grey},
+    {'value': 0, 'label': 'بانتظار الموافقة', 'color': SdColors.warning},
+    {'value': 1, 'label': 'موافق عليها', 'color': SdColors.success},
+    {'value': 2, 'label': 'مرفوضة', 'color': SdColors.danger},
+    {'value': 3, 'label': 'ملغاة', 'color': SdColors.muted},
   ];
 
   @override
@@ -154,7 +154,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
     final v = val is int ? val : int.tryParse('$val') ?? -1;
     if (v >= 0 && v < _leaveTypes.length)
       return _leaveTypes[v]['color'] as Color;
-    return Colors.grey;
+    return SdColors.muted;
   }
 
   IconData _leaveTypeIcon(dynamic val) {
@@ -168,7 +168,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
     final v = val is int ? val : int.tryParse('$val') ?? -1;
     if (v >= 0 && v < _statusTypes.length)
       return _statusTypes[v]['color'] as Color;
-    return Colors.grey;
+    return SdColors.muted;
   }
 
   String _statusName(dynamic val) {
@@ -236,7 +236,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
                         builder: (context, child) => Theme(
                           data: Theme.of(context).copyWith(
                             colorScheme:
-                                ColorScheme.light(primary: Colors.blue[700]!),
+                                ColorScheme.light(primary: SdColors.primary),
                           ),
                           child: child!,
                         ),
@@ -257,7 +257,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
                             : 'اضغط لاختيار التاريخ',
                         style: TextStyle(
                           color:
-                              dateRange != null ? Colors.black87 : Colors.grey,
+                              dateRange != null ? SdColors.ink : SdColors.faint,
                         ),
                       ),
                     ),
@@ -268,19 +268,19 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.blue[50],
+                        color: SdColors.infoTint,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.timer, size: 18, color: Colors.blue[700]),
+                          Icon(Icons.timer, size: 18, color: SdColors.info),
                           const SizedBox(width: 6),
                           Text(
                             '${dateRange!.end.difference(dateRange!.start).inDays + 1} أيام',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
+                              color: SdColors.info,
                             ),
                           ),
                         ],
@@ -334,14 +334,14 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
       if (mounted) {
         final msg = res['message'] ?? res['Message'] ?? 'تم التقديم';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$msg'), backgroundColor: Colors.green),
+          SnackBar(content: Text('$msg'), backgroundColor: SdColors.success),
         );
         _loadData();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -387,7 +387,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: approve ? Colors.green : Colors.red,
+              backgroundColor: approve ? SdColors.success : SdColors.danger,
             ),
             child: Text(approve ? 'موافقة' : 'رفض'),
           ),
@@ -413,7 +413,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(approve ? 'تمت الموافقة' : 'تم الرفض'),
-            backgroundColor: approve ? Colors.green : Colors.red,
+            backgroundColor: approve ? SdColors.success : SdColors.danger,
           ),
         );
         _loadData();
@@ -429,52 +429,53 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
 
   @override
   Widget build(BuildContext context) {
-    final r = context.responsive;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('إدارة الإجازات',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: r.appBarTitleSize)),
-          centerTitle: true,
-          backgroundColor: Colors.teal[700],
-          foregroundColor: Colors.white,
-          elevation: 0,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'تحديث',
-              onPressed: _loadData,
-            ),
-          ],
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            tabs: const [
-              Tab(icon: Icon(Icons.list_alt), text: 'الطلبات'),
-              Tab(icon: Icon(Icons.account_balance_wallet), text: 'الأرصدة'),
-              Tab(icon: Icon(Icons.pie_chart), text: 'الإحصائيات'),
-            ],
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: 'إدارة الإجازات',
+        actions: [
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
+            onPressed: _loadData,
           ),
+        ],
+        bottom: SdTabBar(
+          controller: _tabController,
+          height: 72,
+          tabs: const [
+            Tab(icon: Icon(Icons.list_alt), text: 'الطلبات'),
+            Tab(icon: Icon(Icons.account_balance_wallet), text: 'الأرصدة'),
+            Tab(icon: Icon(Icons.pie_chart), text: 'الإحصائيات'),
+          ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _showNewRequestDialog,
-          icon: const Icon(Icons.add),
-          label: const Text('طلب إجازة'),
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildRequestsTab(),
-                  _buildBalancesTab(),
-                  _buildSummaryTab(),
-                ],
-              ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showNewRequestDialog,
+        backgroundColor: SdColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('طلب إجازة',
+            style: TextStyle(
+                fontFamily: SdText.family, fontWeight: FontWeight.w800)),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _loading
+                ? const Center(
+                    child: CircularProgressIndicator(color: SdColors.primary))
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildRequestsTab(),
+                      _buildBalancesTab(),
+                      _buildSummaryTab(),
+                    ],
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -484,16 +485,9 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
   // ============================================================
   Widget _buildRequestsTab() {
     if (_requests.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.event_busy, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text('لا توجد طلبات إجازة',
-                style: TextStyle(fontSize: 18, color: Colors.grey[600])),
-          ],
-        ),
+      return const SdEmptyState(
+        icon: Icons.event_busy,
+        title: 'لا توجد طلبات إجازة',
       );
     }
 
@@ -501,8 +495,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
       children: [
         Padding(
           padding: const EdgeInsets.all(12),
-          child: Text('إجمالي: $_totalRequests طلب',
-              style: TextStyle(color: Colors.grey[600])),
+          child: Text('إجمالي: $_totalRequests طلب', style: SdText.bodySm),
         ),
         Expanded(
           child: ListView.builder(
@@ -527,11 +520,9 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
     final reviewedBy = req['reviewedByUserName'] ?? req['ReviewedByUserName'];
     final isPending = statusVal == 0;
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SdCard(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -550,11 +541,9 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(userName,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(userName, style: SdText.titleSm.copyWith(fontSize: 15)),
                       Text(_leaveTypeName(typeVal),
-                          style: TextStyle(
+                          style: SdText.bodySm.copyWith(
                               color: _leaveTypeColor(typeVal), fontSize: 13)),
                     ],
                   ),
@@ -568,16 +557,15 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
                   ),
                   child: Text(
                     _statusName(statusVal),
-                    style: TextStyle(
+                    style: SdText.caption.copyWith(
                       color: _statusColor(statusVal),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
               ],
             ),
-            const Divider(height: 20),
+            const Divider(height: 20, color: SdColors.divider),
 
             // Details
             Wrap(
@@ -594,12 +582,11 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.note, size: 16, color: Colors.grey[500]),
+                  const Icon(Icons.note, size: 16, color: SdColors.faint),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text('$reason',
-                        style:
-                            TextStyle(color: Colors.grey[700], fontSize: 13)),
+                        style: SdText.bodySm.copyWith(fontSize: 13)),
                   ),
                 ],
               ),
@@ -610,20 +597,18 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
+                  color: SdColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(SdRadius.xs),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.comment, size: 16, color: Colors.grey[600]),
+                    const Icon(Icons.comment, size: 16, color: SdColors.faint),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         '${reviewedBy ?? 'المدير'}: $reviewNotes',
-                        style: TextStyle(
-                            color: Colors.grey[700],
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic),
+                        style: SdText.bodySm.copyWith(
+                            fontSize: 12.5, fontStyle: FontStyle.italic),
                       ),
                     ),
                   ],
@@ -637,22 +622,20 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  OutlinedButton.icon(
+                  SdButton(
+                    label: 'رفض',
+                    icon: Icons.close,
+                    kind: SdButtonKind.danger,
+                    height: 44,
                     onPressed: () => _reviewRequest(req, false),
-                    icon: const Icon(Icons.close, size: 18),
-                    label: const Text('رفض'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                    ),
                   ),
                   const SizedBox(width: 8),
-                  FilledButton.icon(
+                  SdButton(
+                    label: 'موافقة',
+                    icon: Icons.check,
+                    kind: SdButtonKind.accent,
+                    height: 44,
                     onPressed: () => _reviewRequest(req, true),
-                    icon: const Icon(Icons.check, size: 18),
-                    label: const Text('موافقة'),
-                    style:
-                        FilledButton.styleFrom(backgroundColor: Colors.green),
                   ),
                 ],
               ),
@@ -669,20 +652,10 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
   Widget _buildBalancesTab() {
     final balanceList = _balances?['balances'] ?? _balances?['Balances'];
     if (balanceList == null || (balanceList is List && balanceList.isEmpty)) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.account_balance_wallet,
-                size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text('لا يوجد رصيد إجازات محدد',
-                style: TextStyle(fontSize: 18, color: Colors.grey[600])),
-            const SizedBox(height: 8),
-            Text('يتم تعيين الرصيد من قبل المدير',
-                style: TextStyle(color: Colors.grey[500])),
-          ],
-        ),
+      return const SdEmptyState(
+        icon: Icons.account_balance_wallet,
+        title: 'لا يوجد رصيد إجازات محدد',
+        message: 'يتم تعيين الرصيد من قبل المدير',
       );
     }
 
@@ -699,12 +672,9 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
             b['remainingDays'] ?? b['RemainingDays'] ?? (total - used);
         final progress = total > 0 ? used / total : 0.0;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: SdCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -713,9 +683,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
                     Icon(_leaveTypeIcon(typeVal),
                         color: _leaveTypeColor(typeVal)),
                     const SizedBox(width: 8),
-                    Text(_leaveTypeName(typeVal),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(_leaveTypeName(typeVal), style: SdText.titleSm),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -724,9 +692,11 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
                   child: LinearProgressIndicator(
                     value: progress.clamp(0.0, 1.0).toDouble(),
                     minHeight: 10,
-                    backgroundColor: Colors.grey[200],
+                    backgroundColor: SdColors.divider,
                     valueColor: AlwaysStoppedAnimation(
-                      remaining > 0 ? _leaveTypeColor(typeVal) : Colors.red,
+                      remaining > 0
+                          ? _leaveTypeColor(typeVal)
+                          : SdColors.danger,
                     ),
                   ),
                 ),
@@ -734,15 +704,17 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('مستخدم: $used', style: const TextStyle(fontSize: 13)),
+                    Text('مستخدم: $used',
+                        style: SdText.bodySm.copyWith(fontSize: 13)),
                     Text('متبقي: $remaining',
-                        style: TextStyle(
+                        style: SdText.label.copyWith(
                           fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: remaining > 0 ? Colors.green : Colors.red,
+                          color: remaining > 0
+                              ? SdColors.success
+                              : SdColors.danger,
                         )),
                     Text('إجمالي: $total',
-                        style: const TextStyle(fontSize: 13)),
+                        style: SdText.bodySm.copyWith(fontSize: 13)),
                   ],
                 ),
               ],
@@ -777,48 +749,43 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
           Row(
             children: [
               Expanded(
-                  child: _statCard('إجمالي الطلبات', '$total', Colors.blue)),
+                  child: _statCard('إجمالي الطلبات', '$total', SdColors.info)),
               const SizedBox(width: 8),
-              Expanded(child: _statCard('بانتظار', '$pending', Colors.orange)),
+              Expanded(
+                  child: _statCard('بانتظار', '$pending', SdColors.warning)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
-                  child: _statCard('موافق عليها', '$approved', Colors.green)),
+                  child:
+                      _statCard('موافق عليها', '$approved', SdColors.success)),
               const SizedBox(width: 8),
-              Expanded(child: _statCard('مرفوضة', '$rejected', Colors.red)),
+              Expanded(child: _statCard('مرفوضة', '$rejected', SdColors.danger)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: _statCard('ملغاة', '$cancelled', Colors.grey)),
+              Expanded(child: _statCard('ملغاة', '$cancelled', SdColors.muted)),
               const SizedBox(width: 8),
               Expanded(
                   child: _statCard(
-                      'أيام إجازة (موافق)', '$totalDays', Colors.teal)),
+                      'أيام إجازة (موافق)', '$totalDays', SdColors.accent)),
             ],
           ),
           const SizedBox(height: 20),
 
           // توزيع حسب النوع
-          Card(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('توزيع الإجازات حسب النوع',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const Divider(),
-                  ..._buildTypeDistribution(),
-                ],
-              ),
+          SdCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('توزيع الإجازات حسب النوع', style: SdText.titleSm),
+                const Divider(color: SdColors.divider),
+                ..._buildTypeDistribution(),
+              ],
             ),
           ),
         ],
@@ -832,8 +799,7 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
       return [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: Text('لا توجد إجازات موافق عليها',
-              style: TextStyle(color: Colors.grey[500])),
+          child: Text('لا توجد إجازات موافق عليها', style: SdText.bodySm),
         )
       ];
     }
@@ -858,13 +824,11 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: _leaveTypeColor(typeVal).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(SdRadius.sm),
               ),
               child: Text('$count طلب · $days يوم',
-                  style: TextStyle(
-                      color: _leaveTypeColor(typeVal),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold)),
+                  style: SdText.caption
+                      .copyWith(color: _leaveTypeColor(typeVal))),
             ),
           ],
         ),
@@ -873,20 +837,14 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
   }
 
   Widget _statCard(String label, String value, Color color) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text(value,
-                style: TextStyle(
-                    fontSize: 28, fontWeight: FontWeight.bold, color: color)),
-            const SizedBox(height: 4),
-            Text(label,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-          ],
-        ),
+    return SdCard(
+      child: Column(
+        children: [
+          Text(value,
+              style: SdText.number.copyWith(fontSize: 28, color: color)),
+          const SizedBox(height: 4),
+          Text(label, style: SdText.bodySm.copyWith(fontSize: 13)),
+        ],
       ),
     );
   }
@@ -895,12 +853,10 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.grey[500]),
+        Icon(icon, size: 16, color: SdColors.faint),
         const SizedBox(width: 4),
-        Text('$label: ',
-            style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-        Text(value,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+        Text('$label: ', style: SdText.caption.copyWith(fontSize: 12)),
+        Text(value, style: SdText.label.copyWith(fontSize: 12)),
       ],
     );
   }

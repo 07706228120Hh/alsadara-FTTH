@@ -6,6 +6,7 @@ library;
 
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../widgets/notification_filter.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -41,7 +42,15 @@ class ExpiringSoonPage extends StatefulWidget {
 
 class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
   bool get _isPhone => MediaQuery.of(context).size.width < 500;
-  double _fs(double base) => _isPhone ? base * 0.85 : base;
+  double _fs(double base) {
+    final v = _isPhone ? base * 0.85 : base;
+    return v < 11.5 ? 11.5 : v; // أصغر خط مسموح 11.5 (نظام التصميم الموحّد)
+  }
+
+  /// نبرة القسم في نظام التصميم الموحّد: التجريبي = منصّات (بنفسجي)،
+  /// المنتهي قريباً = تحذير (برتقالي). لون واحد للقسم بدل ألوان متفرّقة.
+  SdTone get _tone =>
+      showTrialSubscriptions ? SdGroup.platform.tone : SdStatus.warning.tone;
 
   bool isLoading = true;
   List<dynamic> expiringSoonData = [];
@@ -925,11 +934,11 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEC4899).withValues(alpha: 0.1),
+                    color: SdColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.notifications_active_rounded,
-                      color: Color(0xFFEC4899), size: 24),
+                      color: SdColors.primary, size: 24),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -990,7 +999,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                           Text(labels[i], style: const TextStyle(fontSize: 14)),
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      activeColor: const Color(0xFFEC4899),
+                      activeColor: SdColors.primary,
                     );
                   }),
                 ],
@@ -1059,7 +1068,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                     : const Icon(Icons.send, size: 16),
                 label: Text(isSending ? 'جاري الإرسال...' : 'إرسال الآن'),
                 style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFEC4899)),
+                    backgroundColor: SdColors.primary),
               ),
             ],
           ),
@@ -1095,7 +1104,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           title: Row(
             children: [
-              const Icon(Icons.people, color: Color(0xFFEC4899)),
+              const Icon(Icons.people, color: SdColors.primary),
               const SizedBox(width: 8),
               Text('جلب $daysLabel...',
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
@@ -1132,7 +1141,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           title: Row(
             children: [
-              const Icon(Icons.people, color: Color(0xFFEC4899)),
+              const Icon(Icons.people, color: SdColors.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -1188,12 +1197,12 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                   const EdgeInsets.symmetric(horizontal: 4),
                               leading: CircleAvatar(
                                 radius: 14,
-                                backgroundColor: const Color(0xFFEC4899)
+                                backgroundColor: SdColors.primary
                                     .withValues(alpha: 0.1),
                                 child: Text('${i + 1}',
                                     style: const TextStyle(
                                         fontSize: 11,
-                                        color: Color(0xFFEC4899))),
+                                        color: SdColors.primary)),
                               ),
                               title: Text(name,
                                   style: const TextStyle(
@@ -1236,122 +1245,74 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 50,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              showTrialSubscriptions
-                  ? 'الاشتراكات التجريبية'
-                  : 'الاشتراكات المنتهية قريباً',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: _fs(16),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: showTrialSubscriptions
-            ? const Color(0xFF6366F1)
-            : const Color(0xFFEC4899),
-        elevation: 4,
+    final tone = _tone;
+    return SdPage(
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      scrollable: false,
+      appBar: SdAppBar(
+        title: showTrialSubscriptions
+            ? 'الاشتراكات التجريبية'
+            : 'الاشتراكات المنتهية قريباً',
         actions: [
           if (_hasActiveFilters())
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.clear_all_rounded,
-                      color: Colors.white, size: 22),
-                  tooltip: 'مسح كل الفلاتر وعرض الكل',
-                  onPressed: _resetFilters,
-                ),
-              ),
+            SdAppBarAction(
+              icon: Icons.clear_all_rounded,
+              label: 'مسح الفلاتر',
+              onPressed: _resetFilters,
             ),
-          // زر التصفية المتقدمة بإستايل أوضح
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.tune_rounded,
-                    color: Colors.white, size: 22),
-                tooltip: 'التصفية المتقدمة',
-                onPressed: () {
-                  setState(() {
-                    _showAdvancedFilters = !_showAdvancedFilters;
-                  });
-                },
-              ),
-            ),
+          SdAppBarAction(
+            icon: Icons.tune_rounded,
+            label: 'التصفية المتقدمة',
+            onPressed: () {
+              setState(() {
+                _showAdvancedFilters = !_showAdvancedFilters;
+              });
+            },
           ),
           if (expiringSoonData.isNotEmpty && !isExporting)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                ),
-                child: PopupMenuButton<String>(
-                  icon: const Icon(Icons.cloud_download_rounded,
-                      color: Colors.white, size: 22),
-                  tooltip: 'تصدير البيانات',
-                  onSelected: (String value) {
-                    if (value == 'excel') {
-                      _exportToExcel();
-                    } else if (value == 'clear_cache') {
-                      _clearPhoneCache();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'تم مسح ذاكرة التخزين المؤقت لأرقام الهواتف'),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  },
-                  itemBuilder: (BuildContext context) => [
-                    const PopupMenuItem<String>(
-                      value: 'excel',
-                      child: Row(
-                        children: [
-                          Icon(Icons.table_chart, color: Colors.blue, size: 20),
-                          SizedBox(width: 8),
-                          Text('تصدير إلى Excel'),
-                        ],
-                      ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.cloud_download_rounded,
+                  color: Colors.white, size: 22),
+              tooltip: 'تصدير البيانات',
+              onSelected: (String value) {
+                if (value == 'excel') {
+                  _exportToExcel();
+                } else if (value == 'clear_cache') {
+                  _clearPhoneCache();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('تم مسح ذاكرة التخزين المؤقت لأرقام الهواتف'),
+                      backgroundColor: SdColors.success,
+                      duration: Duration(seconds: 2),
                     ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem<String>(
-                      value: 'clear_cache',
-                      child: Row(
-                        children: [
-                          Icon(Icons.refresh, color: Colors.orange, size: 20),
-                          SizedBox(width: 8),
-                          Text('مسح ذاكرة أرقام الهواتف'),
-                        ],
-                      ),
-                    ),
-                  ],
+                  );
+                }
+              },
+              itemBuilder: (BuildContext context) => const [
+                PopupMenuItem<String>(
+                  value: 'excel',
+                  child: Row(
+                    children: [
+                      Icon(Icons.table_chart, color: SdColors.info, size: 20),
+                      SizedBox(width: 8),
+                      Text('تصدير إلى Excel'),
+                    ],
+                  ),
                 ),
-              ),
+                PopupMenuDivider(),
+                PopupMenuItem<String>(
+                  value: 'clear_cache',
+                  child: Row(
+                    children: [
+                      Icon(Icons.refresh, color: SdColors.warning, size: 20),
+                      SizedBox(width: 8),
+                      Text('مسح ذاكرة أرقام الهواتف'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           if (isExporting)
             const Padding(
@@ -1367,237 +1328,140 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             ),
           // زر إعدادات التذكير التلقائي (للمدير فقط)
           if (!showTrialSubscriptions && widget.isAdminFlag == true)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.notifications_active_rounded,
-                      color: Colors.white, size: 22),
-                  tooltip: 'إعدادات التذكير التلقائي',
-                  onPressed: _showAutoReminderSettings,
-                ),
-              ),
+            SdAppBarAction(
+              icon: Icons.notifications_active_rounded,
+              label: 'إعدادات التذكير التلقائي',
+              onPressed: _showAutoReminderSettings,
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.autorenew_rounded,
-                    color: Colors.white, size: 22),
-                onPressed: _fetchExpiringSoonData,
-                tooltip: 'تحديث البيانات',
-              ),
-            ),
+          SdAppBarAction(
+            icon: Icons.autorenew_rounded,
+            label: 'تحديث البيانات',
+            onPressed: _fetchExpiringSoonData,
           ),
         ],
       ),
-      body: SafeArea(
-        top: false,
-        bottom: true,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: showTrialSubscriptions
-                  ? [const Color(0xFFF0F4FF), const Color(0xFFE0E7FF)]
-                  : [const Color(0xFFFDF2F8), const Color(0xFFFCE7F3)],
+      body: Column(
+        children: [
+          if (_showAdvancedFilters) _buildAdvancedFilters(),
+          if (totalItems > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+              child: SdCard(
+                tone: tone,
+                child: Row(
+                  children: [
+                    // صندوق المجموع الكلي
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: tone.tint,
+                          borderRadius: BorderRadius.circular(SdRadius.sm),
+                          boxShadow: [
+                            BoxShadow(
+                                color: tone.tintEdge, offset: const Offset(0, 3))
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('المجموع الكلي',
+                                style: SdText.bodySm),
+                            const SizedBox(height: 6),
+                            Text('$totalItems',
+                                style: SdText.numberSm
+                                    .copyWith(color: tone.base)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // صندوق المبلغ
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: SdColors.successTint,
+                          borderRadius: BorderRadius.circular(SdRadius.sm),
+                          boxShadow: const [
+                            BoxShadow(
+                                color: SdColors.successTintEdge,
+                                offset: Offset(0, 3))
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('المبلغ', style: SdText.bodySm),
+                            const SizedBox(height: 6),
+                            Builder(
+                              builder: (_) {
+                                final amount = totalItems * 37000;
+                                final formatted =
+                                    NumberFormat('#,##0').format(amount);
+                                return Text(
+                                  formatted,
+                                  style: SdText.numberSm
+                                      .copyWith(color: SdColors.success),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+          Expanded(
+            child: _buildBody(),
           ),
-          child: Column(
-            children: [
-              if (_showAdvancedFilters) _buildAdvancedFilters(),
-              if (totalItems > 0)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                  child: Card(
-                    elevation: 6,
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(
-                            color: (showTrialSubscriptions
-                                    ? const Color(0xFF6366F1)
-                                    : const Color(0xFFEC4899))
-                                .withValues(alpha: 0.25))),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          // صندوق المجموع الكلي
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 14),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    (showTrialSubscriptions
-                                        ? const Color(0xFFEEF2FF)
-                                        : const Color(0xFFFDF2F8)),
-                                    Colors.white,
-                                  ],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: (showTrialSubscriptions
-                                          ? const Color(0xFF6366F1)
-                                          : const Color(0xFFEC4899))
-                                      .withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'المجموع الكلي',
-                                    style: TextStyle(
-                                      fontSize: _fs(14),
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    '$totalItems',
-                                    style: TextStyle(
-                                      fontSize: _fs(22),
-                                      fontWeight: FontWeight.w800,
-                                      color: showTrialSubscriptions
-                                          ? const Color(0xFF6366F1)
-                                          : const Color(0xFFEC4899),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          // صندوق المبلغ
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 14),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFFEFFAF1), Colors.white],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color: Colors.green.withValues(alpha: 0.2)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'المبلغ',
-                                    style: TextStyle(
-                                      fontSize: _fs(14),
-                                      color: Colors.grey[700],
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Builder(
-                                    builder: (_) {
-                                      final amount = totalItems * 37000;
-                                      final formatted =
-                                          NumberFormat('#,##0').format(amount);
-                                      return Text(
-                                        formatted,
-                                        style: TextStyle(
-                                          fontSize: _fs(20),
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.green,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+          if (totalItems > itemsPerPage) _buildPaginationControls(),
+          if (exportMessage.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isExporting ? tone.base : SdColors.success,
+                borderRadius: BorderRadius.circular(SdRadius.sm),
+                boxShadow: SdDepth.raised(
+                    edge: isExporting ? tone.edge : SdColors.successEdge),
+              ),
+              child: Row(
+                children: [
+                  if (isExporting)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  if (isExporting) const SizedBox(width: 12),
+                  if (!isExporting)
+                    const Icon(Icons.check_circle,
+                        color: Colors.white, size: 20),
+                  if (!isExporting) const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      exportMessage,
+                      style: const TextStyle(
+                        fontFamily: SdText.family,
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                ),
-              Expanded(
-                child: _buildBody(),
+                ],
               ),
-              if (totalItems > itemsPerPage) _buildPaginationControls(),
-              if (exportMessage.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isExporting
-                        ? (showTrialSubscriptions
-                            ? const Color(0xFF6366F1)
-                            : const Color(0xFFEC4899))
-                        : Colors.green,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      if (isExporting)
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        ),
-                      if (isExporting) const SizedBox(width: 12),
-                      if (!isExporting)
-                        const Icon(
-                          Icons.check_circle,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      if (!isExporting) const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          exportMessage,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: _fs(14),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -1609,15 +1473,9 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+        boxShadow: SdDepth.raised(),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -1632,7 +1490,9 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                     child: Text(
                       'إزالة الفلاتر',
                       style: TextStyle(
-                        color: Colors.red,
+                        fontFamily: SdText.family,
+                        color: SdColors.danger,
+                        fontWeight: FontWeight.w800,
                         fontSize: _fs(12),
                       ),
                     ),
@@ -1665,7 +1525,10 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                       onTap: _pickEndDate,
                     ),
                     const SizedBox(width: 6),
-                    ElevatedButton(
+                    SdButton(
+                      label: 'تطبيق',
+                      kind: SdButtonKind.primary,
+                      height: 40,
                       onPressed: (_customStartDate != null &&
                               _customEndDate != null)
                           ? () {
@@ -1680,22 +1543,6 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                               _applyFilters();
                             }
                           : null,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        backgroundColor:
-                            (_customStartDate != null && _customEndDate != null)
-                                ? (showTrialSubscriptions
-                                    ? const Color(0xFF6366F1)
-                                    : const Color(0xFFEC4899))
-                                : Colors.grey,
-                        foregroundColor: Colors.white,
-                        textStyle: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold),
-                        elevation: 0,
-                        minimumSize: const Size(64, 40),
-                      ),
-                      child: const Text('تطبيق'),
                     ),
                   ],
                 ],
@@ -1715,7 +1562,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: SdColors.edge),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: _isLoadingZones
@@ -1827,7 +1674,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: SdColors.edge),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: DropdownButtonHideUnderline(
@@ -1877,9 +1724,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                             })['displayValue']}',
                         style: TextStyle(fontSize: _fs(12)),
                       ),
-                      backgroundColor: showTrialSubscriptions
-                          ? const Color(0xFFE0E7FF)
-                          : const Color(0xFFFCE7F3),
+                      backgroundColor: _tone.tint,
                       deleteIcon: const Icon(Icons.close, size: 16),
                       onDeleted: () {
                         setState(() {
@@ -1894,9 +1739,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                         'الباقة: $_selectedPlanName',
                         style: TextStyle(fontSize: _fs(12)),
                       ),
-                      backgroundColor: showTrialSubscriptions
-                          ? const Color(0xFFE0E7FF)
-                          : const Color(0xFFFCE7F3),
+                      backgroundColor: _tone.tint,
                       deleteIcon: const Icon(Icons.close, size: 16),
                       onDeleted: () {
                         setState(() {
@@ -1921,9 +1764,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                         : 'فلتر تاريخ',
                         style: TextStyle(fontSize: _fs(12)),
                       ),
-                      backgroundColor: showTrialSubscriptions
-                          ? const Color(0xFFE0E7FF)
-                          : const Color(0xFFFCE7F3),
+                      backgroundColor: _tone.tint,
                       deleteIcon: const Icon(Icons.close, size: 16),
                       onDeleted: () {
                         setState(() {
@@ -1968,42 +1809,28 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: selected
-                ? (showTrialSubscriptions
-                    ? const Color(0xFF6366F1)
-                    : const Color(0xFFEC4899))
-                : Colors.grey.shade200,
+            color: selected ? _tone.base : SdColors.groundAlt,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? (showTrialSubscriptions
-                          ? const Color(0xFF6366F1)
-                          : const Color(0xFFEC4899))
-                      .withValues(alpha: 0.6)
-                  : Colors.grey.shade300,
-            ),
+            boxShadow: [
+              BoxShadow(
+                  color: selected ? _tone.edge : SdColors.edge,
+                  offset: const Offset(0, 2))
+            ],
           ),
           child: Row(
             children: [
               if (type == 'custom')
                 Icon(Icons.calendar_month,
                     size: _fs(16),
-                    color: selected
-                        ? Colors.white
-                        : (showTrialSubscriptions
-                            ? const Color(0xFF6366F1)
-                            : const Color(0xFFEC4899))),
+                    color: selected ? Colors.white : _tone.base),
               if (type == 'custom') const SizedBox(width: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: selected
-                      ? Colors.white
-                      : (showTrialSubscriptions
-                          ? const Color(0xFF6366F1)
-                          : const Color(0xFFEC4899)),
+                  fontFamily: SdText.family,
+                  color: selected ? Colors.white : _tone.text,
                   fontSize: _fs(12),
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -2070,19 +1897,22 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.blueGrey[50],
+          color: SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.blueGrey.shade200),
+          border: Border.all(color: SdColors.edge),
         ),
         child: Row(
           children: [
-            Icon(Icons.date_range, size: _fs(16)),
+            Icon(Icons.date_range, size: _fs(16), color: SdColors.muted),
             const SizedBox(width: 4),
             Text(
               date == null
                   ? label
                   : '$label: ${DateFormat('MM/dd').format(date)}',
-              style: TextStyle(fontSize: _fs(12), fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: _fs(12),
+                  fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -2097,29 +1927,18 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(showTrialSubscriptions
-                  ? const Color(0xFF6366F1)
-                  : const Color(0xFFEC4899)),
+              valueColor: AlwaysStoppedAnimation<Color>(_tone.base),
             ),
             const SizedBox(height: 16),
             Text(
               showTrialSubscriptions
                   ? 'جاري تحميل الاشتراكات التجريبية وأرقام الهواتف...'
                   : 'جاري تحميل البيانات وأرقام الهواتف...',
-              style: TextStyle(
-                fontSize: _fs(16),
-                fontWeight: FontWeight.w500,
-                color: Colors.grey,
-              ),
+              textAlign: TextAlign.center,
+              style: SdText.label.copyWith(color: SdColors.muted),
             ),
             const SizedBox(height: 8),
-            Text(
-              'التحميل بشكل متوازي لتسريع العملية',
-              style: TextStyle(
-                fontSize: _fs(12),
-                color: Colors.grey[600],
-              ),
-            ),
+            Text('التحميل بشكل متوازي لتسريع العملية', style: SdText.caption),
           ],
         ),
       );
@@ -2127,86 +1946,32 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
 
     if (errorMessage.isNotEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'حدث خطأ',
-              style: TextStyle(
-                fontSize: _fs(20),
-                fontWeight: FontWeight.bold,
-                color: Colors.red[700],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: _isPhone ? 16 : 32),
-              child: Text(
-                errorMessage,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: _fs(16),
-                  color: Colors.grey[600],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _fetchExpiringSoonData,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFEC4899),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ],
+        child: SdEmptyState(
+          icon: Icons.error_outline,
+          status: SdStatus.danger,
+          title: 'حدث خطأ',
+          message: errorMessage,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh,
+            kind: SdButtonKind.primary,
+            onPressed: _fetchExpiringSoonData,
+          ),
         ),
       );
     }
 
     if (expiringSoonData.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.check_circle_outline,
-              size: 64,
-              color: Colors.green[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              showTrialSubscriptions
-                  ? 'لا توجد اشتراكات تجريبية'
-                  : 'لا توجد اشتراكات تنتهي خلال 3 أيام',
-              style: TextStyle(
-                fontSize: _fs(20),
-                fontWeight: FontWeight.bold,
-                color: Colors.green[700],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              showTrialSubscriptions
-                  ? 'جميع الاشتراكات مفعلة بالكامل'
-                  : 'جميع الاشتراكات النشطة في حالة جيدة',
-              style: TextStyle(
-                fontSize: _fs(16),
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
+        child: SdEmptyState(
+          icon: Icons.check_circle_outline,
+          status: SdStatus.success,
+          title: showTrialSubscriptions
+              ? 'لا توجد اشتراكات تجريبية'
+              : 'لا توجد اشتراكات تنتهي خلال 3 أيام',
+          message: showTrialSubscriptions
+              ? 'جميع الاشتراكات مفعلة بالكامل'
+              : 'جميع الاشتراكات النشطة في حالة جيدة',
         ),
       );
     }
@@ -2280,55 +2045,32 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
     // حالة الجلسة لتلوين خلفية تفاصيل البطاقة
     final bool isOnline = item['hasActiveSession'] == true;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 3,
-      shadowColor: showTrialSubscriptions
-          ? const Color(0xFF6366F1).withValues(alpha: 0.15)
-          : const Color(0xFFEC4899).withValues(alpha: 0.15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: showTrialSubscriptions
-                ? [Colors.white, const Color(0xFFF0F4FF)]
-                : [Colors.white, const Color(0xFFFDF2F8)],
-          ),
-          border: Border.all(
-            color: showTrialSubscriptions
-                ? const Color(0xFF6366F1).withValues(alpha: 0.1)
-                : const Color(0xFFEC4899).withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: SdCard(
+        tone: _tone,
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
               // هيدر البطاقة
               Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: showTrialSubscriptions
-                          ? const Color(0xFF6366F1).withValues(alpha: 0.1)
-                          : const Color(0xFFEC4899).withValues(alpha: 0.1),
+                      color: _tone.tint,
                       borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                            color: _tone.tintEdge, offset: const Offset(0, 2))
+                      ],
                     ),
                     child: Icon(
                       showTrialSubscriptions
                           ? Icons.science_rounded
                           : Icons.warning_amber_rounded,
-                      color: showTrialSubscriptions
-                          ? const Color(0xFF6366F1)
-                          : const Color(0xFFEC4899),
+                      color: _tone.base,
                       size: _fs(20),
                     ),
                   ),
@@ -2340,11 +2082,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                       child: Text(
                         item['customer']?['displayValue'] ??
                             'عميل غير محدد',
-                        style: TextStyle(
-                          fontSize: _fs(14),
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF2C3E50),
-                        ),
+                        style: SdText.label.copyWith(fontSize: _fs(14)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -2357,36 +2095,23 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                       ));
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('تم النسخ'),
-                        backgroundColor: Colors.teal,
+                        backgroundColor: SdColors.accent,
                         duration: Duration(seconds: 1),
                       ));
                     },
                     borderRadius: BorderRadius.circular(6),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
-                      child: Icon(Icons.copy_rounded, size: _fs(16), color: Colors.grey[500]),
+                      child: Icon(Icons.copy_rounded,
+                          size: _fs(16), color: SdColors.faint),
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: showTrialSubscriptions
-                          ? const Color(0xFF6366F1)
-                          : const Color(0xFFEC4899),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      showTrialSubscriptions ? 'تجريبي' : daysRemaining,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                  SdStatusChip(
+                    showTrialSubscriptions ? 'تجريبي' : daysRemaining,
+                    status: showTrialSubscriptions
+                        ? SdStatus.info
+                        : (isExpired ? SdStatus.danger : SdStatus.warning),
                   ),
                 ],
               ),
@@ -2397,21 +2122,14 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   // تلوين خلفية تفاصيل البطاقة حسب حالة الجلسة
-                  color: isOnline ? Colors.green[50] : Colors.grey[100],
+                  color: isOnline ? SdColors.successTint : SdColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: showTrialSubscriptions
-                        ? const Color(0xFF6366F1).withValues(alpha: 0.1)
-                        : const Color(0xFFEC4899).withValues(alpha: 0.1),
+                    color: isOnline
+                        ? SdColors.successTintEdge
+                        : SdColors.divider,
                     width: 1,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: Builder(
                   builder: (context) {
@@ -2434,7 +2152,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                 ? daysRemaining
                                 : 'غير محدد'),
                         valueColor:
-                            isExpired ? Colors.red[700] : Colors.green[700],
+                            isExpired ? SdColors.danger : SdColors.success,
                       ),
                       _buildDetailRow('المنطقة', zoneName),
                       if (firstService.isNotEmpty)
@@ -2469,7 +2187,6 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -2560,21 +2277,15 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
     Color? labelIconColor;
     if (isPhoneNumber) {
       labelIcon = Icons.phone_rounded;
-      labelIconColor = Colors.green[600];
+      labelIconColor = SdColors.success;
     } else if (isExpiryDate) {
       labelIcon = Icons.schedule_rounded;
-      labelIconColor = showTrialSubscriptions
-          ? const Color(0xFF6366F1)
-          : const Color(0xFFEC4899);
+      labelIconColor = _tone.base;
     }
 
     // لون القيمة
-    final effectiveValueColor = valueColor ??
-        (isExpiryDate
-            ? (showTrialSubscriptions
-                ? const Color(0xFF6366F1)
-                : const Color(0xFFEC4899))
-            : const Color(0xFF2C3E50));
+    final effectiveValueColor =
+        valueColor ?? (isExpiryDate ? _tone.base : SdColors.ink);
 
     // بناء القيمة
     Widget valueWidget;
@@ -2586,7 +2297,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             SnackBar(
               content: Text('تم نسخ رقم الهاتف: $value'),
               duration: const Duration(seconds: 2),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -2595,26 +2306,26 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.green[50],
+            color: SdColors.successTint,
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.green[200]!),
+            border: Border.all(color: SdColors.successTintEdge),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Flexible(
                 child: Text(value,
-                    style: TextStyle(fontSize: _fs(13), fontWeight: FontWeight.w700, color: Colors.green[800]),
+                    style: TextStyle(fontFamily: SdText.family, fontSize: _fs(13), fontWeight: FontWeight.w800, color: SdColors.successEdge),
                     overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 4),
-              Icon(Icons.copy_rounded, size: _fs(14), color: Colors.green[600]),
+              Icon(Icons.copy_rounded, size: _fs(14), color: SdColors.success),
             ],
           ),
         ),
       );
     } else if (onTap != null) {
-      final accent = showTrialSubscriptions ? const Color(0xFF6366F1) : const Color(0xFFEC4899);
+      final accent = _tone.base;
       valueWidget = InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(6),
@@ -2631,8 +2342,9 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
               Flexible(
                 child: Text(value,
                     style: TextStyle(
-                      fontSize: _fs(13), fontWeight: FontWeight.w700,
-                      color: isLink ? (showTrialSubscriptions ? const Color(0xFF4338CA) : const Color(0xFF9D174D)) : effectiveValueColor,
+                      fontFamily: SdText.family,
+                      fontSize: _fs(13), fontWeight: FontWeight.w800,
+                      color: isLink ? (_tone.text) : effectiveValueColor,
                       decoration: isLink ? TextDecoration.underline : TextDecoration.none,
                     ),
                     overflow: TextOverflow.ellipsis),
@@ -2645,7 +2357,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       );
     } else {
       valueWidget = Text(value,
-          style: TextStyle(fontSize: _fs(13), fontWeight: FontWeight.w700, color: effectiveValueColor),
+          style: TextStyle(fontFamily: SdText.family, fontSize: _fs(13), fontWeight: FontWeight.w800, color: effectiveValueColor),
           textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
           maxLines: 2);
@@ -2655,9 +2367,9 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: SdColors.edge),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2671,7 +2383,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                 const SizedBox(width: 4),
               ],
               Text(label,
-                  style: TextStyle(fontSize: _fs(11), fontWeight: FontWeight.w600, color: Colors.grey[600])),
+                  style: TextStyle(fontFamily: SdText.family, fontSize: _fs(11.5), fontWeight: FontWeight.w700, color: SdColors.muted)),
             ],
           ),
           const SizedBox(height: 4),
@@ -2686,15 +2398,9 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: showTrialSubscriptions
-                ? const Color(0xFF6366F1).withValues(alpha: 0.2)
-                : const Color(0xFFEC4899).withValues(alpha: 0.2),
-          ),
-        ),
+      decoration: const BoxDecoration(
+        color: SdColors.surface,
+        border: Border(top: BorderSide(color: SdColors.divider)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2712,17 +2418,13 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                     onPressed: currentPage > 1 ? () => _goToPage(1) : null,
                     icon: const Icon(Icons.first_page),
                     tooltip: 'الصفحة الأولى',
-                    color: showTrialSubscriptions
-                        ? const Color(0xFF6366F1)
-                        : const Color(0xFFEC4899),
+                    color: _tone.base,
                   ),
                   IconButton(
                     onPressed: currentPage > 1 ? _goToPreviousPage : null,
                     icon: const Icon(Icons.chevron_left),
                     tooltip: 'الصفحة السابقة',
-                    color: showTrialSubscriptions
-                        ? const Color(0xFF6366F1)
-                        : const Color(0xFFEC4899),
+                    color: _tone.base,
                   ),
                 ],
               ),
@@ -2760,9 +2462,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                           vertical: 6,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: showTrialSubscriptions
-                                              ? const Color(0xFF6366F1)
-                                              : const Color(0xFFEC4899),
+                                          color: _tone.base,
                                           borderRadius:
                                               BorderRadius.circular(6),
                                         ),
@@ -2785,11 +2485,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                           ),
                                           decoration: BoxDecoration(
                                             border: Border.all(
-                                              color: showTrialSubscriptions
-                                                  ? const Color(0xFF6366F1)
-                                                      .withValues(alpha: 0.3)
-                                                  : const Color(0xFFEC4899)
-                                                      .withValues(alpha: 0.3),
+                                              color: _tone.base.withValues(alpha: 0.3),
                                             ),
                                             borderRadius:
                                                 BorderRadius.circular(6),
@@ -2797,9 +2493,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                           child: Text(
                                             '$pageNumber',
                                             style: TextStyle(
-                                              color: showTrialSubscriptions
-                                                  ? const Color(0xFF6366F1)
-                                                  : const Color(0xFFEC4899),
+                                              color: _tone.base,
                                               fontWeight: FontWeight.w500,
                                               fontSize: _fs(14),
                                             ),
@@ -2824,9 +2518,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                     onPressed: currentPage < totalPages ? _goToNextPage : null,
                     icon: const Icon(Icons.chevron_right),
                     tooltip: 'الصفحة التالية',
-                    color: showTrialSubscriptions
-                        ? const Color(0xFF6366F1)
-                        : const Color(0xFFEC4899),
+                    color: _tone.base,
                   ),
                   IconButton(
                     onPressed: currentPage < totalPages
@@ -2834,9 +2526,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                         : null,
                     icon: const Icon(Icons.last_page),
                     tooltip: 'الصفحة الأخيرة',
-                    color: showTrialSubscriptions
-                        ? const Color(0xFF6366F1)
-                        : const Color(0xFFEC4899),
+                    color: _tone.base,
                   ),
                 ],
               ),

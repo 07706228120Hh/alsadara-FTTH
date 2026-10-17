@@ -2,6 +2,7 @@
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../frontend/frontend.dart';
 import '../../services/accounting_service.dart';
 
 /// لوحة مراقبة الأموال الموحدة
@@ -54,45 +55,36 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('مراقبة الأموال',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
-        backgroundColor: Colors.indigo.shade700,
-        foregroundColor: Colors.white,
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      appBar: SdAppBar(
+        title: 'مراقبة الأموال',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
+          SdAppBarAction(
+            icon: Icons.refresh,
+            label: 'تحديث',
             onPressed: _loadData,
-            tooltip: 'تحديث',
           ),
         ],
       ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.error_outline,
-                            size: context.accR.iconXL,
-                            color: Colors.red.shade400),
-                        SizedBox(height: context.accR.spaceS),
-                        Text(_error!,
-                            style: TextStyle(color: Colors.red.shade700)),
-                        SizedBox(height: context.accR.spaceM),
-                        ElevatedButton.icon(
-                          onPressed: _loadData,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('إعادة المحاولة'),
-                        ),
-                      ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: SdEmptyState(
+                    title: _error!,
+                    icon: Icons.error_outline,
+                    status: SdStatus.danger,
+                    action: SdButton(
+                      label: 'إعادة المحاولة',
+                      icon: Icons.refresh,
+                      onPressed: _loadData,
                     ),
-                  )
-                : _buildContent(),
-      ),
+                  ),
+                )
+              : _buildContent(),
     );
   }
 
@@ -266,7 +258,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.cairo(
-                        fontSize: labelSize, color: Colors.grey.shade700)),
+                        fontSize: labelSize, color: SdColors.muted)),
               ),
             ],
           ),
@@ -335,7 +327,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
               padding: EdgeInsets.symmetric(
                   horizontal: isMobile ? 6 : 8, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: SdColors.groundAlt,
                 borderRadius: BorderRadius.circular(context.accR.cardRadius),
               ),
               child: Text('${items.length}',
@@ -350,7 +342,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
             Padding(
               padding: EdgeInsets.all(context.accR.spaceXL),
               child: Text('لا توجد حسابات فرعية',
-                  style: TextStyle(color: Colors.grey.shade500)),
+                  style: TextStyle(color: SdColors.faint)),
             )
           else
             SingleChildScrollView(
@@ -360,7 +352,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
                     minWidth: MediaQuery.of(context).size.width - 48),
                 child: DataTable(
                   border:
-                      TableBorder.all(color: Colors.grey.shade300, width: 0.5),
+                      TableBorder.all(color: SdColors.divider, width: 0.5),
                   headingRowColor:
                       WidgetStateProperty.all(color.withOpacity(0.05)),
                   dataRowMinHeight: 32,
@@ -391,7 +383,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
 
                     return DataRow(
                       color: WidgetStateProperty.resolveWith((states) {
-                        if (isNegative) return Colors.red.shade50;
+                        if (isNegative) return SdColors.dangerTint;
                         if (balance > 0) return color.withOpacity(0.03);
                         return null;
                       }),
@@ -405,7 +397,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
                           (item['Code'] ?? item['code'] ?? '').toString(),
                           style: TextStyle(
                               fontSize: context.accR.small,
-                              color: Colors.grey.shade600),
+                              color: SdColors.muted),
                         ))),
                         DataCell(Center(
                             child: Text(
@@ -432,7 +424,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
                               fontSize: context.accR.financialSmall,
                               fontWeight: FontWeight.w700,
                               color: isNegative
-                                  ? Colors.red.shade700
+                                  ? SdColors.danger
                                   : color.shade700,
                             ),
                           ),

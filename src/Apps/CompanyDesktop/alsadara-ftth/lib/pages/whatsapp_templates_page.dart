@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/whatsapp_templates_service.dart';
 
 /// صفحة إدارة قوالب الواتساب - تصميم فخم وعصري
@@ -73,7 +74,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                 ),
               ],
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             behavior: SnackBarBehavior.floating,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -90,7 +91,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                 Text('فشل حفظ القالب', style: GoogleFonts.cairo()),
               ],
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             behavior: SnackBarBehavior.floating,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -113,11 +114,11 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: SdColors.warningTint,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(Icons.restore_rounded,
-                    color: Colors.orange.shade600, size: 48),
+                    color: SdColors.warning, size: 48),
               ),
               const SizedBox(height: 24),
               Text(
@@ -125,7 +126,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                 style: GoogleFonts.cairo(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+                  color: SdColors.ink,
                 ),
               ),
               const SizedBox(height: 12),
@@ -134,7 +135,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                 textAlign: TextAlign.center,
                 style: GoogleFonts.cairo(
                   fontSize: 15,
-                  color: Colors.grey.shade600,
+                  color: SdColors.muted,
                 ),
               ),
               const SizedBox(height: 28),
@@ -157,7 +158,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(ctx, true),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange.shade600,
+                        backgroundColor: SdColors.warning,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -189,7 +190,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                 Text('تم إعادة تعيين القالب', style: GoogleFonts.cairo()),
               ],
             ),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
             behavior: SnackBarBehavior.floating,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -224,26 +225,26 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
   Color _getTemplateColor(WhatsAppTemplateType type) {
     switch (type) {
       case WhatsAppTemplateType.renewal:
-        return const Color(0xFF22C55E);
+        return const Color(0xFF2E7D32);
       case WhatsAppTemplateType.expiringSoon:
-        return const Color(0xFFF97316);
+        return const Color(0xFFEF6C00);
       case WhatsAppTemplateType.expired:
-        return const Color(0xFFEF4444);
+        return const Color(0xFFC62828);
       case WhatsAppTemplateType.notification:
-        return const Color(0xFF3B82F6);
+        return const Color(0xFF1565C0);
     }
   }
 
   List<Color> _getTemplateGradient(WhatsAppTemplateType type) {
     switch (type) {
       case WhatsAppTemplateType.renewal:
-        return [const Color(0xFF22C55E), const Color(0xFF16A34A)];
+        return [const Color(0xFF2E7D32), const Color(0xFF1B5E20)];
       case WhatsAppTemplateType.expiringSoon:
-        return [const Color(0xFFF97316), const Color(0xFFEA580C)];
+        return [const Color(0xFFEF6C00), const Color(0xFFA84300)];
       case WhatsAppTemplateType.expired:
-        return [const Color(0xFFEF4444), const Color(0xFFDC2626)];
+        return [const Color(0xFFC62828), const Color(0xFF7F0000)];
       case WhatsAppTemplateType.notification:
-        return [const Color(0xFF3B82F6), const Color(0xFF2563EB)];
+        return [const Color(0xFF1565C0), const Color(0xFF0D47A1)];
     }
   }
 
@@ -262,9 +263,9 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
+        backgroundColor: SdColors.ground,
         body: _isLoading
             ? _buildLoadingState()
             : CustomScrollView(
@@ -301,7 +302,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF7C3AED), Color(0xFF9333EA)],
+          colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
         ),
       ),
       child: Center(
@@ -311,7 +312,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const CircularProgressIndicator(
@@ -339,7 +340,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
       expandedHeight: 140,
       floating: false,
       pinned: true,
-      backgroundColor: const Color(0xFF7C3AED),
+      backgroundColor: const Color(0xFF1A237E),
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
@@ -348,8 +349,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF7C3AED),
-                Color(0xFF9333EA),
+                Color(0xFF1A237E),
+                Color(0xFF3949AB),
               ],
             ),
           ),
@@ -369,7 +370,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Icon(
@@ -396,7 +397,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                             'تخصيص رسائل التجديد والإشعارات',
                             style: GoogleFonts.cairo(
                               fontSize: 11,
-                              color: Colors.white.withOpacity(0.85),
+                              color: Colors.white.withValues(alpha: 0.85),
                             ),
                           ),
                         ],
@@ -421,9 +422,9 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
             icon: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
               child: const Icon(Icons.more_vert, color: Colors.white, size: 22),
             ),
@@ -443,7 +444,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                 value: 'reset_all',
                 child: Row(
                   children: [
-                    Icon(Icons.restore_rounded, color: Colors.red.shade600),
+                    Icon(Icons.restore_rounded, color: SdColors.danger),
                     const SizedBox(width: 12),
                     Text('إعادة تعيين الكل', style: GoogleFonts.cairo()),
                   ],
@@ -469,11 +470,11 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: SdColors.dangerTint,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(Icons.warning_rounded,
-                    color: Colors.red.shade600, size: 48),
+                    color: SdColors.danger, size: 48),
               ),
               const SizedBox(height: 24),
               Text(
@@ -481,7 +482,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                 style: GoogleFonts.cairo(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+                  color: SdColors.ink,
                 ),
               ),
               const SizedBox(height: 12),
@@ -490,7 +491,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                 textAlign: TextAlign.center,
                 style: GoogleFonts.cairo(
                   fontSize: 15,
-                  color: Colors.grey.shade600,
+                  color: SdColors.muted,
                 ),
               ),
               const SizedBox(height: 28),
@@ -513,7 +514,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(ctx, true),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.shade600,
+                        backgroundColor: SdColors.danger,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -539,7 +540,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.blue.shade400, Colors.blue.shade600],
+          colors: [SdColors.info, SdColors.infoEdge],
         ),
         borderRadius: BorderRadius.circular(14),
       ),
@@ -585,7 +586,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -616,7 +617,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                         style: GoogleFonts.cairo(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade800,
+                          color: SdColors.ink,
                         ),
                       ),
                       Text(
@@ -625,7 +626,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                             : template,
                         style: GoogleFonts.cairo(
                           fontSize: 11,
-                          color: Colors.grey.shade500,
+                          color: SdColors.faint,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -652,7 +653,7 @@ class _BackgroundPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.06)
+      ..color = Colors.white.withValues(alpha: 0.06)
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(
@@ -764,7 +765,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
             width: 45,
             height: 5,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: SdColors.divider,
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -776,7 +777,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [widget.color, widget.color.withOpacity(0.8)],
+                colors: [widget.color, widget.color.withValues(alpha: 0.8)],
               ),
             ),
             child: Row(
@@ -784,7 +785,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(widget.icon, color: Colors.white, size: 24),
@@ -807,7 +808,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                                 .templateDescriptions[widget.type] ??
                             '',
                         style: GoogleFonts.cairo(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 11,
                         ),
                       ),
@@ -818,7 +819,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                   icon: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child:
@@ -832,13 +833,13 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
 
           // التبويبات
           Container(
-            color: Colors.grey.shade100,
+            color: SdColors.surfaceAlt,
             child: TabBar(
               controller: _tabController,
               indicatorColor: widget.color,
               indicatorWeight: 3,
               labelColor: widget.color,
-              unselectedLabelColor: Colors.grey.shade600,
+              unselectedLabelColor: SdColors.muted,
               labelStyle:
                   GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
               unselectedLabelStyle: GoogleFonts.cairo(fontSize: 14),
@@ -873,7 +874,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: SdColors.faint.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, -3),
                 ),
@@ -895,7 +896,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      side: BorderSide(color: widget.color.withOpacity(0.5)),
+                      side: BorderSide(color: widget.color.withValues(alpha: 0.5)),
                       foregroundColor: widget.color,
                     ),
                   ),
@@ -954,9 +955,9 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: widget.color.withOpacity(0.05),
+            color: widget.color.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: widget.color.withOpacity(0.15)),
+            border: Border.all(color: widget.color.withValues(alpha: 0.15)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -970,7 +971,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                     style: GoogleFonts.cairo(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
-                      color: Colors.grey.shade700,
+                      color: SdColors.muted,
                     ),
                   ),
                 ],
@@ -1005,13 +1006,13 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            widget.color.withOpacity(0.15),
-                            widget.color.withOpacity(0.08)
+                            widget.color.withValues(alpha: 0.15),
+                            widget.color.withValues(alpha: 0.08)
                           ],
                         ),
                         borderRadius: BorderRadius.circular(10),
                         border:
-                            Border.all(color: widget.color.withOpacity(0.4)),
+                            Border.all(color: widget.color.withValues(alpha: 0.4)),
                       ),
                       child: Text(
                         description,
@@ -1034,9 +1035,9 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
           child: Container(
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              color: SdColors.groundAlt,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: SdColors.divider),
             ),
             child: TextField(
               controller: _editController,
@@ -1045,7 +1046,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
               textDirection: TextDirection.rtl,
               decoration: InputDecoration(
                 hintText: 'اكتب نص القالب هنا...',
-                hintStyle: GoogleFonts.cairo(color: Colors.grey.shade400),
+                hintStyle: GoogleFonts.cairo(color: SdColors.faint),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.all(16),
               ),
@@ -1077,7 +1078,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: SdColors.divider,
                     shape: BoxShape.circle,
                   ),
                   child:
@@ -1099,7 +1100,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                       Text(
                         'متصل الآن',
                         style: GoogleFonts.roboto(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 11,
                         ),
                       ),
@@ -1107,13 +1108,13 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                   ),
                 ),
                 Icon(Icons.videocam,
-                    color: Colors.white.withOpacity(0.9), size: 22),
+                    color: Colors.white.withValues(alpha: 0.9), size: 22),
                 const SizedBox(width: 16),
                 Icon(Icons.call,
-                    color: Colors.white.withOpacity(0.9), size: 20),
+                    color: Colors.white.withValues(alpha: 0.9), size: 20),
                 const SizedBox(width: 16),
                 Icon(Icons.more_vert,
-                    color: Colors.white.withOpacity(0.9), size: 22),
+                    color: Colors.white.withValues(alpha: 0.9), size: 22),
               ],
             ),
           ),
@@ -1130,13 +1131,13 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         'اليوم',
                         style: GoogleFonts.roboto(
-                          color: Colors.grey.shade600,
+                          color: SdColors.muted,
                           fontSize: 11,
                         ),
                       ),
@@ -1166,7 +1167,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
+                                color: Colors.black.withValues(alpha: 0.08),
                                 blurRadius: 3,
                                 offset: const Offset(0, 1),
                               ),
@@ -1192,7 +1193,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                                     timeStr,
                                     style: GoogleFonts.roboto(
                                       fontSize: 10,
-                                      color: Colors.grey.shade600,
+                                      color: SdColors.muted,
                                     ),
                                   ),
                                   const SizedBox(width: 4),
@@ -1227,7 +1228,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                     shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.emoji_emotions_outlined,
-                      color: Colors.grey.shade500, size: 22),
+                      color: SdColors.faint, size: 22),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1241,7 +1242,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                     child: Text(
                       'اكتب رسالة',
                       style: GoogleFonts.roboto(
-                        color: Colors.grey.shade500,
+                        color: SdColors.faint,
                         fontSize: 14,
                       ),
                     ),

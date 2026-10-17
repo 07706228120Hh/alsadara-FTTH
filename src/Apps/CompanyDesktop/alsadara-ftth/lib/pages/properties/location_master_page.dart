@@ -12,7 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/property.dart';
 import '../../permissions/permission_manager.dart';
 import '../../services/property_api_service.dart';
-import '../../theme/app_theme.dart';
+import '../../frontend/tokens/sd_colors.dart';
 import 'property_ui.dart';
 
 class LocationMasterPage extends StatefulWidget {
@@ -371,7 +371,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
             ),
             FilledButton(
               style:
-                  FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+                  FilledButton.styleFrom(backgroundColor: SdColors.danger),
               onPressed: () => Navigator.of(ctx).pop(true),
               child: Text('حذف',
                   style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
@@ -387,7 +387,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor,
+        backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -460,7 +460,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
     }
     return FloatingActionButton.extended(
       onPressed: onTap,
-      backgroundColor: AppTheme.primaryColor,
+      backgroundColor: SdColors.primary,
       icon: Icon(icon),
       label:
           Text(label, style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
@@ -494,7 +494,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
               child: const Padding(
                 padding: EdgeInsets.all(4),
                 child: Icon(Icons.arrow_forward_rounded,
-                    size: 20, color: AppTheme.primaryColor),
+                    size: 20, color: SdColors.primary),
               ),
             ),
             const SizedBox(width: 6),
@@ -538,7 +538,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
         style: GoogleFonts.cairo(
             fontWeight: active ? FontWeight.w800 : FontWeight.w600,
             fontSize: 13,
-            color: active ? AppTheme.primaryColor : Colors.grey[600]));
+            color: active ? SdColors.primary : Colors.grey[600]));
     if (onTap == null || active) return text;
     return InkWell(onTap: onTap, child: text);
   }
@@ -571,7 +571,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
             ? FilledButton.icon(
                 onPressed: _addRegion,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
+                  backgroundColor: SdColors.primary,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                 ),
@@ -603,7 +603,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
             children: [
               PropUi.gradientBadge(
                 icon: Icons.location_city_rounded,
-                colors: AppTheme.blueGradient,
+                colors: SdColors.blueGradient,
                 size: 44,
                 iconSize: 22,
               ),
@@ -628,7 +628,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                         PropBadge(
                           label: r.isActive ? 'نشط' : 'موقوف',
                           color: r.isActive
-                              ? AppTheme.successColor
+                              ? SdColors.success
                               : Colors.grey,
                           icon: r.isActive
                               ? Icons.check_circle_rounded
@@ -642,13 +642,13 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                       runSpacing: 4,
                       children: [
                         _tag('أجر الصيانة: ${_fmtFee(r.maintenanceFee)}',
-                            AppTheme.warningColor),
+                            SdColors.warning),
                         if ((r.code ?? '').isNotEmpty)
-                          _tag('رمز: ${r.code}', AppTheme.secondaryColor),
+                          _tag('رمز: ${r.code}', SdColors.primaryLight),
                         if ((r.governorate ?? '').isNotEmpty)
-                          _tag(r.governorate!, AppTheme.primaryColor),
+                          _tag(r.governorate!, SdColors.primary),
                         if ((r.city ?? '').isNotEmpty)
-                          _tag(r.city!, AppTheme.primaryColor),
+                          _tag(r.city!, SdColors.primary),
                       ],
                     ),
                   ],
@@ -691,7 +691,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                 children: [
                   PropUi.gradientBadge(
                     icon: Icons.signpost_rounded,
-                    colors: AppTheme.greenGradient,
+                    colors: SdColors.greenGradient,
                     size: 40,
                     iconSize: 20,
                   ),
@@ -716,7 +716,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                             PropBadge(
                               label: n.isActive ? 'نشط' : 'موقوف',
                               color: n.isActive
-                                  ? AppTheme.successColor
+                                  ? SdColors.success
                                   : Colors.grey,
                             ),
                           ],
@@ -724,7 +724,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                         if (n.maintenanceFee > 0) ...[
                           const SizedBox(height: 4),
                           _tag('أجر: ${_fmtFee(n.maintenanceFee)}',
-                              AppTheme.warningColor),
+                              SdColors.warning),
                         ],
                       ],
                     ),
@@ -752,7 +752,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
             visualDensity: VisualDensity.compact,
             onPressed: onEdit,
             icon: const Icon(Icons.edit_rounded,
-                size: 19, color: AppTheme.primaryColor),
+                size: 19, color: SdColors.primary),
           ),
         if (PermissionManager.instance.canDelete('property_registry'))
           IconButton(
@@ -760,7 +760,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
             visualDensity: VisualDensity.compact,
             onPressed: onDelete,
             icon: const Icon(Icons.delete_outline_rounded,
-                size: 19, color: AppTheme.errorColor),
+                size: 19, color: SdColors.danger),
           ),
       ],
     );
@@ -890,7 +890,7 @@ class _RegionDialogState extends State<_RegionDialog> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: _active,
-                    activeThumbColor: AppTheme.successColor,
+                    activeThumbColor: SdColors.success,
                     title: Text('نشطة',
                         style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
                     onChanged: (v) => setState(() => _active = v),
@@ -907,7 +907,7 @@ class _RegionDialogState extends State<_RegionDialog> {
           ),
           FilledButton(
             style:
-                FilledButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                FilledButton.styleFrom(backgroundColor: SdColors.primary),
             onPressed: _submit,
             child: Text(editing ? 'حفظ' : 'إضافة',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
@@ -944,7 +944,7 @@ class _RegionDialogState extends State<_RegionDialog> {
           labelStyle: GoogleFonts.cairo(),
           prefixIcon: icon == null
               ? null
-              : Icon(icon, color: AppTheme.primaryColor, size: 20),
+              : Icon(icon, color: SdColors.primary, size: 20),
           isDense: true,
         ),
       ),
@@ -1016,7 +1016,7 @@ class _NodeDialogState extends State<_NodeDialog> {
                     labelText: 'الاسم',
                     labelStyle: GoogleFonts.cairo(),
                     prefixIcon: const Icon(Icons.signpost_rounded,
-                        color: AppTheme.primaryColor, size: 20),
+                        color: SdColors.primary, size: 20),
                     isDense: true,
                   ),
                 ),
@@ -1037,14 +1037,14 @@ class _NodeDialogState extends State<_NodeDialog> {
                     labelText: 'أجر الصيانة الشهري',
                     labelStyle: GoogleFonts.cairo(),
                     prefixIcon: const Icon(Icons.payments_rounded,
-                        color: AppTheme.primaryColor, size: 20),
+                        color: SdColors.primary, size: 20),
                     isDense: true,
                   ),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _active,
-                  activeThumbColor: AppTheme.successColor,
+                  activeThumbColor: SdColors.success,
                   title: Text('نشط',
                       style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
                   onChanged: (v) => setState(() => _active = v),
@@ -1060,7 +1060,7 @@ class _NodeDialogState extends State<_NodeDialog> {
           ),
           FilledButton(
             style:
-                FilledButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                FilledButton.styleFrom(backgroundColor: SdColors.primary),
             onPressed: _submit,
             child: Text(widget.existing == null ? 'إضافة' : 'حفظ',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),

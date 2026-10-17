@@ -16,7 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/property.dart';
 import '../../permissions/permission_manager.dart';
 import '../../services/property_api_service.dart';
-import '../../theme/app_theme.dart';
+import '../../frontend/tokens/sd_colors.dart';
 import 'property_form_page.dart';
 import 'property_label.dart';
 import 'property_ui.dart';
@@ -89,7 +89,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-        backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor,
+        backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -122,7 +122,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
               style:
-                  FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+                  FilledButton.styleFrom(backgroundColor: SdColors.danger),
               child: Text('حذف',
                   style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
             ),
@@ -218,7 +218,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+              style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
               child: Text('حذف',
                   style: GoogleFonts.cairo(
                       fontWeight: FontWeight.w800, color: Colors.white)),
@@ -352,9 +352,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               child: TabBar(
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
-                labelColor: AppTheme.primaryColor,
+                labelColor: SdColors.primary,
                 unselectedLabelColor: Colors.grey,
-                indicatorColor: AppTheme.primaryColor,
+                indicatorColor: SdColors.primary,
                 labelStyle:
                     GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 13),
                 unselectedLabelStyle:
@@ -422,9 +422,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           Material(
             color: Colors.transparent,
             child: TabBar(
-              labelColor: AppTheme.primaryColor,
+              labelColor: SdColors.primary,
               unselectedLabelColor: Colors.grey,
-              indicatorColor: AppTheme.primaryColor,
+              indicatorColor: SdColors.primary,
               labelStyle:
                   GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 12.5),
               unselectedLabelStyle:
@@ -467,7 +467,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             child: FilledButton.icon(
               onPressed: () => _openServiceSheet(initialType: typeKey),
               style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
               ),
               icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
@@ -523,7 +523,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    color: SdColors.primary.withValues(alpha: 0.15),
                     width: 1.5),
                 boxShadow: PropUi.cardShadow(),
               ),
@@ -533,7 +533,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 version: QrVersions.auto,
                 eyeStyle: const QrEyeStyle(
                     eyeShape: QrEyeShape.square,
-                    color: AppTheme.primaryColor),
+                    color: SdColors.primary),
                 dataModuleStyle: const QrDataModuleStyle(
                     dataModuleShape: QrDataModuleShape.square,
                     color: PropUi.ink),
@@ -560,9 +560,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           OutlinedButton.icon(
             onPressed: () => printPropertyLabel(p),
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
+              foregroundColor: SdColors.primary,
               side: BorderSide(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.4)),
+                  color: SdColors.primary.withValues(alpha: 0.4)),
             ),
             icon: const Icon(Icons.print_rounded),
             label: Text('طباعة اللصاقة',
@@ -587,18 +587,18 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               PropBadge(
                   label: p.propertyTypeLabel,
                   color: p.isCommercial
-                      ? AppTheme.warningColor
-                      : AppTheme.primaryColor,
+                      ? SdColors.warning
+                      : SdColors.primary,
                   icon: p.isCommercial
                       ? Icons.storefront_rounded
                       : Icons.home_rounded),
               PropBadge(
                   label: p.ownershipLabel,
-                  color: AppTheme.successColor,
+                  color: SdColors.success,
                   icon: Icons.vpn_key_rounded),
               PropBadge(
                   label: '${p.serviceCount} خدمة',
-                  color: AppTheme.secondaryColor,
+                  color: SdColors.primaryLight,
                   icon: Icons.electrical_services_rounded),
             ],
           ),
@@ -616,9 +616,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             OutlinedButton.icon(
               onPressed: _openMap,
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.successColor,
+                foregroundColor: SdColors.success,
                 side: BorderSide(
-                    color: AppTheme.successColor.withValues(alpha: 0.4)),
+                    color: SdColors.success.withValues(alpha: 0.4)),
               ),
               icon: const Icon(Icons.map_rounded),
               label: Text(
@@ -677,8 +677,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         PropUi.gradientBadge(
           icon: Icons.person_rounded,
           colors: r.isPrimary
-              ? AppTheme.greenGradient
-              : AppTheme.blueGradient,
+              ? SdColors.greenGradient
+              : SdColors.blueGradient,
           size: 36,
           iconSize: 18,
         ),
@@ -701,7 +701,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     const SizedBox(width: 6),
                     const PropBadge(
                         label: 'أساسي',
-                        color: AppTheme.successColor,
+                        color: SdColors.success,
                         icon: Icons.star_rounded),
                   ],
                 ],
@@ -724,7 +724,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             tooltip: 'فكّ الربط',
             onPressed: () => _unlinkCitizen(r),
             icon: const Icon(Icons.person_remove_rounded,
-                size: 20, color: AppTheme.errorColor),
+                size: 20, color: SdColors.danger),
           ),
       ],
     );
@@ -732,8 +732,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
 
   Widget _serviceRow(PropertyService s) {
     final statusColor = switch (s.status.toLowerCase()) {
-      'active' => AppTheme.successColor,
-      'suspended' => AppTheme.warningColor,
+      'active' => SdColors.success,
+      'suspended' => SdColors.warning,
       _ => Colors.grey,
     };
     final isInternet = s.serviceType.toLowerCase() == 'internet';
@@ -761,7 +761,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 'iptv' => Icons.live_tv_rounded,
                 _ => Icons.miscellaneous_services_rounded,
               },
-              colors: AppTheme.blueGradient,
+              colors: SdColors.blueGradient,
               size: 36,
               iconSize: 18,
             ),
@@ -797,7 +797,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                       style: GoogleFonts.cairo(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppTheme.primaryColor),
+                          color: SdColors.primary),
                     ),
                 ],
               ),
@@ -809,13 +809,13 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 tooltip: 'تعديل الخدمة',
                 onPressed: () => _openServiceSheet(existing: s),
                 icon: const Icon(Icons.edit_rounded,
-                    size: 19, color: AppTheme.primaryColor),
+                    size: 19, color: SdColors.primary),
               ),
               IconButton(
                 tooltip: 'حذف الخدمة',
                 onPressed: () => _confirmDeleteService(s),
                 icon: const Icon(Icons.delete_outline_rounded,
-                    size: 20, color: AppTheme.errorColor),
+                    size: 20, color: SdColors.danger),
               ),
             ],
           ],
@@ -974,7 +974,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           PropSectionHeader(
             title: 'المهام المرتبطة',
             icon: Icons.assignment_rounded,
-            gradient: AppTheme.greenGradient,
+            gradient: SdColors.greenGradient,
             trailingText: '${_tasks.length}',
             action: _canManage
                 ? TextButton.icon(
@@ -999,7 +999,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                   Expanded(
                     child: Text('تعذّر تحميل المهام: $_tasksError',
                         style: GoogleFonts.cairo(
-                            color: AppTheme.errorColor,
+                            color: SdColors.danger,
                             fontWeight: FontWeight.w600)),
                   ),
                   TextButton.icon(
@@ -1042,7 +1042,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
       children: [
         PropUi.gradientBadge(
           icon: Icons.assignment_turned_in_rounded,
-          colors: AppTheme.greenGradient,
+          colors: SdColors.greenGradient,
           size: 36,
           iconSize: 18,
         ),
@@ -1077,10 +1077,10 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
   }
 
   Color _taskStatusColor(String status) => switch (status.toLowerCase()) {
-        'completed' || 'approved' => AppTheme.successColor,
-        'inprogress' || 'assigned' => AppTheme.primaryColor,
-        'pending' || 'reviewing' || 'onhold' => AppTheme.warningColor,
-        'cancelled' || 'rejected' => AppTheme.errorColor,
+        'completed' || 'approved' => SdColors.success,
+        'inprogress' || 'assigned' => SdColors.primary,
+        'pending' || 'reviewing' || 'onhold' => SdColors.warning,
+        'cancelled' || 'rejected' => SdColors.danger,
         _ => Colors.grey,
       };
 
@@ -1111,12 +1111,12 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppTheme.warningColor),
+                        strokeWidth: 2, color: SdColors.warning),
                   )
                 : Text('${_fmtFee(_totalFee ?? 0)} د.ع  (تراكمي)',
                     style: GoogleFonts.cairo(
                         fontWeight: FontWeight.w800,
-                        color: AppTheme.warningColor)),
+                        color: SdColors.warning)),
           ),
         ],
       ),
@@ -1213,7 +1213,7 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
           SnackBar(
               content: Text('تمّ ربط المواطن',
                   style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-              backgroundColor: AppTheme.successColor),
+              backgroundColor: SdColors.success),
         );
         Navigator.pop(context, true);
       }
@@ -1222,7 +1222,7 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('تعذّر الربط: $e', style: GoogleFonts.cairo()),
-              backgroundColor: AppTheme.errorColor),
+              backgroundColor: SdColors.danger),
         );
       }
     }
@@ -1276,7 +1276,7 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
                           selected: _relationship == e.key,
                           showCheckmark: false,
                           backgroundColor: Colors.white,
-                          selectedColor: AppTheme.primaryColor,
+                          selectedColor: SdColors.primary,
                           onSelected: (_) =>
                               setState(() => _relationship = e.key),
                         ),
@@ -1290,7 +1290,7 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
                   selected: _isPrimary,
                   showCheckmark: true,
                   selectedColor:
-                      AppTheme.successColor.withValues(alpha: 0.18),
+                      SdColors.success.withValues(alpha: 0.18),
                   onSelected: (v) => setState(() => _isPrimary = v),
                 ),
               ],
@@ -1307,10 +1307,10 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
                 hintText: 'ابحث باسم المواطن / الهاتف',
                 hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
                 prefixIcon: const Icon(Icons.search_rounded,
-                    color: AppTheme.primaryColor),
+                    color: SdColors.primary),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.arrow_back_rounded,
-                      color: AppTheme.primaryColor),
+                      color: SdColors.primary),
                   onPressed: _search,
                 ),
                 isDense: true,
@@ -1368,7 +1368,7 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
           FilledButton(
             onPressed: () => _link(c),
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
+              backgroundColor: SdColors.primary,
               padding: const EdgeInsets.symmetric(horizontal: 16),
             ),
             child: Text('ربط',
@@ -1529,7 +1529,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-          backgroundColor: err ? AppTheme.errorColor : AppTheme.successColor),
+          backgroundColor: err ? SdColors.danger : SdColors.success),
     );
   }
 
@@ -1576,7 +1576,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
               content: Text(
                   '${_isEdit ? 'تعذّر تعديل' : 'تعذّر إضافة'} الخدمة: $e',
                   style: GoogleFonts.cairo()),
-              backgroundColor: AppTheme.errorColor),
+              backgroundColor: SdColors.danger),
         );
       }
     } finally {
@@ -1677,7 +1677,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                 FilledButton.icon(
                   onPressed: _saving ? null : _save,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
+                    backgroundColor: SdColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   icon: _saving
@@ -1729,10 +1729,10 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
             selected: value == e.key,
             showCheckmark: false,
             backgroundColor: Colors.white,
-            selectedColor: AppTheme.primaryColor,
+            selectedColor: SdColors.primary,
             side: BorderSide(
                 color: value == e.key
-                    ? AppTheme.primaryColor
+                    ? SdColors.primary
                     : Colors.grey.withValues(alpha: 0.25)),
             onSelected: (_) => onSet(e.key),
           ),
@@ -1753,7 +1753,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
           labelStyle: GoogleFonts.cairo(),
           prefixIcon: icon == null
               ? null
-              : Icon(icon, color: AppTheme.primaryColor, size: 20),
+              : Icon(icon, color: SdColors.primary, size: 20),
           isDense: true,
           filled: true,
           fillColor: Colors.white,
@@ -1778,14 +1778,14 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
             color: done
-                ? AppTheme.successColor.withValues(alpha: 0.4)
+                ? SdColors.success.withValues(alpha: 0.4)
                 : Colors.grey.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
           Icon(done ? Icons.check_circle_rounded : icon,
               size: 20,
-              color: done ? AppTheme.successColor : AppTheme.primaryColor),
+              color: done ? SdColors.success : SdColors.primary),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1799,7 +1799,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                   done ? 'تمّ الرفع' : 'لم تُرفع بعد',
                   style: GoogleFonts.cairo(
                       fontSize: 11,
-                      color: done ? AppTheme.successColor : Colors.grey[600]),
+                      color: done ? SdColors.success : Colors.grey[600]),
                 ),
               ],
             ),
@@ -1807,7 +1807,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
           FilledButton.icon(
             onPressed: uploading ? null : onPick,
             style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
+              backgroundColor: SdColors.primary,
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
             icon: uploading
@@ -1899,7 +1899,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
         SnackBar(
             content: Text('اختر الخدمة والعملية أولاً',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-            backgroundColor: AppTheme.warningColor),
+            backgroundColor: SdColors.warning),
       );
       return;
     }
@@ -1923,7 +1923,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                     ? 'تمّ إنشاء المهمة — رقم الطلب $reqNo'
                     : 'تمّ إنشاء المهمة',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-            backgroundColor: AppTheme.successColor),
+            backgroundColor: SdColors.success),
       );
     } catch (e) {
       if (!mounted) return;
@@ -1931,7 +1931,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text('تعذّر إنشاء المهمة: $e', style: GoogleFonts.cairo()),
-            backgroundColor: AppTheme.errorColor),
+            backgroundColor: SdColors.danger),
       );
     }
   }
@@ -2008,10 +2008,10 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                   selected: _serviceId == s.id,
                   showCheckmark: false,
                   backgroundColor: Colors.white,
-                  selectedColor: AppTheme.primaryColor,
+                  selectedColor: SdColors.primary,
                   side: BorderSide(
                       color: _serviceId == s.id
-                          ? AppTheme.primaryColor
+                          ? SdColors.primary
                           : Colors.grey.withValues(alpha: 0.25)),
                   onSelected: (_) => setState(() {
                     _serviceId = s.id;
@@ -2047,10 +2047,10 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                   selected: _operationId == op.id,
                   showCheckmark: false,
                   backgroundColor: Colors.white,
-                  selectedColor: AppTheme.primaryColor,
+                  selectedColor: SdColors.primary,
                   side: BorderSide(
                       color: _operationId == op.id
-                          ? AppTheme.primaryColor
+                          ? SdColors.primary
                           : Colors.grey.withValues(alpha: 0.25)),
                   onSelected: (_) => setState(() => _operationId = op.id),
                 ),
@@ -2073,10 +2073,10 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                 selected: _priority == p,
                 showCheckmark: false,
                 backgroundColor: Colors.white,
-                selectedColor: AppTheme.primaryColor,
+                selectedColor: SdColors.primary,
                 side: BorderSide(
                     color: _priority == p
-                        ? AppTheme.primaryColor
+                        ? SdColors.primary
                         : Colors.grey.withValues(alpha: 0.25)),
                 onSelected: (_) => setState(() => _priority = p),
               ),
@@ -2091,7 +2091,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
         FilledButton.icon(
           onPressed: _saving ? null : _save,
           style: FilledButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
+            backgroundColor: SdColors.primary,
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           icon: _saving
@@ -2131,7 +2131,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
           labelStyle: GoogleFonts.cairo(),
           prefixIcon: icon == null
               ? null
-              : Icon(icon, color: AppTheme.primaryColor, size: 20),
+              : Icon(icon, color: SdColors.primary, size: 20),
           isDense: true,
           filled: true,
           fillColor: Colors.white,

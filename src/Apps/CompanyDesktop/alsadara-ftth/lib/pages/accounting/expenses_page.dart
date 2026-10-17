@@ -1,5 +1,5 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/period_closing_service.dart';
@@ -68,14 +68,29 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
+    return SdTheme.scope(
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'المصروفات',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: () => _loadData(),
+            ),
+            if (PermissionManager.instance.canAdd('accounting.expenses'))
+              SdAppBarAction(
+                icon: Icons.add,
+                label: 'إضافة مصروف',
+                onPressed: _showAddDialog,
+              ),
+          ],
+        ),
         body: SafeArea(
+          top: false,
           child: Column(
             children: [
-              _buildPageToolbar(),
               _buildSummary(),
               Expanded(
                 child: _isLoading
@@ -84,81 +99,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         ? Center(
                             child: Text(_errorMessage!,
                                 style: const TextStyle(
-                                    color: AccountingTheme.danger)))
+                                    color: SdColors.danger)))
                         : _buildList(),
               ),
               _buildPaginationBar(),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildPageToolbar() {
-    final ar = context.accR;
-    final isMob = MediaQuery.of(context).size.width < 700;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceL),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 20),
-            tooltip: 'رجوع',
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            padding: EdgeInsets.zero,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMob ? 4 : ar.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonOrangeGradient,
-              borderRadius: BorderRadius.circular(ar.btnRadius),
-            ),
-            child: Icon(Icons.receipt_rounded,
-                color: Colors.white, size: isMob ? 18 : ar.iconM),
-          ),
-          SizedBox(width: isMob ? 6 : ar.spaceM),
-          Text('المصروفات',
-              style: GoogleFonts.cairo(
-                  fontSize: isMob ? 14 : ar.headingMedium,
-                  fontWeight: FontWeight.bold,
-                  color: AccountingTheme.textPrimary)),
-          const Spacer(),
-          IconButton(
-            onPressed: _loadData,
-            icon: Icon(Icons.refresh, size: isMob ? 18 : ar.iconM),
-            tooltip: 'تحديث',
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            padding: EdgeInsets.zero,
-            style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
-          ),
-          SizedBox(width: isMob ? 4 : ar.spaceS),
-          if (PermissionManager.instance.canAdd('accounting.expenses'))
-            ElevatedButton.icon(
-              onPressed: _showAddDialog,
-              icon: Icon(Icons.add, size: isMob ? 16 : ar.iconM),
-              label: Text(isMob ? 'إضافة مصروف' : 'إضافة مصروف',
-                  style: GoogleFonts.cairo(fontSize: isMob ? 11 : ar.buttonText)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AccountingTheme.neonOrange,
-                foregroundColor: Colors.white,
-                padding: isMob
-                    ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-                    : ar.buttonPadding,
-                minimumSize: isMob ? const Size(0, 30) : null,
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -179,42 +126,45 @@ class _ExpensesPageState extends State<ExpensesPage> {
         : null;
 
     return Padding(
-      padding: EdgeInsets.all(context.accR.spaceM),
+      padding: const EdgeInsets.all(SdSpace.md),
       child: Wrap(
-        spacing: 12,
+        spacing: SdSpace.sm,
+        runSpacing: SdSpace.xs,
         children: [
-          _chip('الإجمالي', '${_fmt(total)} د.ع', AccountingTheme.danger),
-          _chip('العدد', '${_expenses.length}', AccountingTheme.accent),
+          _chip('الإجمالي', '${_fmt(total)} د.ع', SdStatus.danger.tone),
+          _chip('العدد', '${_expenses.length}', SdGroup.admin.tone),
           if (topCategory != null)
             _chip('أكبر فئة', '${topCategory.key}: ${_fmt(topCategory.value)}',
-                AccountingTheme.warning),
+                SdStatus.warning.tone),
         ],
       ),
     );
   }
 
-  Widget _chip(String label, String value, Color color) {
+  Widget _chip(String label, String value, SdTone tone) {
     return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
+      padding: const EdgeInsets.symmetric(horizontal: SdSpace.sm, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        color: tone.tint,
+        borderRadius: BorderRadius.circular(SdRadius.xs),
+        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
               style: TextStyle(
-                  color: color.withValues(alpha: 0.7),
-                  fontSize: context.accR.small)),
-          SizedBox(width: context.accR.spaceXS),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5)),
+          const SizedBox(width: SdSpace.xs),
           Text(value,
               style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: context.accR.body)),
+                  fontFamily: SdText.family,
+                  color: tone.text,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13.5)),
         ],
       ),
     );
@@ -222,16 +172,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   Widget _buildList() {
     if (_expenses.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.money_off,
-                color: AccountingTheme.textMuted, size: context.accR.iconEmpty),
-            SizedBox(height: context.accR.spaceXL),
-            Text('لا توجد مصروفات',
-                style: TextStyle(color: AccountingTheme.textMuted)),
-          ],
+      return const SingleChildScrollView(
+        child: SdEmptyState(
+          title: 'لا توجد مصروفات',
+          icon: Icons.money_off,
         ),
       );
     }
@@ -240,7 +184,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
     return ListView.builder(
       padding:
-          EdgeInsets.symmetric(horizontal: isMob ? 8 : context.accR.spaceM),
+          EdgeInsets.fromLTRB(isMob ? 8 : SdSpace.md, SdSpace.xs, isMob ? 8 : SdSpace.md, SdSpace.md),
       itemCount: _expenses.length,
       itemBuilder: (_, i) {
         final e = _expenses[i];
@@ -248,13 +192,14 @@ class _ExpensesPageState extends State<ExpensesPage> {
           return _buildMobileExpenseCard(e);
         }
         return Container(
-          margin: EdgeInsets.only(bottom: 6),
-          padding: EdgeInsets.all(context.accR.spaceL),
+          margin: const EdgeInsets.only(bottom: SdSpace.xs),
+          padding: const EdgeInsets.all(SdSpace.md),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
-            borderRadius: BorderRadius.circular(context.accR.cardRadius),
+            color: SdColors.surface,
+            borderRadius: BorderRadius.circular(SdRadius.md),
+            boxShadow: SdDepth.raised(depth: SdDepth.small),
             border: const Border(
-                right: BorderSide(color: AccountingTheme.danger, width: 3)),
+                right: BorderSide(color: SdColors.danger, width: 3)),
           ),
           child: Row(
             children: [
@@ -262,13 +207,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AccountingTheme.danger.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  color: SdStatus.danger.tone.tint,
+                  borderRadius: BorderRadius.circular(SdRadius.xs),
                 ),
                 child: Icon(_categoryIcon(e['Category']),
-                    color: AccountingTheme.danger, size: context.accR.iconM),
+                    color: SdStatus.danger.tone.base, size: 20),
               ),
-              SizedBox(width: context.accR.spaceM),
+              const SizedBox(width: SdSpace.sm),
               Expanded(
                 flex: 2,
                 child: Column(
@@ -276,17 +221,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   children: [
                     Text(
                       e['Description'] ?? 'بدون وصف',
-                      style: TextStyle(
-                          color: AccountingTheme.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: context.accR.body),
+                      style: SdText.label,
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       _expenseCategoryLabel(e['Category']),
                       style: TextStyle(
-                          color: AccountingTheme.danger,
-                          fontSize: context.accR.small),
+                          fontFamily: SdText.family,
+                          color: SdStatus.danger.tone.text,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11.5),
                     ),
                   ],
                 ),
@@ -297,9 +241,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 child: Text(
                   '${_fmt(e['Amount'])} د.ع',
                   style: TextStyle(
-                      color: AccountingTheme.danger,
-                      fontWeight: FontWeight.bold,
-                      fontSize: context.accR.body),
+                      fontFamily: SdText.family,
+                      color: SdStatus.danger.tone.base,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -308,9 +253,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 width: 100,
                 child: Text(
                   _formatDate(e['ExpenseDate'] ?? e['CreatedAt']),
-                  style: TextStyle(
-                      color: AccountingTheme.textSecondary,
-                      fontSize: context.accR.small),
+                  style: SdText.bodySm,
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -321,30 +264,31 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   child: Text(
                     e['AccountName'],
                     style: TextStyle(
-                        color: AccountingTheme.info,
-                        fontSize: context.accR.small),
+                        fontFamily: SdText.family,
+                        color: SdStatus.info.tone.text,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11.5),
                     textAlign: TextAlign.center,
                   ),
                 ),
               // ملاحظات
               if (e['Notes'] != null)
                 Padding(
-                  padding: EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.only(right: 8),
                   child: Tooltip(
                     message: e['Notes'],
-                    child: Icon(Icons.notes,
-                        color: AccountingTheme.textMuted,
-                        size: context.accR.iconM),
+                    child: const Icon(Icons.notes,
+                        color: SdColors.faint, size: 20),
                   ),
                 ),
               // أزرار تعديل وحذف
-              SizedBox(width: context.accR.spaceS),
+              const SizedBox(width: SdSpace.xs),
               if (PermissionManager.instance.canEdit('accounting.expenses'))
-                _actionBtn(Icons.edit, AccountingTheme.info,
+                _actionBtn(Icons.edit, SdStatus.info.tone.base,
                     () => _showEditExpenseDialog(e)),
-              SizedBox(width: context.accR.spaceXS),
+              const SizedBox(width: SdSpace.xxs),
               if (PermissionManager.instance.canDelete('accounting.expenses'))
-                _actionBtn(Icons.delete_outline, AccountingTheme.danger,
+                _actionBtn(Icons.delete_outline, SdStatus.danger.tone.base,
                     () => _confirmDeleteExpense(e)),
             ],
           ),
@@ -355,13 +299,14 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
   Widget _buildMobileExpenseCard(Map<String, dynamic> e) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.only(bottom: SdSpace.xs),
+      padding: const EdgeInsets.all(SdSpace.sm),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        borderRadius: BorderRadius.circular(10),
+        color: SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.md),
+        boxShadow: SdDepth.raised(depth: SdDepth.small),
         border: const Border(
-            right: BorderSide(color: AccountingTheme.danger, width: 3)),
+            right: BorderSide(color: SdColors.danger, width: 3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,55 +317,52 @@ class _ExpensesPageState extends State<ExpensesPage> {
               Expanded(
                 child: Text(
                   e['Description'] ?? 'بدون وصف',
-                  style: GoogleFonts.cairo(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13),
+                  style: SdText.label.copyWith(fontSize: 13),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: SdSpace.xs),
               Text(
                 '${_fmt(e['Amount'])} د.ع',
-                style: GoogleFonts.cairo(
-                    color: AccountingTheme.danger,
-                    fontWeight: FontWeight.bold,
+                style: TextStyle(
+                    fontFamily: SdText.family,
+                    color: SdStatus.danger.tone.base,
+                    fontWeight: FontWeight.w900,
                     fontSize: 13),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: SdSpace.xxs),
           // الصف الثاني: الفئة + التاريخ + الحساب
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.danger.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(4),
+                  color: SdStatus.danger.tone.tint,
+                  borderRadius: BorderRadius.circular(SdRadius.xs),
                 ),
                 child: Text(
                   _expenseCategoryLabel(e['Category']),
-                  style: GoogleFonts.cairo(
-                      color: AccountingTheme.danger,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontFamily: SdText.family,
+                      color: SdStatus.danger.tone.text,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: SdSpace.xs),
               Text(
                 _formatDate(e['ExpenseDate'] ?? e['CreatedAt']),
-                style: GoogleFonts.cairo(
-                    color: AccountingTheme.textSecondary, fontSize: 10),
+                style: SdText.caption,
               ),
               if (e['AccountName'] != null) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: SdSpace.xs),
                 Expanded(
                   child: Text(
                     e['AccountName'] ?? '',
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.info, fontSize: 10),
+                    style: SdText.caption.copyWith(color: SdStatus.info.tone.text),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -430,21 +372,20 @@ class _ExpensesPageState extends State<ExpensesPage> {
               // أزرار التعديل والحذف
               const SizedBox(width: 6),
               if (PermissionManager.instance.canEdit('accounting.expenses'))
-                _actionBtn(Icons.edit, AccountingTheme.info,
+                _actionBtn(Icons.edit, SdStatus.info.tone.base,
                     () => _showEditExpenseDialog(e)),
-              const SizedBox(width: 4),
+              const SizedBox(width: SdSpace.xxs),
               if (PermissionManager.instance.canDelete('accounting.expenses'))
-                _actionBtn(Icons.delete_outline, AccountingTheme.danger,
+                _actionBtn(Icons.delete_outline, SdStatus.danger.tone.base,
                     () => _confirmDeleteExpense(e)),
             ],
           ),
           // ملاحظات إن وجدت
           if (e['Notes'] != null && e['Notes'].toString().isNotEmpty) ...[
-            const SizedBox(height: 3),
+            const SizedBox(height: SdSpace.xxs),
             Text(
               e['Notes'].toString(),
-              style: GoogleFonts.cairo(
-                  color: AccountingTheme.textMuted, fontSize: 10),
+              style: SdText.caption,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -457,25 +398,25 @@ class _ExpensesPageState extends State<ExpensesPage> {
   Widget _buildPaginationBar() {
     if (_totalPages <= 1) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: SdSpace.md, vertical: SdSpace.xs),
       decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(top: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(top: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
             onPressed: _currentPage > 1 ? () => _loadData(page: _currentPage - 1) : null,
-            icon: const Icon(Icons.chevron_right, color: AccountingTheme.textSecondary),
+            icon: const Icon(Icons.chevron_right, color: SdColors.muted),
           ),
           Text(
             'صفحة $_currentPage من $_totalPages ($_total سجل)',
-            style: GoogleFonts.cairo(color: AccountingTheme.textSecondary, fontSize: 13),
+            style: SdText.bodySm,
           ),
           IconButton(
             onPressed: _currentPage < _totalPages ? () => _loadData(page: _currentPage + 1) : null,
-            icon: const Icon(Icons.chevron_left, color: AccountingTheme.textSecondary),
+            icon: const Icon(Icons.chevron_left, color: SdColors.muted),
           ),
         ],
       ),

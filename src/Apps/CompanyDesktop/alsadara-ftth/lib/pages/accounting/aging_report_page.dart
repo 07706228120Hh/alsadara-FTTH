@@ -6,6 +6,7 @@ import '../../services/accounting_export_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
+import '../../frontend/frontend.dart';
 
 /// صفحة تقرير أعمار الديون - Aging Report
 /// تعرض تحصيلات الفنيين غير المسلّمة مصنّفة حسب العمر الزمني
@@ -187,97 +188,23 @@ class _AgingReportPageState extends State<AgingReportPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F6FA),
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildToolbar(),
-              Expanded(child: _buildBody()),
-            ],
-          ),
+        backgroundColor: SdColors.ground,
+        appBar: SdAppBar(
+          title: 'أعمار الديون',
+          actions: [
+            SdAppBarAction(
+              icon: Icons.file_download_outlined,
+              label: 'تصدير Excel',
+              onPressed: _isLoading ? null : _exportReport,
+            ),
+            SdAppBarAction(
+              icon: Icons.refresh_rounded,
+              label: 'تحديث',
+              onPressed: _isLoading ? null : _loadData,
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  //  شريط الأدوات العلوي
-  // ═══════════════════════════════════════════════════════════════
-
-  Widget _buildToolbar() {
-    final ar = context.accR;
-    final isMobile = ar.isMobile;
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? ar.spaceS : ar.spaceXL,
-        vertical: isMobile ? ar.spaceXS : ar.spaceL,
-      ),
-      decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            tooltip: 'رجوع',
-            iconSize: isMobile ? 20 : null,
-            constraints: isMobile
-                ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                : null,
-            padding: isMobile ? EdgeInsets.zero : null,
-            style: IconButton.styleFrom(
-              foregroundColor: AccountingTheme.textSecondary,
-            ),
-          ),
-          SizedBox(width: isMobile ? 4 : ar.spaceS),
-          Container(
-            padding: EdgeInsets.all(isMobile ? 4 : ar.spaceS),
-            decoration: BoxDecoration(
-              gradient: AccountingTheme.neonOrangeGradient,
-              borderRadius: BorderRadius.circular(ar.btnRadius),
-            ),
-            child: Icon(Icons.timer_outlined,
-                color: Colors.white, size: isMobile ? 16 : ar.iconM),
-          ),
-          SizedBox(width: isMobile ? 6 : ar.spaceM),
-          Expanded(
-            child: Text(
-              'أعمار الديون',
-              style: GoogleFonts.cairo(
-                fontSize: isMobile ? 14 : ar.headingMedium,
-                fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          IconButton(
-            onPressed: _isLoading ? null : _exportReport,
-            icon: const Icon(Icons.file_download_outlined),
-            tooltip: 'تصدير Excel',
-            iconSize: isMobile ? 20 : null,
-            constraints: isMobile
-                ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                : null,
-            style: IconButton.styleFrom(
-              foregroundColor: AccountingTheme.neonGreen,
-            ),
-          ),
-          IconButton(
-            onPressed: _isLoading ? null : _loadData,
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'تحديث',
-            iconSize: isMobile ? 20 : null,
-            constraints: isMobile
-                ? const BoxConstraints(minWidth: 32, minHeight: 32)
-                : null,
-            style: IconButton.styleFrom(
-              foregroundColor: AccountingTheme.neonBlue,
-            ),
-          ),
-        ],
+        body: SafeArea(top: false, child: _buildBody()),
       ),
     );
   }
@@ -291,12 +218,26 @@ class _AgingReportPageState extends State<AgingReportPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_errorMessage != null) {
-      return AccountingTheme.errorView(_errorMessage!, _loadData);
+      return Center(
+        child: SdEmptyState(
+          title: _errorMessage!,
+          icon: Icons.error_outline,
+          status: SdStatus.danger,
+          action: SdButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh,
+            onPressed: _loadData,
+          ),
+        ),
+      );
     }
     if (_allDebts.isEmpty) {
-      return AccountingTheme.emptyState(
-        'لا توجد ديون غير مسلّمة',
-        icon: Icons.check_circle_outline,
+      return const Center(
+        child: SdEmptyState(
+          title: 'لا توجد ديون غير مسلّمة',
+          icon: Icons.check_circle_outline,
+          status: SdStatus.success,
+        ),
       );
     }
 
@@ -524,8 +465,8 @@ class _AgingReportPageState extends State<AgingReportPage> {
     if (debts.isEmpty) {
       return Padding(
         padding: EdgeInsets.symmetric(vertical: ar.spaceXXL * 2),
-        child: AccountingTheme.emptyState(
-          'لا توجد نتائج مطابقة للفلتر',
+        child: const SdEmptyState(
+          title: 'لا توجد نتائج مطابقة للفلتر',
           icon: Icons.search_off,
         ),
       );

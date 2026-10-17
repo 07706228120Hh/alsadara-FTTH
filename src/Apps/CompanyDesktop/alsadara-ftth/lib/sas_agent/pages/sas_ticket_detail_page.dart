@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../permissions/permission_manager.dart';
-import '../../theme/app_theme.dart';
 import '../models/sas_ticket.dart';
 import '../services/sas_agent_api_service.dart';
-import '../widgets/sas_metrics.dart';
 import '../widgets/sas_state_views.dart';
 
 /// تفاصيل تذكرة «وكيل الساس» — رأس التذكرة + سلسلة المحادثة + صندوق رد
@@ -74,8 +72,8 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.cairo()),
-      backgroundColor: error ? AppTheme.errorColor : AppTheme.successColor,
+      content: Text(msg, style: const TextStyle(fontFamily: SdText.family)),
+      backgroundColor: error ? SdColors.danger : SdColors.success,
     ));
   }
 
@@ -98,7 +96,8 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
     }
   }
 
-  Future<void> _update({String? status, String? priority, String? category}) async {
+  Future<void> _update(
+      {String? status, String? priority, String? category}) async {
     if (!_canManage) return;
     setState(() => _sending = true);
     try {
@@ -117,69 +116,63 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
   @override
   Widget build(BuildContext context) {
     final t = _ticket;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: SasUi.pageBg,
-        appBar: AppBar(
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          title: Text(
-            t == null ? 'تذكرة #${widget.ticketId}' : 'تذكرة · ${t.subject}',
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w800),
-          ),
-          leading: BackButton(
-            onPressed: () => Navigator.of(context).pop(_changed),
-          ),
-          actions: [
-            if (t != null && _canManage)
-              PopupMenuButton<String>(
-                enabled: !_sending,
-                icon: const Icon(Icons.more_vert_rounded),
-                onSelected: (v) {
-                  if (v.startsWith('s:')) _update(status: v.substring(2));
-                  if (v.startsWith('p:')) _update(priority: v.substring(2));
-                  if (v.startsWith('c:')) _update(category: v.substring(2));
-                },
-                itemBuilder: (_) => [
-                  _menuHeader('تغيير الحالة'),
-                  for (final e in sasTicketStatuses.entries)
-                    if (e.key != t.status)
-                      PopupMenuItem(
-                        value: 's:${e.key}',
-                        child: Text('الحالة: ${e.value}',
-                            style: GoogleFonts.cairo()),
-                      ),
-                  const PopupMenuDivider(),
-                  _menuHeader('تغيير الأولوية'),
-                  for (final e in sasTicketPriorities.entries)
-                    if (e.key != t.priority)
-                      PopupMenuItem(
-                        value: 'p:${e.key}',
-                        child: Text('الأولوية: ${e.value}',
-                            style: GoogleFonts.cairo()),
-                      ),
-                ],
-              ),
-          ],
+    return SdPage(
+      maxWidth: 900,
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: t == null ? 'تذكرة #${widget.ticketId}' : 'تذكرة · ${t.subject}',
+        leading: BackButton(
+          color: Colors.white,
+          onPressed: () => Navigator.of(context).pop(_changed),
         ),
-        body: _loading
-            ? const SasLoadingView(message: 'جاري تحميل التذكرة…')
-            : _error != null
-                ? SasErrorView(message: _error!, onRetry: _load)
-                : t == null
-                    ? const SasEmptyView(message: 'التذكرة غير موجودة')
-                    : SasContentWrap(
-                        maxWidth: 900,
-                        child: Column(
-                          children: [
-                            Expanded(child: _thread(t)),
-                            _composer(t),
-                          ],
-                        ),
-                      ),
+        actions: [
+          if (t != null && _canManage)
+            PopupMenuButton<String>(
+              enabled: !_sending,
+              icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+              onSelected: (v) {
+                if (v.startsWith('s:')) _update(status: v.substring(2));
+                if (v.startsWith('p:')) _update(priority: v.substring(2));
+                if (v.startsWith('c:')) _update(category: v.substring(2));
+              },
+              itemBuilder: (_) => [
+                _menuHeader('تغيير الحالة'),
+                for (final e in sasTicketStatuses.entries)
+                  if (e.key != t.status)
+                    PopupMenuItem(
+                      value: 's:${e.key}',
+                      child: Text('الحالة: ${e.value}',
+                          style: const TextStyle(fontFamily: SdText.family)),
+                    ),
+                const PopupMenuDivider(),
+                _menuHeader('تغيير الأولوية'),
+                for (final e in sasTicketPriorities.entries)
+                  if (e.key != t.priority)
+                    PopupMenuItem(
+                      value: 'p:${e.key}',
+                      child: Text('الأولوية: ${e.value}',
+                          style: const TextStyle(fontFamily: SdText.family)),
+                    ),
+              ],
+            ),
+        ],
       ),
+      body: _loading
+          ? const SasLoadingView(message: 'جاري تحميل التذكرة…')
+          : _error != null
+              ? SasErrorView(message: _error!, onRetry: _load)
+              : t == null
+                  ? const SdEmptyState(title: 'التذكرة غير موجودة')
+                  : SasContentWrap(
+                      maxWidth: 900,
+                      child: Column(
+                        children: [
+                          Expanded(child: _thread(t)),
+                          _composer(t),
+                        ],
+                      ),
+                    ),
     );
   }
 
@@ -187,37 +180,36 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
         enabled: false,
         height: 30,
         child: Text(text,
-            style: GoogleFonts.cairo(
-                fontSize: 11.sp,
+            style: const TextStyle(
+                fontFamily: SdText.family,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w800,
-                color: Colors.grey[600])),
+                color: SdColors.muted)),
       );
 
   Widget _thread(SasTicket t) {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 20.h),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
         children: [
           _headerCard(t),
-          SizedBox(height: 16.h),
-          SasSectionHeader(
+          const SizedBox(height: SdSpace.md),
+          SdSectionHeader(
             title: 'المحادثة',
-            icon: Icons.forum_rounded,
-            trailingText: '${t.replies.length}',
+            tone: SdGroup.comms.tone,
+            count: t.replies.length,
           ),
-          SizedBox(height: 10.h),
+          const SizedBox(height: SdSpace.xs),
           _originalMessage(t),
           for (final r in t.replies) ...[
-            SizedBox(height: 8.h),
+            const SizedBox(height: SdSpace.xs),
             _replyBubble(r),
           ],
           if (t.replies.isEmpty) ...[
-            SizedBox(height: 8.h),
+            const SizedBox(height: SdSpace.xs),
             Center(
-              child: Text('لا ردود بعد — كن أول من يرد',
-                  style: GoogleFonts.cairo(
-                      fontSize: 12.sp, color: Colors.grey[500])),
+              child: Text('لا ردود بعد — كن أول من يرد', style: SdText.bodySm),
             ),
           ],
         ],
@@ -226,45 +218,29 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
   }
 
   Widget _headerCard(SasTicket t) {
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: SasUi.card(),
+    return SdCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            t.subject,
-            style: GoogleFonts.cairo(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w900,
-                color: const Color(0xFF1A1A2E)),
-          ),
-          SizedBox(height: 10.h),
+          Text(t.subject, style: SdText.title),
+          const SizedBox(height: 10),
           Wrap(
-            spacing: 6.w,
-            runSpacing: 6.h,
+            spacing: 6,
+            runSpacing: 6,
             children: [
-              SasStatusBadge(
-                label: sasStatusAr(t.status),
-                color: _statusColor(t.status),
-                icon: _statusIcon(t.status),
-              ),
-              SasStatusBadge(
-                label: 'أولوية: ${sasPriorityAr(t.priority)}',
-                color: _priorityColor(t.priority),
-                icon: Icons.flag_rounded,
-              ),
-              SasStatusBadge(
-                label: sasCategoryAr(t.category),
-                color: Colors.blueGrey,
-                icon: Icons.label_rounded,
-              ),
+              SdStatusChip(sasStatusAr(t.status),
+                  status: _statusStatus(t.status), icon: _statusIcon(t.status)),
+              SdStatusChip('أولوية: ${sasPriorityAr(t.priority)}',
+                  status: _priorityStatus(t.priority),
+                  icon: Icons.flag_rounded),
+              SdStatusChip(sasCategoryAr(t.category),
+                  status: SdStatus.neutral, icon: Icons.label_rounded),
             ],
           ),
           if (t.subscriberRef.isNotEmpty ||
               t.createdBy.isNotEmpty ||
               t.createdAt != null) ...[
-            Divider(height: 22.h),
+            const Divider(height: 22, color: SdColors.divider),
             if (t.subscriberRef.isNotEmpty)
               _kv(Icons.person_rounded, 'المشترك', t.subscriberRef),
             if (t.createdBy.isNotEmpty)
@@ -282,19 +258,20 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
 
   Widget _kv(IconData icon, String label, String value) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 6.h),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 15.sp, color: Colors.grey[500]),
-          SizedBox(width: 6.w),
-          Text('$label: ',
-              style: GoogleFonts.cairo(
-                  fontSize: 12.sp, color: Colors.grey[600])),
+          Icon(icon, size: 15, color: SdColors.faint),
+          const SizedBox(width: 6),
+          Text('$label: ', style: SdText.bodySm),
           Expanded(
             child: Text(value,
-                style: GoogleFonts.cairo(
-                    fontSize: 12.sp, fontWeight: FontWeight.w700)),
+                style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: SdColors.ink)),
           ),
         ],
       ),
@@ -304,7 +281,6 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
   Widget _originalMessage(SasTicket t) {
     return _bubble(
       author: t.createdBy.isNotEmpty ? t.createdBy : 'مقدّم الطلب',
-      authorKind: t.createdByKind,
       body: t.body,
       ts: t.createdAt,
       internal: false,
@@ -315,7 +291,6 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
   Widget _replyBubble(SasTicketReply r) {
     return _bubble(
       author: r.author.isNotEmpty ? r.author : sasAuthorAr(r.authorKind),
-      authorKind: r.authorKind,
       body: r.body,
       ts: r.createdAt,
       internal: r.isInternal,
@@ -325,28 +300,27 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
 
   Widget _bubble({
     required String author,
-    required String authorKind,
     required String body,
     required DateTime? ts,
     required bool internal,
     required bool isOriginal,
   }) {
-    final accent = internal
-        ? AppTheme.warningColor
-        : (isOriginal ? AppTheme.primaryColor : AppTheme.successColor);
+    final tone = internal
+        ? SdStatus.warning.tone
+        : (isOriginal ? SdGroup.admin.tone : SdStatus.success.tone);
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(13.w),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: internal
-            ? AppTheme.warningColor.withValues(alpha: 0.06)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(SasUi.radius.r),
+        color: internal ? SdColors.warningTint : SdColors.surface,
+        borderRadius: BorderRadius.circular(SdRadius.lg),
         border: Border.all(
-          color: accent.withValues(alpha: internal ? 0.35 : 0.16),
+          color: internal ? tone.tintEdge : SdColors.cardEdge,
           width: 1.2,
         ),
-        boxShadow: SasUi.cardShadow(accent),
+        boxShadow: SdDepth.raised(
+            edge: internal ? tone.tintEdge : SdColors.cardEdge,
+            depth: SdDepth.small),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,42 +328,40 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
           Row(
             children: [
               CircleAvatar(
-                radius: 13.r,
-                backgroundColor: accent.withValues(alpha: 0.14),
+                radius: 13,
+                backgroundColor: tone.tint,
                 child: Icon(
                   isOriginal ? Icons.person_rounded : Icons.reply_rounded,
-                  size: 15.sp,
-                  color: accent,
+                  size: 15,
+                  color: tone.base,
                 ),
               ),
-              SizedBox(width: 8.w),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   author,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
-                      fontSize: 12.5.sp, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                      fontFamily: SdText.family,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: SdColors.ink),
                 ),
               ),
               if (internal)
-                SasStatusBadge(
-                  label: 'داخلي',
-                  color: AppTheme.warningColor,
-                  icon: Icons.lock_rounded,
-                ),
+                const SdStatusChip('داخلي',
+                    status: SdStatus.warning, icon: Icons.lock_rounded),
               if (ts != null) ...[
-                SizedBox(width: 6.w),
+                const SizedBox(width: 6),
                 Text(_fmtDate(ts),
-                    style: GoogleFonts.cairo(
-                        fontSize: 10.5.sp, color: Colors.grey[500])),
+                    style: SdText.caption.copyWith(color: SdColors.faint)),
               ],
             ],
           ),
-          SizedBox(height: 8.h),
+          const SizedBox(height: 8),
           Text(
             body.isEmpty ? '—' : body,
-            style: GoogleFonts.cairo(
-                fontSize: 13.sp, height: 1.6, color: Colors.grey[850]),
+            style: SdText.body,
           ),
         ],
       ),
@@ -401,7 +373,7 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
     final disabled = !_canManage || closed;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: SdColors.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -411,14 +383,15 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
           ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 12.h),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (!_canManage)
-              _hint(Icons.lock_outline_rounded, 'لا تملك صلاحية الرد على التذاكر')
+              _hint(Icons.lock_outline_rounded,
+                  'لا تملك صلاحية الرد على التذاكر')
             else if (closed)
               _hint(Icons.lock_rounded, 'التذكرة مغلقة — لا يمكن إضافة ردود')
             else
@@ -426,22 +399,22 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
                 children: [
                   Checkbox(
                     value: _internal,
-                    activeColor: AppTheme.warningColor,
+                    activeColor: SdColors.warning,
                     visualDensity: VisualDensity.compact,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5.r)),
+                        borderRadius: BorderRadius.circular(5)),
                     onChanged: (v) => setState(() => _internal = v ?? false),
                   ),
                   Text('ملاحظة داخلية',
-                      style: GoogleFonts.cairo(
-                          fontSize: 12.sp, fontWeight: FontWeight.w700)),
-                  SizedBox(width: 4.w),
-                  Icon(Icons.info_outline_rounded,
-                      size: 13.sp, color: Colors.grey[500]),
+                      style: SdText.bodySm.copyWith(
+                          color: SdColors.ink, fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.info_outline_rounded,
+                      size: 13, color: SdColors.faint),
                 ],
               ),
-            SizedBox(height: 6.h),
+            const SizedBox(height: 6),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -451,23 +424,28 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
                     enabled: !disabled && !_sending,
                     minLines: 1,
                     maxLines: 4,
-                    style: GoogleFonts.cairo(fontSize: 13.sp),
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 13,
+                        color: SdColors.ink),
                     decoration: InputDecoration(
                       hintText: disabled ? 'الرد غير متاح' : 'اكتب ردّك…',
-                      hintStyle: GoogleFonts.cairo(
-                          fontSize: 12.5.sp, color: Colors.grey[500]),
+                      hintStyle: const TextStyle(
+                          fontFamily: SdText.family,
+                          fontSize: 12.5,
+                          color: SdColors.faint),
                       filled: true,
-                      fillColor: SasUi.pageBg,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                      fillColor: SdColors.ground,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+                        borderRadius: BorderRadius.circular(SdRadius.sm),
                         borderSide: BorderSide.none,
                       ),
                     ),
                   ),
                 ),
-                SizedBox(width: 8.w),
+                const SizedBox(width: 8),
                 _sendButton(disabled),
               ],
             ),
@@ -478,26 +456,28 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
   }
 
   Widget _sendButton(bool disabled) {
+    final enabled = !disabled && !_sending;
     return SizedBox(
-      height: 46.h,
-      child: FilledButton(
-        onPressed: (disabled || _sending) ? null : _sendReply,
-        style: FilledButton.styleFrom(
-          backgroundColor:
-              _internal ? AppTheme.warningColor : AppTheme.primaryColor,
-          disabledBackgroundColor: Colors.grey.withValues(alpha: 0.30),
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+      height: 46,
+      width: 56,
+      child: SdRaised(
+        onTap: enabled ? _sendReply : null,
+        radius: SdRadius.sm,
+        depth: SdDepth.button,
+        color: _internal ? SdColors.warning : SdColors.primary,
+        edgeColor: _internal ? SdColors.warningEdge : SdColors.primaryEdge,
+        padding: EdgeInsets.zero,
+        semanticLabel: 'إرسال',
+        child: Center(
+          child: _sending
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                )
+              : const Icon(Icons.send_rounded, color: Colors.white),
         ),
-        child: _sending
-            ? SizedBox(
-                width: 18.w,
-                height: 18.w,
-                child: const CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
-              )
-            : const Icon(Icons.send_rounded, color: Colors.white),
       ),
     );
   }
@@ -505,21 +485,18 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
   Widget _hint(IconData icon, String text) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 16.sp, color: Colors.grey[600]),
-          SizedBox(width: 8.w),
+          Icon(icon, size: 16, color: SdColors.muted),
+          const SizedBox(width: 8),
           Text(text,
-              style: GoogleFonts.cairo(
-                  fontSize: 12.sp,
-                  color: Colors.grey[700],
-                  fontWeight: FontWeight.w600)),
+              style: SdText.bodySm.copyWith(fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -528,18 +505,18 @@ class _SasTicketDetailPageState extends State<SasTicketDetailPage> {
 
 // ─────────────────────────── مساعدات مشتركة ───────────────────────────
 
-Color _statusColor(String s) {
+SdStatus _statusStatus(String s) {
   switch (s) {
     case 'open':
-      return AppTheme.primaryColor;
+      return SdStatus.info;
     case 'in_progress':
-      return AppTheme.warningColor;
+      return SdStatus.warning;
     case 'resolved':
-      return AppTheme.successColor;
+      return SdStatus.success;
     case 'closed':
-      return Colors.blueGrey;
+      return SdStatus.neutral;
     default:
-      return Colors.grey;
+      return SdStatus.neutral;
   }
 }
 
@@ -558,18 +535,18 @@ IconData _statusIcon(String s) {
   }
 }
 
-Color _priorityColor(String p) {
+SdStatus _priorityStatus(String p) {
   switch (p) {
     case 'urgent':
-      return AppTheme.errorColor;
+      return SdStatus.danger;
     case 'high':
-      return const Color(0xFFF4511E);
+      return SdStatus.warning;
     case 'normal':
-      return Colors.blueGrey;
+      return SdStatus.neutral;
     case 'low':
-      return Colors.grey;
+      return SdStatus.neutral;
     default:
-      return Colors.blueGrey;
+      return SdStatus.neutral;
   }
 }
 

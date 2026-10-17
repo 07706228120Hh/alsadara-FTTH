@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/chat_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../permissions/permission_manager.dart';
+import '../../frontend/frontend.dart';
 import 'chat_conversation_page.dart';
 
 /// صفحة قائمة غرف المحادثة — تدعم سطح المكتب والموبايل
@@ -17,9 +18,6 @@ class ChatRoomsPage extends StatefulWidget {
 
 class _ChatRoomsPageState extends State<ChatRoomsPage> {
   // ═══ Constants ═══
-  static const _primaryBlue = Color(0xFF1976D2);
-  static const _unreadRed = Color(0xFFE53935);
-  static const _bgGrey = Color(0xFFF5F5F5);
   static const _desktopBreakpoint = 768.0;
   static const _sidebarWidth = 350.0;
 
@@ -253,15 +251,15 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
   Color _roomTypeColor(int type) {
     switch (type) {
       case 0:
-        return _primaryBlue;
+        return SdColors.primary;
       case 1:
-        return Colors.teal;
+        return SdColors.accent;
       case 2:
-        return Colors.deepOrange;
+        return SdColors.warning;
       case 3:
-        return Colors.indigo;
+        return SdColors.info;
       default:
-        return _primaryBlue;
+        return SdColors.primary;
     }
   }
 
@@ -331,7 +329,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
           title: Row(
             children: [
               const Expanded(child: Text('كل محادثات الشركة', style: TextStyle(fontSize: 16))),
-              Text('${rooms.length}', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+              Text('${rooms.length}', style: TextStyle(fontSize: 13, color: SdColors.muted)),
               const SizedBox(width: 8),
               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
             ],
@@ -356,21 +354,21 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                         dense: true,
                         leading: CircleAvatar(
                           radius: 18,
-                          backgroundColor: type == 0 ? Colors.blue[100] : type == 2 ? Colors.orange[100] : Colors.teal[100],
+                          backgroundColor: type == 0 ? SdColors.primaryTint : type == 2 ? SdColors.warningTint : SdColors.accentTint,
                           child: Icon(
                             type == 0 ? Icons.person : type == 1 ? Icons.groups : type == 2 ? Icons.campaign : Icons.group,
                             size: 18,
-                            color: type == 0 ? Colors.blue : type == 2 ? Colors.orange : Colors.teal,
+                            color: type == 0 ? SdColors.primary : type == 2 ? SdColors.warning : SdColors.accent,
                           ),
                         ),
                         title: Text(displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
                         subtitle: Text(
                           '${typeLabel[type] ?? ''} • $memberCount عضو • $msgCount رسالة',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          style: TextStyle(fontSize: 11, color: SdColors.muted),
                         ),
                         trailing: Text(
                           r['lastMessageAt'] != null ? _formatTime(r['lastMessageAt'].toString()) : '',
-                          style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                          style: TextStyle(fontSize: 10, color: SdColors.faint),
                         ),
                         onTap: () {
                           Navigator.pop(ctx);
@@ -418,7 +416,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
               // تثبيت / إلغاء التثبيت
               ListTile(
                 leading: Icon(isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                    color: isPinned ? Colors.orange : Colors.grey[600]),
+                    color: isPinned ? SdColors.warning : SdColors.muted),
                 title: Text(isPinned ? 'إلغاء التثبيت' : 'تثبيت المحادثة'),
                 onTap: () async {
                   Navigator.pop(ctx);
@@ -430,7 +428,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
               // كتم / إلغاء الكتم
               ListTile(
                 leading: Icon(isMuted ? Icons.notifications_active : Icons.notifications_off,
-                    color: isMuted ? Colors.green : Colors.grey[600]),
+                    color: isMuted ? SdColors.success : SdColors.muted),
                 title: Text(isMuted ? 'تفعيل الإشعارات' : 'كتم الإشعارات'),
                 onTap: () async {
                   Navigator.pop(ctx);
@@ -442,8 +440,8 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
               // حذف (مدير فقط)
               if (isAdmin)
                 ListTile(
-                  leading: const Icon(Icons.delete_forever, color: Colors.red),
-                  title: const Text('حذف المحادثة', style: TextStyle(color: Colors.red)),
+                  leading: const Icon(Icons.delete_forever, color: SdColors.danger),
+                  title: const Text('حذف المحادثة', style: TextStyle(color: SdColors.danger)),
                   onTap: () async {
                     Navigator.pop(ctx);
                     final confirm = await showDialog<bool>(
@@ -456,7 +454,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                           actions: [
                             TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
                             TextButton(onPressed: () => Navigator.pop(c, true),
-                              child: const Text('حذف', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+                              child: const Text('حذف', style: TextStyle(color: SdColors.danger, fontWeight: FontWeight.bold))),
                           ],
                         ),
                       ),
@@ -538,7 +536,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: SdColors.faint,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -559,7 +557,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                   // محادثة خاصة — متاح دائما
                   _buildCreateOption(
                     icon: Icons.person_add,
-                    color: _primaryBlue,
+                    color: SdColors.primary,
                     label: 'محادثة خاصة',
                     subtitle: 'محادثة مع موظف',
                     onTap: () {
@@ -571,7 +569,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                   if (pm.hasAction('chat.create_group', 'add'))
                     _buildCreateOption(
                       icon: Icons.group_add,
-                      color: Colors.indigo,
+                      color: SdColors.info,
                       label: 'مجموعة جديدة',
                       subtitle: 'مجموعة محادثة مع عدة اشخاص',
                       onTap: () {
@@ -583,7 +581,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                   if (pm.hasAction('chat.create_department', 'add'))
                     _buildCreateOption(
                       icon: Icons.groups,
-                      color: Colors.teal,
+                      color: SdColors.accent,
                       label: 'محادثة قسم',
                       subtitle: 'محادثة جماعية لقسم كامل',
                       onTap: () {
@@ -595,7 +593,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                   if (pm.hasAction('chat.create_broadcast', 'add'))
                     _buildCreateOption(
                       icon: Icons.campaign,
-                      color: Colors.deepOrange,
+                      color: SdColors.warning,
                       label: 'بث للجميع',
                       subtitle: 'ارسال رسالة لجميع الموظفين',
                       onTap: () {
@@ -631,7 +629,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
         child: Icon(icon, color: color, size: 24),
       ),
       title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+      subtitle: Text(subtitle, style: TextStyle(color: SdColors.muted, fontSize: 12)),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
     );
@@ -694,12 +692,12 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                   final count = dept['memberCount'] ?? 0;
                   return ListTile(
                     leading: const CircleAvatar(
-                      backgroundColor: Colors.teal,
+                      backgroundColor: SdColors.accent,
                       radius: 18,
                       child: Icon(Icons.groups, color: Colors.white, size: 18),
                     ),
                     title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text('$count موظف', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                    subtitle: Text('$count موظف', style: TextStyle(fontSize: 12, color: SdColors.muted)),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                     onTap: () => Navigator.pop(ctx, dept),
                   );
@@ -887,39 +885,29 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
       return _buildRoomsList();
     }
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _bgGrey,
-        appBar: _buildAppBar(),
-        body: isDesktop ? _buildDesktopLayout() : _buildRoomsList(),
-      ),
+    return SdPage(
+      appBar: _buildAppBar(),
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      maxWidth: double.infinity,
+      body: isDesktop ? _buildDesktopLayout() : _buildRoomsList(),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
-    final isMobile = MediaQuery.of(context).size.width < 600;
-    return AppBar(
-      title: Text(
-        'المحادثات',
-        style: TextStyle(fontWeight: FontWeight.w700, fontSize: isMobile ? 18 : 20),
-      ),
-      centerTitle: true,
-      backgroundColor: const Color(0xFF075E54),
-      foregroundColor: Colors.white,
-      elevation: 0.5,
-      toolbarHeight: isMobile ? 48 : 56,
+    return SdAppBar(
+      title: 'المحادثات',
       actions: [
         // زر كل المحادثات (مدير فقط)
         if (_isAdmin)
-          IconButton(
-            icon: Icon(Icons.admin_panel_settings_outlined, size: isMobile ? 20 : 22),
-            tooltip: 'كل محادثات الشركة',
+          SdAppBarAction(
+            icon: Icons.admin_panel_settings_outlined,
+            label: 'كل محادثات الشركة',
             onPressed: _showAllCompanyRooms,
           ),
-        IconButton(
-          icon: Icon(Icons.add_comment_outlined, size: isMobile ? 22 : 24),
-          tooltip: 'محادثة جديدة',
+        SdAppBarAction(
+          icon: Icons.add_comment_outlined,
+          label: 'محادثة جديدة',
           onPressed: _showCreateOptions,
         ),
       ],
@@ -937,11 +925,13 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
         SizedBox(
           width: _sidebarWidth,
           child: Container(
+            margin: const EdgeInsetsDirectional.fromSTEB(12, 12, 0, 12),
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                left: BorderSide(color: Colors.grey[200]!),
-              ),
+              color: SdColors.surface,
+              borderRadius: BorderRadius.circular(SdRadius.xl),
+              border: SdOutline.all,
+              boxShadow: SdDepth.raised(),
             ),
             child: _buildRoomsList(),
           ),
@@ -964,22 +954,11 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
 
   Widget _buildEmptyConversation() {
     return Container(
-      color: _bgGrey,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text(
-              'اختر محادثة للبدء',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[500],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+      color: SdColors.ground,
+      child: const Center(
+        child: SdEmptyState(
+          icon: Icons.chat_bubble_outline,
+          title: 'اختر محادثة للبدء',
         ),
       ),
     );
@@ -993,17 +972,17 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
     return Column(
       children: [
         _buildSearchBar(),
-        Divider(height: 0.5, thickness: 0.5, color: Colors.grey[200]),
+        Divider(height: 0.5, thickness: 0.5, color: SdColors.divider),
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: _primaryBlue))
+              ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
               : _hasError
                   ? _buildErrorState()
                   : _filteredRooms.isEmpty
                       ? _buildEmptyState()
                       : RefreshIndicator(
                           onRefresh: _loadRooms,
-                          color: _primaryBlue,
+                          color: SdColors.primary,
                           child: ListView.builder(
                             controller: _scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
@@ -1019,7 +998,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
   Widget _buildSearchBar() {
     final isMobile = MediaQuery.of(context).size.width < 600;
     return Container(
-      color: Colors.white,
+      color: SdColors.surface,
       padding: EdgeInsets.fromLTRB(isMobile ? 10 : 16, 6, isMobile ? 10 : 16, 6),
       child: SizedBox(
         height: isMobile ? 38 : 42,
@@ -1029,8 +1008,8 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
           style: TextStyle(fontSize: isMobile ? 13 : 14),
           decoration: InputDecoration(
             hintText: 'بحث...',
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: isMobile ? 13 : 14),
-            prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: isMobile ? 20 : 22),
+            hintStyle: TextStyle(color: SdColors.faint, fontSize: isMobile ? 13 : 14),
+            prefixIcon: Icon(Icons.search, color: SdColors.faint, size: isMobile ? 20 : 22),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
                     icon: Icon(Icons.close, size: isMobile ? 18 : 20),
@@ -1041,7 +1020,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                   )
                 : null,
             filled: true,
-            fillColor: _bgGrey,
+            fillColor: SdColors.ground,
             contentPadding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16, vertical: 0),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
           ),
@@ -1066,7 +1045,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
     final isOnline = otherUserId != null && _onlineUserIds.contains(otherUserId);
 
     return Material(
-      color: isSelected ? _primaryBlue.withValues(alpha: 0.08) : Colors.white,
+      color: isSelected ? SdColors.primaryTint : SdColors.surface,
       child: InkWell(
         onTap: () => _openRoom(room),
         onLongPress: () => _showRoomOptions(room),
@@ -1077,7 +1056,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
           ),
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: Colors.grey[100]!, width: 0.5),
+              bottom: BorderSide(color: SdColors.divider, width: 0.5),
             ),
           ),
           child: Row(
@@ -1098,7 +1077,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                             style: TextStyle(
                               fontSize: isMobile ? 14 : 15,
                               fontWeight: unreadCount > 0 ? FontWeight.w700 : FontWeight.w600,
-                              color: Colors.grey[850],
+                              color: SdColors.ink,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1109,7 +1088,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                             _formatTime(lastMsgTime),
                             style: TextStyle(
                               fontSize: 11,
-                              color: unreadCount > 0 ? _primaryBlue : Colors.grey[500],
+                              color: unreadCount > 0 ? SdColors.primary : SdColors.muted,
                               fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
                             ),
                           ),
@@ -1127,7 +1106,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                                 : (type != 0 ? '${room['memberCount'] ?? 0} عضو' : 'لا توجد رسائل بعد'),
                             style: TextStyle(
                               fontSize: isMobile ? 12 : 13,
-                              color: unreadCount > 0 ? Colors.grey[700] : Colors.grey[500],
+                              color: unreadCount > 0 ? SdColors.muted : SdColors.muted,
                               fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
                             ),
                             maxLines: 1,
@@ -1137,12 +1116,12 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
                         if (room['isPinned'] == true)
                           Padding(
                             padding: const EdgeInsetsDirectional.only(start: 4),
-                            child: Icon(Icons.push_pin, size: 14, color: Colors.orange[300]),
+                            child: const Icon(Icons.push_pin, size: 14, color: SdColors.warning),
                           ),
                         if (room['isMuted'] == true)
                           Padding(
                             padding: const EdgeInsetsDirectional.only(start: 4),
-                            child: Icon(Icons.notifications_off, size: 14, color: Colors.grey[400]),
+                            child: Icon(Icons.notifications_off, size: 14, color: SdColors.faint),
                           ),
                         if (unreadCount > 0) ...[
                           const SizedBox(width: 8),
@@ -1184,7 +1163,7 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
               width: 14,
               height: 14,
               decoration: BoxDecoration(
-                color: Colors.green,
+                color: SdColors.success,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
@@ -1195,72 +1174,30 @@ class _ChatRoomsPageState extends State<ChatRoomsPage> {
   }
 
   Widget _buildUnreadBadge(int count) {
-    final text = count > 99 ? '99+' : count.toString();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFF25D366),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      constraints: const BoxConstraints(minWidth: 18),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
+    return SdBadge(count: count);
   }
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.chat_outlined, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 12),
-          Text(
-            _searchQuery.isNotEmpty ? 'لا توجد نتائج' : 'لا توجد محادثات',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[500],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (_searchQuery.isEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              'اضغط + لبدء محادثة جديدة',
-              style: TextStyle(fontSize: 13, color: Colors.grey[400]),
-            ),
-          ],
-        ],
+      child: SdEmptyState(
+        icon: Icons.chat_outlined,
+        title: _searchQuery.isNotEmpty ? 'لا توجد نتائج' : 'لا توجد محادثات',
+        message: _searchQuery.isEmpty ? 'اضغط + لبدء محادثة جديدة' : null,
       ),
     );
   }
 
   Widget _buildErrorState() {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.wifi_off, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 12),
-          Text(
-            'فشل تحميل المحادثات',
-            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _loadRooms,
-            icon: const Icon(Icons.refresh),
-            label: const Text('اعادة المحاولة'),
-            style: FilledButton.styleFrom(backgroundColor: _primaryBlue),
-          ),
-        ],
+      child: SdEmptyState(
+        icon: Icons.wifi_off,
+        status: SdStatus.danger,
+        title: 'فشل تحميل المحادثات',
+        action: SdButton(
+          label: 'اعادة المحاولة',
+          icon: Icons.refresh,
+          onPressed: _loadRooms,
+        ),
       ),
     );
   }
@@ -1396,7 +1333,7 @@ class _UserPickerDialogState extends State<_UserPickerDialog> {
                     hintText: 'بحث...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     filled: true,
-                    fillColor: Colors.grey[100],
+                    fillColor: SdColors.surfaceAlt,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -1415,7 +1352,7 @@ class _UserPickerDialogState extends State<_UserPickerDialog> {
                     child: Text(
                       'تم اختيار ${_selectedIds.length}',
                       style: const TextStyle(
-                        color: _ChatRoomsPageState._primaryBlue,
+                        color: SdColors.primary,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -1427,14 +1364,14 @@ class _UserPickerDialogState extends State<_UserPickerDialog> {
                 child: _loading
                     ? const Center(
                         child: CircularProgressIndicator(
-                          color: _ChatRoomsPageState._primaryBlue,
+                          color: SdColors.primary,
                         ),
                       )
                     : _filtered.isEmpty
                         ? Center(
                             child: Text(
                               'لا توجد نتائج',
-                              style: TextStyle(color: Colors.grey[500]),
+                              style: TextStyle(color: SdColors.muted),
                             ),
                           )
                         : ListView.builder(
@@ -1454,12 +1391,12 @@ class _UserPickerDialogState extends State<_UserPickerDialog> {
 
                               return ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: _ChatRoomsPageState._primaryBlue
+                                  backgroundColor: SdColors.primary
                                       .withValues(alpha: 0.1),
                                   child: Text(
                                     name.isNotEmpty ? name.characters.first : '?',
                                     style: const TextStyle(
-                                      color: _ChatRoomsPageState._primaryBlue,
+                                      color: SdColors.primary,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -1473,14 +1410,14 @@ class _UserPickerDialogState extends State<_UserPickerDialog> {
                                         subtitle,
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey[500],
+                                          color: SdColors.muted,
                                         ),
                                       )
                                     : null,
                                 trailing: widget.multiSelect
                                     ? Checkbox(
                                         value: isSelected,
-                                        activeColor: _ChatRoomsPageState._primaryBlue,
+                                        activeColor: SdColors.primary,
                                         onChanged: (_) => _toggleUser(user),
                                       )
                                     : null,
@@ -1499,19 +1436,19 @@ class _UserPickerDialogState extends State<_UserPickerDialog> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
+                        child: SdButton(
+                          label: 'الغاء',
+                          kind: SdButtonKind.secondary,
+                          expand: true,
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('الغاء'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: FilledButton(
+                        child: SdButton(
+                          label: 'تاكيد (${_selectedIds.length})',
+                          expand: true,
                           onPressed: _selectedIds.isEmpty ? null : _confirmSelection,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _ChatRoomsPageState._primaryBlue,
-                          ),
-                          child: Text('تاكيد (${_selectedIds.length})'),
                         ),
                       ),
                     ],
