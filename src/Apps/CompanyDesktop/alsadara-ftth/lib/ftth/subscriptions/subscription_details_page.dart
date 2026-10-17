@@ -9030,6 +9030,23 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       }
     } catch (e) {
       debugPrint('🔧 خطأ فحص صيانة: $e');
+      // Failure must not silently look like "no maintenance fee" — warn the
+      // operator so the fee can be retried or entered before saving.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'تعذّر التحقق من أجور صيانة الزون "$zoneName" — تأكد من الأجور قبل الحفظ',
+          ),
+          backgroundColor: Colors.orange.shade800,
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: 'إعادة المحاولة',
+            textColor: Colors.white,
+            onPressed: _checkZoneMaintenanceFee,
+          ),
+        ),
+      );
     }
   }
 
