@@ -2660,42 +2660,82 @@ ORDER BY ""TotalCollected"" DESC;";
         return new TechnicianScope(userId, names);
     }
 
-    /// <summary>Exact JSON fragment <c>"key":"value"</c> as written by this controller (relaxed escaping).</summary>
-    private static string JsonToken(string key, string value) =>
-        "\"" + key + "\":" + JsonSerializer.Serialize(value, RelaxedJson);
+    /// <summary>
+    /// Exact JSON fragments for <c>"key":"value"</c> (as written by this controller, relaxed escaping) and the
+    /// spaced variant <c>"key": "value"</c> (rows rewritten by an old jsonb::text script).
+    /// </summary>
+    private static IEnumerable<string> JsonTokens(string key, string value)
+    {
+        var serialized = JsonSerializer.Serialize(value, RelaxedJson);
+        yield return "\"" + key + "\":" + serialized;
+        yield return "\"" + key + "\": " + serialized;
+    }
+
+    /// <summary>Holder so each token becomes a SQL parameter (not an inlined literal) in the built predicate.</summary>
+    private sealed class TokenHolder
+    {
+        public TokenHolder(string value) => Value = value;
+        public string Value { get; }
+    }
 
     /// <summary>
-    /// Restricts a query to tasks assigned to / created by the technician: by id (TechnicianId/AssignedToId,
-    /// Details.createdById) or by exact name (TechnicianName column, Technician.FullName, Details.technician,
-    /// Details.createdByName — exact JSON value, not substring).
+    /// Restricts a query to tasks assigned to / created by the technician:
+    ///  - by id: TechnicianId == me, or AssignedToId == me only when TechnicianId is null (a stale AssignedToId
+    ///    left after reassignment to another technician must not expose that technician's tasks);
+    ///  - by exact name: TechnicianName column, Technician.FullName;
+    ///  - by Details JSON (exact value, compact or spaced format, name with/without one trailing space):
+    ///    createdById, technician, createdByName.
+    /// Built as an OR of string.Contains calls ⇒ fully EF-translatable (strpos), no raw SQL.
     /// </summary>
     private static IQueryable<ServiceRequest> ApplyTechnicianScope(IQueryable<ServiceRequest> query, TechnicianScope scope)
     {
         var me = scope.UserId;
-        var creatorIdToken = JsonToken("createdById", me.ToString());
 
-        if (scope.Names.Count == 0)
+        var tokens = new List<string>(JsonTokens("createdById", me.ToString()));
+        foreach (var name in scope.Names.Distinct())
         {
-            return query.Where(r =>
-                r.TechnicianId == me || r.AssignedToId == me ||
-                (r.Details != null && r.Details.Contains(creatorIdToken)));
+            foreach (var value in new[] { name, name + " " })
+            {
+                tokens.AddRange(JsonTokens("technician", value));
+                tokens.AddRange(JsonTokens("createdByName", value));
+            }
         }
 
-        var n1 = scope.Names[0];
-        var n2 = scope.Names.Count > 1 ? scope.Names[1] : scope.Names[0];
-        var tech1 = JsonToken("technician", n1);
-        var tech2 = JsonToken("technician", n2);
-        var creator1 = JsonToken("createdByName", n1);
-        var creator2 = JsonToken("createdByName", n2);
+        System.Linq.Expressions.Expression<Func<ServiceRequest, bool>> core;
+        if (scope.Names.Count == 0)
+        {
+            core = r => r.TechnicianId == me || (r.TechnicianId == null && r.AssignedToId == me);
+        }
+        else
+        {
+            var n1 = scope.Names[0];
+            var n2 = scope.Names.Count > 1 ? scope.Names[1] : scope.Names[0];
+            core = r =>
+                r.TechnicianId == me || (r.TechnicianId == null && r.AssignedToId == me) ||
+                r.TechnicianName == n1 || r.TechnicianName == n2 ||
+                (r.Technician != null && (r.Technician.FullName == n1 || r.Technician.FullName == n2));
+        }
 
-        return query.Where(r =>
-            r.TechnicianId == me || r.AssignedToId == me ||
-            r.TechnicianName == n1 || r.TechnicianName == n2 ||
-            (r.Technician != null && (r.Technician.FullName == n1 || r.Technician.FullName == n2)) ||
-            (r.Details != null && (
-                r.Details.Contains(creatorIdToken) ||
-                r.Details.Contains(tech1) || r.Details.Contains(tech2) ||
-                r.Details.Contains(creator1) || r.Details.Contains(creator2))));
+        // core || (Details != null && (Details.Contains(t1) || Details.Contains(t2) || ...))
+        var param = core.Parameters[0];
+        var details = System.Linq.Expressions.Expression.Property(param, nameof(ServiceRequest.Details));
+        var contains = typeof(string).GetMethod(nameof(string.Contains), new[] { typeof(string) })!;
+        System.Linq.Expressions.Expression? anyToken = null;
+        foreach (var token in tokens.Distinct())
+        {
+            var tokenValue = System.Linq.Expressions.Expression.Property(
+                System.Linq.Expressions.Expression.Constant(new TokenHolder(token)), nameof(TokenHolder.Value));
+            var call = System.Linq.Expressions.Expression.Call(details, contains, tokenValue);
+            anyToken = anyToken == null ? call : System.Linq.Expressions.Expression.OrElse(anyToken, call);
+        }
+
+        var detailsMatch = System.Linq.Expressions.Expression.AndAlso(
+            System.Linq.Expressions.Expression.NotEqual(details, System.Linq.Expressions.Expression.Constant(null, typeof(string))),
+            anyToken!);
+        var predicate = System.Linq.Expressions.Expression.Lambda<Func<ServiceRequest, bool>>(
+            System.Linq.Expressions.Expression.OrElse(core.Body, detailsMatch), param);
+
+        return query.Where(predicate);
     }
 
     /// <summary>
