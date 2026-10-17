@@ -8,6 +8,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../utils/responsive_helper.dart';
+import '../permissions/permissions.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -573,6 +574,10 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
     final r = context.responsive;
     final hasSalaries = _salaries.isNotEmpty;
     final hasPending = _salaries.any((s) => s['Status'] == 'Pending');
+    // نفس مفاتيح الخادم: التوليد/الصرف = accounting.salaries/add، حذف المسيّر = delete.
+    final pm = PermissionManager.instance;
+    final canAdd = pm.canAdd('accounting.salaries');
+    final canDelete = pm.canDelete('accounting.salaries');
 
     return Container(
       margin: EdgeInsets.all(r.isMobile ? 10 : 16),
@@ -580,7 +585,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
         spacing: 8,
         runSpacing: 8,
         children: [
-          if (!hasSalaries)
+          if (!hasSalaries && canAdd)
             SdButton(
               label: 'إنشاء مسيّر الرواتب',
               icon: Icons.auto_fix_high,
@@ -589,12 +594,14 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
               onPressed: _generatePayroll,
             ),
           if (hasSalaries && hasPending) ...[
+            if (canAdd)
             SdButton(
               label: 'صرف جميع الرواتب',
               icon: Icons.payments,
               height: 48,
               onPressed: _payAllSalaries,
             ),
+            if (canDelete)
             SdButton(
               label: 'حذف المسيّر',
               icon: Icons.delete_outline,
@@ -744,7 +751,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                     ),
                   ),
                   // زر صرف فردي
-                  if (!isPaid)
+                  if (!isPaid && PermissionManager.instance.canAdd('accounting.salaries'))
                     IconButton(
                       icon: const Icon(Icons.payment, color: SdColors.accent),
                       tooltip: 'صرف هذا الراتب',
@@ -972,6 +979,7 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                       fontSize: context.responsive.isMobile ? 14 : 18,
                       fontWeight: FontWeight.bold,
                       color: SdColors.primary)),
+              if (PermissionManager.instance.canAdd('accounting.salaries'))
               ElevatedButton.icon(
                 onPressed: _showCreatePolicyDialog,
                 icon: const Icon(Icons.add, size: 18),
@@ -998,7 +1006,9 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
       icon: Icons.policy,
       title: 'لا توجد سياسات رواتب',
       message: 'أنشئ سياسة لتفعيل الحساب التلقائي للخصومات والمكافآت',
-      action: SdButton(
+      action: !PermissionManager.instance.canAdd('accounting.salaries')
+          ? null
+          : SdButton(
         label: 'إنشاء سياسة افتراضية',
         icon: Icons.auto_fix_high,
         onPressed: _showCreatePolicyDialog,
@@ -1052,11 +1062,13 @@ class _SalaryManagementPageState extends State<SalaryManagementPage>
                   ),
                 ],
                 const Spacer(),
+                if (PermissionManager.instance.canEdit('accounting.salaries'))
                 IconButton(
                   icon: const Icon(Icons.edit, size: 20),
                   onPressed: () => _showEditPolicyDialog(policy),
                   tooltip: 'تعديل',
                 ),
+                if (PermissionManager.instance.canDelete('accounting.salaries'))
                 IconButton(
                   icon: const Icon(Icons.delete, size: 20, color: SdColors.danger),
                   onPressed: () => _deletePolicy(policy['Id']),

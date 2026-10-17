@@ -6,6 +6,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
+import '../permissions/permissions.dart';
 import '../services/attendance_api_service.dart';
 import '../services/vps_auth_service.dart';
 
@@ -77,7 +78,10 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      // الكتابة على الخادم تتطلب accounting.salaries/add — نُخفي الزر لمن لا يملكها.
+      floatingActionButton: !PermissionManager.instance.canAdd('accounting.salaries')
+          ? null
+          : FloatingActionButton.extended(
         onPressed: () => _showAddDialog(context),
         backgroundColor: SdColors.primary,
         foregroundColor: Colors.white,
@@ -360,8 +364,13 @@ class _DeductionsBonusesPageState extends State<DeductionsBonusesPage> {
                 style: SdText.caption.copyWith(fontSize: 11.5)),
           ],
         ),
-        onTap: isApplied ? null : () => _showEditDialog(context, adj),
-        onLongPress: isApplied ? null : () => _showDeleteDialog(context, adj),
+        // تعديل/حذف بحسب accounting.salaries (edit/delete) — نفس فحص الخادم.
+        onTap: isApplied || !PermissionManager.instance.canEdit('accounting.salaries')
+            ? null
+            : () => _showEditDialog(context, adj),
+        onLongPress: isApplied || !PermissionManager.instance.canDelete('accounting.salaries')
+            ? null
+            : () => _showDeleteDialog(context, adj),
       ),
     );
   }

@@ -140,6 +140,16 @@ public class WithdrawalRequestController(
         else if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cid))
             query = query.Where(r => r.CompanyId == cid);
 
+        // القائمة الكاملة للشركة لمن يملك accounting.withdrawals/view فقط؛ غيره يرى طلباته هو فحسب
+        // (سياسة "Admin" تشمل Employee/Technician، وطلبات السلف بيانات راتب حسّاسة).
+        if (!await CallerHasPermission(WithdrawalsPermission, "view"))
+        {
+            var callerId = GetAuthenticatedUserId();
+            if (callerId == null)
+                return StatusCode(403, new { success = false, message = "لا تملك صلاحية عرض طلبات السحب" });
+            query = query.Where(r => r.UserId == callerId.Value);
+        }
+
         // فلترة حسب الحالة
         if (status.HasValue)
             query = query.Where(r => r.Status == (WithdrawalRequestStatus)status.Value);

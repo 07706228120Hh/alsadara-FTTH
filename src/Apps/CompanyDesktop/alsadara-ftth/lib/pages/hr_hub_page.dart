@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../frontend/frontend.dart';
+import '../permissions/permissions.dart';
 import 'work_schedules_page.dart';
 import 'leave_management_page.dart';
 import 'salary_management_page.dart';
@@ -52,7 +53,11 @@ class _HrHubPageState extends State<HrHubPage> {
     try {
       final results = await Future.wait([
         AttendanceApiService.instance.getLeaveSummary().catchError((_) => <String, dynamic>{}),
-        AttendanceApiService.instance.getWithdrawalRequests(status: 0, page: 1, pageSize: 1).catchError((_) => <String, dynamic>{}),
+        // عدّاد طلبات السحب المعلّقة للشركة: الخادم يعيد القائمة الكاملة فقط لمن يملك
+        // accounting.withdrawals/view (غيره يرى طلباته فقط) — فلا نعرض العدّاد إلا للمخوَّل.
+        PermissionManager.instance.canView('accounting.withdrawals')
+            ? AttendanceApiService.instance.getWithdrawalRequests(status: 0, page: 1, pageSize: 1).catchError((_) => <String, dynamic>{})
+            : Future.value(<String, dynamic>{}),
       ]);
 
       final leaveRaw = results[0];
@@ -158,7 +163,8 @@ class _HrHubPageState extends State<HrHubPage> {
         ),
       ),
 
-      // 5) الرواتب
+      // 5) الرواتب — قراءة الرواتب على الخادم تتطلب accounting.salaries/view
+      if (PermissionManager.instance.canView('accounting.salaries'))
       SdMenuTile(
         icon: Icons.payments_rounded,
         title: 'الرواتب',

@@ -590,6 +590,104 @@ public class AccountingTenantIsolationTests
         Assert.Null(await RunPermissionFilters(typeof(WithdrawalRequestController), action, editor));
     }
 
+    // ═══════════════════════ remediation round (S11 / P2-3 / P2-4) ═══════════════════════
+
+    /// <summary>S11: without accounting.withdrawals/view the list is restricted to the caller's own requests.</summary>
+    [SkippableFact]
+    public async Task Withdrawals_List_WithoutWithdrawalsView_OnlyOwnRequests()
+    {
+        _fx.SkipIfUnavailable();
+        var w = Seed();
+
+        // HR-only grants: no accounting key at all ⇒ accounting.withdrawals/view is denied.
+        var hrUser = SeedPermUser("""{"hr":{"view":true}}""");
+        long ownRequestId;
+        using (var ctx = _fx.CreateContext(PostgresFixture.SystemTenant))
+        {
+            var own = new WithdrawalRequest { UserId = hrUser, UserName = "موظف HR", CompanyId = _companyA, Amount = 500m };
+            ctx.Set<WithdrawalRequest>().Add(own);
+            ctx.SaveChanges();
+            ownRequestId = own.Id;
+        }
+
+        var (ctrl, db) = Withdrawals(hrUser, _companyA);
+        using var _ = db;
+        var json = Json(await ctrl.GetWithdrawalRequests());
+        var ids = json.GetProperty("requests").EnumerateArray().Select(r => r.GetProperty("Id").GetInt64()).ToList();
+        Assert.Equal(new[] { ownRequestId }, ids);
+        Assert.Equal(1, json.GetProperty("total").GetInt32());
+
+        // Asking for a colleague's requests cannot widen the view (the filters intersect ⇒ empty).
+        var other = Json(await ctrl.GetWithdrawalRequests(userId: w.EmployeeA.ToString()));
+        Assert.Empty(other.GetProperty("requests").EnumerateArray());
+        Assert.Equal(0, other.GetProperty("total").GetInt32());
+    }
+
+    private Guid SeedPlan(Guid? companyId)
+    {
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        var plan = new InternetPlan
+        {
+            Id = Guid.NewGuid(), CompanyId = companyId, Name = "Plan", NameAr = "باقة", MonthlyPrice = 35_000m, ProfitAmount = 5_000m,
+        };
+        ctx.Set<InternetPlan>().Add(plan);
+        ctx.SaveChanges();
+        return plan.Id;
+    }
+
+    private decimal PlanProfitInDb(Guid planId)
+    {
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        return ctx.Set<InternetPlan>().IgnoreQueryFilters().Single(p => p.Id == planId).ProfitAmount;
+    }
+
+    /// <summary>P2-3: shared plans (CompanyId == null) are SuperAdmin-only; own-company plans stay editable.</summary>
+    [SkippableFact]
+    public async Task PlanProfit_SharedPlan_SuperAdminOnly()
+    {
+        _fx.SkipIfUnavailable();
+        var w = Seed();
+        var sharedPlan = SeedPlan(null);
+        var ownPlan = SeedPlan(_companyA);
+        var foreignPlan = SeedPlan(_companyB);
+
+        var (ctrl, db) = Accounting(w.AccountantA, _companyA);
+        using (db)
+        {
+            Assert.Equal(403, StatusOf(await ctrl.UpdatePlanProfit(sharedPlan, new UpdatePlanProfitDto(1m))));
+            Assert.Equal(404, StatusOf(await ctrl.UpdatePlanProfit(foreignPlan, new UpdatePlanProfitDto(1m))));
+            Assert.Equal(200, StatusOf(await ctrl.UpdatePlanProfit(ownPlan, new UpdatePlanProfitDto(7_000m))));
+        }
+        Assert.Equal(5_000m, PlanProfitInDb(sharedPlan));
+        Assert.Equal(5_000m, PlanProfitInDb(foreignPlan));
+        Assert.Equal(7_000m, PlanProfitInDb(ownPlan));
+
+        var (admin, adminDb) = Accounting(Guid.NewGuid(), company: null, superAdmin: true);
+        using (adminDb)
+            Assert.Equal(200, StatusOf(await admin.UpdatePlanProfit(sharedPlan, new UpdatePlanProfitDto(6_000m))));
+        Assert.Equal(6_000m, PlanProfitInDb(sharedPlan));
+    }
+
+    /// <summary>P2-4: salary reads need accounting.salaries/view (inherited from accounting/view unless explicitly closed).</summary>
+    [SkippableTheory]
+    [InlineData(nameof(AccountingController.GetSalaries))]
+    [InlineData(nameof(AccountingController.GetSalaryRoster))]
+    [InlineData(nameof(AccountingController.GetSalaryDetails))]
+    public async Task SalaryReads_RequireSalariesView(string action)
+    {
+        _fx.SkipIfUnavailable();
+        var salariesClosed = SeedPermUser("""{"accounting":{"view":true},"accounting.salaries":{"view":false}}""");
+        var hrOnly = SeedPermUser("""{"hr":{"view":true}}""");
+        var inherits = SeedPermUser(ViewOnlyPerms);
+
+        Assert.NotNull(await RunPermissionFilters(typeof(AccountingController), action, salariesClosed));
+        Assert.NotNull(await RunPermissionFilters(typeof(AccountingController), action, hrOnly));
+        Assert.Null(await RunPermissionFilters(typeof(AccountingController), action, inherits));
+
+        var method = typeof(AccountingController).GetMethod(action)!;
+        Assert.Contains(method.GetCustomAttributes<RequirePermissionAttribute>(), _ => true);
+    }
+
     /// <summary>Regression guard: every non-GET payroll action carries a non-"view" RequirePermission.</summary>
     [Fact]
     public void AllPayrollWriteActions_RequireWriteLevelPermission()
